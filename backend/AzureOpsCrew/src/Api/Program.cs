@@ -4,10 +4,9 @@ using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+// Enable OpenAPI/Swagger
 builder.Services.AddOpenApi();
-builder.Services.AddSwaggerGen(options => 
+builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
@@ -16,10 +15,19 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-//Add EF Core
-builder.Services.AddEFCoreCosmosDb(builder.Configuration, "CosmosDb");
+// Configure settings
+builder.Services.AddCosmosSettings(builder.Configuration, "CosmosDb");
+builder.Services.AddAiSettings(builder.Configuration, "AzureOpenAI");
 
-//Enable Application Insights
+// Configure EF Core with Cosmos DB
+builder.Services.AddEFCoreCosmosDb();
+builder.Services.AddIChatClient();
+
+// Configure AG-UI
+builder.Services.AddHttpClient().AddLogging();
+builder.Services.AddAGUI();
+
+// Enable Application Insights
 if (bool.TryParse(builder.Configuration["ApplicationInsights:Enable"], out var enableApplicationInsights)
     && enableApplicationInsights)
     builder.Services.AddApplicationInsightsTelemetry();
@@ -36,9 +44,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-//Map endpoints
+// Map endpoints
 app.MapDummyEndpoints();
 app.MapTestEndpoints();
+app.MapAgents();
 
 await app.Services.RunEnsureEFCoreCosmosDbCreated();
 
