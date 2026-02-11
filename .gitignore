@@ -20,7 +20,8 @@ backend/*.sln.docstates
 
 # Visual Studio
 .vs/
-
+*.csproj.user
+**/launchSettings.json
 
 # Logs
 backend/**/*.log
