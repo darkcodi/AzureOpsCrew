@@ -4,6 +4,11 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+
+    <Authors>AzureOpsCrewCompany</Authors>
+    <AssemblyName>AzureOpsCrew.Api</AssemblyName>
+    <RootNamespace>AzureOpsCrew.Api</RootNamespace>
+
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
 
