@@ -2,6 +2,7 @@ import React from "react"
 import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 
+import { CopilotKitProvider } from "@/components/copilotkit-provider"
 import "./globals.css"
 
 const _inter = Inter({ subsets: ["latin"] })
@@ -23,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased overflow-hidden">
-        {children}
+        <CopilotKitProvider>{children}</CopilotKitProvider>
       </body>
     </html>
   )
