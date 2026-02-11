@@ -12,9 +12,14 @@ backend/*.suo
 backend/*.userosscache
 backend/*.sln.docstates
 
-# Visual Studio / Rider
-backend/.vs/
-backend/.idea/
+# VS Code
+.vscode/
+
+# Visual Studio
+.vs/
+
+# Rider
+.idea/
 
 # Logs
 backend/**/*.log
