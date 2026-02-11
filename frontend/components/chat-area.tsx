@@ -7,7 +7,6 @@ import { MessageList } from "@/components/message-list"
 import { MessageInput } from "@/components/message-input"
 import { MemberList } from "@/components/member-list"
 import { ManageAgentsDialog } from "@/components/manage-agents-dialog"
-import { CopilotGenerativeTools } from "@/components/copilot-tools"
 
 interface ChatAreaProps {
   room: Room
@@ -180,8 +179,6 @@ export function ChatArea({
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      <CopilotGenerativeTools />
-
       <div
         className="flex flex-1 flex-col"
         style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
