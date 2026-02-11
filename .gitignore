@@ -15,11 +15,12 @@ backend/*.sln.docstates
 # VS Code
 .vscode/
 
+# Rider
+.idea/
+
 # Visual Studio
 .vs/
 
-# Rider
-.idea/
 
 # Logs
 backend/**/*.log
