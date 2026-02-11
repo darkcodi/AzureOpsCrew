@@ -15,11 +15,13 @@ backend/*.sln.docstates
 # VS Code
 .vscode/
 
-# Visual Studio
-.vs/
-
 # Rider
 .idea/
+
+# Visual Studio
+.vs/
+*.csproj.user
+**/launchSettings.json
 
 # Logs
 backend/**/*.log
