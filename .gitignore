@@ -1,0 +1,71 @@
+####################################
+# ===== BACKEND (.NET) ============
+####################################
+
+backend/**/bin/
+backend/**/obj/
+backend/**/out/
+backend/**/publish/
+
+backend/*.user
+backend/*.suo
+backend/*.userosscache
+backend/*.sln.docstates
+
+# Visual Studio / Rider
+backend/.vs/
+backend/.idea/
+
+# Logs
+backend/**/*.log
+
+# Test results
+backend/**/TestResults/
+
+####################################
+# ===== FRONTEND (Node.js) ========
+####################################
+
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/.nuxt/
+frontend/.output/
+frontend/coverage/
+
+# Logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+####################################
+# ===== ENV FILES =================
+####################################
+
+frontend/.env
+frontend/.env.*
+backend/.env
+backend/.env.*
+
+!.env.example
+
+####################################
+# ===== GLOBAL ====================
+####################################
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.cache
+
+####################################
+# ===== Docker (якщо буде) ========
+####################################
+
+docker-compose.override.yml
