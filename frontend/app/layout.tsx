@@ -2,6 +2,7 @@ import React from "react"
 import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 
+import { AgentRuntimeProvider } from "@/contexts/agent-runtime-context"
 import { CopilotKitProvider } from "@/components/copilotkit-provider"
 import "./globals.css"
 
@@ -24,7 +25,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased overflow-hidden">
-        <CopilotKitProvider>{children}</CopilotKitProvider>
+        <AgentRuntimeProvider>
+          <CopilotKitProvider>{children}</CopilotKitProvider>
+        </AgentRuntimeProvider>
       </body>
     </html>
   )
