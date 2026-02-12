@@ -10,6 +10,7 @@
     <RootNamespace>AzureOpsCrew.Api</RootNamespace>
 
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>..\..</DockerfileContext>
   </PropertyGroup>
 
   <ItemGroup>
