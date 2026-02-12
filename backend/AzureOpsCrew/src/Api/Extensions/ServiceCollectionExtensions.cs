@@ -1,6 +1,9 @@
 ﻿using System.ClientModel;
 using Azure.AI.OpenAI;
 using AzureOpsCrew.Api.Settings;
+using AzureOpsCrew.Domain.AgentManagements;
+using AzureOpsCrew.Infrastructure.Ai.AgentManagements;
+using AzureOpsCrew.Infrastructure.Ai.AgentManagements.Microsoft;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
@@ -77,6 +80,14 @@ namespace AzureOpsCrew.Api.Extensions
                     .GetChatClient(aiSettings.Model!);
                 return chatClient.AsIChatClient();
             });
+        }
+
+        public static void AddAgentManagements(this IServiceCollection services)
+        {
+            services.AddTransient<IAgentFactory, AgentFactory>()
+                .AddTransient<Local0AgentFactory>()
+                .AddTransient<Local1AgentFactory>()
+                .AddTransient<MicrosoftFoundryAgentFactory>();
         }
     }
 }

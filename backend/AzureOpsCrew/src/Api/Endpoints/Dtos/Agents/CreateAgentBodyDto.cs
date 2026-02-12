@@ -2,10 +2,10 @@
 
 namespace AzureOpsCrew.Api.Endpoints.Dtos.Agents
 {
-    public class CreateAgentBodyDto
+    public record CreateAgentBodyDto(AgentInfo Info)
     {
         public int ClientId { get; set; }
-        public AgentInfo? Info { get; set; }
+
         public Provider Provider { get; set; }
     }
 }
