@@ -4,9 +4,9 @@ using System.Text;
 
 namespace AzureOpsCrew.Domain.Agents
 {
-    public class Agent(Guid guid, int clientId, AgentInfo info, Provider provider, string providerAgentId)
+    public class Agent(Guid id, int clientId, AgentInfo info, Provider provider, string providerAgentId)
     {
-        public Guid Guid { get; private set; } = guid;
+        public Guid Id { get; private set; } = id;
 
         public string ProviderAgentId { get; private set; } = providerAgentId;
 
@@ -19,6 +19,5 @@ namespace AzureOpsCrew.Domain.Agents
         public AgentTool[] AvaliableTools { get; set; } = [];
 
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
-
     }
 }
