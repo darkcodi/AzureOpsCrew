@@ -18,6 +18,7 @@ namespace AzureOpsCrew.Infrastructure.Db
             modelBuilder.HasDefaultContainer("AppContainer");
 
             modelBuilder.ApplyConfiguration(new DummyEntityTypeConfiguration());
+            modelBuilder.ApplyConfiguration(new AgentEntityTypeConfiguration());
         }
     }
 }

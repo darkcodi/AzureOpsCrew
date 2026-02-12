@@ -5,7 +5,7 @@ namespace AzureOpsCrew.Api.Extensions;
 
 public static class EndpointRouteBuilderExtensions
 {
-    public static void MapAgents(this IEndpointRouteBuilder app)
+    public static void MapAgUI(this IEndpointRouteBuilder app)
     {
         var chatClient = app.ServiceProvider.GetRequiredService<IChatClient>();
 

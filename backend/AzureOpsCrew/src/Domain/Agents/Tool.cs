@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace AzureOpsCrew.Domain.Agents
+﻿namespace AzureOpsCrew.Domain.Agents
 {
     public enum AgentTool
     {

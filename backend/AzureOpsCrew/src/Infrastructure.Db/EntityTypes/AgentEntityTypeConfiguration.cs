@@ -1,9 +1,6 @@
 ﻿using AzureOpsCrew.Domain.Agents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes
 {
@@ -22,7 +19,13 @@ namespace AzureOpsCrew.Infrastructure.Db.EntityTypes
                         g => g.ToString("D"),
                         s => Guid.Parse(s));
 
-            builder.OwnsOne(a => a.Info);
+            builder.OwnsOne(a => a.Info, infoBuilder =>
+            {
+                infoBuilder.Property(a => a.AvaliableTools)
+                   .HasConversion(
+                       v => v.Select(x => (int)x).ToArray(),
+                       v => v.Select(x => (AgentTool)x).ToArray());
+            });
         }
     }
 }

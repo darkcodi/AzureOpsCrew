@@ -1,22 +1,30 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace AzureOpsCrew.Domain.Agents
+﻿namespace AzureOpsCrew.Domain.Agents
 {
-    public class Agent(Guid id, int clientId, AgentInfo info, Provider provider, string providerAgentId)
+    public class Agent
     {
-        public Guid Id { get; private set; } = id;
+        private Agent()
+        {
+        }
 
-        public string ProviderAgentId { get; private set; } = providerAgentId;
+        public Agent(Guid id, int clientId, AgentInfo info, Provider provider, string providerAgentId)
+        {
+            Id = id;
+            ClientId = clientId;
+            Info = info;
+            Provider = provider;
+            ProviderAgentId = providerAgentId;
+        }
 
-        public int ClientId { get; private set; } = clientId;
+        public Guid Id { get; private set; }
+
+        public string ProviderAgentId { get; private set; }
+
+        public int ClientId { get; private set; }
         
-        public AgentInfo Info { get; private set; } = info;
+        public AgentInfo Info { get; private set; }
 
-        public Provider Provider { get; private set; } = provider;
+        public Provider Provider { get; private set; }
 
-        public AgentTool[] AvaliableTools { get; set; } = [];
 
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
     }

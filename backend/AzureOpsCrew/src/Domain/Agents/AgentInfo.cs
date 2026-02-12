@@ -3,5 +3,7 @@
     public record AgentInfo(string Name, string Prompt, string Model)
     {
         public string? Description { get; set; }
+
+        public AgentTool[] AvaliableTools { get; set; } = [];
     }
 }
