@@ -29,6 +29,9 @@ backend/**/*.log
 # Test results
 backend/**/TestResults/
 
+# User configurations
+*.sln.DotSettings.user
+
 ####################################
 # ===== FRONTEND (Node.js) ========
 ####################################
