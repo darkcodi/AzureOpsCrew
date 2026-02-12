@@ -4,7 +4,6 @@ using AzureOpsCrew.Infrastructure.Ai.AgentManagements.Microsoft;
 
 namespace AzureOpsCrew.Infrastructure.Ai.AgentManagements
 {
-
     public class AgentFactory : IAgentFactory
     {
         private readonly IServiceProvider _serviceProvider;
