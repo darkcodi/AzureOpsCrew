@@ -2,16 +2,19 @@
 
 import { useState, useCallback } from "react"
 import { defaultAgents, defaultRooms, type Agent, type Room } from "@/lib/agents"
-import { IconSidebar } from "@/components/icon-sidebar"
+import { IconSidebar, type ViewMode } from "@/components/icon-sidebar"
 import { ChannelSidebar } from "@/components/channel-sidebar"
 import { ChatArea } from "@/components/chat-area"
+import { DirectMessagesSidebar } from "@/components/direct-messages-sidebar"
+import { DirectMessagesArea } from "@/components/direct-messages-area"
 
 export default function Home() {
+  const [viewMode, setViewMode] = useState<ViewMode>("channels")
   const [agents, setAgents] = useState<Agent[]>(defaultAgents)
   const [rooms, setRooms] = useState<Room[]>(defaultRooms)
   const [activeRoomId, setActiveRoomId] = useState(defaultRooms[0].id)
+  const [activeDMId, setActiveDMId] = useState<string | null>("assistant")
   const [showAgentManager, setShowAgentManager] = useState(false)
-
   const activeRoom = rooms.find((r) => r.id === activeRoomId) ?? rooms[0]
 
   const handleCreateRoom = useCallback((name: string) => {
@@ -49,26 +52,42 @@ export default function Home() {
 
   return (
     <main className="flex h-dvh w-full">
-      <IconSidebar onOpenAgentManager={() => setShowAgentManager(true)} />
-
-      <ChannelSidebar
-        rooms={rooms}
-        activeRoomId={activeRoomId}
-        onRoomSelect={setActiveRoomId}
-        onCreateRoom={handleCreateRoom}
+      <IconSidebar
+        viewMode={viewMode}
+        onViewChange={setViewMode}
+        onOpenAgentManager={() => setShowAgentManager(true)}
       />
 
-      <ChatArea
-        key={activeRoom.id}
-        room={activeRoom}
-        allAgents={agents}
-        onUpdateRoom={handleUpdateRoom}
-        onAddAgent={handleAddAgent}
-        onUpdateAgent={handleUpdateAgent}
-        onDeleteAgent={handleDeleteAgent}
-        showAgentManager={showAgentManager}
-        onCloseAgentManager={() => setShowAgentManager(false)}
-      />
+      {viewMode === "channels" ? (
+        <>
+          <ChannelSidebar
+            rooms={rooms}
+            activeRoomId={activeRoomId}
+            onRoomSelect={setActiveRoomId}
+            onCreateRoom={handleCreateRoom}
+          />
+          <ChatArea
+            key={activeRoom.id}
+            room={activeRoom}
+            allAgents={agents}
+            onUpdateRoom={handleUpdateRoom}
+            onAddAgent={handleAddAgent}
+            onUpdateAgent={handleUpdateAgent}
+            onDeleteAgent={handleDeleteAgent}
+            showAgentManager={showAgentManager}
+            onCloseAgentManager={() => setShowAgentManager(false)}
+          />
+        </>
+      ) : (
+        <>
+          <DirectMessagesSidebar
+            agents={agents}
+            activeId={activeDMId}
+            onSelect={setActiveDMId}
+          />
+          <DirectMessagesArea />
+        </>
+      )}
     </main>
   )
 }

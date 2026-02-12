@@ -97,3 +97,24 @@
   --copilot-kit-response-button-color: hsl(235, 86%, 65%);
   --copilot-kit-response-button-background-color: hsl(228, 6%, 18%);
 }
+
+/* Direct Messages: match MessageInput style (flex items-end gap-3 rounded-lg px-4 py-2.5, bg rgb(62,64,70)) */
+.direct-messages-area .copilotKitInputContainer {
+  padding: 0.25rem 1rem 1.5rem 1rem;
+  background: transparent;
+}
+.direct-messages-area .copilotKitInput {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  background-color: hsl(228, 6%, 26%);
+  min-height: 44px;
+}
+.direct-messages-area .copilotKitInput textarea {
+  color: hsl(210, 3%, 90%);
+}
+.direct-messages-area .copilotKitInputControlButton {
+  color: hsl(214, 5%, 55%);
+}
