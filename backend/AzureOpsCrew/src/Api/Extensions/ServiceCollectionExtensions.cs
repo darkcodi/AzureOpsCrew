@@ -4,14 +4,12 @@ using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
-using Newtonsoft.Json;
-using Serilog;
 
 namespace AzureOpsCrew.Api.Extensions
 {
     public static class ServiceCollectionExtensions
     {
-        public static void AddCosmosSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
+        public static CosmosSettings AddCosmosSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
         {
             var cosmosSettings = new CosmosSettings
             {
@@ -27,11 +25,11 @@ namespace AzureOpsCrew.Api.Extensions
             {
                 throw new InvalidOperationException("Cosmos DB settings are not properly configured. Please double-check the configuration.");
             }
-            Log.Information(JsonConvert.SerializeObject(cosmosSettings));
             services.AddSingleton(cosmosSettings);
+            return cosmosSettings;
         }
 
-        public static void AddAiSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
+        public static AiSettings AddAiSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
         {
             var aiSettings = new AiSettings
             {
@@ -43,8 +41,8 @@ namespace AzureOpsCrew.Api.Extensions
             {
                 throw new InvalidOperationException("AI settings are not properly configured. Please double-check the configuration.");
             }
-            Log.Information(JsonConvert.SerializeObject(aiSettings));
             services.AddSingleton(aiSettings);
+            return aiSettings;
         }
 
         public static void AddEFCoreCosmosDb(this IServiceCollection services)
