@@ -1,5 +1,7 @@
 using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
+using AzureOpsCrew.Api.Settings;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Newtonsoft.Json;
 using Serilog;
@@ -29,8 +31,8 @@ try
     });
 
     // Configure settings
-    var cosmosSettings = builder.Services.AddCosmosSettings(builder.Configuration, "CosmosDb");
-    var aiSettings = builder.Services.AddAiSettings(builder.Configuration, "AzureOpenAI");
+    builder.Services.AddCosmosSettings(builder.Configuration, "CosmosDb");
+    builder.Services.AddAiSettings(builder.Configuration, "AzureOpenAI");
 
     // Configure EF Core with Cosmos DB
     builder.Services.AddEFCoreCosmosDb();
@@ -50,6 +52,8 @@ try
     // Log configuration settings at startup
     if (app.Environment.IsDevelopment())
     {
+        var cosmosSettings = app.Services.GetRequiredService<IOptions<CosmosSettings>>().Value;
+        var aiSettings = app.Services.GetRequiredService<IOptions<AiSettings>>().Value;
         Log.Information("Cosmos DB Settings: {CosmosSettings}", JsonConvert.SerializeObject(cosmosSettings));
         Log.Information("AI Settings: {AiSettings}", JsonConvert.SerializeObject(aiSettings));
     }
