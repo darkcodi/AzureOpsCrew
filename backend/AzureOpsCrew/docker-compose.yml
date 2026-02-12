@@ -1,0 +1,38 @@
+services:
+  api:
+    image: ${DOCKER_REGISTRY-}api
+    build:
+      context: .
+      dockerfile: src/Api/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=80
+    ports:
+      - "5000:80"
+    depends_on:
+      cosmos:
+        condition: service_healthy
+    restart: on-failure
+
+  cosmos:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator
+    container_name: cosmos
+    environment:
+      - AZURE_COSMOS_EMULATOR_PARTITION_COUNT=2
+      - AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE=true
+    ports:
+      - "8081:8081"
+      - "10250:10250"
+      - "10251:10251"
+      - "10252:10252"
+      - "10253:10253"
+      - "10254:10254"
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "Microsoft.Azure.Cosmos.Emulator"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    #volumes:
+     # - cosmosdata:/data
+    restart: unless-stopped
