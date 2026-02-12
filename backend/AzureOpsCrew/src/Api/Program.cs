@@ -49,7 +49,7 @@ app.MapDummyEndpoints();
 app.MapTestEndpoints();
 app.MapAgents();
 
-await app.Services.TestAgents();
-await app.Services.RunEnsureEFCoreCosmosDbCreated();
+// await app.Services.TestAgents();
+// await app.Services.RunEnsureEFCoreCosmosDbCreated();
 
 app.Run();
