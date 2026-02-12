@@ -38,6 +38,7 @@ app.UseHttpsRedirection();
 
 //Map endpoints
 app.MapDummyEndpoints();
+app.MapTestEndpoints();
 
 await app.Services.RunEnsureEFCoreCosmosDbCreated();
 
