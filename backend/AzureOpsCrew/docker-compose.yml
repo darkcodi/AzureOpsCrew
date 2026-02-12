@@ -4,3 +4,23 @@ services:
     build:
       context: .
       dockerfile: src/Api/Dockerfile
+    depends_on:
+      - cosmos
+
+  cosmos:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator
+    container_name: cosmos
+    environment:
+      - AZURE_COSMOS_EMULATOR_PARTITION_COUNT=2
+      - AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE=true
+      - AZURE_COSMOS_EMULATOR_IP_ADDRESS_OVERRIDE=cosmos
+    ports:
+      - "8081:8081"
+      - "10250:10250"
+      - "10251:10251"
+      - "10252:10252"
+      - "10253:10253"
+      - "10254:10254"
+    #volumes:
+     # - cosmosdata:/data
+    restart: unless-stopped
