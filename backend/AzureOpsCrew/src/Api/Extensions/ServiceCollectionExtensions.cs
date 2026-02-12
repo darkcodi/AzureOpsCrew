@@ -4,6 +4,8 @@ using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using Newtonsoft.Json;
+using Serilog;
 
 namespace AzureOpsCrew.Api.Extensions
 {
@@ -25,6 +27,7 @@ namespace AzureOpsCrew.Api.Extensions
             {
                 throw new InvalidOperationException("Cosmos DB settings are not properly configured. Please double-check the configuration.");
             }
+            Log.Information(JsonConvert.SerializeObject(cosmosSettings));
             services.AddSingleton(cosmosSettings);
         }
 
@@ -40,6 +43,7 @@ namespace AzureOpsCrew.Api.Extensions
             {
                 throw new InvalidOperationException("AI settings are not properly configured. Please double-check the configuration.");
             }
+            Log.Information(JsonConvert.SerializeObject(aiSettings));
             services.AddSingleton(aiSettings);
         }
 
