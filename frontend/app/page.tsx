@@ -5,15 +5,16 @@ import { defaultAgents, defaultRooms, type Agent, type Room } from "@/lib/agents
 import { IconSidebar, type ViewMode } from "@/components/icon-sidebar"
 import { ChannelSidebar } from "@/components/channel-sidebar"
 import { ChatArea } from "@/components/chat-area"
-import { DirectMessagesSidebar } from "@/components/direct-messages-sidebar"
-import { DirectMessagesArea } from "@/components/direct-messages-area"
+import { DirectMessagesView } from "@/components/direct-messages-view"
 
 export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("channels")
   const [agents, setAgents] = useState<Agent[]>(defaultAgents)
   const [rooms, setRooms] = useState<Room[]>(defaultRooms)
   const [activeRoomId, setActiveRoomId] = useState(defaultRooms[0].id)
-  const [activeDMId, setActiveDMId] = useState<string | null>("assistant")
+  const [activeDMId, setActiveDMId] = useState<string | null>(
+    () => defaultAgents[0]?.id ?? null
+  )
   const [showAgentManager, setShowAgentManager] = useState(false)
   const activeRoom = rooms.find((r) => r.id === activeRoomId) ?? rooms[0]
 
@@ -79,14 +80,11 @@ export default function Home() {
           />
         </>
       ) : (
-        <>
-          <DirectMessagesSidebar
-            agents={agents}
-            activeId={activeDMId}
-            onSelect={setActiveDMId}
-          />
-          <DirectMessagesArea />
-        </>
+        <DirectMessagesView
+          activeDMId={activeDMId}
+          setActiveDMId={setActiveDMId}
+          agents={agents}
+        />
       )}
     </main>
   )

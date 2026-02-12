@@ -24,66 +24,30 @@ export interface ChatMessage {
 
 export const defaultAgents: Agent[] = [
   {
-    id: "technical-expert",
-    name: "Technical Expert",
-    avatar: "T",
-    color: "#43b581",
-    systemPrompt:
-      "You are a Technical Expert AI assistant. You provide detailed, accurate technical explanations across software engineering, systems design, networking, and DevOps. Be thorough but clear. Use examples when helpful.",
-    model: "openai/gpt-4o-mini",
-  },
-  {
-    id: "creative-writer",
-    name: "Creative Writer",
-    avatar: "C",
-    color: "#7289da",
-    systemPrompt:
-      "You are a Creative Writer AI assistant. You excel at storytelling, copywriting, brainstorming ideas, and crafting compelling content. You use vivid language and have a flair for engaging prose.",
-    model: "openai/gpt-4o-mini",
-  },
-  {
-    id: "data-analyst",
-    name: "Data Analyst",
-    avatar: "D",
-    color: "#faa61a",
-    systemPrompt:
-      "You are a Data Analyst AI assistant. You specialize in data analysis, statistics, visualization recommendations, and turning raw data into actionable insights. You present information clearly using structured formats.",
-    model: "openai/gpt-4o-mini",
-  },
-  {
-    id: "project-manager",
-    name: "Project Manager",
-    avatar: "P",
-    color: "#e91e63",
-    systemPrompt:
-      "You are a Project Manager AI assistant. You help with planning, task breakdown, timelines, resource allocation, and team coordination. You think in terms of milestones, dependencies, and risk management.",
-    model: "openai/gpt-4o-mini",
-  },
-  {
-    id: "red-team-expert",
-    name: "Red Team Expert",
-    avatar: "R",
-    color: "#f04747",
-    systemPrompt:
-      "You are a Red Team Expert AI assistant specializing in offensive cybersecurity. You think like an adversary to help organizations find vulnerabilities before malicious actors do. You provide ethical security assessments and penetration testing guidance.",
-    model: "openai/gpt-4o-mini",
-  },
-  {
-    id: "blue-team-expert",
-    name: "Blue Team Expert",
-    avatar: "B",
-    color: "#3498db",
-    systemPrompt:
-      "You are a Blue Team Expert AI assistant specializing in defensive cybersecurity. You focus on incident response, threat detection, SIEM analysis, and building robust security architectures to protect organizations.",
-    model: "openai/gpt-4o-mini",
-  },
-  {
-    id: "ciso",
-    name: "CISO",
+    id: "manager",
+    name: "Manager",
     avatar: "M",
     color: "#9b59b6",
     systemPrompt:
-      "You are a CISO (Chief Information Security Officer) AI assistant. You provide strategic security guidance, risk management frameworks, compliance oversight, and executive-level security recommendations. You bridge technical security with business objectives.",
+      "You are a Manager AI assistant. You help with planning, priorities, resource allocation, team coordination, and delivery. You think in terms of goals, milestones, risks, and stakeholder communication. Keep answers actionable and concise.",
+    model: "openai/gpt-4o-mini",
+  },
+  {
+    id: "azure-devops",
+    name: "Azure DevOps",
+    avatar: "D",
+    color: "#0078d4",
+    systemPrompt:
+      "You are an Azure DevOps expert. You help with pipelines (YAML and classic), CI/CD, Azure Repos, Boards, Artifacts, Test Plans, and release management. You know branching strategies, approvals, variable groups, service connections, and Azure DevOps REST APIs. Give concrete, step-by-step guidance when asked.",
+    model: "openai/gpt-4o-mini",
+  },
+  {
+    id: "azure-dev",
+    name: "Azure Dev",
+    avatar: "A",
+    color: "#43b581",
+    systemPrompt:
+      "You are an Azure development expert. You help with building and deploying apps on Azure: App Service, Functions, Container Apps, AKS, Azure SDKs, identity (Microsoft Entra ID), storage, messaging, and serverless. You focus on code, configuration, and best practices for Azure-native development.",
     model: "openai/gpt-4o-mini",
   },
 ]
@@ -92,11 +56,6 @@ export const defaultRooms: Room[] = [
   {
     id: "general",
     name: "General",
-    agentIds: ["technical-expert", "creative-writer", "data-analyst"],
-  },
-  {
-    id: "cat-and-sec-1",
-    name: "Cat & Sec 1",
-    agentIds: ["red-team-expert", "blue-team-expert", "ciso"],
+    agentIds: ["manager", "azure-devops", "azure-dev"],
   },
 ]

@@ -6,8 +6,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@/lib/agents"
 
-const ASSISTANT_DM_ID = "assistant"
-
 interface DirectMessagesSidebarProps {
   agents: Agent[]
   activeId: string | null
@@ -22,13 +20,12 @@ export function DirectMessagesSidebar({
   const [search, setSearch] = useState("")
 
   const conversations = useMemo(() => {
-    const list: { id: string; name: string; avatar: string; color: string }[] = [
-      { id: ASSISTANT_DM_ID, name: "AzureOpsCrew Assistant", avatar: "A", color: "hsl(235, 86%, 65%)" },
-    ]
-    agents.forEach((a) => {
-      list.push({ id: a.id, name: a.name, avatar: a.avatar, color: a.color })
-    })
-    return list
+    return agents.map((a) => ({
+      id: a.id,
+      name: a.name,
+      avatar: a.avatar,
+      color: a.color,
+    }))
   }, [agents])
 
   const filtered = useMemo(() => {
@@ -86,7 +83,7 @@ export function DirectMessagesSidebar({
         </button>
       </div>
 
-      {/* Conversation list: Assistant + all AI agents */}
+      {/* Conversation list: AI agents */}
       <ScrollArea className="flex-1 py-2">
         <div className="px-2">
           {filtered.map((conv) => {
