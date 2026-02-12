@@ -2,6 +2,7 @@
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace AzureOpsCrew.Api.Extensions
 {
@@ -10,23 +11,19 @@ namespace AzureOpsCrew.Api.Extensions
         public static async Task RunEnsureEFCoreCosmosDbCreated(this IServiceProvider provider)
         {
             // Measure the time taken to ensure the database is created
-            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
-            var logger = loggerFactory.CreateLogger("EnsureEFCoreCosmosDbCreated");
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            logger.LogInformation("Starting database creation check...");
+            Log.Information("Starting database creation check...");
             using (var scope = provider.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
                 await context.Database.EnsureCreatedAsync();
             }
             stopwatch.Stop();
-            logger.LogInformation("Database creation check completed in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
+            Log.Information("Database creation check completed in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
         }
 
         public static async Task TestAgents(this IServiceProvider provider)
         {
-            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
-            var logger = loggerFactory.CreateLogger("TestAgents");
             var chatClient = provider.GetRequiredService<IChatClient>();
 
             ChatClientAgent writer = new(chatClient,
@@ -41,7 +38,7 @@ namespace AzureOpsCrew.Api.Extensions
                 "A marketing review agent");
 
             var agentsList = new List<ChatClientAgent> { writer, reviewer };
-            logger.LogInformation("Starting TestAgents with {AgentCount} agents", agentsList.Count());
+            Log.Information("Starting TestAgents with {AgentCount} agents", agentsList.Count());
 
             // Build group chat with round-robin speaker selection
             // The manager factory receives the list of agents and returns a configured manager
@@ -59,7 +56,7 @@ namespace AzureOpsCrew.Api.Extensions
                 new(ChatRole.User, "Create a slogan for an eco-friendly electric vehicle.")
             };
 
-            logger.LogInformation("Sending test message: {Message}", messages[0].Text);
+            Log.Information("Sending test message: {Message}", messages[0].Text);
 
             StreamingRun run = await InProcessExecution.StreamAsync(workflow, messages);
             await run.TrySendMessageAsync(new TurnToken(emitEvents: true));
@@ -80,7 +77,7 @@ namespace AzureOpsCrew.Api.Extensions
                     {
                         if (currentExecutorId is not null && hasLoggedForExecutor && responseBuffer.Length > 0)
                         {
-                            logger.LogDebug("[{ExecutorId}]: {Response}", currentExecutorId, responseBuffer.ToString());
+                            Log.Debug("[{ExecutorId}]: {Response}", currentExecutorId, responseBuffer.ToString());
                             responseBuffer.Clear();
                         }
 
@@ -103,21 +100,21 @@ namespace AzureOpsCrew.Api.Extensions
                 {
                     if (currentExecutorId is not null && hasLoggedForExecutor && responseBuffer.Length > 0)
                     {
-                        logger.LogDebug("[{ExecutorId}]: {Response}", currentExecutorId, responseBuffer.ToString());
+                        Log.Debug("[{ExecutorId}]: {Response}", currentExecutorId, responseBuffer.ToString());
                     }
 
                     // Workflow completed
                     var conversationHistory = output.As<List<ChatMessage>>() ?? new List<ChatMessage>();
-                    logger.LogInformation("=== Final Conversation ===");
+                    Log.Information("=== Final Conversation ===");
                     foreach (var message in conversationHistory)
                     {
-                        logger.LogInformation("{AuthorName}: {Text}", message.AuthorName, message.Text);
+                        Log.Information("{AuthorName}: {Text}", message.AuthorName, message.Text);
                     }
                     break;
                 }
             }
 
-            logger.LogInformation("TestAgents completed");
+            Log.Information("TestAgents completed");
         }
     }
 }
