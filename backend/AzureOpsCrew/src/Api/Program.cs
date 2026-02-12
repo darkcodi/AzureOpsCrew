@@ -1,45 +1,87 @@
 using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
+using AzureOpsCrew.Api.Settings;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
+using Newtonsoft.Json;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateLogger();
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-builder.Services.AddSwaggerGen(options => 
+try
 {
-    options.SwaggerDoc("v1", new OpenApiInfo
+    Log.Information("Starting web application");
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Use Serilog
+    builder.Host.UseSerilog();
+
+    // Enable OpenAPI/Swagger
+    builder.Services.AddOpenApi();
+    builder.Services.AddSwaggerGen(options =>
     {
-        Title = "AzureOpsCrew HTTP Api",
-        Version = "v1"
+        options.SwaggerDoc("v1", new OpenApiInfo
+        {
+            Title = "AzureOpsCrew HTTP Api",
+            Version = "v1"
+        });
     });
-});
 
-//Add EF Core
-builder.Services.AddEFCoreCosmosDb(builder.Configuration, "CosmosDb");
+    // Configure settings
+    builder.Services.AddCosmosSettings(builder.Configuration, "CosmosDb");
+    builder.Services.AddAiSettings(builder.Configuration, "AzureOpenAI");
 
-//Enable Application Insights
-if (bool.TryParse(builder.Configuration["ApplicationInsights:Enable"], out var enableApplicationInsights)
-    && enableApplicationInsights)
-    builder.Services.AddApplicationInsightsTelemetry();
+    // Configure EF Core with Cosmos DB
+    builder.Services.AddEFCoreCosmosDb();
+    builder.Services.AddIChatClient();
 
-var app = builder.Build();
+    // Configure AG-UI
+    builder.Services.AddHttpClient();
+    builder.Services.AddAGUI();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-    app.MapSwagger();
-    app.UseSwaggerUI();
+    // Enable Application Insights
+    if (bool.TryParse(builder.Configuration["ApplicationInsights:Enable"], out var enableApplicationInsights)
+        && enableApplicationInsights)
+        builder.Services.AddApplicationInsightsTelemetry();
+
+    var app = builder.Build();
+
+    // Log configuration settings at startup
+    if (app.Environment.IsDevelopment())
+    {
+        var cosmosSettings = app.Services.GetRequiredService<IOptions<CosmosSettings>>().Value;
+        var aiSettings = app.Services.GetRequiredService<IOptions<AiSettings>>().Value;
+        Log.Information("Cosmos DB Settings: {CosmosSettings}", JsonConvert.SerializeObject(cosmosSettings));
+        Log.Information("AI Settings: {AiSettings}", JsonConvert.SerializeObject(aiSettings));
+    }
+
+    // Configure the HTTP request pipeline.
+    if (app.Environment.IsDevelopment())
+    {
+        app.MapOpenApi();
+        app.MapSwagger();
+        app.UseSwaggerUI();
+    }
+
+    app.UseHttpsRedirection();
+
+    // Map endpoints
+    app.MapDummyEndpoints();
+    app.MapTestEndpoints();
+    app.MapAgents();
+
+    // await app.Services.RunEnsureEFCoreCosmosDbCreated();
+
+    app.Run();
 }
-
-app.UseHttpsRedirection();
-
-//Map endpoints
-app.MapDummyEndpoints();
-app.MapTestEndpoints();
-
-await app.Services.RunEnsureEFCoreCosmosDbCreated();
-
-app.Run();
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

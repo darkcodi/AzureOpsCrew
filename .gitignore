@@ -2,26 +2,18 @@
 # ===== BACKEND (.NET) ============
 ####################################
 
+# Build artifacts
 backend/**/bin/
 backend/**/obj/
 backend/**/out/
 backend/**/publish/
 
+# User-specific files
 backend/*.user
 backend/*.suo
 backend/*.userosscache
 backend/*.sln.docstates
-
-# VS Code
-.vscode/
-
-# Rider
-.idea/
-
-# Visual Studio
-.vs/
-*.csproj.user
-**/launchSettings.json
+*.sln.DotSettings.user
 
 # Logs
 backend/**/*.log
@@ -55,15 +47,16 @@ frontend/.env
 frontend/.env.*
 backend/.env
 backend/.env.*
+appsettings.json
+appsettings.Development.json
 
 !.env.example
+!appsettings.example.json
 
 ####################################
 # ===== GLOBAL ====================
 ####################################
 
-.vscode/
-.idea/
 .DS_Store
 Thumbs.db
 *.log
@@ -72,7 +65,31 @@ Thumbs.db
 *.cache
 
 ####################################
-# ===== Docker (якщо буде) ========
+# ===== Docker =====================
 ####################################
 
 docker-compose.override.yml
+
+####################################
+# ===== IDE ========================
+####################################
+
+# VS Code
+.vscode/
+
+# Rider
+.idea/
+
+# Zed
+.zed/
+
+# Visual Studio
+.vs/
+*.csproj.user
+**/launchSettings.json
+
+####################################
+# ===== AI =========================
+####################################
+
+.claude/
