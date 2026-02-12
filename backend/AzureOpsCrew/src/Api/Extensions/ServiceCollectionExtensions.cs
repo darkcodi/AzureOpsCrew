@@ -4,52 +4,41 @@ using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
 
 namespace AzureOpsCrew.Api.Extensions
 {
     public static class ServiceCollectionExtensions
     {
-        public static CosmosSettings AddCosmosSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
+        public static IServiceCollection AddCosmosSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
         {
-            var cosmosSettings = new CosmosSettings
-            {
-                AccountEndpoint = configuration[$"{configurationKey}:AccountEndpoint"],
-                AccountKey = configuration[$"{configurationKey}:AccountKey"],
-                DatabaseName = configuration[$"{configurationKey}:DatabaseName"],
-                DisableSslValidation = configuration.GetValue<bool>($"{configurationKey}:DisableSslValidation"),
-                ConnectionMode = configuration[$"{configurationKey}:ConnectionMode"]
-            };
-            if (string.IsNullOrEmpty(cosmosSettings.AccountEndpoint) ||
-                string.IsNullOrEmpty(cosmosSettings.AccountKey) ||
-                string.IsNullOrEmpty(cosmosSettings.DatabaseName))
-            {
-                throw new InvalidOperationException("Cosmos DB settings are not properly configured. Please double-check the configuration.");
-            }
-            services.AddSingleton(cosmosSettings);
-            return cosmosSettings;
+            services.Configure<CosmosSettings>(configuration.GetSection(configurationKey));
+            services.AddOptions<CosmosSettings>()
+                .Validate(settings =>
+                {
+                    return !string.IsNullOrEmpty(settings.AccountEndpoint) &&
+                           !string.IsNullOrEmpty(settings.AccountKey) &&
+                           !string.IsNullOrEmpty(settings.DatabaseName);
+                }, "Cosmos DB settings are not properly configured. Please double-check the configuration.")
+                .ValidateOnStart();
+            return services;
         }
 
-        public static AiSettings AddAiSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
+        public static IServiceCollection AddAiSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
         {
-            var aiSettings = new AiSettings
-            {
-                Endpoint = configuration[$"{configurationKey}:Endpoint"],
-                ApiKey = configuration[$"{configurationKey}:ApiKey"],
-                Model = configuration[$"{configurationKey}:Model"],
-            };
-            if (!aiSettings.IsValid())
-            {
-                throw new InvalidOperationException("AI settings are not properly configured. Please double-check the configuration.");
-            }
-            services.AddSingleton(aiSettings);
-            return aiSettings;
+            services.Configure<AiSettings>(configuration.GetSection(configurationKey));
+            services.AddOptions<AiSettings>()
+                .Validate(settings => settings.IsValid(), 
+                    "AI settings are not properly configured. Please double-check the configuration.")
+                .ValidateOnStart();
+            return services;
         }
 
         public static void AddEFCoreCosmosDb(this IServiceCollection services)
         {
             services.AddDbContext<AzureOpsCrewContext>((sp, options) =>
             {
-                var cosmosSettings = sp.GetRequiredService<CosmosSettings>();
+                var cosmosSettings = sp.GetRequiredService<IOptions<CosmosSettings>>().Value;
                 options.UseCosmos(
                     cosmosSettings.AccountEndpoint!,
                     cosmosSettings.AccountKey!,
@@ -79,7 +68,7 @@ namespace AzureOpsCrew.Api.Extensions
         {
             services.AddSingleton<IChatClient>(sp =>
             {
-                var aiSettings = sp.GetRequiredService<AiSettings>();
+                var aiSettings = sp.GetRequiredService<IOptions<AiSettings>>().Value;
                 var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
                 var chatClient = new AzureOpenAIClient(
                         new Uri(aiSettings.Endpoint!),
