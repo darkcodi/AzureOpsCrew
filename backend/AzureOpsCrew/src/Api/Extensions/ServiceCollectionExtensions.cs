@@ -19,7 +19,8 @@ namespace AzureOpsCrew.Api.Extensions
                     return !string.IsNullOrEmpty(settings.AccountEndpoint) &&
                            !string.IsNullOrEmpty(settings.AccountKey) &&
                            !string.IsNullOrEmpty(settings.DatabaseName);
-                }, "Cosmos DB settings are not properly configured. Please double-check the configuration.");
+                }, "Cosmos DB settings are not properly configured. Please double-check the configuration.")
+                .ValidateOnStart();
             return services;
         }
 
@@ -28,7 +29,8 @@ namespace AzureOpsCrew.Api.Extensions
             services.Configure<AiSettings>(configuration.GetSection(configurationKey));
             services.AddOptions<AiSettings>()
                 .Validate(settings => settings.IsValid(), 
-                    "AI settings are not properly configured. Please double-check the configuration.");
+                    "AI settings are not properly configured. Please double-check the configuration.")
+                .ValidateOnStart();
             return services;
         }
 
