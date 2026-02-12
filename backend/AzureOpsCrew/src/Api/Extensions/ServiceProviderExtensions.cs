@@ -9,11 +9,18 @@ namespace AzureOpsCrew.Api.Extensions
     {
         public static async Task RunEnsureEFCoreCosmosDbCreated(this IServiceProvider provider)
         {
+            // Measure the time taken to ensure the database is created
+            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger("EnsureEFCoreCosmosDbCreated");
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            logger.LogInformation("Starting database creation check...");
             using (var scope = provider.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
                 await context.Database.EnsureCreatedAsync();
             }
+            stopwatch.Stop();
+            logger.LogInformation("Database creation check completed in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
         }
 
         public static async Task TestAgents(this IServiceProvider provider)
