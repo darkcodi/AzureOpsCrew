@@ -37,7 +37,7 @@ try
     builder.Services.AddIChatClient();
 
     // Configure AG-UI
-    builder.Services.AddHttpClient().AddLogging();
+    builder.Services.AddHttpClient();
     builder.Services.AddAGUI();
 
     // Enable Application Insights
