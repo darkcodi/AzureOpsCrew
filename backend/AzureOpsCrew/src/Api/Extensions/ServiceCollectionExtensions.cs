@@ -82,10 +82,11 @@ namespace AzureOpsCrew.Api.Extensions
             services.AddSingleton<IChatClient>(sp =>
             {
                 var aiSettings = sp.GetRequiredService<AiSettings>();
+                var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
                 var chatClient = new AzureOpenAIClient(
                         new Uri(aiSettings.Endpoint!),
                         new ApiKeyCredential(aiSettings.ApiKey!),
-                        new AzureOpenAIClientOptions())
+                        options)
                     .GetChatClient(aiSettings.Model!);
                 return chatClient.AsIChatClient();
             });
