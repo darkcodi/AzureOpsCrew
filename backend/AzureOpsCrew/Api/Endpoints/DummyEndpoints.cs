@@ -1,4 +1,7 @@
 ﻿using AzureOpsCrew.Api.Endpoints.Dtos.Dummies;
+using AzureOpsCrew.Domain.Dimmies;
+using AzureOpsCrew.Infrastructure.Db;
+using Microsoft.EntityFrameworkCore;
 
 namespace AzureOpsCrew.Api.Endpoints
 {
@@ -9,32 +12,30 @@ namespace AzureOpsCrew.Api.Endpoints
             var group = routeBuilder.MapGroup("/api/dummy")
                 .WithTags("Dummy");
 
-            group.MapPost("/create", async (CreateBodyDto body, CancellationToken cancellationToken) =>
+            group.MapPost("/create", async (CreateBodyDto body, AzureOpsCrewContext context, CancellationToken cancellationToken) =>
             {
-                var created = new DummyDto
+                var dummy = new Dummy(Guid.NewGuid(), body.Name)
                 {
-                    Id = Guid.NewGuid(),
-                    Description = body.Description,
-                    Name = body.Name,
+                    Description = body.Description
                 };
 
-                return Results.Created($"/api/dummy/{created.Id}", created);
+                await context.AddAsync(dummy);
+                await context.SaveChangesAsync(cancellationToken);
+
+                return Results.Created($"/api/dummy/{dummy.Id}", dummy);
             })
-                .Produces(201, typeof(DummyDto))
+                .Produces(201, typeof(Dummy))
                 .Produces(400);
 
-            group.MapGet("/{Id}", async (Guid Id, CancellationToken cancellationToken) =>
+            group.MapGet("/{Id}", async (Guid Id, AzureOpsCrewContext context, CancellationToken cancellationToken) =>
             {
-                var found = new DummyDto
-                {
-                    Id = Id,
-                    Description = "Description dummy",
-                    Name = "Name dummy",
-                };
+                var found = await context.Dummies.SingleOrDefaultAsync(d => d.Id == Id, cancellationToken);
 
-                return Results.Ok(found);
+                return found is null
+                    ? Results.NotFound()
+                    : Results.Ok(found);
             })
-                .Produces(200, typeof(DummyDto))
+                .Produces(200, typeof(Dummy))
                 .Produces(404);
         }
     }
