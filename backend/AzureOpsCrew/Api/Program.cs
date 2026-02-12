@@ -1,4 +1,5 @@
 using AzureOpsCrew.Api.Endpoints;
+using AzureOpsCrew.Api.Extensions;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,6 +15,9 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1"
     });
 });
+
+//Add EF Core
+builder.Services.AddEFCoreCosmosDb(builder.Configuration, "CosmosDb");
 
 //Enable Application Insights
 if (bool.TryParse(builder.Configuration["ApplicationInsights:Enable"], out var enableApplicationInsights)
@@ -34,5 +38,7 @@ app.UseHttpsRedirection();
 
 //Map endpoints
 app.MapDummyEndpoints();
+
+await app.Services.RunEnsureEFCoreCosmosDbCreated();
 
 app.Run();
