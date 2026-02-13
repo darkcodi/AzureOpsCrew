@@ -118,3 +118,22 @@
 .direct-messages-area .copilotKitInputControlButton {
   color: hsl(214, 5%, 55%);
 }
+
+/* Next.js dev tools portal: same place as CopilotKit web inspector (left sidebar, above Settings), on top */
+nextjs-portal {
+  position: fixed !important;
+  left: 2px !important;
+  bottom: 60px !important;
+  top: auto !important;
+  right: auto !important;
+  z-index: 2147483647 !important;
+}
+
+/* CopilotKit web inspector: inside left sidebar, just above Settings button (py-3 + gap-2 + 40px ≈ 60px from bottom) */
+cpk-web-inspector {
+  left: 2px !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: 60px !important;
+  transform: none !important;
+}

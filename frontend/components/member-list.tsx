@@ -3,6 +3,7 @@
 import { useState } from "react"
 import type { Agent } from "@/lib/agents"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { AgentProfilePopover } from "@/components/agent-profile-popover"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,7 @@ interface MemberListProps {
   activeAgentIds: string[]
   streamingAgentId?: string | null
   onToggleAgent: (agentId: string) => void
+  onOpenInDM?: (agentId: string) => void
 }
 
 type StatusFilterMode = "all" | "free" | "working"
@@ -29,16 +31,22 @@ function AgentRow({
   isInRoom,
   isWorking,
   onToggle,
+  onOpenInDM,
 }: {
   agent: Agent
   isInRoom: boolean
   isWorking: boolean
   onToggle: () => void
+  onOpenInDM?: (agentId: string) => void
 }) {
-  return (
+  const handleClick = () => {
+    if (!onOpenInDM) onToggle()
+  }
+
+  const row = (
     <div
       className="mb-1 flex items-center gap-3 rounded-md px-2 py-2 transition-colors cursor-pointer"
-      onClick={onToggle}
+      onClick={handleClick}
       onMouseEnter={(e) => {
         e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
       }}
@@ -74,6 +82,19 @@ function AgentRow({
       </div>
     </div>
   )
+
+  if (onOpenInDM) {
+    return (
+      <AgentProfilePopover
+        agent={agent}
+        isWorking={isWorking}
+        onOpenInDM={onOpenInDM}
+      >
+        {row}
+      </AgentProfilePopover>
+    )
+  }
+  return row
 }
 
 export function MemberList({
@@ -81,6 +102,7 @@ export function MemberList({
   activeAgentIds,
   streamingAgentId = null,
   onToggleAgent,
+  onOpenInDM,
 }: MemberListProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilterMode>("all")
 
@@ -229,53 +251,55 @@ export function MemberList({
       </div>
 
       <ScrollArea className="flex-1 px-3 pt-4">
-        {workingAgents.length > 0 && (
-          <>
+          {workingAgents.length > 0 && (
+            <>
+              <div
+                className="mb-1 mt-1 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
+                style={{ color: "hsl(214, 5%, 55%)" }}
+              >
+                Working
+              </div>
+              {workingAgents.map((agent) => (
+                <AgentRow
+                  key={agent.id}
+                  agent={agent}
+                  isInRoom
+                  isWorking
+                  onToggle={() => onToggleAgent(agent.id)}
+                  onOpenInDM={onOpenInDM}
+                />
+              ))}
+            </>
+          )}
+          {availableAgents.length > 0 && (
+            <>
+              <div
+                className="mb-1 mt-2 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
+                style={{ color: "hsl(214, 5%, 55%)" }}
+              >
+                Available
+              </div>
+              {availableAgents.map((agent) => (
+                <AgentRow
+                  key={agent.id}
+                  agent={agent}
+                  isInRoom
+                  isWorking={false}
+                  onToggle={() => onToggleAgent(agent.id)}
+                  onOpenInDM={onOpenInDM}
+                />
+              ))}
+            </>
+          )}
+          {agentsInRoom.length === 0 && (
             <div
-              className="mb-1 mt-1 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
+              className="px-2 py-4 text-center text-sm"
               style={{ color: "hsl(214, 5%, 55%)" }}
             >
-              Working
+              No agents in chat. Add them via the settings menu.
             </div>
-            {workingAgents.map((agent) => (
-              <AgentRow
-                key={agent.id}
-                agent={agent}
-                isInRoom
-                isWorking
-                onToggle={() => onToggleAgent(agent.id)}
-              />
-            ))}
-          </>
-        )}
-        {availableAgents.length > 0 && (
-          <>
-            <div
-              className="mb-1 mt-2 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
-              style={{ color: "hsl(214, 5%, 55%)" }}
-            >
-              Available
-            </div>
-            {availableAgents.map((agent) => (
-              <AgentRow
-                key={agent.id}
-                agent={agent}
-                isInRoom
-                isWorking={false}
-                onToggle={() => onToggleAgent(agent.id)}
-              />
-            ))}
-          </>
-        )}
-        {agentsInRoom.length === 0 && (
-          <div
-            className="px-2 py-4 text-center text-sm"
-            style={{ color: "hsl(214, 5%, 55%)" }}
-          >
-            No agents in chat. Add them via the settings menu.
-          </div>
-        )}
-      </ScrollArea>
+          )}
+        </ScrollArea>
     </div>
   )
 }

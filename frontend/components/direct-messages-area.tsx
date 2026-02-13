@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useRef } from "react"
+import { useCopilotChatInternal } from "@copilotkit/react-core"
 import { CopilotChat } from "@copilotkit/react-ui"
 import type { Agent } from "@/lib/agents"
 
@@ -9,9 +11,49 @@ const DEFAULT_INSTRUCTIONS =
 interface DirectMessagesAreaProps {
   activeDMId: string | null
   agents: Agent[]
+  pendingDMMessage?: string | null
+  onClearPendingDMMessage?: () => void
 }
 
-export function DirectMessagesArea({ activeDMId, agents }: DirectMessagesAreaProps) {
+function SendPendingMessage({
+  pendingDMMessage,
+  activeDMId,
+  onClear,
+}: {
+  pendingDMMessage: string
+  activeDMId: string
+  onClear: () => void
+}) {
+  const { sendMessage } = useCopilotChatInternal()
+  const sentRef = useRef(false)
+
+  useEffect(() => {
+    if (sentRef.current || !pendingDMMessage || !activeDMId) return
+    sentRef.current = true
+    const id = crypto.randomUUID()
+    const timer = setTimeout(() => {
+      sendMessage({
+        id,
+        role: "user",
+        content: pendingDMMessage,
+      })
+        .then(() => onClear())
+        .finally(() => {
+          sentRef.current = false
+        })
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [pendingDMMessage, activeDMId, sendMessage, onClear])
+
+  return null
+}
+
+export function DirectMessagesArea({
+  activeDMId,
+  agents,
+  pendingDMMessage = null,
+  onClearPendingDMMessage,
+}: DirectMessagesAreaProps) {
   const threadId = activeDMId ?? "assistant"
   const selectedAgent = agents.find((a) => a.id === activeDMId)
   const instructions = selectedAgent
@@ -26,6 +68,13 @@ export function DirectMessagesArea({ activeDMId, agents }: DirectMessagesAreaPro
       className="direct-messages-area flex flex-1 flex-col overflow-hidden"
       style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
     >
+      {pendingDMMessage && activeDMId && onClearPendingDMMessage && (
+        <SendPendingMessage
+          pendingDMMessage={pendingDMMessage}
+          activeDMId={activeDMId}
+          onClear={onClearPendingDMMessage}
+        />
+      )}
       {/* Header */}
       <div
         className="flex h-12 shrink-0 items-center border-b px-4"

@@ -15,6 +15,7 @@ export default function Home() {
   const [activeDMId, setActiveDMId] = useState<string | null>(
     () => defaultAgents[0]?.id ?? null
   )
+  const [pendingDMMessage, setPendingDMMessage] = useState<string | null>(null)
   const [showAgentManager, setShowAgentManager] = useState(false)
   const activeRoom = rooms.find((r) => r.id === activeRoomId) ?? rooms[0]
 
@@ -51,6 +52,12 @@ export default function Home() {
     )
   }, [])
 
+  const handleOpenAgentInDM = useCallback((agentId: string, message?: string) => {
+    setViewMode("direct-messages")
+    setActiveDMId(agentId)
+    setPendingDMMessage(message ?? null)
+  }, [])
+
   return (
     <main className="flex h-dvh w-full">
       <IconSidebar
@@ -75,6 +82,7 @@ export default function Home() {
             onAddAgent={handleAddAgent}
             onUpdateAgent={handleUpdateAgent}
             onDeleteAgent={handleDeleteAgent}
+            onOpenInDM={handleOpenAgentInDM}
             showAgentManager={showAgentManager}
             onCloseAgentManager={() => setShowAgentManager(false)}
           />
@@ -84,6 +92,8 @@ export default function Home() {
           activeDMId={activeDMId}
           setActiveDMId={setActiveDMId}
           agents={agents}
+          pendingDMMessage={pendingDMMessage}
+          onClearPendingDMMessage={() => setPendingDMMessage(null)}
         />
       )}
     </main>

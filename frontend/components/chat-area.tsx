@@ -15,6 +15,7 @@ interface ChatAreaProps {
   onAddAgent: (agent: Agent) => void
   onUpdateAgent: (agent: Agent) => void
   onDeleteAgent: (agentId: string) => void
+  onOpenInDM?: (agentId: string) => void
   showAgentManager: boolean
   onCloseAgentManager: () => void
 }
@@ -26,6 +27,7 @@ export function ChatArea({
   onAddAgent,
   onUpdateAgent,
   onDeleteAgent,
+  onOpenInDM,
   showAgentManager,
   onCloseAgentManager,
 }: ChatAreaProps) {
@@ -210,6 +212,7 @@ export function ChatArea({
           activeAgentIds={room.agentIds}
           streamingAgentId={streamingAgentId}
           onToggleAgent={handleToggleAgent}
+          onOpenInDM={onOpenInDM}
         />
       )}
 

@@ -11,12 +11,16 @@ interface DirectMessagesViewProps {
   activeDMId: string | null
   setActiveDMId: (id: string | null) => void
   agents: Agent[]
+  pendingDMMessage?: string | null
+  onClearPendingDMMessage?: () => void
 }
 
 export function DirectMessagesView({
   activeDMId,
   setActiveDMId,
   agents,
+  pendingDMMessage = null,
+  onClearPendingDMMessage,
 }: DirectMessagesViewProps) {
   const { setThreadId } = useCopilotContext()
   const { setAgentId } = useAgentRuntime()
@@ -46,7 +50,12 @@ export function DirectMessagesView({
         activeId={activeDMId}
         onSelect={handleSelectDM}
       />
-      <DirectMessagesArea activeDMId={activeDMId} agents={agents} />
+      <DirectMessagesArea
+        activeDMId={activeDMId}
+        agents={agents}
+        pendingDMMessage={pendingDMMessage}
+        onClearPendingDMMessage={onClearPendingDMMessage}
+      />
     </>
   )
 }
