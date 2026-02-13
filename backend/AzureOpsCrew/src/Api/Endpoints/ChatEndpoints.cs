@@ -1,5 +1,6 @@
 ﻿using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
 using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.ChatProcessings;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
@@ -96,5 +97,28 @@ public static class ChatEndpoints
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status404NotFound);
+
+        //This endpoint emulates worker chat processing on event bus message
+        group.MapPost("/{id}/messages/test-emulate-worker-processing", async (
+           Guid id,
+           AzureOpsCrewContext context,
+           IChatProcessor chatProcessor,
+           CancellationToken cancellationToken) =>
+        {
+            var chat = await context.Set<Chat>()
+                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+            if (chat is null)
+                return Results.NotFound();
+
+            await chatProcessor.Process(chat, cancellationToken);
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            return Results.Ok();
+        })
+           .Produces(StatusCodes.Status200OK)
+           .Produces(StatusCodes.Status400BadRequest)
+           .Produces(StatusCodes.Status404NotFound);
     }
 }
