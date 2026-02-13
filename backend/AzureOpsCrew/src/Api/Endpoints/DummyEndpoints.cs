@@ -29,7 +29,7 @@ namespace AzureOpsCrew.Api.Endpoints
 
             group.MapGet("/{Id}", async (Guid Id, AzureOpsCrewContext context, CancellationToken cancellationToken) =>
             {
-                var found = await context.Dummies.SingleOrDefaultAsync(d => d.Id == Id, cancellationToken);
+                var found = await context.Set<Dummy>().SingleOrDefaultAsync(d => d.Id == Id, cancellationToken);
 
                 return found is null
                     ? Results.NotFound()

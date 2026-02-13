@@ -17,10 +17,5 @@ public sealed class ChatEntityTypeConfiguration : IEntityTypeConfiguration<Chat>
             .HasConversion(
                 g => g.ToString("D"),
                 s => Guid.Parse(s));
-
-        builder.Property(c => c.AgentIds)
-            .HasConversion(
-                v => v.Select(x => x.ToString("D")).ToArray(),
-                v => v.Select(Guid.Parse).ToArray());
     }
 }

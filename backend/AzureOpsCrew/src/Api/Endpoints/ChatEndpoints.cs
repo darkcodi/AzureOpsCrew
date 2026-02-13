@@ -32,7 +32,7 @@ public static class ChatEndpoints
             var chat = new Chat(Guid.NewGuid(), body.ClientId, body.Name)
             {
                 Description = body.Description,
-                AgentIds = body.AgentIds.Select(x => x).ToArray()
+                AgentIds = body.AgentIds.Select(a => a.ToString("D")).ToArray()
             };
 
             await context.AddAsync(chat, cancellationToken);

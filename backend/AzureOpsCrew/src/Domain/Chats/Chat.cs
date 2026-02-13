@@ -24,7 +24,7 @@
         public string? ConversationId { get; set; }
 
 
-        public Guid[] AgentIds { get; set; } = [];
+        public string[] AgentIds { get; set; } = [];
 
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
     }
