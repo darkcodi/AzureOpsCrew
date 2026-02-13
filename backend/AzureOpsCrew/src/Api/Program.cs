@@ -70,9 +70,9 @@ try
     app.UseHttpsRedirection();
 
     // Map endpoints
-    app.MapDummyEndpoints();
     app.MapTestEndpoints();
     app.MapAgentEndpoints();
+    app.MapChatEndpoints();
 
     app.MapAgUI();
 

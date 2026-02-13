@@ -1,4 +1,4 @@
-using AzureOpsCrew.Api.Extensions;
+using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.Agents.AI;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +24,7 @@ namespace AzureOpsCrew.Api.Endpoints
             {
                 try
                 {
-                    await context.Dummies.CountAsync(cancellationToken);
+                    await context.Set<Agent>().CountAsync(cancellationToken);
                     return Results.Ok(new { status = "healthy", database = "cosmos" });
                 }
                 catch (Exception e)
