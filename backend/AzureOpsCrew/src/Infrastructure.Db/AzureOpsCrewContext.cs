@@ -1,4 +1,6 @@
-﻿using AzureOpsCrew.Domain.Dimmies;
+﻿using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.Dimmies;
 using AzureOpsCrew.Infrastructure.Db.EntityTypes;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,12 +15,17 @@ namespace AzureOpsCrew.Infrastructure.Db
 
         public DbSet<Dummy> Dummies => Set<Dummy>();
 
+        public DbSet<Agent> Agents => Set<Agent>();
+        public DbSet<Chat> Chats => Set<Chat>();
+
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.HasDefaultContainer("AppContainer");
 
             modelBuilder.ApplyConfiguration(new DummyEntityTypeConfiguration());
             modelBuilder.ApplyConfiguration(new AgentEntityTypeConfiguration());
+            modelBuilder.ApplyConfiguration(new ChatEntityTypeConfiguration());
         }
     }
 }

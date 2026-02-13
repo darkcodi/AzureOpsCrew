@@ -73,6 +73,7 @@ try
     app.MapDummyEndpoints();
     app.MapTestEndpoints();
     app.MapAgentEndpoints();
+    app.MapChatEndpoints();
 
     app.MapAgUI();
 

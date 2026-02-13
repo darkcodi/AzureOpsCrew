@@ -11,10 +11,11 @@
         }
 
 
-        public MessageSender System() => new MessageSender { SenderType = MessageSenderType.System };
-        public MessageSender Client() => new MessageSender { SenderType = MessageSenderType.System };
+        public static MessageSender System() => new MessageSender { SenderType = MessageSenderType.System };
 
-        public MessageSender Agent(Guid agentId) => new MessageSender { SenderType = MessageSenderType.System, AgentId = agentId };
+        public static MessageSender Client() => new MessageSender { SenderType = MessageSenderType.Client };
+
+        public static MessageSender Agent(Guid agentId) => new MessageSender { SenderType = MessageSenderType.Agent, AgentId = agentId };
 
     }
 
