@@ -25,6 +25,7 @@ export function AgentProfilePopover({
   onOpenInDM,
 }: AgentProfilePopoverProps) {
   const [message, setMessage] = useState("")
+  const [open, setOpen] = useState(false)
 
   const bio =
     agent.systemPrompt.length > 120
@@ -36,11 +37,12 @@ export function AgentProfilePopover({
     if (text) {
       onOpenInDM?.(agent.id, text)
       setMessage("")
+      setOpen(false)
     }
   }
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent
         align="start"
@@ -58,7 +60,7 @@ export function AgentProfilePopover({
             className="h-20 w-full rounded-t-xl"
             style={{ backgroundColor: agent.color }}
           />
-          <div className="absolute left-4 top-10 flex items-center gap-2">
+          <div className="absolute left-4 top-10 flex items-center">
             <div
               className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 text-xl font-bold"
               style={{
@@ -69,8 +71,28 @@ export function AgentProfilePopover({
             >
               {agent.avatar}
             </div>
+          </div>
+          <div className="absolute right-4 top-3 flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/20"
+                style={{ color: "#fff" }}
+                aria-label="Add"
+              >
+                <UserPlus className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/20"
+                style={{ color: "#fff" }}
+                aria-label="More options"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </div>
             <div
-              className="flex h-6 items-center rounded-full px-2.5 text-xs font-medium"
+              className="flex h-6 shrink-0 items-center justify-center rounded-full px-3 text-xs font-medium leading-none"
               style={{
                 backgroundColor: "hsla(0,0%,0%,0.4)",
                 color: "#fff",
@@ -78,24 +100,6 @@ export function AgentProfilePopover({
             >
               {isWorking ? "Working" : "Available"}
             </div>
-          </div>
-          <div className="absolute right-2 top-2 flex gap-1">
-            <button
-              type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/20"
-              style={{ color: "#fff" }}
-              aria-label="Add"
-            >
-              <UserPlus className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/20"
-              style={{ color: "#fff" }}
-              aria-label="More options"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
           </div>
         </div>
 

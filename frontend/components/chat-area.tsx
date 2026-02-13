@@ -15,7 +15,7 @@ interface ChatAreaProps {
   onAddAgent: (agent: Agent) => void
   onUpdateAgent: (agent: Agent) => void
   onDeleteAgent: (agentId: string) => void
-  onOpenInDM?: (agentId: string) => void
+  onOpenInDM?: (agentId: string, message?: string) => void
   showAgentManager: boolean
   onCloseAgentManager: () => void
 }

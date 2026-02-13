@@ -38,10 +38,11 @@ function SendPendingMessage({
         content: pendingDMMessage,
       })
         .then(() => onClear())
+        .catch(() => {})
         .finally(() => {
           sentRef.current = false
         })
-    }, 100)
+    }, 250)
     return () => clearTimeout(timer)
   }, [pendingDMMessage, activeDMId, sendMessage, onClear])
 

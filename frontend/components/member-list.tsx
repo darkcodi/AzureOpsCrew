@@ -21,7 +21,7 @@ interface MemberListProps {
   activeAgentIds: string[]
   streamingAgentId?: string | null
   onToggleAgent: (agentId: string) => void
-  onOpenInDM?: (agentId: string) => void
+  onOpenInDM?: (agentId: string, message?: string) => void
 }
 
 type StatusFilterMode = "all" | "free" | "working"
@@ -37,7 +37,7 @@ function AgentRow({
   isInRoom: boolean
   isWorking: boolean
   onToggle: () => void
-  onOpenInDM?: (agentId: string) => void
+  onOpenInDM?: (agentId: string, message?: string) => void
 }) {
   const handleClick = () => {
     if (!onOpenInDM) onToggle()
