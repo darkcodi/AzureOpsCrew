@@ -36,7 +36,8 @@ try
 
     // Configure EF Core with Cosmos DB
     builder.Services.AddEFCoreCosmosDb();
-    builder.Services.AddIChatClient();
+    builder.Services.AddAgentManagements();
+    builder.Services.AddIChatClient(); //Temp chat client registration for UI tests
 
     // Configure AG-UI
     builder.Services.AddHttpClient();
@@ -71,15 +72,19 @@ try
     // Map endpoints
     app.MapDummyEndpoints();
     app.MapTestEndpoints();
-    app.MapAgents();
+    app.MapAgentEndpoints();
 
-    // await app.Services.RunEnsureEFCoreCosmosDbCreated();
+    app.MapAgUI();
+
+    await app.Services.RunEnsureEFCoreCosmosDbCreated();
 
     app.Run();
 }
 catch (Exception ex)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
+
+    throw;
 }
 finally
 {

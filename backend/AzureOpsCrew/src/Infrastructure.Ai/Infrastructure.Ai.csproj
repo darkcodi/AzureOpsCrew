@@ -10,4 +10,8 @@
     <RootNamespace>AzureOpsCrew.Infrastructure.Ai</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\Domain.csproj" />
+  </ItemGroup>
+
 </Project>
