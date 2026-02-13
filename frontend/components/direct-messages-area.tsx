@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { useCopilotChatInternal } from "@copilotkit/react-core"
 import { CopilotChat } from "@copilotkit/react-ui"
+import { CopilotActions } from "@/components/copilot-actions"
 import type { Agent } from "@/lib/agents"
 
 const DEFAULT_INSTRUCTIONS =
@@ -86,6 +87,9 @@ export function DirectMessagesArea({
       >
         <h1 className="text-base font-semibold">Direct Messages</h1>
       </div>
+
+      {/* Register dynamic UI actions (pipeline, work items, resources, etc.) */}
+      <CopilotActions />
 
       {/* Chat: key forces remount when switching DM so messages/context switch */}
       <div className="flex min-h-0 flex-1 flex-col">
