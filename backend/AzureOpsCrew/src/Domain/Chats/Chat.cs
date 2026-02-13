@@ -21,17 +21,11 @@
 
         public string? Description { get; set; }
 
+        public string? ConversationId { get; set; }
+
 
         public Guid[] AgentIds { get; set; } = [];
 
-        public List<Message> Messages { get; private set; } = []; //Change on IEnumerable<>(with shodow list property) to avoid uncontrol modification. Posible EF Core issues.
-
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
-
-
-        public void AddMessage(string text, MessageSender sender)
-        {
-            Messages.Add(new Message(Guid.NewGuid(), sender, text));
-        }
     }
 }

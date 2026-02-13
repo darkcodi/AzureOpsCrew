@@ -37,7 +37,6 @@ try
     // Configure EF Core with Cosmos DB
     builder.Services.AddEFCoreCosmosDb();
     builder.Services.AddAgentManagements();
-    builder.Services.AddChatProcessing();
     builder.Services.AddIChatClient(); //Temp chat client registration for UI tests
 
     // Configure AG-UI

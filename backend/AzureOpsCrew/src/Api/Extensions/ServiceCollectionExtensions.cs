@@ -1,15 +1,13 @@
-﻿using System.ClientModel;
-using Azure.AI.OpenAI;
+﻿using Azure.AI.OpenAI;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.AgentManagements;
-using AzureOpsCrew.Domain.ChatProcessings;
 using AzureOpsCrew.Infrastructure.Ai.AgentManagements;
 using AzureOpsCrew.Infrastructure.Ai.AgentManagements.Microsoft;
-using AzureOpsCrew.Infrastructure.Ai.ChatProcessing;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
+using System.ClientModel;
 
 namespace AzureOpsCrew.Api.Extensions
 {
@@ -90,11 +88,6 @@ namespace AzureOpsCrew.Api.Extensions
                 .AddTransient<Local0AgentFactory>()
                 .AddTransient<Local1AgentFactory>()
                 .AddTransient<MicrosoftFoundryAgentFactory>();
-        }
-
-        public static void AddChatProcessing(this IServiceCollection services)
-        {
-            services.AddTransient<IChatProcessor, StubChatProcessor>();
         }
     }
 }
