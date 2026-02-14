@@ -13,6 +13,10 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
         builder.HasKey(a => a.Id);
         builder.Property(a => a.Id)
                .ValueGeneratedOnAdd();
+        builder.Property(x => x.Id)
+               .HasConversion(
+                   v => v.ToString("D"),
+                   s => Guid.Parse(s));
 
         builder.Property(a => a.ProviderAgentId)
                .IsRequired();
