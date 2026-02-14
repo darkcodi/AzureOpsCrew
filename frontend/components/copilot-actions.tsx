@@ -616,9 +616,18 @@ function DeploymentCard({
                   display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
                   borderRadius: 8, cursor: "pointer", transition: "all 0.15s",
                   backgroundColor: isOpen ? `${sc}18` : hovered ? `${sc}10` : `${sc}08`,
-                  borderLeft: `3px solid ${sc}`,
-                  border: `1px solid ${isOpen ? `${sc}44` : "transparent"}`,
-                  borderLeftWidth: 3, borderLeftColor: sc,
+                  borderTopWidth: 1,
+                  borderTopStyle: "solid",
+                  borderTopColor: isOpen ? `${sc}44` : "transparent",
+                  borderRightWidth: 1,
+                  borderRightStyle: "solid",
+                  borderRightColor: isOpen ? `${sc}44` : "transparent",
+                  borderBottomWidth: 1,
+                  borderBottomStyle: "solid",
+                  borderBottomColor: isOpen ? `${sc}44` : "transparent",
+                  borderLeftWidth: 3,
+                  borderLeftStyle: "solid",
+                  borderLeftColor: sc,
                 }}
               >
                 <ExpandToggle expanded={isOpen} />
