@@ -13,14 +13,12 @@ import { cn } from "@/lib/utils"
 
 interface AgentProfilePopoverProps {
   agent: Agent
-  isWorking: boolean
   children: React.ReactNode
   onOpenInDM?: (agentId: string, message?: string) => void
 }
 
 export function AgentProfilePopover({
   agent,
-  isWorking,
   children,
   onOpenInDM,
 }: AgentProfilePopoverProps) {
@@ -98,7 +96,7 @@ export function AgentProfilePopover({
                 color: "#fff",
               }}
             >
-              {isWorking ? "Working" : "Available"}
+              {agent.status ?? "Idle"}
             </div>
           </div>
         </div>

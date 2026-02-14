@@ -24,13 +24,11 @@ interface MemberListProps {
 function AgentRow({
   agent,
   isInRoom,
-  isWorking,
   onToggle,
   onOpenInDM,
 }: {
   agent: Agent
   isInRoom: boolean
-  isWorking: boolean
   onToggle: () => void
   onOpenInDM?: (agentId: string, message?: string) => void
 }) {
@@ -72,7 +70,7 @@ function AgentRow({
           className="text-xs"
           style={{ color: "hsl(214, 5%, 55%)" }}
         >
-          {isWorking ? "Working" : "Idle"}
+          {agent.status ?? "Idle"}
         </span>
       </div>
     </div>
@@ -82,7 +80,6 @@ function AgentRow({
     return (
       <AgentProfilePopover
         agent={agent}
-        isWorking={isWorking}
         onOpenInDM={onOpenInDM}
       >
         {row}
@@ -166,7 +163,6 @@ export function MemberList({
                 key={agent.id}
                 agent={agent}
                 isInRoom
-                isWorking
                 onToggle={() => onToggleAgent(agent.id)}
                 onOpenInDM={onOpenInDM}
               />
@@ -186,7 +182,6 @@ export function MemberList({
                 key={agent.id}
                 agent={agent}
                 isInRoom
-                isWorking={false}
                 onToggle={() => onToggleAgent(agent.id)}
                 onOpenInDM={onOpenInDM}
               />
@@ -299,7 +294,6 @@ export function MemberList({
                 <AgentProfilePopover
                   key={agent.id}
                   agent={agent}
-                  isWorking={false}
                 >
                   <div
                     className="mb-1 flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-3 transition-colors"

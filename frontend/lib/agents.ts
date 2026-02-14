@@ -6,6 +6,8 @@ export interface Agent {
   systemPrompt: string
   model: string
   mcpIds?: string[]
+  /** Status from backend; when absent, UI shows "Idle". */
+  status?: string
 }
 
 export interface Room {
