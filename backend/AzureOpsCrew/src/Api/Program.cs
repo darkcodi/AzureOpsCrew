@@ -30,14 +30,11 @@ try
         });
     });
 
-    // Configure settings
-    builder.Services.AddCosmosSettings(builder.Configuration, "CosmosDb");
+    // Configure settings and database
     builder.Services.AddAiSettings(builder.Configuration, "AzureOpenAI");
-
-    // Configure EF Core with Cosmos DB
-    builder.Services.AddEFCoreCosmosDb();
+    builder.Services.AddDatabase(builder.Configuration);
     builder.Services.AddAgentManagements();
-    builder.Services.AddIChatClient(); //Temp chat client registration for UI tests
+    builder.Services.AddIChatClient();
 
     // Configure AG-UI
     builder.Services.AddHttpClient();
@@ -53,9 +50,22 @@ try
     // Log configuration settings at startup
     if (app.Environment.IsDevelopment())
     {
-        var cosmosSettings = app.Services.GetRequiredService<IOptions<CosmosSettings>>().Value;
+        var provider = builder.Configuration["DatabaseProvider"];
         var aiSettings = app.Services.GetRequiredService<IOptions<AiSettings>>().Value;
-        Log.Information("Cosmos DB Settings: {CosmosSettings}", JsonConvert.SerializeObject(cosmosSettings));
+
+        if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+        {
+            var sqliteSettings = app.Services.GetRequiredService<IOptions<SQLiteSettings>>().Value;
+            Log.Information("Database Provider: Sqlite");
+            Log.Information("SQLite Settings: {SqliteSettings}", JsonConvert.SerializeObject(sqliteSettings));
+        }
+        else
+        {
+            var cosmosSettings = app.Services.GetRequiredService<IOptions<CosmosSettings>>().Value;
+            Log.Information("Database Provider: Cosmos");
+            Log.Information("Cosmos DB Settings: {CosmosSettings}", JsonConvert.SerializeObject(cosmosSettings));
+        }
+
         Log.Information("AI Settings: {AiSettings}", JsonConvert.SerializeObject(aiSettings));
     }
 
@@ -77,7 +87,7 @@ try
 
     app.MapAgUI();
 
-    // await app.Services.RunEnsureEFCoreCosmosDbCreated();
+    await app.Services.RunEnsureDatabaseCreated();
 
     app.Run();
 }

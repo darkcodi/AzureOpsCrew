@@ -1,6 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using AzureOpsCrew.Domain.Chats;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Cosmos;
 
 public sealed class ChatEntityTypeConfiguration : IEntityTypeConfiguration<Chat>
 {
