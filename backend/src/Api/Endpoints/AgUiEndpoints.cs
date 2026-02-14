@@ -19,7 +19,7 @@ public static class AgentAgUiEndpoints
             "use them proactively to present information visually instead of plain text. " +
             "For example, show pipeline stages as a visual card, display work items in a list, or present metrics in a dashboard-style card.";
 
-        app.MapPost("agent/{agentId}/agui/", async ([FromRoute] Guid agentId, [FromBody] RunAgentInput? input, OpenAIClient openIdClient, AzureOpsCrewContext dbContext ,HttpContext context, CancellationToken cancellationToken) =>
+        app.MapPost("agent/{agentId}/agui/", async ([FromRoute] Guid agentId, [FromBody] RunAgentInput? input, OpenAIClient openIdClient, AzureOpsCrewContext dbContext, HttpContext context, CancellationToken cancellationToken) =>
         {
             if (input is null)
             {
