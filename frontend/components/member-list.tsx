@@ -5,7 +5,13 @@ import type { Agent } from "@/lib/agents"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { AgentProfilePopover } from "@/components/agent-profile-popover"
-import { Search, User } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Search, User, Plus } from "lucide-react"
 
 interface MemberListProps {
   allAgents: Agent[]
@@ -94,9 +100,14 @@ export function MemberList({
   onOpenInDM,
 }: MemberListProps) {
   const [searchQuery, setSearchQuery] = useState("")
+  const [addAgentsOpen, setAddAgentsOpen] = useState(false)
 
   const agentsInRoom = allAgents
     .filter((a) => activeAgentIds.includes(a.id))
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  const agentsNotInRoom = allAgents
+    .filter((a) => !activeAgentIds.includes(a.id))
     .sort((a, b) => a.name.localeCompare(b.name))
 
   const workingAgents = agentsInRoom.filter((a) => a.id === streamingAgentId)
@@ -156,7 +167,7 @@ export function MemberList({
             ))}
           </>
         )}
-        {filteredAvailable.length > 0 && (
+        {(filteredAvailable.length > 0 || agentsInRoom.length === 0) && (
           <>
             <div
               className="mb-1 mt-2 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
@@ -174,6 +185,37 @@ export function MemberList({
                 onOpenInDM={onOpenInDM}
               />
             ))}
+            {filteredAvailable.length === 0 && agentsInRoom.length === 0 && (
+              <div
+                className="px-2 py-2 text-center text-sm"
+                style={{ color: "hsl(214, 5%, 55%)" }}
+              >
+                No agents in chat.
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setAddAgentsOpen(true)}
+              className="mb-1 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed px-3 py-2.5 text-left text-sm font-medium transition-all"
+              style={{
+                color: "hsl(214, 5%, 65%)",
+                borderColor: "hsl(228, 6%, 32%)",
+                backgroundColor: "transparent",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
+                e.currentTarget.style.borderColor = "hsl(235, 86%, 65%)"
+                e.currentTarget.style.color = "hsl(210, 3%, 90%)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent"
+                e.currentTarget.style.borderColor = "hsl(228, 6%, 32%)"
+                e.currentTarget.style.color = "hsl(214, 5%, 65%)"
+              }}
+            >
+              <Plus className="h-4 w-4 shrink-0" />
+              <span>Add more agents</span>
+            </button>
           </>
         )}
         {matchesHuman && (
@@ -209,14 +251,6 @@ export function MemberList({
             </div>
           </>
         )}
-        {agentsInRoom.length === 0 && (
-          <div
-            className="px-2 py-4 text-center text-sm"
-            style={{ color: "hsl(214, 5%, 55%)" }}
-          >
-            No agents in chat.
-          </div>
-        )}
         {query &&
           filteredWorking.length === 0 &&
           filteredAvailable.length === 0 &&
@@ -229,6 +263,64 @@ export function MemberList({
             </div>
           )}
       </ScrollArea>
+
+      <Dialog open={addAgentsOpen} onOpenChange={setAddAgentsOpen}>
+        <DialogContent
+          className="max-w-md gap-0 border-0 p-0"
+          style={{
+            backgroundColor: "hsl(228, 6%, 20%)",
+            color: "hsl(210, 3%, 90%)",
+          }}
+        >
+          <DialogHeader
+            className="px-5 py-4"
+            style={{ borderBottom: "1px solid hsl(228, 6%, 28%)" }}
+          >
+            <DialogTitle className="text-lg font-semibold">
+              Add agents to chat
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] px-2 py-3">
+            {agentsNotInRoom.length === 0 ? (
+              <div
+                className="px-3 py-6 text-center text-sm"
+                style={{ color: "hsl(214, 5%, 55%)" }}
+              >
+                All agents are already in this chat.
+              </div>
+            ) : (
+              agentsNotInRoom.map((agent) => (
+                <button
+                  key={agent.id}
+                  type="button"
+                  className="mb-1 flex w-full items-center gap-3 rounded-md px-3 py-3 text-left transition-colors"
+                  onClick={() => {
+                    onToggleAgent(agent.id)
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "hsl(228, 6%, 26%)"
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent"
+                  }}
+                >
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                    style={{ backgroundColor: agent.color, color: "#fff" }}
+                  >
+                    {agent.avatar}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="truncate text-sm font-medium">
+                      {agent.name}
+                    </span>
+                  </div>
+                </button>
+              ))
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

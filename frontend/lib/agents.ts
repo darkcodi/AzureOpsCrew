@@ -56,6 +56,6 @@ export const defaultRooms: Room[] = [
   {
     id: "general",
     name: "General",
-    agentIds: ["manager", "azure-devops", "azure-dev"],
+    agentIds: ["manager", "azure-devops"],
   },
 ]
