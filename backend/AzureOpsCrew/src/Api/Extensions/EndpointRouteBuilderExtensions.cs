@@ -87,7 +87,7 @@ public static class EndpointRouteBuilderExtensions
                     cancellationToken);
 
             var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
-            return new AGUIServerSentEventsResult(events, sseLogger);
+            return new AGUIServerSentEventsResult(events, sseLogger, jsonSerializerOptions);
         });
     }
 }

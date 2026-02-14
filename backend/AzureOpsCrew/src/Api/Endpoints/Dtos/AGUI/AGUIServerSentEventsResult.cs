@@ -9,12 +9,17 @@ public class AGUIServerSentEventsResult : IResult, IDisposable
 {
     private readonly IAsyncEnumerable<BaseEvent> _events;
     private readonly ILogger<AGUIServerSentEventsResult> _logger;
+    private readonly JsonSerializerOptions _jsonSerializerOptions;
     private Utf8JsonWriter? _jsonWriter;
 
-    public AGUIServerSentEventsResult(IAsyncEnumerable<BaseEvent> events, ILogger<AGUIServerSentEventsResult> logger)
+    public AGUIServerSentEventsResult(
+        IAsyncEnumerable<BaseEvent> events,
+        ILogger<AGUIServerSentEventsResult> logger,
+        JsonSerializerOptions jsonSerializerOptions)
     {
         _events = events;
         _logger = logger;
+        _jsonSerializerOptions = jsonSerializerOptions;
     }
 
     public async Task ExecuteAsync(HttpContext httpContext)
@@ -95,7 +100,7 @@ public class AGUIServerSentEventsResult : IResult, IDisposable
         {
             _jsonWriter.Reset(writer);
         }
-        JsonSerializer.Serialize(_jsonWriter, item.Data, AGUIJsonSerializerContext.Default.BaseEvent);
+        JsonSerializer.Serialize(_jsonWriter, item.Data, item.Data.GetType(), _jsonSerializerOptions);
     }
 
     public void Dispose()

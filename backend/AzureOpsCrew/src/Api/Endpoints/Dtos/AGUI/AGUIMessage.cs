@@ -169,7 +169,7 @@ public static class AGUIChatMessageExtensions
                         // Try to deserialize as JSON, but fall back to string if it fails
                         try
                         {
-                            result = JsonSerializer.Deserialize(toolMessage.Content, AGUIJsonSerializerContext.Default.JsonElement);
+                            result = JsonSerializer.Deserialize<JsonElement>(toolMessage.Content, jsonSerializerOptions);
                         }
                         catch (JsonException)
                         {
