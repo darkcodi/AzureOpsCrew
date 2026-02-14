@@ -51,7 +51,9 @@ export function DirectMessagesView({
 
   useEffect(() => {
     if (activeDMId && activeDMId !== HUMAN_ID) {
-      setSelectedCardId(activeDMId)
+      setSelectedCardId((prev) =>
+        prev === HUMAN_ID ? prev : activeDMId
+      )
     }
   }, [activeDMId])
 
