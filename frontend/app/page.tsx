@@ -14,7 +14,8 @@ export default function Home() {
   const [agents, setAgents] = useState<Agent[]>(defaultAgents)
   const [isLoadingAgents, setIsLoadingAgents] = useState(true)
   const [rooms, setRooms] = useState<Room[]>(defaultRooms)
-  const [activeRoomId, setActiveRoomId] = useState(defaultRooms[0].id)
+  const [isLoadingRooms, setIsLoadingRooms] = useState(true)
+  const [activeRoomId, setActiveRoomId] = useState(() => defaultRooms[0]?.id ?? "")
   const [activeDMId, setActiveDMId] = useState<string | null>(
     () => defaultAgents[0]?.id ?? null
   )
@@ -42,11 +43,56 @@ export default function Home() {
     loadAgents()
   }, [])
 
-  const handleCreateRoom = useCallback((name: string) => {
-    const id = name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now()
-    const newRoom: Room = { id, name, agentIds: [] }
-    setRooms((prev) => [...prev, newRoom])
-    setActiveRoomId(id)
+  // Load rooms from backend on mount
+  useEffect(() => {
+    async function loadRooms() {
+      try {
+        setIsLoadingRooms(true)
+        const response = await fetch("/api/rooms?clientId=1")
+        if (response.ok) {
+          const backendRooms: Room[] = await response.json()
+          if (backendRooms.length > 0) {
+            setRooms(backendRooms)
+            // Set active room if not set
+            setActiveRoomId((prev) => prev || backendRooms[0].id)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load rooms from backend:", error)
+      } finally {
+        setIsLoadingRooms(false)
+      }
+    }
+    loadRooms()
+  }, [])
+
+  const handleCreateRoom = useCallback(async (name: string) => {
+    try {
+      const response = await fetch("/api/rooms/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, agentIds: [] }),
+      })
+
+      if (response.ok) {
+        const newRoom: Room = await response.json()
+        setRooms((prev) => [...prev, newRoom])
+        setActiveRoomId(newRoom.id)
+      } else {
+        // Fallback to local creation
+        const id = crypto.randomUUID()
+        const newRoom: Room = { id, name, agentIds: [] }
+        setRooms((prev) => [...prev, newRoom])
+        setActiveRoomId(id)
+      }
+    } catch (error) {
+      console.error("Failed to create room:", error)
+      // Fallback to local creation
+      const id = crypto.randomUUID()
+      const newRoom: Room = { id, name, agentIds: [] }
+      setRooms((prev) => [...prev, newRoom])
+      setActiveRoomId(id)
+    }
   }, [])
 
   const handleUpdateRoom = useCallback((updatedRoom: Room) => {

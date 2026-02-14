@@ -10,7 +10,7 @@ interface ChannelSidebarProps {
   rooms: Room[]
   activeRoomId: string
   onRoomSelect: (roomId: string) => void
-  onCreateRoom: (name: string) => void
+  onCreateRoom: (name: string) => void | Promise<void>
 }
 
 export function ChannelSidebar({
