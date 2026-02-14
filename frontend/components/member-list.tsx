@@ -290,42 +290,47 @@ export function MemberList({
               </div>
             ) : (
               agentsNotInRoom.map((agent) => (
-                <div
+                <AgentProfilePopover
                   key={agent.id}
-                  className="mb-1 flex w-full items-center gap-3 rounded-md px-3 py-3 transition-colors"
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "hsl(228, 6%, 26%)"
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent"
-                  }}
+                  agent={agent}
+                  isWorking={false}
                 >
                   <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                    style={{ backgroundColor: agent.color, color: "#fff" }}
-                  >
-                    {agent.avatar}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="truncate text-sm font-medium">
-                      {agent.name}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onToggleAgent(agent.id)
+                    className="mb-1 flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-3 transition-colors"
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "hsl(228, 6%, 26%)"
                     }}
-                    className="shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-90"
-                    style={{
-                      backgroundColor: "hsl(235, 86%, 65%)",
-                      color: "#fff",
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent"
                     }}
                   >
-                    Add
-                  </button>
-                </div>
+                    <div
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                      style={{ backgroundColor: agent.color, color: "#fff" }}
+                    >
+                      {agent.avatar}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="truncate text-sm font-medium">
+                        {agent.name}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onToggleAgent(agent.id)
+                      }}
+                      className="shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-90"
+                      style={{
+                        backgroundColor: "hsl(235, 86%, 65%)",
+                        color: "#fff",
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </AgentProfilePopover>
               ))
             )}
           </ScrollArea>

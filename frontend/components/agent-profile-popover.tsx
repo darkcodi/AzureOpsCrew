@@ -46,10 +46,10 @@ export function AgentProfilePopover({
       <PopoverTrigger asChild>{children}</PopoverTrigger>
       <PopoverContent
         align="start"
-        side="right"
-        sideOffset={8}
+        side="left"
+        sideOffset={16}
         className={cn(
-          "w-[340px] overflow-hidden rounded-xl border-0 p-0",
+          "z-[100] w-[340px] overflow-hidden rounded-xl border-0 p-0",
           "bg-[hsl(228,7%,14%)] text-[hsl(210,3%,90%)]",
           "shadow-xl"
         )}
