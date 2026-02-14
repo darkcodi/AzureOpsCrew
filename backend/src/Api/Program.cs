@@ -96,6 +96,7 @@ try
     app.MapTestEndpoints();
     app.MapAgentEndpoints();
     app.MapChatEndpoints();
+    app.MapAgentAgUi();
 
     app.MapAgUI();
 
