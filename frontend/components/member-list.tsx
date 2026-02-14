@@ -135,7 +135,7 @@ export function MemberList({
 
   return (
     <div
-      className="flex h-full w-[220px] flex-col shrink-0"
+      className="flex h-full w-[280px] flex-col shrink-0"
       style={{ backgroundColor: "hsl(228, 7%, 14%)" }}
     >
       {/* Header – same height, padding and border as left sidebar for alignment */}
