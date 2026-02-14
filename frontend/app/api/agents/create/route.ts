@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { Agent } from "@/lib/agents"
 
 // Backend API URL - configurable via BACKEND_API_URL env var
 // Defaults to localhost:5000 for local development
@@ -9,6 +10,23 @@ enum Provider {
   Local0 = 0,
   Local1 = 1,
   MicrosoftFoundry = 10,
+}
+
+// Backend response structure
+interface BackendAgent {
+  id: string
+  providerAgentId: string
+  clientId: number
+  info: {
+    name: string
+    prompt: string
+    model: string
+    description: string | null
+    avaliableTools: string[]
+  }
+  provider: number
+  color: string
+  dateCreated: string
 }
 
 export async function POST(req: NextRequest) {
@@ -55,8 +73,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const data = await response.json()
-    return NextResponse.json(data)
+    const backendAgent: BackendAgent = await response.json()
+
+    // Transform backend response to frontend Agent interface
+    const frontendAgent: Agent = {
+      id: backendAgent.id,
+      name: backendAgent.info.name,
+      avatar: backendAgent.info.name[0].toUpperCase(),
+      color: backendAgent.color,
+      systemPrompt: backendAgent.info.prompt,
+      model: backendAgent.info.model,
+    }
+
+    return NextResponse.json(frontendAgent)
   } catch (error) {
     console.error("Error creating agent:", error)
     return NextResponse.json(
