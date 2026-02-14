@@ -15,15 +15,6 @@ const availableModels = [
   { id: "xai/grok-3-mini-fast", name: "Grok 3 Mini Fast" },
 ]
 
-const availableMCPs = [
-  { id: "web-search", name: "Web Search" },
-  { id: "code-interpreter", name: "Code Interpreter" },
-  { id: "file-manager", name: "File Manager" },
-  { id: "database", name: "Database" },
-  { id: "image-gen", name: "Image Generation" },
-  { id: "browser", name: "Browser" },
-]
-
 interface ManageAgentsDialogProps {
   allAgents: Agent[]
   onClose?: () => void
@@ -57,7 +48,6 @@ export function ManageAgentsDialog({
   const [name, setName] = useState("")
   const [model, setModel] = useState(availableModels[0].id)
   const [prompt, setPrompt] = useState("")
-  const [selectedMCPs, setSelectedMCPs] = useState<string[]>([])
   const [color, setColor] = useState(agentColors[0])
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -67,7 +57,6 @@ export function ManageAgentsDialog({
     setName("")
     setModel(availableModels[0].id)
     setPrompt("")
-    setSelectedMCPs([])
     setColor(agentColors[allAgents.length % agentColors.length])
     setSaveError(null)
     setView("create")
@@ -78,7 +67,6 @@ export function ManageAgentsDialog({
     setName(agent.name)
     setModel(agent.model)
     setPrompt(agent.systemPrompt)
-    setSelectedMCPs(agent.mcpIds ?? [])
     setColor(agent.color)
     setSaveError(null)
     setView("edit")
@@ -102,7 +90,6 @@ export function ManageAgentsDialog({
             model,
             systemPrompt: prompt.trim() || `You are ${trimmed}, a helpful AI assistant.`,
             color,
-            mcpIds: selectedMCPs,
           }),
         })
 
@@ -123,7 +110,6 @@ export function ManageAgentsDialog({
           color,
           systemPrompt: prompt.trim() || `You are ${trimmed}, a helpful AI assistant.`,
           model,
-          mcpIds: selectedMCPs,
         })
       }
       setView("list")
@@ -132,12 +118,6 @@ export function ManageAgentsDialog({
     } finally {
       setIsSaving(false)
     }
-  }
-
-  const toggleMCP = (mcpId: string) => {
-    setSelectedMCPs((prev) =>
-      prev.includes(mcpId) ? prev.filter((id) => id !== mcpId) : [...prev, mcpId]
-    )
   }
 
   const content = (
@@ -344,40 +324,6 @@ export function ManageAgentsDialog({
                     border: "1px solid hsl(228, 6%, 30%)",
                   }}
                 />
-              </div>
-
-              {/* MCP Connections */}
-              <div className="flex flex-col gap-1.5">
-                <span
-                  className="text-xs font-bold uppercase tracking-wider"
-                  style={{ color: "hsl(214, 5%, 55%)" }}
-                >
-                  Connected MCPs
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {availableMCPs.map((mcp) => {
-                    const isSelected = selectedMCPs.includes(mcp.id)
-                    return (
-                      <button
-                        key={mcp.id}
-                        type="button"
-                        onClick={() => toggleMCP(mcp.id)}
-                        className="rounded-full px-3 py-1.5 text-xs font-medium transition-all"
-                        style={{
-                          backgroundColor: isSelected
-                            ? "hsl(235, 86%, 65%)"
-                            : "hsl(228, 7%, 14%)",
-                          color: isSelected ? "#fff" : "hsl(210, 3%, 80%)",
-                          border: isSelected
-                            ? "1px solid hsl(235, 86%, 65%)"
-                            : "1px solid hsl(228, 6%, 30%)",
-                        }}
-                      >
-                        {mcp.name}
-                      </button>
-                    )
-                  })}
-                </div>
               </div>
 
               {/* Save button */}

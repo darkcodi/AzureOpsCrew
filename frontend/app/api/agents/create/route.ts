@@ -14,7 +14,7 @@ enum Provider {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { name, model, systemPrompt, color, mcpIds } = body
+    const { name, model, systemPrompt, color } = body
 
     // Validate required fields
     if (!name?.trim()) {
