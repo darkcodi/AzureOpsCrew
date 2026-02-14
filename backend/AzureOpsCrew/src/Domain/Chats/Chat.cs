@@ -1,4 +1,6 @@
-﻿namespace AzureOpsCrew.Domain.Chats
+﻿#pragma warning disable CS8618
+
+namespace AzureOpsCrew.Domain.Chats
 {
     public class Chat
     {

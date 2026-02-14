@@ -1,4 +1,6 @@
-﻿namespace AzureOpsCrew.Domain.Agents
+﻿#pragma warning disable CS8618
+
+namespace AzureOpsCrew.Domain.Agents
 {
     public class Agent
     {
