@@ -3,6 +3,8 @@ using Microsoft.Agents.AI;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+using Serilog;
 
 namespace AzureOpsCrew.Api.Extensions;
 
@@ -37,6 +39,8 @@ public static class EndpointRouteBuilderExtensions
                 return Results.BadRequest();
             }
 
+            Log.Information("Received AG-UI event for agent {AgentName} with threadId {ThreadId} and runId {RunId}", agentName, input.ThreadId, input.RunId);
+            Log.Information("Input: {Input}", JsonConvert.SerializeObject(input));
             var jsonOptions = context.RequestServices.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>();
             var jsonSerializerOptions = jsonOptions.Value.SerializerOptions;
 
