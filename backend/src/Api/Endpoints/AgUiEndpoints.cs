@@ -1,4 +1,5 @@
 using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
+using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.Agents.AI;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ using Newtonsoft.Json;
 using OpenAI;
 using Serilog;
 
-namespace AzureOpsCrew.Api.Extensions;
+namespace AzureOpsCrew.Api.Endpoints;
 
 public static class AgentAgUiEndpoints
 {
@@ -19,7 +20,7 @@ public static class AgentAgUiEndpoints
             "use them proactively to present information visually instead of plain text. " +
             "For example, show pipeline stages as a visual card, display work items in a list, or present metrics in a dashboard-style card.";
 
-        app.MapPost("agent/{agentId}/agui/", async ([FromRoute] Guid agentId, [FromBody] RunAgentInput? input, OpenAIClient openIdClient, AzureOpsCrewContext dbContext, HttpContext context, CancellationToken cancellationToken) =>
+        app.MapPost("/api/agents/{id}/agui", async ([FromRoute(Name = "id")] Guid agentId, [FromBody] RunAgentInput? input, OpenAIClient openIdClient, AzureOpsCrewContext dbContext, HttpContext context, CancellationToken cancellationToken) =>
         {
             if (input is null)
             {
@@ -51,12 +52,12 @@ public static class AgentAgUiEndpoints
                 }
             };
 
-            //Find Agent
+            // Find Agent
             var agent = dbContext.Set<Domain.Agents.Agent>().SingleOrDefault(a => a.Id == agentId);
             if (agent is null)
                 return Results.BadRequest($"Unknown agent with id: {agentId}");
 
-            //Create Ai Agent
+            // Create Ai Agent
             var chatClient = openIdClient.GetChatClient(agent.Info.Model).AsIChatClient();
 
             var aiAgent = chatClient.AsAIAgent(
@@ -79,6 +80,6 @@ public static class AgentAgUiEndpoints
             var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
             return new AGUIServerSentEventsResult(events, sseLogger, jsonSerializerOptions);
         })
-        .WithTags("AgentAgUi"); ;
+        .WithTags("Agents"); ;
     }
 }

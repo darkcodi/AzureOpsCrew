@@ -1,7 +1,6 @@
 using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
-using AzureOpsCrew.Domain.Agents;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Newtonsoft.Json;
@@ -97,8 +96,6 @@ try
     app.MapAgentEndpoints();
     app.MapChatEndpoints();
     app.MapAgentAgUi();
-
-    app.MapAgUI();
 
     await app.Services.RunDbSetup(builder.Configuration);
 
