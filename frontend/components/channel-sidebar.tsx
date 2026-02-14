@@ -10,7 +10,7 @@ interface ChannelSidebarProps {
   rooms: Room[]
   activeRoomId: string
   onRoomSelect: (roomId: string) => void
-  onCreateRoom: (name: string) => void
+  onCreateRoom: (name: string) => void | Promise<void>
 }
 
 export function ChannelSidebar({
@@ -56,7 +56,13 @@ export function ChannelSidebar({
 
       {/* Room list */}
       <ScrollArea className="flex-1 px-2 pt-3">
-        {rooms.map((room) => {
+        {[...rooms]
+          .sort((a, b) => {
+            const dateA = a.dateCreated ? new Date(a.dateCreated).getTime() : 0
+            const dateB = b.dateCreated ? new Date(b.dateCreated).getTime() : 0
+            return dateA - dateB
+          })
+          .map((room) => {
           const isActive = activeRoomId === room.id
           return (
             <button
@@ -93,7 +99,8 @@ export function ChannelSidebar({
               <span className="truncate">{room.name}</span>
             </button>
           )
-        })}
+        })
+        }
 
         {/* Create room */}
         <div className="mt-4 px-1">

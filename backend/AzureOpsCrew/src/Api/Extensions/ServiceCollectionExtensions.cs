@@ -1,4 +1,4 @@
-﻿using Azure.AI.OpenAI;
+using Azure.AI.OpenAI;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.AgentManagements;
 using AzureOpsCrew.Infrastructure.Ai.AgentManagements;
@@ -9,85 +9,123 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using System.ClientModel;
 
-namespace AzureOpsCrew.Api.Extensions
+namespace AzureOpsCrew.Api.Extensions;
+
+public static class ServiceCollectionExtensions
 {
-    public static class ServiceCollectionExtensions
+    public static IServiceCollection AddCosmosSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
     {
-        public static IServiceCollection AddCosmosSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
+        services.Configure<CosmosSettings>(configuration.GetSection(configurationKey));
+        services.AddOptions<CosmosSettings>()
+            .Validate(settings =>
+            {
+                return !string.IsNullOrEmpty(settings.AccountEndpoint) &&
+                       !string.IsNullOrEmpty(settings.AccountKey) &&
+                       !string.IsNullOrEmpty(settings.DatabaseName);
+            }, "Cosmos DB settings are not properly configured. Please double-check the configuration.")
+            .ValidateOnStart();
+        return services;
+    }
+
+    public static IServiceCollection AddAiSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
+    {
+        services.Configure<AiSettings>(configuration.GetSection(configurationKey));
+        services.AddOptions<AiSettings>()
+            .Validate(settings => settings.IsValid(), 
+                "AI settings are not properly configured. Please double-check the configuration.")
+            .ValidateOnStart();
+        return services;
+    }
+
+    public static IServiceCollection AddSQLiteSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
+    {
+        services.Configure<SQLiteSettings>(configuration.GetSection(configurationKey));
+        services.AddOptions<SQLiteSettings>()
+            .Validate(settings =>
+            {
+                return !string.IsNullOrEmpty(settings.DataSource);
+            }, "SQLite settings are not properly configured. Please double-check the configuration.")
+            .ValidateOnStart();
+        return services;
+    }
+
+    public static void AddEFCoreCosmosDb(this IServiceCollection services)
+    {
+        services.AddDbContext<AzureOpsCrewContext>((sp, options) =>
         {
-            services.Configure<CosmosSettings>(configuration.GetSection(configurationKey));
-            services.AddOptions<CosmosSettings>()
-                .Validate(settings =>
+            var cosmosSettings = sp.GetRequiredService<IOptions<CosmosSettings>>().Value;
+            options.UseCosmos(
+                cosmosSettings.AccountEndpoint!,
+                cosmosSettings.AccountKey!,
+                cosmosSettings.DatabaseName!,
+                cosmosOptions =>
                 {
-                    return !string.IsNullOrEmpty(settings.AccountEndpoint) &&
-                           !string.IsNullOrEmpty(settings.AccountKey) &&
-                           !string.IsNullOrEmpty(settings.DatabaseName);
-                }, "Cosmos DB settings are not properly configured. Please double-check the configuration.")
-                .ValidateOnStart();
-            return services;
-        }
-
-        public static IServiceCollection AddAiSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
-        {
-            services.Configure<AiSettings>(configuration.GetSection(configurationKey));
-            services.AddOptions<AiSettings>()
-                .Validate(settings => settings.IsValid(), 
-                    "AI settings are not properly configured. Please double-check the configuration.")
-                .ValidateOnStart();
-            return services;
-        }
-
-        public static void AddEFCoreCosmosDb(this IServiceCollection services)
-        {
-            services.AddDbContext<AzureOpsCrewContext>((sp, options) =>
-            {
-                var cosmosSettings = sp.GetRequiredService<IOptions<CosmosSettings>>().Value;
-                options.UseCosmos(
-                    cosmosSettings.AccountEndpoint!,
-                    cosmosSettings.AccountKey!,
-                    cosmosSettings.DatabaseName!,
-                    cosmosOptions =>
+                    if (cosmosSettings.DisableSslValidation)
                     {
-                        if (cosmosSettings.DisableSslValidation)
+                        cosmosOptions.HttpClientFactory(() =>
                         {
-                            cosmosOptions.HttpClientFactory(() =>
-                            {
-                                var handler = new HttpClientHandler();
-                                handler.ServerCertificateCustomValidationCallback =
-                                    HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-                                return new HttpClient(handler);
-                            });
-                        }
+                            var handler = new HttpClientHandler();
+                            handler.ServerCertificateCustomValidationCallback =
+                                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                            return new HttpClient(handler);
+                        });
+                    }
 
-                        if (Enum.TryParse<Microsoft.Azure.Cosmos.ConnectionMode>(cosmosSettings.ConnectionMode, true, out var mode))
-                        {
-                            cosmosOptions.ConnectionMode(mode);
-                        }
-                    });
-            });
-        }
+                    if (Enum.TryParse<Microsoft.Azure.Cosmos.ConnectionMode>(cosmosSettings.ConnectionMode, true, out var mode))
+                    {
+                        cosmosOptions.ConnectionMode(mode);
+                    }
+                });
+        });
+    }
 
-        public static void AddIChatClient(this IServiceCollection services)
+    public static void AddEFCoreSqliteDb(this IServiceCollection services)
+    {
+        services.AddDbContext<AzureOpsCrewContext>((sp, options) =>
         {
-            services.AddSingleton<IChatClient>(sp =>
-            {
-                var aiSettings = sp.GetRequiredService<IOptions<AiSettings>>().Value;
-                var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
-                var chatClient = new AzureOpenAIClient(
-                        new Uri(aiSettings.Endpoint!),
-                        new ApiKeyCredential(aiSettings.ApiKey!),
-                        options)
-                    .GetChatClient(aiSettings.Model!);
-                return chatClient.AsIChatClient();
-            });
+            var sqliteSettings = sp.GetRequiredService<IOptions<SQLiteSettings>>().Value;
+            options.UseSqlite(sqliteSettings.DataSource!);
+        });
+    }
+
+    public static void AddDatabase(this IServiceCollection services, IConfiguration configuration)
+    {
+        var provider = configuration["DatabaseProvider"];
+
+        if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSQLiteSettings(configuration, "Sqlite");
+            services.AddEFCoreSqliteDb();
+        }
+        if (string.Equals(provider, "CosmosDb", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddCosmosSettings(configuration, "CosmosDb");
+            services.AddEFCoreCosmosDb();
         }
 
-        public static void AddAgentManagements(this IServiceCollection services)
+        throw new InvalidOperationException("Db provider is not configured properly.");
+    }
+
+    public static void AddIChatClient(this IServiceCollection services)
+    {
+        services.AddSingleton<IChatClient>(sp =>
         {
-            services.AddTransient<IAgentFactory, AgentFactory>()
-                .AddTransient<Local0AgentFactory>()
-                .AddTransient<Local1AgentFactory>()
-                .AddTransient<MicrosoftFoundryAgentFactory>();
-        }
+            var aiSettings = sp.GetRequiredService<IOptions<AiSettings>>().Value;
+            var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
+            var chatClient = new AzureOpenAIClient(
+                    new Uri(aiSettings.Endpoint!),
+                    new ApiKeyCredential(aiSettings.ApiKey!),
+                    options)
+                .GetChatClient(aiSettings.Model!);
+            return chatClient.AsIChatClient();
+        });
+    }
+
+    public static void AddAgentManagements(this IServiceCollection services)
+    {
+        services.AddTransient<IAgentFactory, AgentFactory>()
+            .AddTransient<Local0AgentFactory>()
+            .AddTransient<Local1AgentFactory>()
+            .AddTransient<MicrosoftFoundryAgentFactory>();
     }
 }

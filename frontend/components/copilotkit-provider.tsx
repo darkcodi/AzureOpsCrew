@@ -1,16 +1,15 @@
 "use client"
 
 import { CopilotKit } from "@copilotkit/react-core"
-import { CopilotPopup } from "@copilotkit/react-ui"
 import "@copilotkit/react-ui/styles.css"
 import type { ReactNode } from "react"
+import { useAgentRuntime } from "@/contexts/agent-runtime-context"
 
-const runtimeUrl =
-  typeof window !== "undefined"
-    ? `${window.location.origin}/api/copilotkit`
+function CopilotKitInner({ children }: { children: ReactNode }) {
+  const { agentId } = useAgentRuntime()
+  const runtimeUrl = agentId
+    ? `/api/copilotkit/${agentId}`
     : "/api/copilotkit"
-
-export function CopilotKitProvider({ children }: { children: ReactNode }) {
   return (
     <CopilotKit
       runtimeUrl={runtimeUrl}
@@ -18,13 +17,10 @@ export function CopilotKitProvider({ children }: { children: ReactNode }) {
       showDevConsole={process.env.NODE_ENV === "development"}
     >
       {children}
-      <CopilotPopup
-        instructions="You are a helpful AI assistant for the AzureOpsCrew team."
-        labels={{
-          title: "AzureOpsCrew Assistant",
-          initial: "Ask me anything...",
-        }}
-      />
     </CopilotKit>
   )
+}
+
+export function CopilotKitProvider({ children }: { children: ReactNode }) {
+  return <CopilotKitInner>{children}</CopilotKitInner>
 }

@@ -15,21 +15,14 @@ const availableModels = [
   { id: "xai/grok-3-mini-fast", name: "Grok 3 Mini Fast" },
 ]
 
-const availableMCPs = [
-  { id: "web-search", name: "Web Search" },
-  { id: "code-interpreter", name: "Code Interpreter" },
-  { id: "file-manager", name: "File Manager" },
-  { id: "database", name: "Database" },
-  { id: "image-gen", name: "Image Generation" },
-  { id: "browser", name: "Browser" },
-]
-
 interface ManageAgentsDialogProps {
   allAgents: Agent[]
-  onClose: () => void
-  onAddAgent: (agent: Agent) => void
+  onClose?: () => void
+  onAddAgent: (agent: Agent) => void | Promise<void>
   onUpdateAgent: (agent: Agent) => void
   onDeleteAgent: (agentId: string) => void
+  /** When true, render as full-page tab content (no overlay, no close button). */
+  embedded?: boolean
 }
 
 type View = "list" | "edit" | "create"
@@ -46,6 +39,7 @@ export function ManageAgentsDialog({
   onAddAgent,
   onUpdateAgent,
   onDeleteAgent,
+  embedded = false,
 }: ManageAgentsDialogProps) {
   const [view, setView] = useState<View>("list")
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
@@ -54,16 +48,17 @@ export function ManageAgentsDialog({
   const [name, setName] = useState("")
   const [model, setModel] = useState(availableModels[0].id)
   const [prompt, setPrompt] = useState("")
-  const [selectedMCPs, setSelectedMCPs] = useState<string[]>([])
   const [color, setColor] = useState(agentColors[0])
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const openCreate = () => {
     setEditingAgent(null)
     setName("")
     setModel(availableModels[0].id)
     setPrompt("")
-    setSelectedMCPs([])
     setColor(agentColors[allAgents.length % agentColors.length])
+    setSaveError(null)
     setView("create")
   }
 
@@ -72,80 +67,84 @@ export function ManageAgentsDialog({
     setName(agent.name)
     setModel(agent.model)
     setPrompt(agent.systemPrompt)
-    setSelectedMCPs(agent.mcpIds ?? [])
     setColor(agent.color)
+    setSaveError(null)
     setView("edit")
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmed = name.trim()
     if (!trimmed) return
 
-    if (view === "create") {
-      const id = trimmed.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now()
-      onAddAgent({
-        id,
-        name: trimmed,
-        avatar: trimmed[0].toUpperCase(),
-        color,
-        systemPrompt: prompt.trim() || "You are " + trimmed + ", a helpful AI assistant.",
-        model,
-        mcpIds: selectedMCPs,
-      })
-    } else if (editingAgent) {
-      onUpdateAgent({
-        ...editingAgent,
-        name: trimmed,
-        avatar: trimmed[0].toUpperCase(),
-        color,
-        systemPrompt: prompt.trim() || "You are " + trimmed + ", a helpful AI assistant.",
-        model,
-        mcpIds: selectedMCPs,
-      })
+    setIsSaving(true)
+    setSaveError(null)
+
+    try {
+      if (view === "create") {
+        // Call backend API to create agent
+        const response = await fetch("/api/agents/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: trimmed,
+            model,
+            systemPrompt: prompt.trim() || `You are ${trimmed}, a helpful AI assistant.`,
+            color,
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to create agent")
+        }
+
+        const newAgent = await response.json()
+        await onAddAgent(newAgent)
+      } else if (editingAgent) {
+        // For edit, still use local update for now
+        // TODO: Implement backend update endpoint
+        onUpdateAgent({
+          ...editingAgent,
+          name: trimmed,
+          avatar: trimmed[0].toUpperCase(),
+          color,
+          systemPrompt: prompt.trim() || `You are ${trimmed}, a helpful AI assistant.`,
+          model,
+        })
+      }
+      setView("list")
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Failed to save agent")
+    } finally {
+      setIsSaving(false)
     }
-    setView("list")
   }
 
-  const toggleMCP = (mcpId: string) => {
-    setSelectedMCPs((prev) =>
-      prev.includes(mcpId) ? prev.filter((id) => id !== mcpId) : [...prev, mcpId]
-    )
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  const content = (
+    <div
+      className={embedded ? "flex min-h-0 flex-1 flex-col overflow-hidden" : "relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-lg"}
+      style={{ backgroundColor: embedded ? "transparent" : "hsl(228, 6%, 20%)", ...(embedded ? {} : { maxHeight: "85vh" }) }}
+    >
+      {/* Header */}
       <div
-        className="absolute inset-0"
-        style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
-        onClick={onClose}
-        onKeyDown={(e) => { if (e.key === "Escape") onClose() }}
-        role="button"
-        tabIndex={0}
-        aria-label="Close dialog"
-      />
-      <div
-        className="relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-lg"
-        style={{ backgroundColor: "hsl(228, 6%, 20%)", maxHeight: "85vh" }}
+        className="flex shrink-0 items-center gap-3 px-5 py-4"
+        style={{ borderBottom: "1px solid hsl(228, 6%, 28%)" }}
       >
-        {/* Header */}
-        <div
-          className="flex items-center gap-3 px-5 py-4"
-          style={{ borderBottom: "1px solid hsl(228, 6%, 28%)" }}
-        >
-          {view !== "list" && (
-            <button
-              type="button"
-              onClick={() => setView("list")}
-              className="transition-opacity hover:opacity-80"
-              style={{ color: "hsl(214, 5%, 55%)" }}
-              aria-label="Back to list"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-          )}
-          <h2 className="flex-1 text-lg font-semibold" style={{ color: "hsl(0, 0%, 100%)" }}>
-            {view === "list" ? "All Agents" : view === "create" ? "New Agent" : "Edit Agent"}
-          </h2>
+        {view !== "list" && (
+          <button
+            type="button"
+            onClick={() => setView("list")}
+            className="transition-opacity hover:opacity-80"
+            style={{ color: "hsl(214, 5%, 55%)" }}
+            aria-label="Back to list"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        )}
+        <h2 className="flex-1 text-lg font-semibold" style={{ color: "hsl(0, 0%, 100%)" }}>
+          {view === "list" ? "All Agents" : view === "create" ? "New Agent" : "Edit Agent"}
+        </h2>
+        {!embedded && onClose && (
           <button
             type="button"
             onClick={onClose}
@@ -155,12 +154,13 @@ export function ManageAgentsDialog({
           >
             <X className="h-5 w-5" />
           </button>
-        </div>
+        )}
+      </div>
 
         {/* Body */}
         {view === "list" ? (
           <>
-            <ScrollArea className="flex-1 px-5 py-3" style={{ maxHeight: "60vh" }}>
+            <ScrollArea className="flex-1 min-h-0 px-5 py-3" style={embedded ? { flex: 1, minHeight: 0 } : { maxHeight: "60vh" }}>
               {allAgents.map((agent) => (
                 <div
                   key={agent.id}
@@ -209,7 +209,7 @@ export function ManageAgentsDialog({
                 </div>
               ))}
             </ScrollArea>
-            <div className="px-5 pb-4 pt-2">
+            <div className="shrink-0 px-5 pb-4 pt-2">
               <button
                 type="button"
                 onClick={openCreate}
@@ -222,7 +222,7 @@ export function ManageAgentsDialog({
             </div>
           </>
         ) : (
-          <ScrollArea className="flex-1" style={{ maxHeight: "70vh" }}>
+          <ScrollArea className="flex-1 min-h-0" style={embedded ? { flex: 1, minHeight: 0 } : { maxHeight: "70vh" }}>
             <div className="flex flex-col gap-4 px-5 py-4">
               {/* Name */}
               <div className="flex flex-col gap-1.5">
@@ -326,55 +326,44 @@ export function ManageAgentsDialog({
                 />
               </div>
 
-              {/* MCP Connections */}
-              <div className="flex flex-col gap-1.5">
-                <span
-                  className="text-xs font-bold uppercase tracking-wider"
-                  style={{ color: "hsl(214, 5%, 55%)" }}
-                >
-                  Connected MCPs
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {availableMCPs.map((mcp) => {
-                    const isSelected = selectedMCPs.includes(mcp.id)
-                    return (
-                      <button
-                        key={mcp.id}
-                        type="button"
-                        onClick={() => toggleMCP(mcp.id)}
-                        className="rounded-full px-3 py-1.5 text-xs font-medium transition-all"
-                        style={{
-                          backgroundColor: isSelected
-                            ? "hsl(235, 86%, 65%)"
-                            : "hsl(228, 7%, 14%)",
-                          color: isSelected ? "#fff" : "hsl(210, 3%, 80%)",
-                          border: isSelected
-                            ? "1px solid hsl(235, 86%, 65%)"
-                            : "1px solid hsl(228, 6%, 30%)",
-                        }}
-                      >
-                        {mcp.name}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
               {/* Save button */}
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={!name.trim()}
+                disabled={!name.trim() || isSaving}
                 className="flex items-center justify-center gap-2 rounded-md py-2.5 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
                 style={{ backgroundColor: "hsl(235, 86%, 65%)", color: "#fff" }}
               >
                 <Save className="h-4 w-4" />
-                <span>{view === "create" ? "Create Agent" : "Save Changes"}</span>
+                <span>{isSaving ? "Saving..." : view === "create" ? "Create Agent" : "Save Changes"}</span>
               </button>
+
+              {/* Error message */}
+              {saveError && (
+                <div className="text-xs text-red-400 text-center">{saveError}</div>
+              )}
             </div>
           </ScrollArea>
         )}
       </div>
+  )
+
+  if (embedded) {
+    return content
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0"
+        style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+        onClick={onClose}
+        onKeyDown={(e) => { if (e.key === "Escape") onClose?.() }}
+        role="button"
+        tabIndex={0}
+        aria-label="Close dialog"
+      />
+      {content}
     </div>
   )
 }

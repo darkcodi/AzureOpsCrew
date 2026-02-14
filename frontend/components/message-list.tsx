@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import type { Agent, ChatMessage } from "@/lib/agents"
 import ReactMarkdown from "react-markdown"
+import { StartConversationEmpty } from "@/components/start-conversation-empty"
 
 function formatTime(date: Date) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -31,29 +32,10 @@ export function MessageList({
 
   if (messages.length === 0 && !streamingAgentId) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
-        <div
-          className="flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold"
-          style={{ backgroundColor: "hsl(235, 86%, 65%)", color: "#fff" }}
-        >
-          #
-        </div>
-        <div className="text-center">
-          <h2
-            className="text-xl font-bold"
-            style={{ color: "hsl(0, 0%, 100%)" }}
-          >
-            Start a conversation
-          </h2>
-          <p
-            className="mt-1 text-sm"
-            style={{ color: "hsl(214, 5%, 55%)" }}
-          >
-            Send a message and all active agents in this room will respond.
-          </p>
-        </div>
+      <>
+        <StartConversationEmpty />
         <div ref={bottomRef} />
-      </div>
+      </>
     )
   }
 

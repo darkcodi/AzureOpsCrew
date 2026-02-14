@@ -1,24 +1,98 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { defaultAgents, defaultRooms, type Agent, type Room } from "@/lib/agents"
-import { IconSidebar } from "@/components/icon-sidebar"
+import { IconSidebar, type ViewMode } from "@/components/icon-sidebar"
 import { ChannelSidebar } from "@/components/channel-sidebar"
 import { ChatArea } from "@/components/chat-area"
+import { DirectMessagesView } from "@/components/direct-messages-view"
+import { ManageAgentsDialog } from "@/components/manage-agents-dialog"
+import { AllAgentsSidebar } from "@/components/all-agents-sidebar"
 
 export default function Home() {
+  const [viewMode, setViewMode] = useState<ViewMode>("channels")
   const [agents, setAgents] = useState<Agent[]>(defaultAgents)
+  const [isLoadingAgents, setIsLoadingAgents] = useState(true)
   const [rooms, setRooms] = useState<Room[]>(defaultRooms)
-  const [activeRoomId, setActiveRoomId] = useState(defaultRooms[0].id)
-  const [showAgentManager, setShowAgentManager] = useState(false)
-
+  const [isLoadingRooms, setIsLoadingRooms] = useState(true)
+  const [activeRoomId, setActiveRoomId] = useState(() => defaultRooms[0]?.id ?? "")
+  const [activeDMId, setActiveDMId] = useState<string | null>(
+    () => defaultAgents[0]?.id ?? null
+  )
+  const [pendingDMMessage, setPendingDMMessage] = useState<string | null>(null)
   const activeRoom = rooms.find((r) => r.id === activeRoomId) ?? rooms[0]
 
-  const handleCreateRoom = useCallback((name: string) => {
-    const id = name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now()
-    const newRoom: Room = { id, name, agentIds: [] }
-    setRooms((prev) => [...prev, newRoom])
-    setActiveRoomId(id)
+  // Load agents from backend on mount
+  useEffect(() => {
+    async function loadAgents() {
+      try {
+        setIsLoadingAgents(true)
+        const response = await fetch("/api/agents?clientId=1")
+        if (response.ok) {
+          const backendAgents: Agent[] = await response.json()
+          if (backendAgents.length > 0) {
+            setAgents(backendAgents)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load agents from backend:", error)
+      } finally {
+        setIsLoadingAgents(false)
+      }
+    }
+    loadAgents()
+  }, [])
+
+  // Load rooms from backend on mount
+  useEffect(() => {
+    async function loadRooms() {
+      try {
+        setIsLoadingRooms(true)
+        const response = await fetch("/api/rooms?clientId=1")
+        if (response.ok) {
+          const backendRooms: Room[] = await response.json()
+          if (backendRooms.length > 0) {
+            setRooms(backendRooms)
+            // Set active room if not set
+            setActiveRoomId((prev) => prev || backendRooms[0].id)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load rooms from backend:", error)
+      } finally {
+        setIsLoadingRooms(false)
+      }
+    }
+    loadRooms()
+  }, [])
+
+  const handleCreateRoom = useCallback(async (name: string) => {
+    try {
+      const response = await fetch("/api/rooms/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, agentIds: [] }),
+      })
+
+      if (response.ok) {
+        const newRoom: Room = await response.json()
+        setRooms((prev) => [...prev, newRoom])
+        setActiveRoomId(newRoom.id)
+      } else {
+        // Fallback to local creation
+        const id = crypto.randomUUID()
+        const newRoom: Room = { id, name, agentIds: [] }
+        setRooms((prev) => [...prev, newRoom])
+        setActiveRoomId(id)
+      }
+    } catch (error) {
+      console.error("Failed to create room:", error)
+      // Fallback to local creation
+      const id = crypto.randomUUID()
+      const newRoom: Room = { id, name, agentIds: [] }
+      setRooms((prev) => [...prev, newRoom])
+      setActiveRoomId(id)
+    }
   }, [])
 
   const handleUpdateRoom = useCallback((updatedRoom: Room) => {
@@ -27,8 +101,21 @@ export default function Home() {
     )
   }, [])
 
-  const handleAddAgent = useCallback((agent: Agent) => {
-    setAgents((prev) => [...prev, agent])
+  const handleAddAgent = useCallback(async (agent: Agent) => {
+    // Reload agents from backend after creation to ensure consistency
+    try {
+      const response = await fetch("/api/agents?clientId=1")
+      if (response.ok) {
+        const backendAgents: Agent[] = await response.json()
+        if (backendAgents.length > 0) {
+          setAgents(backendAgents)
+        }
+      }
+    } catch (error) {
+      console.error("Failed to reload agents from backend:", error)
+      // Fallback to local update
+      setAgents((prev) => [...prev, agent])
+    }
   }, [])
 
   const handleUpdateAgent = useCallback((agent: Agent) => {
@@ -47,28 +134,65 @@ export default function Home() {
     )
   }, [])
 
+  const handleOpenAgentInDM = useCallback((agentId: string, message?: string) => {
+    setViewMode("direct-messages")
+    setActiveDMId(agentId)
+    setPendingDMMessage(message ?? null)
+  }, [])
+
   return (
     <main className="flex h-dvh w-full">
-      <IconSidebar onOpenAgentManager={() => setShowAgentManager(true)} />
-
-      <ChannelSidebar
-        rooms={rooms}
-        activeRoomId={activeRoomId}
-        onRoomSelect={setActiveRoomId}
-        onCreateRoom={handleCreateRoom}
+      <IconSidebar
+        viewMode={viewMode}
+        onViewChange={setViewMode}
       />
 
-      <ChatArea
-        key={activeRoom.id}
-        room={activeRoom}
-        allAgents={agents}
-        onUpdateRoom={handleUpdateRoom}
-        onAddAgent={handleAddAgent}
-        onUpdateAgent={handleUpdateAgent}
-        onDeleteAgent={handleDeleteAgent}
-        showAgentManager={showAgentManager}
-        onCloseAgentManager={() => setShowAgentManager(false)}
-      />
+      {viewMode === "channels" && (
+        <>
+          <ChannelSidebar
+            rooms={rooms}
+            activeRoomId={activeRoomId}
+            onRoomSelect={setActiveRoomId}
+            onCreateRoom={handleCreateRoom}
+          />
+          <ChatArea
+            key={activeRoom.id}
+            room={activeRoom}
+            allAgents={agents}
+            onUpdateRoom={handleUpdateRoom}
+            onAddAgent={handleAddAgent}
+            onUpdateAgent={handleUpdateAgent}
+            onDeleteAgent={handleDeleteAgent}
+            onOpenInDM={handleOpenAgentInDM}
+          />
+        </>
+      )}
+      {viewMode === "direct-messages" && (
+        <DirectMessagesView
+          activeDMId={activeDMId}
+          setActiveDMId={setActiveDMId}
+          agents={agents}
+          pendingDMMessage={pendingDMMessage}
+          onClearPendingDMMessage={() => setPendingDMMessage(null)}
+        />
+      )}
+      {viewMode === "all-agents" && (
+        <>
+          <AllAgentsSidebar />
+          <div
+            className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+            style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
+          >
+            <ManageAgentsDialog
+              allAgents={agents}
+              onAddAgent={handleAddAgent}
+              onUpdateAgent={handleUpdateAgent}
+              onDeleteAgent={handleDeleteAgent}
+              embedded
+            />
+          </div>
+        </>
+      )}
     </main>
   )
 }

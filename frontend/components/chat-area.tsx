@@ -6,7 +6,6 @@ import { ChatHeader } from "@/components/chat-header"
 import { MessageList } from "@/components/message-list"
 import { MessageInput } from "@/components/message-input"
 import { MemberList } from "@/components/member-list"
-import { ManageAgentsDialog } from "@/components/manage-agents-dialog"
 
 interface ChatAreaProps {
   room: Room
@@ -15,8 +14,7 @@ interface ChatAreaProps {
   onAddAgent: (agent: Agent) => void
   onUpdateAgent: (agent: Agent) => void
   onDeleteAgent: (agentId: string) => void
-  showAgentManager: boolean
-  onCloseAgentManager: () => void
+  onOpenInDM?: (agentId: string, message?: string) => void
 }
 
 export function ChatArea({
@@ -26,8 +24,7 @@ export function ChatArea({
   onAddAgent,
   onUpdateAgent,
   onDeleteAgent,
-  showAgentManager,
-  onCloseAgentManager,
+  onOpenInDM,
 }: ChatAreaProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [streamingAgentId, setStreamingAgentId] = useState<string | null>(null)
@@ -210,16 +207,7 @@ export function ChatArea({
           activeAgentIds={room.agentIds}
           streamingAgentId={streamingAgentId}
           onToggleAgent={handleToggleAgent}
-        />
-      )}
-
-      {showAgentManager && (
-        <ManageAgentsDialog
-          allAgents={allAgents}
-          onClose={onCloseAgentManager}
-          onAddAgent={onAddAgent}
-          onUpdateAgent={onUpdateAgent}
-          onDeleteAgent={onDeleteAgent}
+          onOpenInDM={onOpenInDM}
         />
       )}
     </div>

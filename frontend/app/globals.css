@@ -97,3 +97,57 @@
   --copilot-kit-response-button-color: hsl(235, 86%, 65%);
   --copilot-kit-response-button-background-color: hsl(228, 6%, 18%);
 }
+
+/* Assistant message: readable text and distinct box (not same as user messages) */
+.direct-messages-area .copilotKitAssistantMessage,
+.direct-messages-area .copilotKitMessage.copilotKitAssistantMessage {
+  color: hsl(210, 3%, 92%) !important;
+  background: hsl(228, 12%, 18%) !important;
+  border: 1px solid hsl(228, 6%, 28%);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin: 0.25rem 0;
+  box-shadow: 0 1px 2px hsl(228, 6%, 10%);
+  width: fit-content;
+  max-width: 100%;
+  align-self: flex-start;
+}
+.direct-messages-area .copilotKitAssistantMessage *,
+.direct-messages-area .copilotKitMessage.copilotKitAssistantMessage * {
+  color: inherit !important;
+}
+.direct-messages-area .copilotKitAssistantMessage a {
+  color: hsl(235, 86%, 75%) !important;
+  text-decoration: underline;
+}
+
+/* Hide buttons under assistant/agent messages */
+.direct-messages-area .copilotKitAssistantMessage .copilotKitMessageControls,
+.direct-messages-area .copilotKitMessage.copilotKitAssistantMessage .copilotKitMessageControls {
+  display: none !important;
+}
+
+/* Hide CopilotKit "Powered by" branding (when default input is used elsewhere) */
+.direct-messages-area .copilotKitInputContainer .poweredByContainer,
+.direct-messages-area .poweredBy {
+  display: none !important;
+}
+
+/* Next.js dev tools portal: same place as CopilotKit web inspector (left sidebar, above Settings), on top */
+nextjs-portal {
+  position: fixed !important;
+  left: 2px !important;
+  bottom: 60px !important;
+  top: auto !important;
+  right: auto !important;
+  z-index: 2147483647 !important;
+}
+
+/* CopilotKit web inspector: inside left sidebar, just above Settings button (py-3 + gap-2 + 40px ≈ 60px from bottom) */
+cpk-web-inspector {
+  left: 2px !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: 60px !important;
+  transform: none !important;
+}

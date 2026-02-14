@@ -22,7 +22,8 @@ namespace AzureOpsCrew.Api.Endpoints
                     body.ClientId,
                     body.Info!,
                     body.Provider,
-                    providerAgentId
+                    providerAgentId,
+                    body.Color
                 );
 
                 await context.AddAsync(agent, cancellationToken);
@@ -37,7 +38,7 @@ namespace AzureOpsCrew.Api.Endpoints
             {
                 var agents = await context.Set<Agent>()
                     .Where(a => a.ClientId == clientId)
-                    .OrderByDescending(a => a.DateCreated)
+                    .OrderBy(a => a.DateCreated)
                     .ToListAsync(cancellationToken);
 
                 return Results.Ok(agents);
