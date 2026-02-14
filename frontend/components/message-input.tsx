@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, type KeyboardEvent } from "react"
-import { AlertCircle } from "lucide-react"
+import { ArrowUp } from "lucide-react"
 import type { InputProps } from "@copilotkit/react-ui"
 
 interface MessageInputProps {
@@ -69,11 +69,13 @@ export function MessageInput({
 
         <button
           type="button"
-          className="mb-0.5 shrink-0 transition-opacity hover:opacity-80"
+          onClick={handleSend}
+          disabled={disabled || !value.trim()}
+          className="mb-0.5 shrink-0 transition-opacity hover:opacity-80 disabled:opacity-40"
           style={{ color: "hsl(214, 5%, 55%)" }}
-          aria-label="Info"
+          aria-label="Send"
         >
-          <AlertCircle className="h-5 w-5" />
+          <ArrowUp className="h-5 w-5" />
         </button>
       </div>
     </div>
