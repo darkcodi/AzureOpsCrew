@@ -290,13 +290,9 @@ export function MemberList({
               </div>
             ) : (
               agentsNotInRoom.map((agent) => (
-                <button
+                <div
                   key={agent.id}
-                  type="button"
-                  className="mb-1 flex w-full items-center gap-3 rounded-md px-3 py-3 text-left transition-colors"
-                  onClick={() => {
-                    onToggleAgent(agent.id)
-                  }}
+                  className="mb-1 flex w-full items-center gap-3 rounded-md px-3 py-3 transition-colors"
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = "hsl(228, 6%, 26%)"
                   }}
@@ -315,7 +311,21 @@ export function MemberList({
                       {agent.name}
                     </span>
                   </div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onToggleAgent(agent.id)
+                    }}
+                    className="shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-90"
+                    style={{
+                      backgroundColor: "hsl(235, 86%, 65%)",
+                      color: "#fff",
+                    }}
+                  >
+                    Add
+                  </button>
+                </div>
               ))
             )}
           </ScrollArea>
