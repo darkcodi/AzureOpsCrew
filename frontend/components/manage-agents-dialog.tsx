@@ -18,7 +18,7 @@ const availableModels = [
 interface ManageAgentsDialogProps {
   allAgents: Agent[]
   onClose?: () => void
-  onAddAgent: (agent: Agent) => void
+  onAddAgent: (agent: Agent) => void | Promise<void>
   onUpdateAgent: (agent: Agent) => void
   onDeleteAgent: (agentId: string) => void
   /** When true, render as full-page tab content (no overlay, no close button). */
@@ -99,7 +99,7 @@ export function ManageAgentsDialog({
         }
 
         const newAgent = await response.json()
-        onAddAgent(newAgent)
+        await onAddAgent(newAgent)
       } else if (editingAgent) {
         // For edit, still use local update for now
         // TODO: Implement backend update endpoint
