@@ -1,6 +1,7 @@
 using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
+using AzureOpsCrew.Domain.Agents;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Newtonsoft.Json;
@@ -50,23 +51,34 @@ try
     // Log configuration settings at startup
     if (app.Environment.IsDevelopment())
     {
-        var provider = builder.Configuration["DatabaseProvider"];
         var aiSettings = app.Services.GetRequiredService<IOptions<AiSettings>>().Value;
+        Log.Information("AI Settings: {AiSettings}", JsonConvert.SerializeObject(aiSettings));
 
-        if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+        var provider = builder.Configuration["DatabaseProvider"];
+        switch (provider?.Trim().ToLowerInvariant())
         {
-            var sqliteSettings = app.Services.GetRequiredService<IOptions<SQLiteSettings>>().Value;
-            Log.Information("Database Provider: Sqlite");
-            Log.Information("SQLite Settings: {SqliteSettings}", JsonConvert.SerializeObject(sqliteSettings));
-        }
-        if (string.Equals(provider, "CosmosDb", StringComparison.OrdinalIgnoreCase))
-        {
-            var cosmosSettings = app.Services.GetRequiredService<IOptions<CosmosSettings>>().Value;
-            Log.Information("Database Provider: Cosmos");
-            Log.Information("Cosmos DB Settings: {CosmosSettings}", JsonConvert.SerializeObject(cosmosSettings));
-        }
+            case "sqlite":
+                {
+                    var sqliteSettings = app.Services.GetRequiredService<IOptions<SQLiteSettings>>().Value;
+                    Log.Information("Database Provider: Sqlite");
+                    Log.Information("SQLite Settings: {SqliteSettings}", JsonConvert.SerializeObject(sqliteSettings));
+                    break;
+                }
 
-        throw new InvalidOperationException("No one db is configured");
+            case "cosmosdb":
+                {
+                    var cosmosSettings = app.Services.GetRequiredService<IOptions<CosmosSettings>>().Value;
+                    Log.Information("Database Provider: Cosmos");
+                    Log.Information("Cosmos DB Settings: {CosmosSettings}", JsonConvert.SerializeObject(cosmosSettings));
+                    break;
+                }
+
+            default:
+                {
+                    Log.Warning("Unknown DatabaseProvider value: {Provider}", provider);
+                    break;
+                }
+        }
     }
 
     // Configure the HTTP request pipeline.
