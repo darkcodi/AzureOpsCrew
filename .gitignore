@@ -63,9 +63,9 @@ Thumbs.db
 *.tmp
 *.swp
 *.cache
-*.db
-*.db-shm
-*.db-wal
+azureopscrew.db
+azureopscrew.db-shm
+azureopscrew.db-wal
 
 ####################################
 # ===== Docker =====================
