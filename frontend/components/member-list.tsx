@@ -123,11 +123,17 @@ export function MemberList({
 
   return (
     <div
-      className="flex h-full w-[220px] flex-col"
+      className="flex h-full w-[220px] flex-col shrink-0"
       style={{ backgroundColor: "hsl(228, 7%, 14%)" }}
     >
-      <div className="shrink-0 px-3 pt-4 pb-2">
-        <div className="relative">
+      {/* Header – same height, padding and border as left sidebar for alignment */}
+      <div
+        className="flex h-12 shrink-0 items-center px-4"
+        style={{
+          borderBottom: "1px solid hsl(228, 6%, 10%)",
+        }}
+      >
+        <div className="relative w-full">
           <Search
             className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2"
             style={{ color: "hsl(214, 5%, 55%)" }}
@@ -146,7 +152,7 @@ export function MemberList({
           />
         </div>
       </div>
-      <ScrollArea className="flex-1 px-3">
+      <ScrollArea className="flex-1 px-2 pt-3">
         {filteredWorking.length > 0 && (
           <>
             <div
@@ -170,7 +176,7 @@ export function MemberList({
         {(filteredAvailable.length > 0 || agentsInRoom.length === 0) && (
           <>
             <div
-              className="mb-1 mt-6 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
+              className="mb-1 mt-2 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
               style={{ color: "hsl(214, 5%, 55%)" }}
             >
               AI Agents
@@ -221,7 +227,7 @@ export function MemberList({
         {matchesHuman && (
           <>
             <div
-              className="mb-1 mt-6 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
+              className="mb-1 mt-8 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
               style={{ color: "hsl(214, 5%, 55%)" }}
             >
               Humans
