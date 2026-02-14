@@ -5,8 +5,20 @@ import type { Agent } from "@/lib/agents"
 
 const HUMAN_ID = "user"
 
+export const HUMANS = [
+  { id: HUMAN_ID, name: "You", status: "Online" as const },
+  { id: "human:alex-c", name: "Alex C", status: "Offline" as const },
+  { id: "human:alex-k", name: "Alex K", status: "Offline" as const },
+  { id: "human:illya", name: "Illya", status: "Offline" as const },
+  { id: "human:ivan", name: "Ivan", status: "Offline" as const },
+] as const
+
+export function isHumanId(id: string): boolean {
+  return HUMANS.some((h) => h.id === id)
+}
+
 interface DirectMessagesRightPaneProps {
-  /** Agent id or "user" for the human (You) card; null to show nothing. */
+  /** Agent id or human id (e.g. "user", "human:alex-c"); null to show nothing. */
   selectedCardId: string | null
   agents: Agent[]
 }
@@ -96,7 +108,16 @@ function AgentCard({ agent }: { agent: Agent }) {
   )
 }
 
-function HumanCard() {
+function HumanCard({
+  name = "You",
+  status = "Online",
+  description = "Your profile and direct message threads.",
+}: {
+  name?: string
+  status?: string
+  description?: string
+}) {
+  const isOnline = status === "Online"
   return (
     <div
       className="flex flex-col overflow-hidden rounded-lg"
@@ -130,13 +151,13 @@ function HumanCard() {
               color: "#fff",
             }}
           >
-            Online
+            {status}
           </div>
         </div>
       </div>
       <div className="px-4 pt-14 pb-4">
         <h3 className="text-xl font-bold" style={{ color: "hsl(210, 3%, 98%)" }}>
-          You
+          {name}
         </h3>
         <p className="text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>
           Human
@@ -145,7 +166,7 @@ function HumanCard() {
           className="mt-3 text-sm leading-snug"
           style={{ color: "hsl(210, 3%, 80%)" }}
         >
-          Your profile and direct message threads.
+          {description}
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           <span
@@ -156,7 +177,7 @@ function HumanCard() {
             }}
           >
             <span
-              className="h-2 w-2 rounded-full bg-green-500"
+              className={`h-2 w-2 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-500"}`}
             />
             Human
           </span>
@@ -184,13 +205,22 @@ export function DirectMessagesRightPane({
     )
   }
 
-  if (selectedCardId === HUMAN_ID) {
+  const selectedHuman = HUMANS.find((h) => h.id === selectedCardId)
+  if (selectedHuman) {
     return (
       <div
         className="flex h-full w-[280px] flex-col shrink-0 overflow-auto px-3 pt-4"
         style={{ backgroundColor: "hsl(228, 7%, 14%)" }}
       >
-        <HumanCard />
+        <HumanCard
+          name={selectedHuman.name}
+          status={selectedHuman.status}
+          description={
+            selectedHuman.id === HUMAN_ID
+              ? "Your profile and direct message threads."
+              : "Profile and direct message threads."
+          }
+        />
       </div>
     )
   }

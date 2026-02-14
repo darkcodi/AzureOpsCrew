@@ -5,7 +5,7 @@ import { Search, Plus, User } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@/lib/agents"
-import { HUMAN_ID } from "@/components/direct-messages-right-pane"
+import { HUMANS } from "@/components/direct-messages-right-pane"
 
 interface DirectMessagesSidebarProps {
   agents: Agent[]
@@ -38,6 +38,12 @@ export function DirectMessagesSidebar({
     const q = search.toLowerCase()
     return conversations.filter((c) => c.name.toLowerCase().includes(q))
   }, [conversations, search])
+
+  const filteredHumans = useMemo(() => {
+    if (!search.trim()) return [...HUMANS]
+    const q = search.toLowerCase()
+    return HUMANS.filter((h) => h.name.toLowerCase().includes(q))
+  }, [search])
 
   return (
     <div
@@ -149,46 +155,55 @@ export function DirectMessagesSidebar({
           >
             Humans
           </div>
-          <button
-            type="button"
-            onClick={() => onSelect(HUMAN_ID)}
-            className={cn(
-              "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors"
-            )}
-            style={{
-              backgroundColor: selectedCardId === HUMAN_ID ? "hsl(228, 6%, 22%)" : "transparent",
-              color: selectedCardId === HUMAN_ID
-                ? "hsl(0, 0%, 100%)"
-                : "hsl(210, 3%, 85%)",
-            }}
-            onMouseEnter={(e) => {
-              if (selectedCardId !== HUMAN_ID) {
-                e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (selectedCardId !== HUMAN_ID) {
-                e.currentTarget.style.backgroundColor = "transparent"
-              }
-            }}
-          >
-            <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs"
-              style={{
-                backgroundColor: "hsl(228, 6%, 24%)",
-                color: "hsl(214, 5%, 55%)",
-              }}
-            >
-              <User className="h-4 w-4" />
-            </div>
-            <span className="truncate">You</span>
-            <span
-              className="ml-auto text-xs"
-              style={{ color: "hsl(214, 5%, 55%)" }}
-            >
-              Online
-            </span>
-          </button>
+          {filteredHumans.map((human) => {
+            const isSelected = selectedCardId === human.id
+            return (
+              <button
+                key={human.id}
+                type="button"
+                onClick={() => onSelect(human.id)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors"
+                )}
+                style={{
+                  backgroundColor: isSelected ? "hsl(228, 6%, 22%)" : "transparent",
+                  color: isSelected
+                    ? "hsl(0, 0%, 100%)"
+                    : "hsl(210, 3%, 85%)",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.backgroundColor = "transparent"
+                  }
+                }}
+              >
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs"
+                  style={{
+                    backgroundColor: "hsl(228, 6%, 24%)",
+                    color: "hsl(214, 5%, 55%)",
+                  }}
+                >
+                  <User className="h-4 w-4" />
+                </div>
+                <span className="truncate">{human.name}</span>
+                <span
+                  className="ml-auto inline-flex items-center gap-1.5 text-xs"
+                  style={{ color: "hsl(214, 5%, 55%)" }}
+                >
+                  {human.status === "Online" && (
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                  )}
+                  {human.status}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </ScrollArea>
     </div>
