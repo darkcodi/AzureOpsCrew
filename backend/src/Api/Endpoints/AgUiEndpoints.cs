@@ -78,6 +78,7 @@ public static class AgentAgUiEndpoints
 
             var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
             return new AGUIServerSentEventsResult(events, sseLogger, jsonSerializerOptions);
-        });
+        })
+        .WithTags("AgentAgUi"); ;
     }
 }
