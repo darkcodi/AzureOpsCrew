@@ -115,13 +115,23 @@ export function MemberList({
   const workingAgents = agentsInRoom.filter((a) => a.id === streamingAgentId)
   const availableAgents = agentsInRoom.filter((a) => a.id !== streamingAgentId)
 
+  const HUMANS = [
+    { name: "You", status: "Online" },
+    { name: "Alex C", status: "Offline" },
+    { name: "Alex K", status: "Offline" },
+    { name: "Illya", status: "Offline" },
+    { name: "Ivan", status: "Offline" },
+  ] as const
+
   const query = searchQuery.trim().toLowerCase()
   const matchesSearch = (agent: Agent) =>
     !query || agent.name.toLowerCase().includes(query)
   const filteredWorking = workingAgents.filter(matchesSearch)
   const filteredAvailable = availableAgents.filter(matchesSearch)
-  const humanLabel = "You"
-  const matchesHuman = !query || humanLabel.toLowerCase().includes(query)
+  const filteredHumans = HUMANS.filter(
+    (h) => !query || h.name.toLowerCase().includes(query)
+  )
+  const matchesHuman = filteredHumans.length > 0
 
   return (
     <div
@@ -232,110 +242,223 @@ export function MemberList({
             >
               Humans
             </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="mb-1 flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors cursor-pointer"
-                  style={{ color: "hsl(210, 3%, 90%)" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent"
-                  }}
-                >
-                  <div
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs"
-                    style={{
-                      backgroundColor: "hsl(228, 6%, 24%)",
-                      color: "hsl(214, 5%, 55%)",
-                    }}
-                  >
-                    <User className="h-4 w-4" />
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-sm">You</span>
-                    <span
-                      className="text-xs"
-                      style={{ color: "hsl(214, 5%, 55%)" }}
+            {filteredHumans.map((human) =>
+              human.name === "You" ? (
+                <Popover key="you">
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="mb-1 flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors cursor-pointer"
+                      style={{ color: "hsl(210, 3%, 90%)" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent"
+                      }}
                     >
-                      Online
-                    </span>
-                  </div>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent
-                align="start"
-                side="left"
-                sideOffset={16}
-                className="z-[100] w-[340px] overflow-hidden rounded-xl border-0 p-0 bg-[hsl(228,7%,14%)] text-[hsl(210,3%,90%)] shadow-xl"
-              >
-                <div
-                  className="flex flex-col overflow-hidden rounded-lg"
-                  style={{
-                    backgroundColor: "hsl(228, 7%, 14%)",
-                    color: "hsl(210, 3%, 90%)",
-                  }}
-                >
-                  <div className="relative">
-                    <div
-                      className="h-20 w-full rounded-t-lg"
-                      style={{ backgroundColor: "hsl(228, 6%, 24%)" }}
-                    />
-                    <div className="absolute left-4 top-10 flex items-center">
                       <div
-                        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 text-xl"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs"
                         style={{
                           backgroundColor: "hsl(228, 6%, 24%)",
-                          borderColor: "hsl(228, 7%, 14%)",
                           color: "hsl(214, 5%, 55%)",
                         }}
                       >
-                        <User className="h-8 w-8" />
+                        <User className="h-4 w-4" />
                       </div>
-                    </div>
-                    <div className="absolute right-4 top-3">
-                      <div
-                        className="flex h-6 shrink-0 items-center justify-center rounded-full px-3 text-xs font-medium leading-none"
-                        style={{
-                          backgroundColor: "hsla(0,0%,0%,0.4)",
-                          color: "#fff",
-                        }}
-                      >
-                        Online
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-sm">You</span>
+                        <span
+                          className="inline-flex items-center gap-1.5 text-xs"
+                          style={{ color: "hsl(214, 5%, 55%)" }}
+                        >
+                          <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                          Online
+                        </span>
                       </div>
-                    </div>
-                  </div>
-                  <div className="px-4 pt-14 pb-4">
-                    <h3 className="text-xl font-bold" style={{ color: "hsl(210, 3%, 98%)" }}>
-                      You
-                    </h3>
-                    <p className="text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>
-                      Human
-                    </p>
-                    <p
-                      className="mt-3 text-sm leading-snug"
-                      style={{ color: "hsl(210, 3%, 80%)" }}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    side="left"
+                    sideOffset={16}
+                    className="z-[100] w-[340px] overflow-hidden rounded-xl border-0 p-0 bg-[hsl(228,7%,14%)] text-[hsl(210,3%,90%)] shadow-xl"
+                  >
+                    <div
+                      className="flex flex-col overflow-hidden rounded-lg"
+                      style={{
+                        backgroundColor: "hsl(228, 7%, 14%)",
+                        color: "hsl(210, 3%, 90%)",
+                      }}
                     >
-                      Your profile and direct message threads.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      <span
-                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                      <div className="relative">
+                        <div
+                          className="h-20 w-full rounded-t-lg"
+                          style={{ backgroundColor: "hsl(228, 6%, 24%)" }}
+                        />
+                        <div className="absolute left-4 top-10 flex items-center">
+                          <div
+                            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 text-xl"
+                            style={{
+                              backgroundColor: "hsl(228, 6%, 24%)",
+                              borderColor: "hsl(228, 7%, 14%)",
+                              color: "hsl(214, 5%, 55%)",
+                            }}
+                          >
+                            <User className="h-8 w-8" />
+                          </div>
+                        </div>
+                        <div className="absolute right-4 top-3">
+                          <div
+                            className="flex h-6 shrink-0 items-center justify-center rounded-full px-3 text-xs font-medium leading-none"
+                            style={{
+                              backgroundColor: "hsla(0,0%,0%,0.4)",
+                              color: "#fff",
+                            }}
+                          >
+                            Online
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-4 pt-14 pb-4">
+                        <h3 className="text-xl font-bold" style={{ color: "hsl(210, 3%, 98%)" }}>
+                          You
+                        </h3>
+                        <p className="text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>
+                          Human
+                        </p>
+                        <p
+                          className="mt-3 text-sm leading-snug"
+                          style={{ color: "hsl(210, 3%, 80%)" }}
+                        >
+                          Your profile and direct message threads.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                            style={{
+                              backgroundColor: "hsl(228, 6%, 22%)",
+                              color: "hsl(210, 3%, 90%)",
+                            }}
+                          >
+                            <span className="h-2 w-2 rounded-full bg-green-500" />
+                            Human
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <Popover key={human.name}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="mb-1 flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors cursor-pointer"
+                      style={{ color: "hsl(210, 3%, 90%)" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent"
+                      }}
+                    >
+                      <div
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs"
                         style={{
-                          backgroundColor: "hsl(228, 6%, 22%)",
-                          color: "hsl(210, 3%, 90%)",
+                          backgroundColor: "hsl(228, 6%, 24%)",
+                          color: "hsl(214, 5%, 55%)",
                         }}
                       >
-                        <span className="h-2 w-2 rounded-full bg-green-500" />
-                        Human
-                      </span>
+                        <User className="h-4 w-4" />
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-sm">{human.name}</span>
+                        <span
+                          className="inline-flex items-center gap-1.5 text-xs"
+                          style={{ color: "hsl(214, 5%, 55%)" }}
+                        >
+                          {human.status === "Online" && (
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                          )}
+                          {human.status}
+                        </span>
+                      </div>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    side="left"
+                    sideOffset={16}
+                    className="z-[100] w-[340px] overflow-hidden rounded-xl border-0 p-0 bg-[hsl(228,7%,14%)] text-[hsl(210,3%,90%)] shadow-xl"
+                  >
+                    <div
+                      className="flex flex-col overflow-hidden rounded-lg"
+                      style={{
+                        backgroundColor: "hsl(228, 7%, 14%)",
+                        color: "hsl(210, 3%, 90%)",
+                      }}
+                    >
+                      <div className="relative">
+                        <div
+                          className="h-20 w-full rounded-t-lg"
+                          style={{ backgroundColor: "hsl(228, 6%, 24%)" }}
+                        />
+                        <div className="absolute left-4 top-10 flex items-center">
+                          <div
+                            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 text-xl"
+                            style={{
+                              backgroundColor: "hsl(228, 6%, 24%)",
+                              borderColor: "hsl(228, 7%, 14%)",
+                              color: "hsl(214, 5%, 55%)",
+                            }}
+                          >
+                            <User className="h-8 w-8" />
+                          </div>
+                        </div>
+                        <div className="absolute right-4 top-3">
+                          <div
+                            className="flex h-6 shrink-0 items-center justify-center rounded-full px-3 text-xs font-medium leading-none"
+                            style={{
+                              backgroundColor: "hsla(0,0%,0%,0.4)",
+                              color: "#fff",
+                            }}
+                          >
+                            {human.status}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-4 pt-14 pb-4">
+                        <h3 className="text-xl font-bold" style={{ color: "hsl(210, 3%, 98%)" }}>
+                          {human.name}
+                        </h3>
+                        <p className="text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>
+                          Human
+                        </p>
+                        <p
+                          className="mt-3 text-sm leading-snug"
+                          style={{ color: "hsl(210, 3%, 80%)" }}
+                        >
+                          Profile and direct message threads.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                            style={{
+                              backgroundColor: "hsl(228, 6%, 22%)",
+                              color: "hsl(210, 3%, 90%)",
+                            }}
+                          >
+                            <span className="h-2 w-2 rounded-full bg-gray-500" />
+                            Human
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+                  </PopoverContent>
+                </Popover>
+              )
+            )}
           </>
         )}
         {query &&
