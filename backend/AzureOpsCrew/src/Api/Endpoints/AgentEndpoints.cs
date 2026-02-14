@@ -38,7 +38,7 @@ namespace AzureOpsCrew.Api.Endpoints
             {
                 var agents = await context.Set<Agent>()
                     .Where(a => a.ClientId == clientId)
-                    .OrderByDescending(a => a.DateCreated)
+                    .OrderBy(a => a.DateCreated)
                     .ToListAsync(cancellationToken);
 
                 return Results.Ok(agents);

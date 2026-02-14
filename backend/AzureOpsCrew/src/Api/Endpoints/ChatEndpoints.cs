@@ -51,7 +51,7 @@ public static class ChatEndpoints
         {
             var chats = await context.Set<Chat>()
                 .Where(c => c.ClientId == clientId)
-                .OrderByDescending(c => c.DateCreated)
+                .OrderBy(c => c.DateCreated)
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(chats);
