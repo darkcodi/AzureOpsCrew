@@ -65,6 +65,7 @@ try
         app.MapOpenApi();
         app.MapSwagger();
         app.UseSwaggerUI();
+        app.MapGet("/", () => Results.Redirect("/swagger"));
     }
 
     app.UseHttpsRedirection();
