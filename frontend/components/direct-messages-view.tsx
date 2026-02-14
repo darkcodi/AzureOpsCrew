@@ -27,6 +27,7 @@ export function DirectMessagesView({
   const { setAgentId } = useAgentRuntime()
   const effectiveId = activeDMId ?? agents[0]?.id ?? null
   const [selectedCardId, setSelectedCardId] = useState<string | null>(() => activeDMId ?? agents[0]?.id ?? null)
+  const [showRightPane, setShowRightPane] = useState(true)
 
   useEffect(() => {
     setAgentId(activeDMId)
@@ -70,11 +71,15 @@ export function DirectMessagesView({
         agents={agents}
         pendingDMMessage={pendingDMMessage}
         onClearPendingDMMessage={onClearPendingDMMessage}
+        showRightPane={showRightPane}
+        onToggleRightPane={() => setShowRightPane((prev) => !prev)}
       />
-      <DirectMessagesRightPane
-        selectedCardId={selectedCardId}
-        agents={agents}
-      />
+      {showRightPane && (
+        <DirectMessagesRightPane
+          selectedCardId={selectedCardId}
+          agents={agents}
+        />
+      )}
     </>
   )
 }

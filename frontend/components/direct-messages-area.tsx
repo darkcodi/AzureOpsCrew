@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react"
 import { useCopilotChatInternal } from "@copilotkit/react-core"
 import { CopilotChat } from "@copilotkit/react-ui"
+import { PanelRightClose, PanelRightOpen } from "lucide-react"
 import { CopilotActions } from "@/components/copilot-actions"
 import { DMMessages } from "@/components/dm-messages"
 import { MessageInputAdapter } from "@/components/message-input"
@@ -16,6 +17,8 @@ interface DirectMessagesAreaProps {
   agents: Agent[]
   pendingDMMessage?: string | null
   onClearPendingDMMessage?: () => void
+  showRightPane?: boolean
+  onToggleRightPane?: () => void
 }
 
 function SendPendingMessage({
@@ -57,6 +60,8 @@ export function DirectMessagesArea({
   agents,
   pendingDMMessage = null,
   onClearPendingDMMessage,
+  showRightPane = true,
+  onToggleRightPane,
 }: DirectMessagesAreaProps) {
   const threadId = activeDMId ?? "assistant"
   const selectedAgent = agents.find((a) => a.id === activeDMId)
@@ -80,15 +85,35 @@ export function DirectMessagesArea({
         />
       )}
       {/* Header */}
-      <div
-        className="flex h-12 shrink-0 items-center border-b px-4"
+      <header
+        className="flex h-12 shrink-0 items-center gap-2 border-b px-4 shadow-sm"
         style={{
           borderColor: "hsl(228, 6%, 18%)",
+          backgroundColor: "hsl(228, 6%, 22%)",
           color: "hsl(0, 0%, 100%)",
         }}
       >
         <h1 className="text-base font-semibold">Direct Messages</h1>
-      </div>
+        {onToggleRightPane && (
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onToggleRightPane}
+              className="flex items-center justify-center rounded-md p-1.5 transition-colors hover:opacity-80"
+              style={{
+                color: showRightPane ? "hsl(0, 0%, 100%)" : "hsl(214, 5%, 55%)",
+              }}
+              aria-label={showRightPane ? "Hide agents panel" : "Show agents panel"}
+            >
+              {showRightPane ? (
+                <PanelRightClose className="h-5 w-5" />
+              ) : (
+                <PanelRightOpen className="h-5 w-5" />
+              )}
+            </button>
+          </div>
+        )}
+      </header>
 
       {/* Register dynamic UI actions (pipeline, work items, resources, etc.) */}
       <CopilotActions />
