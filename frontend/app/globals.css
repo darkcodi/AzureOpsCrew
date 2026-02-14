@@ -121,6 +121,12 @@
   text-decoration: underline;
 }
 
+/* Hide buttons under assistant/agent messages */
+.direct-messages-area .copilotKitAssistantMessage .copilotKitMessageControls,
+.direct-messages-area .copilotKitMessage.copilotKitAssistantMessage .copilotKitMessageControls {
+  display: none !important;
+}
+
 /* Hide CopilotKit "Powered by" branding (when default input is used elsewhere) */
 .direct-messages-area .copilotKitInputContainer .poweredByContainer,
 .direct-messages-area .poweredBy {
