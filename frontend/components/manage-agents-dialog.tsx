@@ -59,6 +59,8 @@ export function ManageAgentsDialog({
   const [prompt, setPrompt] = useState("")
   const [selectedMCPs, setSelectedMCPs] = useState<string[]>([])
   const [color, setColor] = useState(agentColors[0])
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const openCreate = () => {
     setEditingAgent(null)
@@ -67,6 +69,7 @@ export function ManageAgentsDialog({
     setPrompt("")
     setSelectedMCPs([])
     setColor(agentColors[allAgents.length % agentColors.length])
+    setSaveError(null)
     setView("create")
   }
 
@@ -77,36 +80,58 @@ export function ManageAgentsDialog({
     setPrompt(agent.systemPrompt)
     setSelectedMCPs(agent.mcpIds ?? [])
     setColor(agent.color)
+    setSaveError(null)
     setView("edit")
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmed = name.trim()
     if (!trimmed) return
 
-    if (view === "create") {
-      const id = trimmed.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now()
-      onAddAgent({
-        id,
-        name: trimmed,
-        avatar: trimmed[0].toUpperCase(),
-        color,
-        systemPrompt: prompt.trim() || "You are " + trimmed + ", a helpful AI assistant.",
-        model,
-        mcpIds: selectedMCPs,
-      })
-    } else if (editingAgent) {
-      onUpdateAgent({
-        ...editingAgent,
-        name: trimmed,
-        avatar: trimmed[0].toUpperCase(),
-        color,
-        systemPrompt: prompt.trim() || "You are " + trimmed + ", a helpful AI assistant.",
-        model,
-        mcpIds: selectedMCPs,
-      })
+    setIsSaving(true)
+    setSaveError(null)
+
+    try {
+      if (view === "create") {
+        // Call backend API to create agent
+        const response = await fetch("/api/agents/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: trimmed,
+            model,
+            systemPrompt: prompt.trim() || `You are ${trimmed}, a helpful AI assistant.`,
+            color,
+            mcpIds: selectedMCPs,
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to create agent")
+        }
+
+        const newAgent = await response.json()
+        onAddAgent(newAgent)
+      } else if (editingAgent) {
+        // For edit, still use local update for now
+        // TODO: Implement backend update endpoint
+        onUpdateAgent({
+          ...editingAgent,
+          name: trimmed,
+          avatar: trimmed[0].toUpperCase(),
+          color,
+          systemPrompt: prompt.trim() || `You are ${trimmed}, a helpful AI assistant.`,
+          model,
+          mcpIds: selectedMCPs,
+        })
+      }
+      setView("list")
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Failed to save agent")
+    } finally {
+      setIsSaving(false)
     }
-    setView("list")
   }
 
   const toggleMCP = (mcpId: string) => {
@@ -359,13 +384,18 @@ export function ManageAgentsDialog({
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={!name.trim()}
+                disabled={!name.trim() || isSaving}
                 className="flex items-center justify-center gap-2 rounded-md py-2.5 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
                 style={{ backgroundColor: "hsl(235, 86%, 65%)", color: "#fff" }}
               >
                 <Save className="h-4 w-4" />
-                <span>{view === "create" ? "Create Agent" : "Save Changes"}</span>
+                <span>{isSaving ? "Saving..." : view === "create" ? "Create Agent" : "Save Changes"}</span>
               </button>
+
+              {/* Error message */}
+              {saveError && (
+                <div className="text-xs text-red-400 text-center">{saveError}</div>
+              )}
             </div>
           </ScrollArea>
         )}
