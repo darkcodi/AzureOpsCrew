@@ -1,20 +1,25 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Search, Plus } from "lucide-react"
+import { Search, Plus, User } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@/lib/agents"
+import { HUMAN_ID } from "@/components/direct-messages-right-pane"
 
 interface DirectMessagesSidebarProps {
   agents: Agent[]
+  /** Currently selected conversation (agent id) for chat. */
   activeId: string | null
+  /** Currently selected item for the right pane (agent id or HUMAN_ID). */
+  selectedCardId: string | null
   onSelect: (id: string) => void
 }
 
 export function DirectMessagesSidebar({
   agents,
   activeId,
+  selectedCardId,
   onSelect,
 }: DirectMessagesSidebarProps) {
   const [search, setSearch] = useState("")
@@ -86,6 +91,12 @@ export function DirectMessagesSidebar({
       {/* Conversation list: AI agents */}
       <ScrollArea className="flex-1 py-2">
         <div className="px-2">
+          <div
+            className="mb-1 mt-1 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
+            style={{ color: "hsl(214, 5%, 55%)" }}
+          >
+            AI Agents
+          </div>
           {filtered.map((conv) => {
             const isActive = activeId === conv.id
             return (
@@ -123,9 +134,61 @@ export function DirectMessagesSidebar({
                   {conv.avatar}
                 </div>
                 <span className="truncate">{conv.name}</span>
+                <span
+                  className="ml-auto text-xs"
+                  style={{ color: "hsl(214, 5%, 55%)" }}
+                >
+                  {agents.find((a) => a.id === conv.id)?.status ?? "Idle"}
+                </span>
               </button>
             )
           })}
+          <div
+            className="mb-1 mt-6 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
+            style={{ color: "hsl(214, 5%, 55%)" }}
+          >
+            Humans
+          </div>
+          <button
+            type="button"
+            onClick={() => onSelect(HUMAN_ID)}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm transition-colors"
+            )}
+            style={{
+              backgroundColor: selectedCardId === HUMAN_ID ? "hsl(228, 6%, 22%)" : "transparent",
+              color: selectedCardId === HUMAN_ID
+                ? "hsl(0, 0%, 100%)"
+                : "hsl(210, 3%, 85%)",
+            }}
+            onMouseEnter={(e) => {
+              if (selectedCardId !== HUMAN_ID) {
+                e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (selectedCardId !== HUMAN_ID) {
+                e.currentTarget.style.backgroundColor = "transparent"
+              }
+            }}
+          >
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs"
+              style={{
+                backgroundColor: "hsl(228, 6%, 24%)",
+                color: "hsl(214, 5%, 55%)",
+              }}
+            >
+              <User className="h-4 w-4" />
+            </div>
+            <span className="truncate">You</span>
+            <span
+              className="ml-auto text-xs"
+              style={{ color: "hsl(214, 5%, 55%)" }}
+            >
+              Online
+            </span>
+          </button>
         </div>
       </ScrollArea>
     </div>

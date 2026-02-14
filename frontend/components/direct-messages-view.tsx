@@ -1,10 +1,11 @@
 "use client"
 
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useCopilotContext } from "@copilotkit/react-core"
 import { useAgentRuntime } from "@/contexts/agent-runtime-context"
 import { DirectMessagesSidebar } from "@/components/direct-messages-sidebar"
 import { DirectMessagesArea } from "@/components/direct-messages-area"
+import { DirectMessagesRightPane, HUMAN_ID } from "@/components/direct-messages-right-pane"
 import type { Agent } from "@/lib/agents"
 
 interface DirectMessagesViewProps {
@@ -25,6 +26,7 @@ export function DirectMessagesView({
   const { setThreadId } = useCopilotContext()
   const { setAgentId } = useAgentRuntime()
   const effectiveId = activeDMId ?? agents[0]?.id ?? null
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(() => activeDMId ?? agents[0]?.id ?? null)
 
   useEffect(() => {
     setAgentId(activeDMId)
@@ -33,6 +35,10 @@ export function DirectMessagesView({
 
   const handleSelectDM = useCallback(
     (id: string) => {
+      setSelectedCardId(id)
+      if (id === HUMAN_ID) {
+        return
+      }
       setThreadId(id)
       setActiveDMId(id)
     },
@@ -43,11 +49,18 @@ export function DirectMessagesView({
     setThreadId(effectiveId ?? "")
   }, [effectiveId, setThreadId])
 
+  useEffect(() => {
+    if (activeDMId && activeDMId !== HUMAN_ID) {
+      setSelectedCardId(activeDMId)
+    }
+  }, [activeDMId])
+
   return (
     <>
       <DirectMessagesSidebar
         agents={agents}
         activeId={activeDMId}
+        selectedCardId={selectedCardId}
         onSelect={handleSelectDM}
       />
       <DirectMessagesArea
@@ -55,6 +68,10 @@ export function DirectMessagesView({
         agents={agents}
         pendingDMMessage={pendingDMMessage}
         onClearPendingDMMessage={onClearPendingDMMessage}
+      />
+      <DirectMessagesRightPane
+        selectedCardId={selectedCardId}
+        agents={agents}
       />
     </>
   )
