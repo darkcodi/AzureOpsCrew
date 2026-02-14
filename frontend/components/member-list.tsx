@@ -170,7 +170,7 @@ export function MemberList({
         {(filteredAvailable.length > 0 || agentsInRoom.length === 0) && (
           <>
             <div
-              className="mb-1 mt-2 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
+              className="mb-1 mt-6 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
               style={{ color: "hsl(214, 5%, 55%)" }}
             >
               AI Agents
@@ -221,7 +221,7 @@ export function MemberList({
         {matchesHuman && (
           <>
             <div
-              className="mb-1 mt-2 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
+              className="mb-1 mt-6 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
               style={{ color: "hsl(214, 5%, 55%)" }}
             >
               Humans
