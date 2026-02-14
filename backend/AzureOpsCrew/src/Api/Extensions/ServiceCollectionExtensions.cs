@@ -97,11 +97,13 @@ public static class ServiceCollectionExtensions
             services.AddSQLiteSettings(configuration, "Sqlite");
             services.AddEFCoreSqliteDb();
         }
-        else
+        if (string.Equals(provider, "CosmosDb", StringComparison.OrdinalIgnoreCase))
         {
             services.AddCosmosSettings(configuration, "CosmosDb");
             services.AddEFCoreCosmosDb();
         }
+
+        throw new InvalidOperationException("Db provider is not configured properly.");
     }
 
     public static void AddIChatClient(this IServiceCollection services)

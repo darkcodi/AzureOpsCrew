@@ -59,14 +59,14 @@ try
             Log.Information("Database Provider: Sqlite");
             Log.Information("SQLite Settings: {SqliteSettings}", JsonConvert.SerializeObject(sqliteSettings));
         }
-        else
+        if (string.Equals(provider, "CosmosDb", StringComparison.OrdinalIgnoreCase))
         {
             var cosmosSettings = app.Services.GetRequiredService<IOptions<CosmosSettings>>().Value;
             Log.Information("Database Provider: Cosmos");
             Log.Information("Cosmos DB Settings: {CosmosSettings}", JsonConvert.SerializeObject(cosmosSettings));
         }
 
-        Log.Information("AI Settings: {AiSettings}", JsonConvert.SerializeObject(aiSettings));
+        throw new InvalidOperationException("No one db is configured");
     }
 
     // Configure the HTTP request pipeline.
@@ -87,7 +87,7 @@ try
 
     app.MapAgUI();
 
-    app.Services.RunMigrations();
+    await app.Services.RunDbSetup(builder.Configuration);
 
     app.Run();
 }
