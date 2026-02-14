@@ -1,5 +1,8 @@
-using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
+using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
+using Microsoft.Agents.AI;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
 
 namespace AzureOpsCrew.Api.Extensions;
 
@@ -26,8 +29,65 @@ public static class EndpointRouteBuilderExtensions
             name: "Azure Dev",
             instructions: "You are an Azure development expert. You help with building and deploying apps on Azure: App Service, Functions, Container Apps, AKS, Azure SDKs, identity (Microsoft Entra ID), storage, messaging, and serverless. You focus on code, configuration, and best practices for Azure-native development." + toolHint);
 
-        app.MapAGUI("/agui/manager", manager);
-        app.MapAGUI("/agui/azure-devops", azureDevOps);
-        app.MapAGUI("/agui/azure-dev", azureDev);
+        // TODO: Replace agentName with agentId
+        app.MapPost("/agui/{agentName}", async ([FromRoute] string agentName, [FromBody] RunAgentInput? input, HttpContext context, CancellationToken cancellationToken) =>
+        {
+            if (input is null)
+            {
+                return Results.BadRequest();
+            }
+
+            var jsonOptions = context.RequestServices.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>();
+            var jsonSerializerOptions = jsonOptions.Value.SerializerOptions;
+
+            var messages = input.Messages.AsChatMessages(jsonSerializerOptions);
+            var clientTools = input.Tools?.AsAITools().ToList();
+
+            // Create run options with AG-UI context in AdditionalProperties
+            var runOptions = new ChatClientAgentRunOptions
+            {
+                ChatOptions = new ChatOptions
+                {
+                    Tools = clientTools,
+                    AdditionalProperties = new AdditionalPropertiesDictionary
+                    {
+                        ["ag_ui_state"] = input.State,
+                        ["ag_ui_context"] = input.Context?.Select(c => new KeyValuePair<string, string>(c.Description, c.Value)).ToArray(),
+                        ["ag_ui_forwarded_properties"] = input.ForwardedProperties,
+                        ["ag_ui_thread_id"] = input.ThreadId,
+                        ["ag_ui_run_id"] = input.RunId
+                    }
+                }
+            };
+
+            var aiAgent = agentName.ToLower() switch
+            {
+                "manager" => manager,
+                "azure-devops" => azureDevOps,
+                "azure-dev" => azureDev,
+                _ => null,
+            };
+
+            if (aiAgent is null)
+            {
+                return Results.BadRequest($"Unknown agent name: {agentName}");
+            }
+
+            // Run the agent and convert to AG-UI events
+            var events = aiAgent.RunStreamingAsync(
+                messages,
+                options: runOptions,
+                cancellationToken: cancellationToken)
+                .AsChatResponseUpdatesAsync()
+                .FilterServerToolsFromMixedToolInvocationsAsync(clientTools, cancellationToken)
+                .AsAGUIEventStreamAsync(
+                    input.ThreadId,
+                    input.RunId,
+                    jsonSerializerOptions,
+                    cancellationToken);
+
+            var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
+            return new AGUIServerSentEventsResult(events, sseLogger);
+        });
     }
 }
