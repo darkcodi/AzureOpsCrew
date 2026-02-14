@@ -7,13 +7,9 @@ import { useAgentRuntime } from "@/contexts/agent-runtime-context"
 
 function CopilotKitInner({ children }: { children: ReactNode }) {
   const { agentId } = useAgentRuntime()
-  const base =
-    typeof window !== "undefined"
-      ? window.location.origin
-      : ""
   const runtimeUrl = agentId
-    ? `${base}/api/copilotkit/${agentId}`
-    : `${base}/api/copilotkit`
+    ? `/api/copilotkit/${agentId}`
+    : "/api/copilotkit"
   return (
     <CopilotKit
       runtimeUrl={runtimeUrl}
