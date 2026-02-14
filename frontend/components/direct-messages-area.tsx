@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import { useCopilotChatInternal } from "@copilotkit/react-core"
 import { CopilotChat } from "@copilotkit/react-ui"
 import { CopilotActions } from "@/components/copilot-actions"
+import { MessageInputAdapter } from "@/components/message-input"
 import type { Agent } from "@/lib/agents"
 
 const DEFAULT_INSTRUCTIONS =
@@ -102,6 +103,9 @@ export function DirectMessagesArea({
             placeholder,
           }}
           className="h-full min-h-0 flex-1"
+          Input={(props) => (
+            <MessageInputAdapter {...props} placeholder={placeholder} />
+          )}
         />
       </div>
     </div>

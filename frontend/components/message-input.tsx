@@ -2,18 +2,25 @@
 
 import { useState, useRef, useEffect, type KeyboardEvent } from "react"
 import { AlertCircle } from "lucide-react"
+import type { InputProps } from "@copilotkit/react-ui"
 
 interface MessageInputProps {
-  roomName: string
+  /** Channel/room name for placeholder, e.g. "general". Ignored if placeholder is set. */
+  roomName?: string
+  /** Optional placeholder override (e.g. "Message @Agent..." for DMs). */
+  placeholder?: string
   onSend: (text: string) => void
   disabled: boolean
 }
 
 export function MessageInput({
-  roomName,
+  roomName = "",
+  placeholder: placeholderProp,
   onSend,
   disabled,
 }: MessageInputProps) {
+  const placeholder =
+    placeholderProp ?? (roomName ? `Message #${roomName}` : "Message...")
   const [value, setValue] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -53,7 +60,7 @@ export function MessageInput({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={"Message #" + roomName}
+          placeholder={placeholder}
           rows={1}
           disabled={disabled}
           className="max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:opacity-40"
@@ -70,5 +77,25 @@ export function MessageInput({
         </button>
       </div>
     </div>
+  )
+}
+
+/** Adapter so MessageInput can be used as CopilotChat's Input (e.g. in Direct Messages). */
+export type MessageInputAdapterProps = InputProps & { placeholder: string }
+
+export function MessageInputAdapter({
+  inProgress,
+  onSend,
+  placeholder,
+}: MessageInputAdapterProps) {
+  const handleSend = (text: string) => {
+    onSend(text).catch(() => {})
+  }
+  return (
+    <MessageInput
+      placeholder={placeholder}
+      onSend={handleSend}
+      disabled={inProgress}
+    />
   )
 }
