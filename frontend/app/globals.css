@@ -98,6 +98,29 @@
   --copilot-kit-response-button-background-color: hsl(228, 6%, 18%);
 }
 
+/* Assistant message: readable text and distinct box (not same as user messages) */
+.direct-messages-area .copilotKitAssistantMessage,
+.direct-messages-area .copilotKitMessage.copilotKitAssistantMessage {
+  color: hsl(210, 3%, 92%) !important;
+  background: hsl(228, 12%, 18%) !important;
+  border: 1px solid hsl(228, 6%, 28%);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin: 0.25rem 0;
+  box-shadow: 0 1px 2px hsl(228, 6%, 10%);
+  width: fit-content;
+  max-width: 100%;
+  align-self: flex-start;
+}
+.direct-messages-area .copilotKitAssistantMessage *,
+.direct-messages-area .copilotKitMessage.copilotKitAssistantMessage * {
+  color: inherit !important;
+}
+.direct-messages-area .copilotKitAssistantMessage a {
+  color: hsl(235, 86%, 75%) !important;
+  text-decoration: underline;
+}
+
 /* Hide CopilotKit "Powered by" branding (when default input is used elsewhere) */
 .direct-messages-area .copilotKitInputContainer .poweredByContainer,
 .direct-messages-area .poweredBy {
