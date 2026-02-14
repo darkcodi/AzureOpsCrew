@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
       color: backendAgent.color,
       systemPrompt: backendAgent.info.prompt,
       model: backendAgent.info.model,
+      dateCreated: backendAgent.dateCreated,
     }))
 
     return NextResponse.json(frontendAgents)

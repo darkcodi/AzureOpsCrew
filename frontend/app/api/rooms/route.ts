@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
       id: chat.id,
       name: chat.name,
       agentIds: chat.agentIds || [],
+      dateCreated: chat.dateCreated,
     }))
 
     return NextResponse.json(frontendRooms)

@@ -25,12 +25,19 @@ export function DirectMessagesSidebar({
   const [search, setSearch] = useState("")
 
   const conversations = useMemo(() => {
-    return agents.map((a) => ({
+    return agents
+      .map((a) => ({
       id: a.id,
       name: a.name,
       avatar: a.avatar,
       color: a.color,
+      dateCreated: a.dateCreated,
     }))
+      .sort((a, b) => {
+        const dateA = a.dateCreated ? new Date(a.dateCreated).getTime() : 0
+        const dateB = b.dateCreated ? new Date(b.dateCreated).getTime() : 0
+        return dateA - dateB
+      })
   }, [agents])
 
   const filtered = useMemo(() => {
