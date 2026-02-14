@@ -22,7 +22,8 @@ namespace AzureOpsCrew.Api.Endpoints
                     body.ClientId,
                     body.Info!,
                     body.Provider,
-                    providerAgentId
+                    providerAgentId,
+                    body.Color
                 );
 
                 await context.AddAsync(agent, cancellationToken);

@@ -46,6 +46,10 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
                    p => p.ToString(),
                    s => Enum.Parse<Provider>(s));
 
+        builder.Property(a => a.Color)
+               .IsRequired()
+               .HasDefaultValue("#43b581");
+
         builder.Property(a => a.DateCreated)
                .IsRequired();
     }

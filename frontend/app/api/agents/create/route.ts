@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Backend expects CreateAgentBodyDto structure:
-    // { info: { name, prompt, model }, clientId, provider }
+    // { info: { name, prompt, model }, clientId, provider, color }
     const backendBody = {
       info: {
         name: name.trim(),
@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       },
       clientId: 1, // Default client ID
       provider: Provider.Local0, // Default provider
+      color: color || "#43b581", // Default color
     }
 
     const createUrl = `${BACKEND_API_URL}/api/agents/create`
