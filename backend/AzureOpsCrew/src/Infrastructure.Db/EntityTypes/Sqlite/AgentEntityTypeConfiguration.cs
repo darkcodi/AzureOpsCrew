@@ -38,7 +38,7 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
             infoBuilder.Property(i => i.AvaliableTools)
                        .HasConversion(
                            v => v == null ? null : string.Join(',', v.Select(x => x.ToString())),
-                           s => string.IsNullOrEmpty(s) ? System.Array.Empty<AgentTool>() : s.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => Enum.Parse<AgentTool>(x)).ToArray());
+                           s => (string.IsNullOrEmpty(s) || s == "[]") ? System.Array.Empty<AgentTool>() : s.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => Enum.Parse<AgentTool>(x)).ToArray());
         });
 
         builder.Property(a => a.Provider)
