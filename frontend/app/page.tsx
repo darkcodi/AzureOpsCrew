@@ -6,6 +6,8 @@ import { IconSidebar, type ViewMode } from "@/components/icon-sidebar"
 import { ChannelSidebar } from "@/components/channel-sidebar"
 import { ChatArea } from "@/components/chat-area"
 import { DirectMessagesView } from "@/components/direct-messages-view"
+import { ManageAgentsDialog } from "@/components/manage-agents-dialog"
+import { AllAgentsSidebar } from "@/components/all-agents-sidebar"
 
 export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("channels")
@@ -16,7 +18,6 @@ export default function Home() {
     () => defaultAgents[0]?.id ?? null
   )
   const [pendingDMMessage, setPendingDMMessage] = useState<string | null>(null)
-  const [showAgentManager, setShowAgentManager] = useState(false)
   const activeRoom = rooms.find((r) => r.id === activeRoomId) ?? rooms[0]
 
   const handleCreateRoom = useCallback((name: string) => {
@@ -63,10 +64,9 @@ export default function Home() {
       <IconSidebar
         viewMode={viewMode}
         onViewChange={setViewMode}
-        onOpenAgentManager={() => setShowAgentManager(true)}
       />
 
-      {viewMode === "channels" ? (
+      {viewMode === "channels" && (
         <>
           <ChannelSidebar
             rooms={rooms}
@@ -83,11 +83,10 @@ export default function Home() {
             onUpdateAgent={handleUpdateAgent}
             onDeleteAgent={handleDeleteAgent}
             onOpenInDM={handleOpenAgentInDM}
-            showAgentManager={showAgentManager}
-            onCloseAgentManager={() => setShowAgentManager(false)}
           />
         </>
-      ) : (
+      )}
+      {viewMode === "direct-messages" && (
         <DirectMessagesView
           activeDMId={activeDMId}
           setActiveDMId={setActiveDMId}
@@ -95,6 +94,23 @@ export default function Home() {
           pendingDMMessage={pendingDMMessage}
           onClearPendingDMMessage={() => setPendingDMMessage(null)}
         />
+      )}
+      {viewMode === "all-agents" && (
+        <>
+          <AllAgentsSidebar />
+          <div
+            className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+            style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
+          >
+            <ManageAgentsDialog
+              allAgents={agents}
+              onAddAgent={handleAddAgent}
+              onUpdateAgent={handleUpdateAgent}
+              onDeleteAgent={handleDeleteAgent}
+              embedded
+            />
+          </div>
+        </>
       )}
     </main>
   )

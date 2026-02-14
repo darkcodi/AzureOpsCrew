@@ -26,10 +26,12 @@ const availableMCPs = [
 
 interface ManageAgentsDialogProps {
   allAgents: Agent[]
-  onClose: () => void
+  onClose?: () => void
   onAddAgent: (agent: Agent) => void
   onUpdateAgent: (agent: Agent) => void
   onDeleteAgent: (agentId: string) => void
+  /** When true, render as full-page tab content (no overlay, no close button). */
+  embedded?: boolean
 }
 
 type View = "list" | "edit" | "create"
@@ -46,6 +48,7 @@ export function ManageAgentsDialog({
   onAddAgent,
   onUpdateAgent,
   onDeleteAgent,
+  embedded = false,
 }: ManageAgentsDialogProps) {
   const [view, setView] = useState<View>("list")
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
@@ -112,40 +115,31 @@ export function ManageAgentsDialog({
     )
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  const content = (
+    <div
+      className={embedded ? "flex min-h-0 flex-1 flex-col overflow-hidden" : "relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-lg"}
+      style={{ backgroundColor: embedded ? "transparent" : "hsl(228, 6%, 20%)", ...(embedded ? {} : { maxHeight: "85vh" }) }}
+    >
+      {/* Header */}
       <div
-        className="absolute inset-0"
-        style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
-        onClick={onClose}
-        onKeyDown={(e) => { if (e.key === "Escape") onClose() }}
-        role="button"
-        tabIndex={0}
-        aria-label="Close dialog"
-      />
-      <div
-        className="relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-lg"
-        style={{ backgroundColor: "hsl(228, 6%, 20%)", maxHeight: "85vh" }}
+        className="flex shrink-0 items-center gap-3 px-5 py-4"
+        style={{ borderBottom: "1px solid hsl(228, 6%, 28%)" }}
       >
-        {/* Header */}
-        <div
-          className="flex items-center gap-3 px-5 py-4"
-          style={{ borderBottom: "1px solid hsl(228, 6%, 28%)" }}
-        >
-          {view !== "list" && (
-            <button
-              type="button"
-              onClick={() => setView("list")}
-              className="transition-opacity hover:opacity-80"
-              style={{ color: "hsl(214, 5%, 55%)" }}
-              aria-label="Back to list"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-          )}
-          <h2 className="flex-1 text-lg font-semibold" style={{ color: "hsl(0, 0%, 100%)" }}>
-            {view === "list" ? "All Agents" : view === "create" ? "New Agent" : "Edit Agent"}
-          </h2>
+        {view !== "list" && (
+          <button
+            type="button"
+            onClick={() => setView("list")}
+            className="transition-opacity hover:opacity-80"
+            style={{ color: "hsl(214, 5%, 55%)" }}
+            aria-label="Back to list"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        )}
+        <h2 className="flex-1 text-lg font-semibold" style={{ color: "hsl(0, 0%, 100%)" }}>
+          {view === "list" ? "All Agents" : view === "create" ? "New Agent" : "Edit Agent"}
+        </h2>
+        {!embedded && onClose && (
           <button
             type="button"
             onClick={onClose}
@@ -155,12 +149,13 @@ export function ManageAgentsDialog({
           >
             <X className="h-5 w-5" />
           </button>
-        </div>
+        )}
+      </div>
 
         {/* Body */}
         {view === "list" ? (
           <>
-            <ScrollArea className="flex-1 px-5 py-3" style={{ maxHeight: "60vh" }}>
+            <ScrollArea className="flex-1 min-h-0 px-5 py-3" style={embedded ? { flex: 1, minHeight: 0 } : { maxHeight: "60vh" }}>
               {allAgents.map((agent) => (
                 <div
                   key={agent.id}
@@ -209,7 +204,7 @@ export function ManageAgentsDialog({
                 </div>
               ))}
             </ScrollArea>
-            <div className="px-5 pb-4 pt-2">
+            <div className="shrink-0 px-5 pb-4 pt-2">
               <button
                 type="button"
                 onClick={openCreate}
@@ -222,7 +217,7 @@ export function ManageAgentsDialog({
             </div>
           </>
         ) : (
-          <ScrollArea className="flex-1" style={{ maxHeight: "70vh" }}>
+          <ScrollArea className="flex-1 min-h-0" style={embedded ? { flex: 1, minHeight: 0 } : { maxHeight: "70vh" }}>
             <div className="flex flex-col gap-4 px-5 py-4">
               {/* Name */}
               <div className="flex flex-col gap-1.5">
@@ -375,6 +370,24 @@ export function ManageAgentsDialog({
           </ScrollArea>
         )}
       </div>
+  )
+
+  if (embedded) {
+    return content
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0"
+        style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+        onClick={onClose}
+        onKeyDown={(e) => { if (e.key === "Escape") onClose?.() }}
+        role="button"
+        tabIndex={0}
+        aria-label="Close dialog"
+      />
+      {content}
     </div>
   )
 }

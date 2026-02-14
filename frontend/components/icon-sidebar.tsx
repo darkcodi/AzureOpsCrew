@@ -9,23 +9,21 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-export type ViewMode = "channels" | "direct-messages"
+export type ViewMode = "channels" | "direct-messages" | "all-agents"
 
 interface IconSidebarProps {
   viewMode: ViewMode
   onViewChange: (view: ViewMode) => void
-  onOpenAgentManager: () => void
 }
 
 export function IconSidebar({
   viewMode,
   onViewChange,
-  onOpenAgentManager,
 }: IconSidebarProps) {
   const topItems = [
     { icon: Hash, label: "Channels", onClick: () => onViewChange("channels"), active: viewMode === "channels" },
     { icon: MessageCircle, label: "Direct messages", onClick: () => onViewChange("direct-messages"), active: viewMode === "direct-messages" },
-    { icon: Users, label: "All agents", onClick: onOpenAgentManager, active: false },
+    { icon: Users, label: "All agents", onClick: () => onViewChange("all-agents"), active: viewMode === "all-agents" },
   ]
 
   const bottomItems = [{ icon: Settings, label: "Settings" }]
