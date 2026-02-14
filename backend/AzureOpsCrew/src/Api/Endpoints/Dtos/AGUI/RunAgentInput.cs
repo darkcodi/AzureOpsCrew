@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
 
-public abstract class RunAgentInput
+public class RunAgentInput
 {
     [JsonPropertyName("threadId")]
     public string ThreadId { get; set; } = string.Empty;

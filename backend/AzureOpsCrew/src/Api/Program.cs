@@ -76,7 +76,7 @@ try
 
     app.MapAgUI();
 
-    await app.Services.RunEnsureEFCoreCosmosDbCreated();
+    // await app.Services.RunEnsureEFCoreCosmosDbCreated();
 
     app.Run();
 }

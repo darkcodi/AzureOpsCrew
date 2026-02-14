@@ -14,7 +14,7 @@ public class RunErrorEvent : BaseEvent
 {
     public RunErrorEvent()
     {
-        this.Type = AGUIEventTypes.RunError;
+        Type = AGUIEventTypes.RunError;
     }
 
     [JsonPropertyName("message")]
@@ -28,7 +28,7 @@ public class RunFinishedEvent : BaseEvent
 {
     public RunFinishedEvent()
     {
-        this.Type = AGUIEventTypes.RunFinished;
+        Type = AGUIEventTypes.RunFinished;
     }
 
     [JsonPropertyName("threadId")]
@@ -45,7 +45,7 @@ public class RunStartedEvent : BaseEvent
 {
     public RunStartedEvent()
     {
-        this.Type = AGUIEventTypes.RunStarted;
+        Type = AGUIEventTypes.RunStarted;
     }
 
     [JsonPropertyName("threadId")]
@@ -59,7 +59,7 @@ public class StateDeltaEvent : BaseEvent
 {
     public StateDeltaEvent()
     {
-        this.Type = AGUIEventTypes.StateDelta;
+        Type = AGUIEventTypes.StateDelta;
     }
 
     [JsonPropertyName("delta")]
@@ -70,7 +70,7 @@ public class StateSnapshotEvent : BaseEvent
 {
     public StateSnapshotEvent()
     {
-        this.Type = AGUIEventTypes.StateSnapshot;
+        Type = AGUIEventTypes.StateSnapshot;
     }
 
     [JsonPropertyName("snapshot")]
@@ -81,7 +81,7 @@ public class TextMessageContentEvent : BaseEvent
 {
     public TextMessageContentEvent()
     {
-        this.Type = AGUIEventTypes.TextMessageContent;
+        Type = AGUIEventTypes.TextMessageContent;
     }
 
     [JsonPropertyName("messageId")]
@@ -95,7 +95,7 @@ public class TextMessageEndEvent : BaseEvent
 {
     public TextMessageEndEvent()
     {
-        this.Type = AGUIEventTypes.TextMessageEnd;
+        Type = AGUIEventTypes.TextMessageEnd;
     }
 
     [JsonPropertyName("messageId")]
@@ -106,7 +106,7 @@ public class TextMessageStartEvent : BaseEvent
 {
     public TextMessageStartEvent()
     {
-        this.Type = AGUIEventTypes.TextMessageStart;
+        Type = AGUIEventTypes.TextMessageStart;
     }
 
     [JsonPropertyName("messageId")]
@@ -120,7 +120,7 @@ public class ToolCallArgsEvent : BaseEvent
 {
     public ToolCallArgsEvent()
     {
-        this.Type = AGUIEventTypes.ToolCallArgs;
+        Type = AGUIEventTypes.ToolCallArgs;
     }
 
     [JsonPropertyName("toolCallId")]
@@ -134,7 +134,7 @@ public class ToolCallEndEvent : BaseEvent
 {
     public ToolCallEndEvent()
     {
-        this.Type = AGUIEventTypes.ToolCallEnd;
+        Type = AGUIEventTypes.ToolCallEnd;
     }
 
     [JsonPropertyName("toolCallId")]
@@ -145,7 +145,7 @@ public class ToolCallResultEvent : BaseEvent
 {
     public ToolCallResultEvent()
     {
-        this.Type = AGUIEventTypes.ToolCallResult;
+        Type = AGUIEventTypes.ToolCallResult;
     }
 
     [JsonPropertyName("messageId")]
@@ -165,7 +165,7 @@ public class ToolCallStartEvent : BaseEvent
 {
     public ToolCallStartEvent()
     {
-        this.Type = AGUIEventTypes.ToolCallStart;
+        Type = AGUIEventTypes.ToolCallStart;
     }
 
     [JsonPropertyName("toolCallId")]
@@ -178,7 +178,7 @@ public class ToolCallStartEvent : BaseEvent
     public string? ParentMessageId { get; set; }
 }
 
-internal sealed class BaseEventJsonConverter : JsonConverter<BaseEvent>
+public class BaseEventJsonConverter : JsonConverter<BaseEvent>
 {
     private const string TypeDiscriminatorPropertyName = "type";
 

@@ -11,10 +11,10 @@ public class AGUIServerSentEventsResult : IResult, IDisposable
     private readonly ILogger<AGUIServerSentEventsResult> _logger;
     private Utf8JsonWriter? _jsonWriter;
 
-    internal AGUIServerSentEventsResult(IAsyncEnumerable<BaseEvent> events, ILogger<AGUIServerSentEventsResult> logger)
+    public AGUIServerSentEventsResult(IAsyncEnumerable<BaseEvent> events, ILogger<AGUIServerSentEventsResult> logger)
     {
-        this._events = events;
-        this._logger = logger;
+        _events = events;
+        _logger = logger;
     }
 
     public async Task ExecuteAsync(HttpContext httpContext)
@@ -34,9 +34,9 @@ public class AGUIServerSentEventsResult : IResult, IDisposable
         try
         {
             await SseFormatter.WriteAsync(
-                WrapEventsAsSseItemsAsync(this._events, cancellationToken),
+                WrapEventsAsSseItemsAsync(_events, cancellationToken),
                 body,
-                this.SerializeEvent,
+                SerializeEvent,
                 cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -53,7 +53,7 @@ public class AGUIServerSentEventsResult : IResult, IDisposable
                 await SseFormatter.WriteAsync(
                     WrapEventsAsSseItemsAsync([errorEvent]),
                     body,
-                    this.SerializeEvent,
+                    SerializeEvent,
                     CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception sendErrorEx)
@@ -87,19 +87,19 @@ public class AGUIServerSentEventsResult : IResult, IDisposable
 
     private void SerializeEvent(SseItem<BaseEvent> item, IBufferWriter<byte> writer)
     {
-        if (this._jsonWriter == null)
+        if (_jsonWriter == null)
         {
-            this._jsonWriter = new Utf8JsonWriter(writer);
+            _jsonWriter = new Utf8JsonWriter(writer);
         }
         else
         {
-            this._jsonWriter.Reset(writer);
+            _jsonWriter.Reset(writer);
         }
-        JsonSerializer.Serialize(this._jsonWriter, item.Data, AGUIJsonSerializerContext.Default.BaseEvent);
+        JsonSerializer.Serialize(_jsonWriter, item.Data, AGUIJsonSerializerContext.Default.BaseEvent);
     }
 
     public void Dispose()
     {
-        this._jsonWriter?.Dispose();
+        _jsonWriter?.Dispose();
     }
 }
