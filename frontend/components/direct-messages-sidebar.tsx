@@ -5,7 +5,7 @@ import { Search, Plus, User } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@/lib/agents"
-import { HUMANS } from "@/components/direct-messages-right-pane"
+import { HUMANS, HUMAN_ID } from "@/components/direct-messages-right-pane"
 
 interface DirectMessagesSidebarProps {
   agents: Agent[]
@@ -40,9 +40,10 @@ export function DirectMessagesSidebar({
   }, [conversations, search])
 
   const filteredHumans = useMemo(() => {
-    if (!search.trim()) return [...HUMANS]
+    const others = HUMANS.filter((h) => h.id !== HUMAN_ID)
+    if (!search.trim()) return others
     const q = search.toLowerCase()
-    return HUMANS.filter((h) => h.name.toLowerCase().includes(q))
+    return others.filter((h) => h.name.toLowerCase().includes(q))
   }, [search])
 
   return (
