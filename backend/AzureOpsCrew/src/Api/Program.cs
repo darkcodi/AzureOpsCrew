@@ -87,7 +87,7 @@ try
 
     app.MapAgUI();
 
-    await app.Services.RunEnsureDatabaseCreated();
+    app.Services.RunMigrations();
 
     app.Run();
 }
