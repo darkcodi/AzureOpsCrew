@@ -3,9 +3,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  devIndicators: {
-    position: "bottom-left",
-  },
+  devIndicators: false,
 }
 
 export default nextConfig
