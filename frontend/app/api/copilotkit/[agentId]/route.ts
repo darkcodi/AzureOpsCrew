@@ -7,14 +7,14 @@ import {
 import { NextRequest } from "next/server"
 
 const baseAguiUrl =
-  process.env.BACKEND_AGUI_URL ?? "http://localhost:5000/agui"
+  process.env.BACKEND_AGUI_URL ?? "http://localhost:5000/api/agents"
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ agentId: string }> }
 ) {
   const { agentId } = await params
-  const aguiUrl = `${baseAguiUrl.replace(/\/$/, "")}/${agentId}`
+  const aguiUrl = `${baseAguiUrl.replace(/\/$/, "")}/${agentId}/agui`
   const aguiAgent = new HttpAgent({ url: aguiUrl })
   const runtime = new CopilotRuntime({
     agents: { aguiAgent },

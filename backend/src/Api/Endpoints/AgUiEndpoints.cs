@@ -52,10 +52,19 @@ public static class AgentAgUiEndpoints
                 }
             };
 
+            var agentsCount = dbContext.Set<Domain.Agents.Agent>().Count();
+            Log.Information("Looking for agent with id {AgentId} among {AgentsCount} agents in the database", agentId, agentsCount);
+
+            var agentIds = dbContext.Set<Domain.Agents.Agent>().Select(a => a.Id).ToList();
+            Log.Information("Agent IDs in database: {AgentIds}", string.Join(", ", agentIds));
+
             // Find Agent
             var agent = dbContext.Set<Domain.Agents.Agent>().SingleOrDefault(a => a.Id == agentId);
             if (agent is null)
+            {
+                Log.Warning("Unknown agent with id: {AgentId}", agentId);
                 return Results.BadRequest($"Unknown agent with id: {agentId}");
+            }
 
             // Create Ai Agent
             var chatClient = openIdClient.GetChatClient(agent.Info.Model).AsIChatClient();

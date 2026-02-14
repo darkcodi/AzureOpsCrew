@@ -6,8 +6,9 @@ import {
 } from "@copilotkit/runtime"
 import { NextRequest } from "next/server"
 
-const aguiUrl =
-  process.env.BACKEND_AGUI_URL ?? "http://localhost:5000/agui"
+const baseAguiUrl =
+  process.env.BACKEND_AGUI_URL ?? "http://localhost:5000/api/agents"
+const aguiUrl = `${baseAguiUrl.replace(/\/$/, "")}/default/agui`
 
 const aguiAgent = new HttpAgent({ url: aguiUrl })
 
