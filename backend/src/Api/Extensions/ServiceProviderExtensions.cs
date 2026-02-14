@@ -36,13 +36,14 @@ public static class ServiceProviderExtensions
     public static async Task RunDbSetup(this IServiceProvider provider, IConfiguration configuration)
     {
         var dbProvider = configuration["DatabaseProvider"];
+        Log.Information("Running migrations for database provider: {DbProvider}", dbProvider);
 
         if (string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
             await provider.RunSqlMigrations();
-        if (string.Equals(dbProvider, "CosmosDb", StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(dbProvider, "CosmosDb", StringComparison.OrdinalIgnoreCase))
             await provider.RunEnsureEFCoreCosmosDbCreated();
-
-        throw new InvalidOperationException("Db provider is not configured properly.");
+        else
+            throw new InvalidOperationException($"Unknown DB provider '{dbProvider}'.");
     }
 
 }
