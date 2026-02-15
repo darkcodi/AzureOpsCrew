@@ -1,6 +1,7 @@
 using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
+using AzureOpsCrew.Api.Setup.Seeds;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Newtonsoft.Json;
@@ -99,6 +100,7 @@ try
     app.MapAllAgUi();
 
     await app.Services.RunDbSetup(builder.Configuration);
+    await app.Services.RunSeeding(builder.Configuration);
 
     app.Run();
 }
