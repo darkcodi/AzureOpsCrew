@@ -5,6 +5,16 @@ import { cn } from "@/lib/utils"
 import type { Channel } from "@/lib/agents"
 import { Hash, Plus } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 
 interface ChannelSidebarProps {
   channels: Channel[]
@@ -65,39 +75,162 @@ export function ChannelSidebar({
           .map((channel) => {
           const isActive = activeChannelId === channel.id
           return (
-            <button
-              type="button"
-              key={channel.id}
-              onClick={() => onChannelSelect(channel.id)}
-              className={cn(
-                "flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm transition-colors mb-0.5"
-              )}
-              style={{
-                backgroundColor: isActive
-                  ? "hsl(228, 6%, 22%)"
-                  : "transparent",
-                color: isActive
-                  ? "hsl(0, 0%, 100%)"
-                  : "hsl(214, 5%, 55%)",
-                fontWeight: isActive ? 500 : 400,
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.backgroundColor =
-                    "hsl(228, 6%, 18%)"
-                  e.currentTarget.style.color = "hsl(210, 3%, 80%)"
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.backgroundColor = "transparent"
-                  e.currentTarget.style.color = "hsl(214, 5%, 55%)"
-                }
-              }}
-            >
-              <Hash className="h-4 w-4 shrink-0 opacity-60" />
-              <span className="truncate">{channel.name}</span>
-            </button>
+            <ContextMenu key={channel.id}>
+              <ContextMenuContent
+                className="min-w-[220px] rounded-lg border-0 p-1 shadow-lg"
+                style={{
+                  backgroundColor: "rgb(53, 54, 59)",
+                  color: "rgb(255, 255, 255)",
+                }}
+                onCloseAutoFocus={(e) => e.preventDefault()}
+              >
+                <ContextMenuItem
+                  className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  Mark As Read
+                </ContextMenuItem>
+                <ContextMenuSeparator className="my-1 bg-white/15" />
+                <ContextMenuItem
+                  className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  Invite to Channel
+                </ContextMenuItem>
+                <ContextMenuItem
+                  className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  Copy Link
+                </ContextMenuItem>
+                <ContextMenuSeparator className="my-1 bg-white/15" />
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger
+                    className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white data-[state=open]:bg-white/10"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    Mute Channel
+                  </ContextMenuSubTrigger>
+                  <ContextMenuSubContent
+                    className="rounded-lg border-0 p-1 shadow-lg"
+                    style={{
+                      backgroundColor: "rgb(53, 54, 59)",
+                      color: "rgb(255, 255, 255)",
+                    }}
+                  >
+                    <ContextMenuItem
+                      className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      (placeholder)
+                    </ContextMenuItem>
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
+                <ContextMenuSub>
+                  <ContextMenuSubTrigger
+                    className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white data-[state=open]:bg-white/10"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <span className="flex flex-col items-start">
+                      <span>Notification Settings</span>
+                      <span
+                        className="text-xs"
+                        style={{ color: "rgb(163, 163, 163)" }}
+                      >
+                        All Messages
+                      </span>
+                    </span>
+                  </ContextMenuSubTrigger>
+                  <ContextMenuSubContent
+                    className="rounded-lg border-0 p-1 shadow-lg"
+                    style={{
+                      backgroundColor: "rgb(53, 54, 59)",
+                      color: "rgb(255, 255, 255)",
+                    }}
+                  >
+                    <ContextMenuItem
+                      className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      (placeholder)
+                    </ContextMenuItem>
+                  </ContextMenuSubContent>
+                </ContextMenuSub>
+                <ContextMenuItem
+                  className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  Edit Channel
+                </ContextMenuItem>
+                <ContextMenuItem
+                  className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  Duplicate Channel
+                </ContextMenuItem>
+                <ContextMenuItem
+                  className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  Create Text Channel
+                </ContextMenuItem>
+                <ContextMenuItem
+                  className="cursor-pointer rounded px-2 py-1.5 text-sm text-red-500 focus:bg-white/10 focus:text-red-500"
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  Delete Channel
+                </ContextMenuItem>
+                <ContextMenuItem
+                  className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  <span className="flex flex-1">Copy Channel ID</span>
+                  <span
+                    className="ml-2 rounded px-1.5 py-0.5 text-xs font-medium"
+                    style={{
+                      backgroundColor: "rgb(70, 71, 76)",
+                      color: "rgb(163, 163, 163)",
+                    }}
+                  >
+                    ID
+                  </span>
+                </ContextMenuItem>
+              </ContextMenuContent>
+              <ContextMenuTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onChannelSelect(channel.id)}
+                className={cn(
+                  "flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm transition-colors mb-0.5"
+                )}
+                style={{
+                  backgroundColor: isActive
+                    ? "hsl(228, 6%, 22%)"
+                    : "transparent",
+                  color: isActive
+                    ? "hsl(0, 0%, 100%)"
+                    : "hsl(214, 5%, 55%)",
+                  fontWeight: isActive ? 500 : 400,
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor =
+                      "hsl(228, 6%, 18%)"
+                    e.currentTarget.style.color = "hsl(210, 3%, 80%)"
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = "transparent"
+                    e.currentTarget.style.color = "hsl(214, 5%, 55%)"
+                  }
+                }}
+              >
+                <Hash className="h-4 w-4 shrink-0 opacity-60" />
+                <span className="truncate">{channel.name}</span>
+              </button>
+              </ContextMenuTrigger>
+            </ContextMenu>
           )
         })
         }
