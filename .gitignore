@@ -47,11 +47,8 @@ frontend/.env
 frontend/.env.*
 backend/.env
 backend/.env.*
-appsettings.json
-appsettings.Development.json
 
 !.env.example
-!appsettings.example.json
 
 ####################################
 # ===== GLOBAL ====================

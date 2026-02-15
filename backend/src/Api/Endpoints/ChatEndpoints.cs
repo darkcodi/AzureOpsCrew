@@ -44,6 +44,48 @@ public static class ChatEndpoints
         .Produces(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest);
 
+        group.MapPost("/{id}/add-agent", async (
+            Guid id,
+            AddAgentBodyDto body,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var chat = await context.Set<Chat>()
+                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+            if (chat is null)
+                return Results.BadRequest($"Unknown chat with id: {id}");
+
+            chat.AddAgent(body.AgentId.ToString("D"));
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            return Results.Ok();
+        })
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest);
+
+        group.MapPost("/{id}/remove-agent", async (
+            Guid id,
+            AddAgentBodyDto body,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var chat = await context.Set<Chat>()
+                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+            if (chat is null)
+                return Results.BadRequest($"Unknown chat with id: {id}");
+
+            chat.RemoveAgent(body.AgentId.ToString("D"));
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            return Results.Ok();
+        })
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest);
+
         group.MapGet("", async (
             int clientId,
             AzureOpsCrewContext context,

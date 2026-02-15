@@ -29,5 +29,15 @@ namespace AzureOpsCrew.Domain.Chats
         public string[] AgentIds { get; set; } = [];
 
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
+
+        public void AddAgent(string agentId)
+        {
+            AgentIds = AgentIds.Concat([agentId]).ToArray();
+        }
+
+        public void RemoveAgent(string agentId)
+        {
+            AgentIds = AgentIds.Except([agentId]).ToArray();
+        }
     }
 }
