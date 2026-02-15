@@ -29,6 +29,9 @@ try
             Title = "AzureOpsCrew HTTP Api",
             Version = "v1"
         });
+
+        // Sort operations alphabetically by tag and path
+        options.OrderActionsBy((apiDesc) => $"{apiDesc.RelativePath}");
     });
 
     // Configure settings and database
