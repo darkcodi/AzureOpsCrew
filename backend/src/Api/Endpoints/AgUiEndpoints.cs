@@ -85,10 +85,10 @@ public static class ChannelAgUiEndpoints
             var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
             return new AGUIServerSentEventsResult(events, sseLogger, jsonSerializerOptions);
         })
-        .WithTags("Agents");
+        .WithTags("AG-UI");
 
-        app.MapPost("/api/channels/{channelId:guid}/agui", async (
-            [FromRoute] Guid channelId,
+        app.MapPost("/api/channels/{id:guid}/agui", async (
+            [FromRoute(Name = "id")] Guid channelId,
             [FromBody] RunAgentInput? input,
             OpenAIClient openAiClient,
             AzureOpsCrewContext dbContext,
@@ -178,7 +178,7 @@ public static class ChannelAgUiEndpoints
                 sseLogger,
                 jsonSerializerOptions);
         })
-        .WithTags("Channels");
+        .WithTags("AG-UI");
     }
 }
 
