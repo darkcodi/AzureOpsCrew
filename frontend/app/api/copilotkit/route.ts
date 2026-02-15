@@ -14,7 +14,7 @@ const aguiUrl = `${BACKEND_API_URL}/api/agents/default/agui`
 const aguiAgent = new HttpAgent({ url: aguiUrl })
 
 const runtime = new CopilotRuntime({
-  agents: { aguiAgent },
+  agents: { aguiAgent } as any,
 })
 
 export async function POST(req: NextRequest) {

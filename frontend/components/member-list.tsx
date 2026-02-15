@@ -121,7 +121,7 @@ export function MemberList({
     { name: "Alex K", status: "Offline" },
     { name: "Illya", status: "Offline" },
     { name: "Ivan", status: "Offline" },
-  ] as const
+  ]
 
   const query = searchQuery.trim().toLowerCase()
   const matchesSearch = (agent: Agent) =>
