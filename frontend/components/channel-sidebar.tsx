@@ -30,6 +30,7 @@ interface ChannelSidebarProps {
   activeChannelId: string
   onChannelSelect: (channelId: string) => void
   onCreateChannel: (name: string) => void | Promise<void>
+  onChannelDelete: (channelId: string) => void | Promise<void>
 }
 
 export function ChannelSidebar({
@@ -37,6 +38,7 @@ export function ChannelSidebar({
   activeChannelId,
   onChannelSelect,
   onCreateChannel,
+  onChannelDelete,
 }: ChannelSidebarProps) {
   const [newChannelName, setNewChannelName] = useState("")
   const [deleteChannelPending, setDeleteChannelPending] = useState<Channel | null>(null)
@@ -309,7 +311,15 @@ export function ChannelSidebar({
           </button>
           <button
             type="button"
-            onClick={() => setDeleteChannelPending(null)}
+            onClick={async () => {
+              if (!deleteChannelPending) return
+              try {
+                await onChannelDelete(deleteChannelPending.id)
+                setDeleteChannelPending(null)
+              } catch {
+                toast({ title: "Failed to delete channel", variant: "destructive" })
+              }
+            }}
             className="rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
             style={{ backgroundColor: "rgb(220, 53, 69)" }}
           >

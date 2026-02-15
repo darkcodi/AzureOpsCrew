@@ -99,6 +99,30 @@ export default function Home() {
     )
   }, [])
 
+  const handleDeleteChannel = useCallback(async (channelId: string) => {
+    try {
+      const response = await fetch(`/api/channels/${channelId}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error ?? "Failed to delete channel")
+      }
+      setChannels((prev) => {
+        const next = prev.filter((c) => c.id !== channelId)
+        return next
+      })
+      setActiveChannelId((current) => {
+        if (current !== channelId) return current
+        const remaining = channels.filter((c) => c.id !== channelId)
+        return remaining[0]?.id ?? ""
+      })
+    } catch (error) {
+      console.error("Failed to delete channel:", error)
+      throw error
+    }
+  }, [channels])
+
   const handleAddAgent = useCallback(async (agent: Agent) => {
     // Reload agents from backend after creation to ensure consistency
     try {
@@ -152,6 +176,7 @@ export default function Home() {
             activeChannelId={activeChannelId}
             onChannelSelect={setActiveChannelId}
             onCreateChannel={handleCreateChannel}
+            onChannelDelete={handleDeleteChannel}
           />
           {activeChannel ? (
             <ChannelArea
