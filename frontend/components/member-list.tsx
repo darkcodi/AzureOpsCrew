@@ -25,6 +25,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import { HUMANS } from "@/components/direct-messages-right-pane"
 import { Search, User, Plus, Loader2 } from "lucide-react"
 
 function MemberContextMenu({
@@ -32,12 +33,14 @@ function MemberContextMenu({
   displayName,
   onCopyId,
   onKickClick,
+  onOpenInDM,
   children,
 }: {
   userId: string
   displayName?: string
   onCopyId: (id: string) => void
   onKickClick?: (id: string, name: string) => void
+  onOpenInDM?: (dmId: string) => void
   children: React.ReactNode
 }) {
   return (
@@ -51,7 +54,7 @@ function MemberContextMenu({
       >
         <ContextMenuItem
           className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
-          onSelect={(e) => e.preventDefault()}
+          onSelect={() => onOpenInDM?.(userId)}
         >
           Message
         </ContextMenuItem>
@@ -161,6 +164,7 @@ function AgentRow({
       displayName={agent.name}
       onCopyId={onCopyId}
       onKickClick={onKickClick}
+      onOpenInDM={onOpenInDM}
     >
       {wrapper}
     </MemberContextMenu>
@@ -203,14 +207,6 @@ export function MemberList({
 
   const workingAgents = agentsInRoom.filter((a) => a.id === streamingAgentId)
   const availableAgents = agentsInRoom.filter((a) => a.id !== streamingAgentId)
-
-  const HUMANS = [
-    { name: "You", status: "Online" },
-    { name: "Alex C", status: "Offline" },
-    { name: "Alex K", status: "Offline" },
-    { name: "Illya", status: "Offline" },
-    { name: "Ivan", status: "Offline" },
-  ]
 
   const query = searchQuery.trim().toLowerCase()
   const matchesSearch = (agent: Agent) =>
@@ -338,9 +334,10 @@ export function MemberList({
             {filteredHumans.map((human) =>
               human.name === "You" ? (
                 <MemberContextMenu
-                  key="you"
-                  userId="human-You"
+                  key={human.id}
+                  userId={human.id}
                   onCopyId={handleCopyId}
+                  onOpenInDM={onOpenInDM}
                 >
                   <div
                     className="mb-1 flex w-full items-center gap-3 rounded-md px-2 py-2 cursor-pointer"
@@ -461,9 +458,10 @@ export function MemberList({
                 </MemberContextMenu>
               ) : (
                 <MemberContextMenu
-                  key={human.name}
-                  userId={`human-${human.name}`}
+                  key={human.id}
+                  userId={human.id}
                   onCopyId={handleCopyId}
+                  onOpenInDM={onOpenInDM}
                 >
                   <div
                     className="mb-1 flex w-full items-center gap-3 rounded-md px-2 py-2 cursor-pointer"
