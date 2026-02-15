@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { defaultAgents, defaultChannels, type Agent, type Channel } from "@/lib/agents"
+import { type Agent, type Channel } from "@/lib/agents"
 import { IconSidebar, type ViewMode } from "@/components/icon-sidebar"
 import { ChannelSidebar } from "@/components/channel-sidebar"
 import { ChannelArea } from "@/components/channel-area"
@@ -11,14 +11,12 @@ import { AllAgentsSidebar } from "@/components/all-agents-sidebar"
 
 export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("channels")
-  const [agents, setAgents] = useState<Agent[]>(defaultAgents)
+  const [agents, setAgents] = useState<Agent[]>([])
   const [isLoadingAgents, setIsLoadingAgents] = useState(true)
-  const [channels, setChannels] = useState<Channel[]>(defaultChannels)
+  const [channels, setChannels] = useState<Channel[]>([])
   const [isLoadingChannels, setIsLoadingChannels] = useState(true)
-  const [activeChannelId, setActiveChannelId] = useState(() => defaultChannels[0]?.id ?? "")
-  const [activeDMId, setActiveDMId] = useState<string | null>(
-    () => defaultAgents[0]?.id ?? null
-  )
+  const [activeChannelId, setActiveChannelId] = useState<string>("")
+  const [activeDMId, setActiveDMId] = useState<string | null>(null)
   const [pendingDMMessage, setPendingDMMessage] = useState<string | null>(null)
   const activeChannel = channels.find((c) => c.id === activeChannelId) ?? channels[0]
 
@@ -155,16 +153,32 @@ export default function Home() {
             onChannelSelect={setActiveChannelId}
             onCreateChannel={handleCreateChannel}
           />
-          <ChannelArea
-            key={activeChannel.id}
-            channel={activeChannel}
-            allAgents={agents}
-            onUpdateChannel={handleUpdateChannel}
-            onAddAgent={handleAddAgent}
-            onUpdateAgent={handleUpdateAgent}
-            onDeleteAgent={handleDeleteAgent}
-            onOpenInDM={handleOpenAgentInDM}
-          />
+          {activeChannel ? (
+            <ChannelArea
+              key={activeChannel.id}
+              channel={activeChannel}
+              allAgents={agents}
+              onUpdateChannel={handleUpdateChannel}
+              onAddAgent={handleAddAgent}
+              onUpdateAgent={handleUpdateAgent}
+              onDeleteAgent={handleDeleteAgent}
+              onOpenInDM={handleOpenAgentInDM}
+            />
+          ) : isLoadingChannels ? (
+            <div
+              className="flex flex-1 items-center justify-center"
+              style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
+            >
+              <div style={{ color: "hsl(214, 5%, 55%)" }}>Loading channels...</div>
+            </div>
+          ) : (
+            <div
+              className="flex flex-1 items-center justify-center"
+              style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
+            >
+              <div style={{ color: "hsl(214, 5%, 55%)" }}>No channels found</div>
+            </div>
+          )}
         </>
       )}
       {viewMode === "direct-messages" && (
