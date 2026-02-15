@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 
 import { AgentRuntimeProvider } from "@/contexts/agent-runtime-context"
 import { CopilotKitProvider } from "@/components/copilotkit-provider"
+import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body className="font-sans antialiased overflow-hidden">
         <AgentRuntimeProvider>
           <CopilotKitProvider>{children}</CopilotKitProvider>
+          <Toaster />
         </AgentRuntimeProvider>
       </body>
     </html>

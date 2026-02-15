@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import type { Channel } from "@/lib/agents"
 import { Hash, Plus } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useToast } from "@/hooks/use-toast"
 import {
   ContextMenu,
   ContextMenuContent,
@@ -30,6 +31,7 @@ export function ChannelSidebar({
   onCreateChannel,
 }: ChannelSidebarProps) {
   const [newChannelName, setNewChannelName] = useState("")
+  const { toast } = useToast()
 
   const handleCreate = () => {
     const trimmed = newChannelName.trim()
@@ -182,7 +184,12 @@ export function ChannelSidebar({
                 </ContextMenuItem>
                 <ContextMenuItem
                   className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
-                  onSelect={(e) => e.preventDefault()}
+                  onSelect={() => {
+                    navigator.clipboard.writeText(channel.id).then(
+                      () => toast({ title: "Channel ID copied to clipboard" }),
+                      () => toast({ title: "Failed to copy", variant: "destructive" })
+                    )
+                  }}
                 >
                   <span className="flex flex-1">Copy Channel ID</span>
                   <span
