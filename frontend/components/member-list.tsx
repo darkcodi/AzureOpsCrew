@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import type { Agent } from "@/lib/agents"
+import { useToast } from "@/hooks/use-toast"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { AgentProfilePopover } from "@/components/agent-profile-popover"
@@ -16,13 +17,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Search, User, Plus } from "lucide-react"
+import { Search, User, Plus, Loader2 } from "lucide-react"
 
 interface MemberListProps {
   allAgents: Agent[]
   activeAgentIds: string[]
   streamingAgentId?: string | null
-  onToggleAgent: (agentId: string) => void
+  onToggleAgent: (agentId: string) => void | Promise<void>
   onOpenInDM?: (agentId: string, message?: string) => void
 }
 
@@ -103,6 +104,8 @@ export function MemberList({
 }: MemberListProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [addAgentsOpen, setAddAgentsOpen] = useState(false)
+  const [addingAgentIds, setAddingAgentIds] = useState<Set<string>>(new Set())
+  const { toast } = useToast()
 
   const agentsInRoom = allAgents
     .filter((a) => activeAgentIds.includes(a.id))
@@ -474,7 +477,13 @@ export function MemberList({
           )}
       </ScrollArea>
 
-      <Dialog open={addAgentsOpen} onOpenChange={setAddAgentsOpen}>
+      <Dialog
+        open={addAgentsOpen}
+        onOpenChange={(open) => {
+          setAddAgentsOpen(open)
+          if (!open) setAddingAgentIds(new Set())
+        }}
+      >
         <DialogContent
           className="max-w-md gap-0 border-0 p-0"
           style={{
@@ -526,17 +535,36 @@ export function MemberList({
                     </div>
                     <button
                       type="button"
-                      onClick={(e) => {
+                      disabled={addingAgentIds.has(agent.id)}
+                      onClick={async (e) => {
                         e.stopPropagation()
-                        onToggleAgent(agent.id)
+                        setAddingAgentIds((prev) => new Set(prev).add(agent.id))
+                        try {
+                          await onToggleAgent(agent.id)
+                        } catch {
+                          toast({
+                            title: "Failed to add agent to chat",
+                            variant: "destructive",
+                          })
+                        } finally {
+                          setAddingAgentIds((prev) => {
+                            const next = new Set(prev)
+                            next.delete(agent.id)
+                            return next
+                          })
+                        }
                       }}
-                      className="shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-90"
+                      className="flex shrink-0 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-90 disabled:pointer-events-none disabled:opacity-70"
                       style={{
                         backgroundColor: "hsl(235, 86%, 65%)",
                         color: "#fff",
                       }}
                     >
-                      Add
+                      {addingAgentIds.has(agent.id) ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        "Add"
+                      )}
                     </button>
                   </div>
                 </AgentProfilePopover>

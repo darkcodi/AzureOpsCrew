@@ -43,25 +43,21 @@ export function ChannelArea({
       ? `/api/channels/${channel.id}/add-agent`
       : `/api/channels/${channel.id}/remove-agent`
 
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentId }),
-      })
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agentId }),
+    })
 
-      if (response.ok) {
-        // Only update local state after successful backend call
-        const newIds = isAdding
-          ? [...channel.agentIds, agentId]
-          : channel.agentIds.filter((id) => id !== agentId)
-        onUpdateChannel({ ...channel, agentIds: newIds })
-      } else {
-        console.error("Failed to update agent in channel")
-      }
-    } catch (error) {
-      console.error("Error updating agent in channel:", error)
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error ?? "Failed to update agent in channel")
     }
+
+    const newIds = isAdding
+      ? [...channel.agentIds, agentId]
+      : channel.agentIds.filter((id) => id !== agentId)
+    onUpdateChannel({ ...channel, agentIds: newIds })
   }
 
   const handleSend = useCallback(
