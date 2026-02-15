@@ -53,8 +53,8 @@ export default function Home() {
           const backendRooms: Room[] = await response.json()
           if (backendRooms.length > 0) {
             setRooms(backendRooms)
-            // Set active room if not set
-            setActiveRoomId((prev) => prev || backendRooms[0].id)
+            // Set active room to first backend room
+            setActiveRoomId(backendRooms[0].id)
           }
         }
       } catch (error) {
