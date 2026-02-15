@@ -6,6 +6,7 @@ import { X, Plus, Pencil, Trash2, ChevronLeft, Save } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 const availableModels = [
+  { id: "gpt-5-2-chat", name: "GPT-5.2 Chat" },
   { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
   { id: "openai/gpt-4o", name: "GPT-4o" },
   { id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini" },
