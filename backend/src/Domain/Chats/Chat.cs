@@ -34,5 +34,10 @@ namespace AzureOpsCrew.Domain.Chats
         {
             AgentIds = AgentIds.Concat([agentId]).ToArray();
         }
+
+        public void RemoveAgent(string agentId)
+        {
+            AgentIds = AgentIds.Except([agentId]).ToArray();
+        }
     }
 }
