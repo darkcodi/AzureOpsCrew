@@ -6,7 +6,8 @@ import { ChannelHeader } from "@/components/channel-header"
 import { MessageList } from "@/components/message-list"
 import { MessageInput } from "@/components/message-input"
 import { MemberList } from "@/components/member-list"
-import type { AGUIEvent, AGUI_EVENT_TYPES } from "@/lib/types/agui"
+import type { AGUIEvent } from "@ag-ui/core"
+import { EventType } from "@ag-ui/core"
 
 interface ChannelAreaProps {
   channel: Channel
@@ -132,7 +133,7 @@ export function ChannelArea({
                 const event: AGUIEvent = JSON.parse(data)
 
                 // TEXT_MESSAGE_START: A new message starts
-                if (event.type === AGUI_EVENT_TYPES.TEXT_MESSAGE_START) {
+                if (event.type === EventType.TEXT_MESSAGE_START) {
                   currentMessageId = event.messageId
                   currentContent = ""
 
@@ -141,14 +142,14 @@ export function ChannelArea({
                   setStreamingContent("")
                 }
                 // TEXT_MESSAGE_CONTENT: Streaming content
-                else if (event.type === AGUI_EVENT_TYPES.TEXT_MESSAGE_CONTENT) {
+                else if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
                   if (event.messageId === currentMessageId) {
                     currentContent += event.delta
                     setStreamingContent(currentContent)
                   }
                 }
                 // TEXT_MESSAGE_END: Message finished
-                else if (event.type === AGUI_EVENT_TYPES.TEXT_MESSAGE_END) {
+                else if (event.type === EventType.TEXT_MESSAGE_END) {
                   if (event.messageId === currentMessageId && currentContent) {
                     const agentMsg: ChatMessage = {
                       id: "channel-" + channel.id + "-" + messageIndex++,
@@ -166,12 +167,12 @@ export function ChannelArea({
                   }
                 }
                 // RUN_FINISHED: All done
-                else if (event.type === AGUI_EVENT_TYPES.RUN_FINISHED) {
+                else if (event.type === EventType.RUN_FINISHED) {
                   setStreamingAgentId(null)
                   setStreamingContent("")
                 }
                 // RUN_ERROR: Error occurred
-                else if (event.type === AGUI_EVENT_TYPES.RUN_ERROR) {
+                else if (event.type === EventType.RUN_ERROR) {
                   console.error("AGUI run error:", event.message)
                 }
               } catch {
