@@ -3,7 +3,7 @@
 import { useState, type KeyboardEvent } from "react"
 import { cn } from "@/lib/utils"
 import type { Channel } from "@/lib/agents"
-import { Hash, Plus } from "lucide-react"
+import { Hash, Loader2, Plus } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -42,6 +42,7 @@ export function ChannelSidebar({
 }: ChannelSidebarProps) {
   const [newChannelName, setNewChannelName] = useState("")
   const [deleteChannelPending, setDeleteChannelPending] = useState<Channel | null>(null)
+  const [isDeletingChannel, setIsDeletingChannel] = useState(false)
   const { toast } = useToast()
 
   const handleCreate = () => {
@@ -272,7 +273,15 @@ export function ChannelSidebar({
       </ScrollArea>
     </div>
 
-    <Dialog open={!!deleteChannelPending} onOpenChange={(open) => !open && setDeleteChannelPending(null)}>
+    <Dialog
+      open={!!deleteChannelPending}
+      onOpenChange={(open) => {
+        if (!open) {
+          setDeleteChannelPending(null)
+          setIsDeletingChannel(false)
+        }
+      }}
+    >
       <DialogContent
         className="rounded-lg border-0 p-6 shadow-lg"
         style={{
@@ -311,19 +320,26 @@ export function ChannelSidebar({
           </button>
           <button
             type="button"
+            disabled={isDeletingChannel}
             onClick={async () => {
               if (!deleteChannelPending) return
+              setIsDeletingChannel(true)
               try {
                 await onChannelDelete(deleteChannelPending.id)
                 setDeleteChannelPending(null)
               } catch {
+                setIsDeletingChannel(false)
                 toast({ title: "Failed to delete channel", variant: "destructive" })
               }
             }}
-            className="rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+            className="flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:pointer-events-none disabled:opacity-70"
             style={{ backgroundColor: "rgb(220, 53, 69)" }}
           >
-            Delete Channel
+            {isDeletingChannel ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Delete Channel"
+            )}
           </button>
         </DialogFooter>
       </DialogContent>
