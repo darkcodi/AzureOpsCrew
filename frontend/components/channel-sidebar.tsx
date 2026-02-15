@@ -165,18 +165,6 @@ export function ChannelSidebar({
                   Edit Channel
                 </ContextMenuItem>
                 <ContextMenuItem
-                  className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  Duplicate Channel
-                </ContextMenuItem>
-                <ContextMenuItem
-                  className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  Create Text Channel
-                </ContextMenuItem>
-                <ContextMenuItem
                   className="cursor-pointer rounded px-2 py-1.5 text-sm text-red-500 focus:bg-white/10 focus:text-red-500"
                   onSelect={(e) => e.preventDefault()}
                 >
