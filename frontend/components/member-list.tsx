@@ -17,7 +17,55 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 import { Search, User, Plus, Loader2 } from "lucide-react"
+
+function MemberContextMenu({
+  userId,
+  onCopyId,
+  children,
+}: {
+  userId: string
+  onCopyId: (id: string) => void
+  children: React.ReactNode
+}) {
+  return (
+    <ContextMenu>
+      <ContextMenuContent
+        className="min-w-[180px] rounded-lg border-0 p-1 shadow-lg"
+        style={{
+          backgroundColor: "rgb(53, 54, 59)",
+          color: "rgb(255, 255, 255)",
+        }}
+      >
+        <ContextMenuItem
+          className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
+          onSelect={(e) => e.preventDefault()}
+        >
+          Message
+        </ContextMenuItem>
+        <ContextMenuItem
+          className="cursor-pointer rounded px-2 py-1.5 text-sm text-red-500 focus:bg-white/10 focus:text-red-500"
+          onSelect={(e) => e.preventDefault()}
+        >
+          Kick
+        </ContextMenuItem>
+        <ContextMenuItem
+          className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
+          onSelect={() => onCopyId(userId)}
+        >
+          Copy User ID
+        </ContextMenuItem>
+      </ContextMenuContent>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+    </ContextMenu>
+  )
+}
 
 interface MemberListProps {
   allAgents: Agent[]
@@ -32,27 +80,20 @@ function AgentRow({
   isInRoom,
   onToggle,
   onOpenInDM,
+  onCopyId,
 }: {
   agent: Agent
   isInRoom: boolean
   onToggle: () => void
   onOpenInDM?: (agentId: string, message?: string) => void
+  onCopyId: (id: string) => void
 }) {
   const handleClick = () => {
     if (!onOpenInDM) onToggle()
   }
 
-  const row = (
-    <div
-      className="mb-1 flex items-center gap-3 rounded-md px-2 py-2 transition-colors cursor-pointer"
-      onClick={handleClick}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "transparent"
-      }}
-    >
+  const rowContent = (
+    <div className="flex min-w-0 flex-1 items-center gap-3">
       <div
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
         style={{
@@ -82,17 +123,32 @@ function AgentRow({
     </div>
   )
 
-  if (onOpenInDM) {
-    return (
-      <AgentProfilePopover
-        agent={agent}
-        onOpenInDM={onOpenInDM}
-      >
-        {row}
-      </AgentProfilePopover>
-    )
-  }
-  return row
+  const wrapper = (
+    <div
+      className="mb-1 flex items-center gap-3 rounded-md px-2 py-2 transition-colors cursor-pointer"
+      onClick={!onOpenInDM ? handleClick : undefined}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = "transparent"
+      }}
+    >
+      {onOpenInDM ? (
+        <AgentProfilePopover agent={agent} onOpenInDM={onOpenInDM}>
+          {rowContent}
+        </AgentProfilePopover>
+      ) : (
+        rowContent
+      )}
+    </div>
+  )
+
+  return (
+    <MemberContextMenu userId={agent.id} onCopyId={onCopyId}>
+      {wrapper}
+    </MemberContextMenu>
+  )
 }
 
 export function MemberList({
@@ -106,6 +162,13 @@ export function MemberList({
   const [addAgentsOpen, setAddAgentsOpen] = useState(false)
   const [addingAgentIds, setAddingAgentIds] = useState<Set<string>>(new Set())
   const { toast } = useToast()
+
+  const handleCopyId = (id: string) => {
+    navigator.clipboard.writeText(id).then(
+      () => toast({ title: "User ID copied to clipboard" }),
+      () => toast({ title: "Failed to copy", variant: "destructive" })
+    )
+  }
 
   const agentsInRoom = allAgents
     .filter((a) => activeAgentIds.includes(a.id))
@@ -183,6 +246,7 @@ export function MemberList({
                 isInRoom
                 onToggle={() => onToggleAgent(agent.id)}
                 onOpenInDM={onOpenInDM}
+                onCopyId={handleCopyId}
               />
             ))}
           </>
@@ -202,6 +266,7 @@ export function MemberList({
                 isInRoom
                 onToggle={() => onToggleAgent(agent.id)}
                 onOpenInDM={onOpenInDM}
+                onCopyId={handleCopyId}
               />
             ))}
             {filteredAvailable.length === 0 && agentsInRoom.length === 0 && (
@@ -247,19 +312,34 @@ export function MemberList({
             </div>
             {filteredHumans.map((human) =>
               human.name === "You" ? (
-                <Popover key="you">
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="mb-1 flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors cursor-pointer"
-                      style={{ color: "hsl(210, 3%, 90%)" }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "transparent"
-                      }}
-                    >
+                <MemberContextMenu
+                  key="you"
+                  userId="human-You"
+                  onCopyId={handleCopyId}
+                >
+                  <div
+                    className="mb-1 flex w-full items-center gap-3 rounded-md px-2 py-2 cursor-pointer"
+                    style={{ color: "hsl(210, 3%, 90%)" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent"
+                    }}
+                  >
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 rounded-md py-0 text-left transition-colors cursor-pointer min-w-0"
+                        style={{ color: "inherit", backgroundColor: "transparent", border: "none" }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent"
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent"
+                        }}
+                      >
                       <div
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs"
                         style={{
@@ -352,20 +432,37 @@ export function MemberList({
                     </div>
                   </PopoverContent>
                 </Popover>
+                  </div>
+                </MemberContextMenu>
               ) : (
-                <Popover key={human.name}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="mb-1 flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors cursor-pointer"
-                      style={{ color: "hsl(210, 3%, 90%)" }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "transparent"
-                      }}
-                    >
+                <MemberContextMenu
+                  key={human.name}
+                  userId={`human-${human.name}`}
+                  onCopyId={handleCopyId}
+                >
+                  <div
+                    className="mb-1 flex w-full items-center gap-3 rounded-md px-2 py-2 cursor-pointer"
+                    style={{ color: "hsl(210, 3%, 90%)" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent"
+                    }}
+                  >
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 rounded-md py-0 text-left transition-colors cursor-pointer min-w-0"
+                        style={{ color: "inherit", backgroundColor: "transparent", border: "none" }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent"
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent"
+                        }}
+                      >
                       <div
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs"
                         style={{
@@ -460,6 +557,8 @@ export function MemberList({
                     </div>
                   </PopoverContent>
                 </Popover>
+                  </div>
+                </MemberContextMenu>
               )
             )}
           </>
