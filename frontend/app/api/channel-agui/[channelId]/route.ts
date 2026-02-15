@@ -13,7 +13,6 @@ interface ChatMessage {
 
 interface ChatRequest {
   messages: ChatMessage[]
-  agentId: string
   customSystemPrompt?: string
   customModel?: string
 }
@@ -126,6 +125,13 @@ export async function POST(
                 try {
                   const event: AGUIEvent = JSON.parse(data)
 
+                  // Forward TEXT_MESSAGE_START event (includes authorName for agent identification)
+                  if (event.type === AGUI_EVENT_TYPES.TEXT_MESSAGE_START) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
+                    )
+                  }
+
                   // Transform AGUI events to frontend-compatible format
                   // TextMessageContentEvent -> text-delta format
                   if (event.type === AGUI_EVENT_TYPES.TEXT_MESSAGE_CONTENT) {
@@ -135,6 +141,13 @@ export async function POST(
                         encoder.encode(`data: ${JSON.stringify({ type: "text-delta", textDelta: delta })}\n\n`)
                       )
                     }
+                  }
+
+                  // Forward TEXT_MESSAGE_END event
+                  if (event.type === AGUI_EVENT_TYPES.TEXT_MESSAGE_END) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
+                    )
                   }
 
                   // For now, also forward tool events and other events as-is

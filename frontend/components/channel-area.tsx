@@ -63,103 +63,6 @@ export function ChannelArea({
     }
   }
 
-  const sendToAgent = useCallback(
-    async (
-      agent: Agent,
-      conversationHistory: { role: string; content: string }[],
-      signal: AbortSignal
-    ) => {
-      setStreamingAgentId(agent.id)
-      setStreamingContent("")
-
-      const response = await fetch(`/api/channel-agui/${channel.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: conversationHistory,
-          agentId: agent.id,
-        }),
-        signal,
-      })
-
-      if (!response.ok || !response.body) {
-        throw new Error("Failed to get AGUI response from " + agent.name)
-      }
-
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let fullContent = ""
-      let buffer = ""
-      const activeToolCalls: Map<string, { name: string; args: string }> = new Map()
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() || ""
-
-        for (const line of lines) {
-          const trimmed = line.trim()
-          if (trimmed.startsWith("data:")) {
-            const data = trimmed.slice(5).trim()
-            if (data === "[DONE]") continue
-            try {
-              const event: AGUIEvent = JSON.parse(data)
-
-              // Handle text content (streaming response)
-              if (event.type === AGUI_EVENT_TYPES.TEXT_MESSAGE_CONTENT) {
-                fullContent += event.delta
-                setStreamingContent(fullContent)
-              }
-              // Handle tool call start
-              else if (event.type === AGUI_EVENT_TYPES.TOOL_CALL_START) {
-                activeToolCalls.set(event.toolCallId, {
-                  name: event.toolCallName,
-                  args: "",
-                })
-              }
-              // Handle tool call args (streaming)
-              else if (event.type === AGUI_EVENT_TYPES.TOOL_CALL_ARGS) {
-                const existing = activeToolCalls.get(event.toolCallId)
-                if (existing) {
-                  existing.args += event.delta
-                }
-              }
-              // Handle tool call end - display tool invocation
-              else if (event.type === AGUI_EVENT_TYPES.TOOL_CALL_END) {
-                const toolCall = activeToolCalls.get(event.toolCallId)
-                if (toolCall) {
-                  // Could display tool call in UI here
-                  console.log(`Tool called: ${toolCall.name}`, toolCall.args)
-                }
-              }
-              // Handle tool result
-              else if (event.type === AGUI_EVENT_TYPES.TOOL_CALL_RESULT) {
-                activeToolCalls.delete(event.toolCallId)
-                // Tool result could be displayed in UI
-              }
-              // Handle run finished
-              else if (event.type === AGUI_EVENT_TYPES.RUN_FINISHED) {
-                // Run completed
-              }
-              // Handle run error
-              else if (event.type === AGUI_EVENT_TYPES.RUN_ERROR) {
-                console.error("AGUI run error:", event.message)
-              }
-            } catch {
-              /* skip */
-            }
-          }
-        }
-      }
-
-      return fullContent
-    },
-    [channel.id]
-  )
-
   const handleSend = useCallback(
     async (text: string) => {
       if (isProcessing || activeAgents.length === 0) return
@@ -175,57 +78,119 @@ export function ChannelArea({
 
       setMessages((prev) => [...prev, userMsg])
 
+      // Build conversation history
+      // The backend's workflow agent handles context across agents
       const history = [
         ...messages.map((m) => ({
           role: m.role,
-          content:
-            m.role === "assistant" && m.agentId
-              ? "[" +
-                (allAgents.find((a) => a.id === m.agentId)?.name ?? "Agent") +
-                "]: " +
-                m.content
-              : m.content,
+          content: m.content,
         })),
         { role: "user", content: text },
       ]
 
       abortRef.current = new AbortController()
 
-      for (const agent of activeAgents) {
-        if (abortRef.current.signal.aborted) break
+      try {
+        // SINGLE call to backend - no loop!
+        // The backend workflow handles running all agents in sequence
+        const response = await fetch(`/api/channel-agui/${channel.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: history,
+          }),
+          signal: abortRef.current.signal,
+        })
 
-        try {
-          const content = await sendToAgent(
-            agent,
-            history,
-            abortRef.current.signal
-          )
-
-          if (content) {
-            const agentMsg: ChatMessage = {
-              id: "agent-" + agent.id + "-" + Date.now(),
-              role: "assistant",
-              content,
-              agentId: agent.id,
-              timestamp: new Date(),
-            }
-            setMessages((prev) => [...prev, agentMsg])
-
-            history.push({
-              role: "assistant",
-              content: "[" + agent.name + "]: " + content,
-            })
-          }
-        } catch (err) {
-          if (err instanceof DOMException && err.name === "AbortError") break
+        if (!response.ok || !response.body) {
+          throw new Error("Failed to get AGUI response")
         }
-      }
 
-      setStreamingAgentId(null)
-      setStreamingContent("")
-      setIsProcessing(false)
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ""
+
+        // Track the current message being streamed
+        let currentMessageId: string | null = null
+        let currentContent = ""
+        let messageIndex = 0
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split("\n")
+          buffer = lines.pop() || ""
+
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (trimmed.startsWith("data:")) {
+              const data = trimmed.slice(5).trim()
+              if (data === "[DONE]") continue
+              try {
+                const event: AGUIEvent = JSON.parse(data)
+
+                // TEXT_MESSAGE_START: A new message starts
+                if (event.type === AGUI_EVENT_TYPES.TEXT_MESSAGE_START) {
+                  currentMessageId = event.messageId
+                  currentContent = ""
+
+                  // Show typing indicator for the channel
+                  setStreamingAgentId("channel")
+                  setStreamingContent("")
+                }
+                // TEXT_MESSAGE_CONTENT: Streaming content
+                else if (event.type === AGUI_EVENT_TYPES.TEXT_MESSAGE_CONTENT) {
+                  if (event.messageId === currentMessageId) {
+                    currentContent += event.delta
+                    setStreamingContent(currentContent)
+                  }
+                }
+                // TEXT_MESSAGE_END: Message finished
+                else if (event.type === AGUI_EVENT_TYPES.TEXT_MESSAGE_END) {
+                  if (event.messageId === currentMessageId && currentContent) {
+                    const agentMsg: ChatMessage = {
+                      id: "channel-" + channel.id + "-" + messageIndex++,
+                      role: "assistant",
+                      content: currentContent,
+                      timestamp: new Date(),
+                    }
+                    setMessages((prev) => [...prev, agentMsg])
+
+                    // Reset for next message
+                    currentMessageId = null
+                    currentContent = ""
+                    setStreamingAgentId(null)
+                    setStreamingContent("")
+                  }
+                }
+                // RUN_FINISHED: All done
+                else if (event.type === AGUI_EVENT_TYPES.RUN_FINISHED) {
+                  setStreamingAgentId(null)
+                  setStreamingContent("")
+                }
+                // RUN_ERROR: Error occurred
+                else if (event.type === AGUI_EVENT_TYPES.RUN_ERROR) {
+                  console.error("AGUI run error:", event.message)
+                }
+              } catch {
+                /* skip invalid events */
+              }
+            }
+          }
+        }
+      } catch (err) {
+        if (!(err instanceof DOMException && err.name === "AbortError")) {
+          console.error("Error processing channel stream:", err)
+        }
+      } finally {
+        setStreamingAgentId(null)
+        setStreamingContent("")
+        setIsProcessing(false)
+      }
     },
-    [isProcessing, activeAgents, messages, allAgents, sendToAgent]
+    [isProcessing, activeAgents.length, messages, channel.id, channel.name]
   )
 
   return (
