@@ -133,15 +133,11 @@ export async function POST(
                     )
                   }
 
-                  // Transform AGUI events to frontend-compatible format
-                  // TextMessageContentEvent -> text-delta format
+                  // Forward TEXT_MESSAGE_CONTENT event as-is
                   if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
-                    const delta = (event as any).delta
-                    if (delta) {
-                      controller.enqueue(
-                        encoder.encode(`data: ${JSON.stringify({ type: "text-delta", textDelta: delta })}\n\n`)
-                      )
-                    }
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
+                    )
                   }
 
                   // Forward TEXT_MESSAGE_END event
