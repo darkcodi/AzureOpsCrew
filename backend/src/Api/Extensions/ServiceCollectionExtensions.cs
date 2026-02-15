@@ -7,7 +7,9 @@ using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
+using OpenAI;
 using System.ClientModel;
+using Serilog;
 
 namespace AzureOpsCrew.Api.Extensions;
 
@@ -91,23 +93,35 @@ public static class ServiceCollectionExtensions
     public static void AddDatabase(this IServiceCollection services, IConfiguration configuration)
     {
         var provider = configuration["DatabaseProvider"];
+        Log.Information("Configuring database provider: {DbProvider}", provider);
 
         if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
         {
             services.AddSQLiteSettings(configuration, "Sqlite");
             services.AddEFCoreSqliteDb();
         }
-        if (string.Equals(provider, "CosmosDb", StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(provider, "CosmosDb", StringComparison.OrdinalIgnoreCase))
         {
             services.AddCosmosSettings(configuration, "CosmosDb");
             services.AddEFCoreCosmosDb();
         }
-
-        throw new InvalidOperationException("Db provider is not configured properly.");
+        else
+        {
+            throw new InvalidOperationException($"Unknown DB provider '{provider}'.");
+        }
     }
 
     public static void AddIChatClient(this IServiceCollection services)
     {
+        services.AddScoped<OpenAIClient>(sp =>
+        {
+            var aiSettings = sp.GetRequiredService<IOptions<AiSettings>>().Value;
+            var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
+            return new AzureOpenAIClient(
+                    new Uri(aiSettings.Endpoint!),
+                    new ApiKeyCredential(aiSettings.ApiKey!),
+                    options);
+        });
         services.AddSingleton<IChatClient>(sp =>
         {
             var aiSettings = sp.GetRequiredService<IOptions<AiSettings>>().Value;
