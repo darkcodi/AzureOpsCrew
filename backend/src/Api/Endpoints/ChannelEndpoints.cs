@@ -113,5 +113,24 @@ public static class ChannelEndpoints
         })
         .Produces<Channel>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
+
+        group.MapDelete("/{id}", async (
+            Guid id,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+            if (channel is null)
+                return Results.NotFound();
+
+            context.Set<Channel>().Remove(channel);
+            await context.SaveChangesAsync(cancellationToken);
+
+            return Results.NoContent();
+        })
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status404NotFound);
     }
 }
