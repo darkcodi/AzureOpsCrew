@@ -6,6 +6,7 @@ import { ChatHeader } from "@/components/chat-header"
 import { MessageList } from "@/components/message-list"
 import { MessageInput } from "@/components/message-input"
 import { MemberList } from "@/components/member-list"
+import type { AGUIEvent, AGUI_EVENT_TYPES } from "@/lib/types/agui"
 
 interface ChatAreaProps {
   room: Room
@@ -51,26 +52,25 @@ export function ChatArea({
       setStreamingAgentId(agent.id)
       setStreamingContent("")
 
-      const response = await fetch("/api/chat", {
+      const response = await fetch(`/api/chat-agui/${room.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agentId: agent.id,
           messages: conversationHistory,
-          customSystemPrompt: agent.systemPrompt,
-          customModel: agent.model,
+          agentId: agent.id,
         }),
         signal,
       })
 
       if (!response.ok || !response.body) {
-        throw new Error("Failed to get response from " + agent.name)
+        throw new Error("Failed to get AGUI response from " + agent.name)
       }
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let fullContent = ""
       let buffer = ""
+      const activeToolCalls: Map<string, { name: string; args: string }> = new Map()
 
       while (true) {
         const { done, value } = await reader.read()
@@ -86,13 +86,47 @@ export function ChatArea({
             const data = trimmed.slice(5).trim()
             if (data === "[DONE]") continue
             try {
-              const parsed = JSON.parse(data)
-              if (
-                parsed.type === "text-delta" &&
-                typeof parsed.textDelta === "string"
-              ) {
-                fullContent += parsed.textDelta
+              const event: AGUIEvent = JSON.parse(data)
+
+              // Handle text content (streaming response)
+              if (event.type === AGUI_EVENT_TYPES.TEXT_MESSAGE_CONTENT) {
+                fullContent += event.delta
                 setStreamingContent(fullContent)
+              }
+              // Handle tool call start
+              else if (event.type === AGUI_EVENT_TYPES.TOOL_CALL_START) {
+                activeToolCalls.set(event.toolCallId, {
+                  name: event.toolCallName,
+                  args: "",
+                })
+              }
+              // Handle tool call args (streaming)
+              else if (event.type === AGUI_EVENT_TYPES.TOOL_CALL_ARGS) {
+                const existing = activeToolCalls.get(event.toolCallId)
+                if (existing) {
+                  existing.args += event.delta
+                }
+              }
+              // Handle tool call end - display tool invocation
+              else if (event.type === AGUI_EVENT_TYPES.TOOL_CALL_END) {
+                const toolCall = activeToolCalls.get(event.toolCallId)
+                if (toolCall) {
+                  // Could display tool call in UI here
+                  console.log(`Tool called: ${toolCall.name}`, toolCall.args)
+                }
+              }
+              // Handle tool result
+              else if (event.type === AGUI_EVENT_TYPES.TOOL_CALL_RESULT) {
+                activeToolCalls.delete(event.toolCallId)
+                // Tool result could be displayed in UI
+              }
+              // Handle run finished
+              else if (event.type === AGUI_EVENT_TYPES.RUN_FINISHED) {
+                // Run completed
+              }
+              // Handle run error
+              else if (event.type === AGUI_EVENT_TYPES.RUN_ERROR) {
+                console.error("AGUI run error:", event.message)
               }
             } catch {
               /* skip */
@@ -103,7 +137,7 @@ export function ChatArea({
 
       return fullContent
     },
-    []
+    [room.id]
   )
 
   const handleSend = useCallback(
