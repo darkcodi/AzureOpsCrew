@@ -96,8 +96,7 @@ try
     app.MapAgentEndpoints();
     app.MapChatEndpoints();
     
-    app.MapChatAgUi();
-    app.MapAgentAgUi();
+    app.MapAllAgUi();
 
     await app.Services.RunDbSetup(builder.Configuration);
 
