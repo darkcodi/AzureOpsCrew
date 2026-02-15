@@ -115,21 +115,17 @@ namespace AzureOpsCrew.Api.Endpoints
     {
         public static Workflow BuildWorkflow(IReadOnlyList<AIAgent> agents)
         {
-            // MVP: sequential pipeline.
-            // Якщо тобі треба supervisor/handoff — заміниш на HandoffBuilder/GroupChatBuilder.
             return AgentWorkflowBuilder
                 .BuildSequential(agents.ToArray());
         }
 
         public static AIAgent BuildWorkflowAgent(Workflow workflow, Guid chatId)
         {
-            // includeWorkflowOutputsInResponse: якщо хочеш, щоб yield_output / outputs теж “вилазили” в response
-            // (параметр є в коді WorkflowHostingExtensions) :contentReference[oaicite:10]{index=10}
             return workflow.AsAgent(
                 id: chatId.ToString(),
                 name: $"chat-{chatId}",
                 includeExceptionDetails: false
-            // , includeWorkflowOutputsInResponse: true  // якщо доступний у твоїй версії пакета
+            // , includeWorkflowOutputsInResponse: true  // idk
             );
         }
 
@@ -146,7 +142,7 @@ namespace AzureOpsCrew.Api.Endpoints
 
             var chatClient = openAiClient.GetChatClient(agentEntity.Info.Model).AsIChatClient();
 
-            // Ключ: tools/props задаємо тут, а не через RunOptions (бо workflow.AsAgent може їх не прокинути)
+            // Key: set tools/properties here, not via RunOptions (because workflow.AsAgent may not propagate them)
             var options = new ChatClientAgentOptions
             {
                 Name = agentEntity.Info.Name,
