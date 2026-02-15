@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using OpenAI;
+using System.Text.Json;
 
 namespace AzureOpsCrew.Api.Endpoints
 {
@@ -15,8 +16,8 @@ namespace AzureOpsCrew.Api.Endpoints
     {
         public static void MapChatAgUi(this IEndpointRouteBuilder app)
         {
-            app.MapPost("/api/agents/{chatId}/agui", async (
-            //app.MapPost("chat/{chatId:guid}/agui/", async (
+            //app.MapPost("/api/agents/{chatId}/agui", async (
+            app.MapPost("chat/{chatId:guid}/agui/", async (
                 [FromRoute] Guid chatId,
                 [FromBody] RunAgentInput? input,
                 OpenAIClient openAiClient,
@@ -50,6 +51,7 @@ namespace AzureOpsCrew.Api.Endpoints
                     return Results.BadRequest($"Some agents was not found.");
 
                 // 2) Create internal agents
+                //WARNING: ChatClientAgentRunOptions are ignored from input !!! We should keep the context to ourselves
                 var internalAgents = agents
                     .Select(a => ChatAgUiFactory.CreateChatAgent(openAiClient, a, clientTools, input))
                     .ToList();
@@ -60,9 +62,9 @@ namespace AzureOpsCrew.Api.Endpoints
 
                 // 4) Restore/create session
                 AgentSession session;
-                if (false)//chat.SerializedSessionJson is not null) // наприклад JsonElement? або string
+                if (false)//(chat.ConversationId is not null) // Use SerializedSession or dedicated aggregate root related to ConversationId JsonElement? or string
                 {
-                    //session = await workflowAgent.DeserializeSessionAsync(chat.SerializedSessionJson);
+                    session = await workflowAgent.DeserializeSessionAsync(JsonElement.Parse(chat.ConversationId));
                 }
                 else
                 {
@@ -93,11 +95,7 @@ namespace AzureOpsCrew.Api.Endpoints
                 //    }
                 //    finally
                 //    {
-                //        // serialized session
-                //        var serialized = workflowAgent.SerializeSession(session);
-
-                //        // persist (псевдо-поле — підстав своє)
-                //        //chat.SerializedSessionJson = serialized;
+                //        chat.ConversationId = workflowAgent.SerializeSession(session).ToString();
 
                 //        await dbContext.SaveChangesAsync(token);
                 //    }
