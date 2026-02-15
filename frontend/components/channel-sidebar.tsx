@@ -16,6 +16,14 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface ChannelSidebarProps {
   channels: Channel[]
@@ -31,6 +39,7 @@ export function ChannelSidebar({
   onCreateChannel,
 }: ChannelSidebarProps) {
   const [newChannelName, setNewChannelName] = useState("")
+  const [deleteChannelPending, setDeleteChannelPending] = useState<Channel | null>(null)
   const { toast } = useToast()
 
   const handleCreate = () => {
@@ -47,6 +56,7 @@ export function ChannelSidebar({
   }
 
   return (
+    <>
     <div
       className="flex h-full w-[220px] flex-col"
       style={{ backgroundColor: "hsl(228, 7%, 14%)" }}
@@ -166,7 +176,7 @@ export function ChannelSidebar({
                 </ContextMenuItem>
                 <ContextMenuItem
                   className="cursor-pointer rounded px-2 py-1.5 text-sm text-red-500 focus:bg-white/10 focus:text-red-500"
-                  onSelect={(e) => e.preventDefault()}
+                  onSelect={() => setDeleteChannelPending(channel)}
                 >
                   Delete Channel
                 </ContextMenuItem>
@@ -259,5 +269,55 @@ export function ChannelSidebar({
         </div>
       </ScrollArea>
     </div>
+
+    <Dialog open={!!deleteChannelPending} onOpenChange={(open) => !open && setDeleteChannelPending(null)}>
+      <DialogContent
+        className="rounded-lg border-0 p-6 shadow-lg"
+        style={{
+          backgroundColor: "rgb(49, 51, 56)",
+          color: "rgb(255, 255, 255)",
+        }}
+      >
+        <DialogHeader className="space-y-2 text-left">
+          <DialogTitle className="text-lg font-semibold text-white">
+            Delete Channel
+          </DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-1 text-sm" style={{ color: "rgb(163, 163, 163)" }}>
+              <p>
+                Are you sure you want to delete{" "}
+                <span className="font-medium text-white">
+                  #{deleteChannelPending?.name ?? ""}
+                </span>
+                ?
+              </p>
+              <p>This cannot be undone.</p>
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex flex-row justify-end gap-2 sm:justify-end">
+          <button
+            type="button"
+            onClick={() => setDeleteChannelPending(null)}
+            className="rounded-md px-4 py-2 text-sm font-medium transition-colors hover:opacity-90"
+            style={{
+              backgroundColor: "rgb(64, 66, 72)",
+              color: "rgb(255, 255, 255)",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteChannelPending(null)}
+            className="rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+            style={{ backgroundColor: "rgb(220, 53, 69)" }}
+          >
+            Delete Channel
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
