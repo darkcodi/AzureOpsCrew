@@ -81,7 +81,7 @@ export default function Home() {
       } else {
         // Fallback to local creation
         const id = crypto.randomUUID()
-        const newChannel: Channel = { id, name, agentIds: [] }
+        const newChannel: Channel = { id, name, agentIds: [], dateCreated: new Date().toISOString() }
         setChannels((prev) => [...prev, newChannel])
         setActiveChannelId(id)
       }
@@ -89,7 +89,7 @@ export default function Home() {
       console.error("Failed to create channel:", error)
       // Fallback to local creation
       const id = crypto.randomUUID()
-      const newChannel: Channel = { id, name, agentIds: [] }
+      const newChannel: Channel = { id, name, agentIds: [], dateCreated: new Date().toISOString() }
       setChannels((prev) => [...prev, newChannel])
       setActiveChannelId(id)
     }

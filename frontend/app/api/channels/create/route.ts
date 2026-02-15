@@ -64,11 +64,32 @@ export async function POST(req: NextRequest) {
     const result = await response.json()
     // Backend returns { channelId: "guid" }
 
-    // Return the channel in frontend format
-    const frontendChannel: Channel = {
-      id: result.channelId || crypto.randomUUID(),
+    // Fetch the newly created channel to get the full data including dateCreated
+    const channelId = result.channelId
+    let frontendChannel: Channel
+
+    if (channelId) {
+      try {
+        const channelResponse = await fetch(`${BACKEND_API_URL}/api/channels?clientId=1`)
+        if (channelResponse.ok) {
+          const channels: Channel[] = await channelResponse.json()
+          const newChannel = channels.find((c) => c.id === channelId)
+          if (newChannel) {
+            frontendChannel = newChannel
+            return NextResponse.json(frontendChannel)
+          }
+        }
+      } catch {
+        // Fall through to creating a channel with current timestamp
+      }
+    }
+
+    // Fallback: create channel with current timestamp
+    frontendChannel = {
+      id: channelId || crypto.randomUUID(),
       name: name.trim(),
       agentIds: agentIds || [],
+      dateCreated: new Date().toISOString(),
     }
 
     return NextResponse.json(frontendChannel)

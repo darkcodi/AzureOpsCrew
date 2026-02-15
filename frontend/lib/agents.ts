@@ -61,5 +61,6 @@ export const defaultChannels: Channel[] = [
     id: "general",
     name: "General",
     agentIds: ["manager", "azure-devops"],
+    dateCreated: new Date("2024-01-01").toISOString(),
   },
 ]
