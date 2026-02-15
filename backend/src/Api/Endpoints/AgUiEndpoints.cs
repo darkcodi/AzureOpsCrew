@@ -178,7 +178,7 @@ public static class ChannelAgUiEndpoints
                 sseLogger,
                 jsonSerializerOptions);
         })
-        .WithTags("ChannelAgUi");
+        .WithTags("Channels");
     }
 }
 
