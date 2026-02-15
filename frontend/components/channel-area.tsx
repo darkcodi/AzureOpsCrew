@@ -114,6 +114,7 @@ export function ChannelArea({
         // Track the current message being streamed
         let currentMessageId: string | null = null
         let currentContent = ""
+        let currentAgentName: string | null = null
         let messageIndex = 0
 
         while (true) {
@@ -136,9 +137,15 @@ export function ChannelArea({
                 if (event.type === EventType.TEXT_MESSAGE_START) {
                   currentMessageId = event.messageId
                   currentContent = ""
+                  // Extract authorName from message ID (format: "AuthorName|OriginalMessageId")
+                  const pipeIndex = event.messageId.indexOf("|")
+                  currentAgentName = pipeIndex !== -1 ? event.messageId.slice(0, pipeIndex) : null
 
-                  // Show typing indicator for the channel
-                  setStreamingAgentId("channel")
+                  // Show typing indicator for the agent
+                  const agent = currentAgentName
+                    ? activeAgents.find((a) => a.name === currentAgentName)
+                    : null
+                  setStreamingAgentId(agent?.id ?? "channel")
                   setStreamingContent("")
                 }
                 // TEXT_MESSAGE_CONTENT: Streaming content
@@ -151,17 +158,23 @@ export function ChannelArea({
                 // TEXT_MESSAGE_END: Message finished
                 else if (event.type === EventType.TEXT_MESSAGE_END) {
                   if (event.messageId === currentMessageId && currentContent) {
+                    // Map authorName to agentId
+                    const agent = currentAgentName
+                      ? activeAgents.find((a) => a.name === currentAgentName)
+                      : null
                     const agentMsg: ChatMessage = {
                       id: "channel-" + channel.id + "-" + messageIndex++,
                       role: "assistant",
                       content: currentContent,
                       timestamp: new Date(),
+                      agentId: agent?.id,
                     }
                     setMessages((prev) => [...prev, agentMsg])
 
                     // Reset for next message
                     currentMessageId = null
                     currentContent = ""
+                    currentAgentName = null
                     setStreamingAgentId(null)
                     setStreamingContent("")
                   }
@@ -191,7 +204,7 @@ export function ChannelArea({
         setIsProcessing(false)
       }
     },
-    [isProcessing, activeAgents.length, messages, channel.id, channel.name]
+    [isProcessing, activeAgents, messages, channel.id, channel.name]
   )
 
   return (
