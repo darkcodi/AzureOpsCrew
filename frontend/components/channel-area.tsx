@@ -36,11 +36,31 @@ export function ChannelArea({
 
   const activeAgents = allAgents.filter((a) => channel.agentIds.includes(a.id))
 
-  const handleToggleAgent = (agentId: string) => {
-    const newIds = channel.agentIds.includes(agentId)
-      ? channel.agentIds.filter((id) => id !== agentId)
-      : [...channel.agentIds, agentId]
-    onUpdateChannel({ ...channel, agentIds: newIds })
+  const handleToggleAgent = async (agentId: string) => {
+    const isAdding = !channel.agentIds.includes(agentId)
+    const endpoint = isAdding
+      ? `/api/channels/${channel.id}/add-agent`
+      : `/api/channels/${channel.id}/remove-agent`
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId }),
+      })
+
+      if (response.ok) {
+        // Only update local state after successful backend call
+        const newIds = isAdding
+          ? [...channel.agentIds, agentId]
+          : channel.agentIds.filter((id) => id !== agentId)
+        onUpdateChannel({ ...channel, agentIds: newIds })
+      } else {
+        console.error("Failed to update agent in channel")
+      }
+    } catch (error) {
+      console.error("Error updating agent in channel:", error)
+    }
   }
 
   const sendToAgent = useCallback(
