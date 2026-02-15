@@ -60,6 +60,28 @@ export function ChannelArea({
     onUpdateChannel({ ...channel, agentIds: newIds })
   }
 
+  const handleKickMember = useCallback(
+    async (agentId: string) => {
+      const response = await fetch(
+        `/api/channels/${channel.id}/remove-agent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ agentId }),
+        }
+      )
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error ?? "Failed to kick member from channel")
+      }
+
+      const newIds = channel.agentIds.filter((id) => id !== agentId)
+      onUpdateChannel({ ...channel, agentIds: newIds })
+    },
+    [channel, onUpdateChannel]
+  )
+
   const handleSend = useCallback(
     async (text: string) => {
       if (isProcessing || activeAgents.length === 0) return
@@ -237,6 +259,7 @@ export function ChannelArea({
           streamingAgentId={streamingAgentId}
           onToggleAgent={handleToggleAgent}
           onOpenInDM={onOpenInDM}
+          onKickMember={handleKickMember}
         />
       )}
     </div>

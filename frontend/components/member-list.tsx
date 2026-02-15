@@ -9,6 +9,8 @@ import { AgentProfilePopover } from "@/components/agent-profile-popover"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -27,11 +29,15 @@ import { Search, User, Plus, Loader2 } from "lucide-react"
 
 function MemberContextMenu({
   userId,
+  displayName,
   onCopyId,
+  onKickClick,
   children,
 }: {
   userId: string
+  displayName?: string
   onCopyId: (id: string) => void
+  onKickClick?: (id: string, name: string) => void
   children: React.ReactNode
 }) {
   return (
@@ -49,12 +55,14 @@ function MemberContextMenu({
         >
           Message
         </ContextMenuItem>
-        <ContextMenuItem
-          className="cursor-pointer rounded px-2 py-1.5 text-sm text-red-500 focus:bg-white/10 focus:text-red-500"
-          onSelect={(e) => e.preventDefault()}
-        >
-          Kick
-        </ContextMenuItem>
+        {onKickClick != null && (
+          <ContextMenuItem
+            className="cursor-pointer rounded px-2 py-1.5 text-sm text-red-500 focus:bg-white/10 focus:text-red-500"
+            onSelect={() => onKickClick(userId, displayName ?? userId)}
+          >
+            Kick
+          </ContextMenuItem>
+        )}
         <ContextMenuItem
           className="cursor-pointer rounded px-2 py-1.5 text-sm focus:bg-white/10 focus:text-white"
           onSelect={() => onCopyId(userId)}
@@ -73,6 +81,7 @@ interface MemberListProps {
   streamingAgentId?: string | null
   onToggleAgent: (agentId: string) => void | Promise<void>
   onOpenInDM?: (agentId: string, message?: string) => void
+  onKickMember?: (agentId: string) => void | Promise<void>
 }
 
 function AgentRow({
@@ -81,12 +90,14 @@ function AgentRow({
   onToggle,
   onOpenInDM,
   onCopyId,
+  onKickClick,
 }: {
   agent: Agent
   isInRoom: boolean
   onToggle: () => void
   onOpenInDM?: (agentId: string, message?: string) => void
   onCopyId: (id: string) => void
+  onKickClick?: (id: string, name: string) => void
 }) {
   const handleClick = () => {
     if (!onOpenInDM) onToggle()
@@ -145,7 +156,12 @@ function AgentRow({
   )
 
   return (
-    <MemberContextMenu userId={agent.id} onCopyId={onCopyId}>
+    <MemberContextMenu
+      userId={agent.id}
+      displayName={agent.name}
+      onCopyId={onCopyId}
+      onKickClick={onKickClick}
+    >
       {wrapper}
     </MemberContextMenu>
   )
@@ -157,11 +173,18 @@ export function MemberList({
   streamingAgentId = null,
   onToggleAgent,
   onOpenInDM,
+  onKickMember,
 }: MemberListProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [addAgentsOpen, setAddAgentsOpen] = useState(false)
   const [addingAgentIds, setAddingAgentIds] = useState<Set<string>>(new Set())
+  const [kickPending, setKickPending] = useState<{ id: string; name: string } | null>(null)
+  const [isKicking, setIsKicking] = useState(false)
   const { toast } = useToast()
+
+  const handleKickClick = (id: string, name: string) => {
+    setKickPending({ id, name })
+  }
 
   const handleCopyId = (id: string) => {
     navigator.clipboard.writeText(id).then(
@@ -247,6 +270,7 @@ export function MemberList({
                 onToggle={() => onToggleAgent(agent.id)}
                 onOpenInDM={onOpenInDM}
                 onCopyId={handleCopyId}
+                onKickClick={onKickMember ? handleKickClick : undefined}
               />
             ))}
           </>
@@ -267,6 +291,7 @@ export function MemberList({
                 onToggle={() => onToggleAgent(agent.id)}
                 onOpenInDM={onOpenInDM}
                 onCopyId={handleCopyId}
+                onKickClick={onKickMember ? handleKickClick : undefined}
               />
             ))}
             {filteredAvailable.length === 0 && agentsInRoom.length === 0 && (
@@ -670,6 +695,85 @@ export function MemberList({
               ))
             )}
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!kickPending}
+        onOpenChange={(open) => {
+          if (!open) {
+            setKickPending(null)
+            setIsKicking(false)
+          }
+        }}
+      >
+        <DialogContent
+          className="rounded-lg border-0 p-6 shadow-lg"
+          style={{
+            backgroundColor: "rgb(49, 51, 56)",
+            color: "rgb(255, 255, 255)",
+          }}
+        >
+          <DialogHeader className="space-y-2 text-left">
+            <DialogTitle className="text-lg font-semibold text-white">
+              Kick Member
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div
+                className="space-y-1 text-sm"
+                style={{ color: "rgb(163, 163, 163)" }}
+              >
+                <p>
+                  Are you sure you want to kick{" "}
+                  <span className="font-medium text-white">
+                    {kickPending?.name ?? ""}
+                  </span>{" "}
+                  from this channel?
+                </p>
+                <p>This cannot be undone.</p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-row justify-end gap-2 sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setKickPending(null)}
+              className="rounded-md px-4 py-2 text-sm font-medium transition-colors hover:opacity-90"
+              style={{
+                backgroundColor: "rgb(64, 66, 72)",
+                color: "rgb(255, 255, 255)",
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isKicking}
+              onClick={async () => {
+                if (!kickPending || !onKickMember) return
+                setIsKicking(true)
+                try {
+                  await onKickMember(kickPending.id)
+                  setKickPending(null)
+                } catch {
+                  toast({
+                    title: "Failed to kick member",
+                    variant: "destructive",
+                  })
+                } finally {
+                  setIsKicking(false)
+                }
+              }}
+              className="flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:pointer-events-none disabled:opacity-70"
+              style={{ backgroundColor: "rgb(220, 53, 69)" }}
+            >
+              {isKicking ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Kick"
+              )}
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
