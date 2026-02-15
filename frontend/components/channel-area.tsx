@@ -1,32 +1,32 @@
 "use client"
 
 import { useState, useCallback, useRef } from "react"
-import type { Room, Agent, ChatMessage } from "@/lib/agents"
-import { ChatHeader } from "@/components/chat-header"
+import type { Channel, Agent, ChatMessage } from "@/lib/agents"
+import { ChannelHeader } from "@/components/channel-header"
 import { MessageList } from "@/components/message-list"
 import { MessageInput } from "@/components/message-input"
 import { MemberList } from "@/components/member-list"
 import type { AGUIEvent, AGUI_EVENT_TYPES } from "@/lib/types/agui"
 
-interface ChatAreaProps {
-  room: Room
+interface ChannelAreaProps {
+  channel: Channel
   allAgents: Agent[]
-  onUpdateRoom: (room: Room) => void
+  onUpdateChannel: (channel: Channel) => void
   onAddAgent: (agent: Agent) => void
   onUpdateAgent: (agent: Agent) => void
   onDeleteAgent: (agentId: string) => void
   onOpenInDM?: (agentId: string, message?: string) => void
 }
 
-export function ChatArea({
-  room,
+export function ChannelArea({
+  channel,
   allAgents,
-  onUpdateRoom,
+  onUpdateChannel,
   onAddAgent,
   onUpdateAgent,
   onDeleteAgent,
   onOpenInDM,
-}: ChatAreaProps) {
+}: ChannelAreaProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [streamingAgentId, setStreamingAgentId] = useState<string | null>(null)
   const [streamingContent, setStreamingContent] = useState("")
@@ -34,13 +34,13 @@ export function ChatArea({
   const [showMembers, setShowMembers] = useState(true)
   const abortRef = useRef<AbortController | null>(null)
 
-  const activeAgents = allAgents.filter((a) => room.agentIds.includes(a.id))
+  const activeAgents = allAgents.filter((a) => channel.agentIds.includes(a.id))
 
   const handleToggleAgent = (agentId: string) => {
-    const newIds = room.agentIds.includes(agentId)
-      ? room.agentIds.filter((id) => id !== agentId)
-      : [...room.agentIds, agentId]
-    onUpdateRoom({ ...room, agentIds: newIds })
+    const newIds = channel.agentIds.includes(agentId)
+      ? channel.agentIds.filter((id) => id !== agentId)
+      : [...channel.agentIds, agentId]
+    onUpdateChannel({ ...channel, agentIds: newIds })
   }
 
   const sendToAgent = useCallback(
@@ -52,7 +52,7 @@ export function ChatArea({
       setStreamingAgentId(agent.id)
       setStreamingContent("")
 
-      const response = await fetch(`/api/chat-agui/${room.id}`, {
+      const response = await fetch(`/api/channel-agui/${channel.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -137,7 +137,7 @@ export function ChatArea({
 
       return fullContent
     },
-    [room.id]
+    [channel.id]
   )
 
   const handleSend = useCallback(
@@ -214,8 +214,8 @@ export function ChatArea({
         className="flex flex-1 flex-col"
         style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
       >
-        <ChatHeader
-          room={room}
+        <ChannelHeader
+          channel={channel}
           onManageAgents={() => {/* gear icon in header - no-op for now, wrench handles it */}}
           showMembers={showMembers}
           onToggleMembers={() => setShowMembers((prev) => !prev)}
@@ -229,7 +229,7 @@ export function ChatArea({
         />
 
         <MessageInput
-          roomName={room.name}
+          channelName={channel.name}
           onSend={handleSend}
           disabled={isProcessing}
         />
@@ -238,7 +238,7 @@ export function ChatArea({
       {showMembers && (
         <MemberList
           allAgents={allAgents}
-          activeAgentIds={room.agentIds}
+          activeAgentIds={channel.agentIds}
           streamingAgentId={streamingAgentId}
           onToggleAgent={handleToggleAgent}
           onOpenInDM={onOpenInDM}

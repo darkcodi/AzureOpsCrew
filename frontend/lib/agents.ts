@@ -11,7 +11,7 @@ export interface Agent {
   status?: string
 }
 
-export interface Room {
+export interface Channel {
   id: string
   name: string
   agentIds: string[]
@@ -56,7 +56,7 @@ export const defaultAgents: Agent[] = [
   },
 ]
 
-export const defaultRooms: Room[] = [
+export const defaultChannels: Channel[] = [
   {
     id: "general",
     name: "General",

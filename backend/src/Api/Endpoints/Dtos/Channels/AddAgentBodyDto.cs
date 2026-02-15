@@ -1,4 +1,4 @@
-﻿namespace AzureOpsCrew.Api.Endpoints.Dtos.Chats;
+namespace AzureOpsCrew.Api.Endpoints.Dtos.Channels;
 
 public class AddAgentBodyDto
 {

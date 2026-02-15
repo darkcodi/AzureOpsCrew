@@ -1,14 +1,14 @@
-using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.Channels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Cosmos;
 
-public sealed class ChatEntityTypeConfiguration : IEntityTypeConfiguration<Chat>
+public sealed class ChannelEntityTypeConfiguration : IEntityTypeConfiguration<Channel>
 {
-    public void Configure(EntityTypeBuilder<Chat> builder)
+    public void Configure(EntityTypeBuilder<Channel> builder)
     {
-        builder.ToContainer(nameof(Chat));
+        builder.ToContainer(nameof(Channel));
 
         builder.HasPartitionKey(c => c.ClientId);
 

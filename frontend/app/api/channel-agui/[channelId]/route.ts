@@ -19,16 +19,15 @@ interface ChatRequest {
 }
 
 /**
- * POST /api/chat-agui/[roomId]
+ * POST /api/channel-agui/[channelId]
  *
- * Proxies requests to the backend AGUI endpoint at /api/chats/{chatId}/agui
- * Maps roomId to chatId and transforms message formats.
+ * Proxies requests to the backend AGUI endpoint at /api/channels/{channelId}/agui
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ roomId: string }> }
+  { params }: { params: Promise<{ channelId: string }> }
 ) {
-  const { roomId } = await params
+  const { channelId } = await params
 
   // Parse request body
   const body: ChatRequest = await req.json()
@@ -51,8 +50,8 @@ export async function POST(
     tools: undefined,
   }
 
-  // Build backend AGUI URL - roomId maps to chatId
-  const backendUrl = `${BACKEND_API_URL}/api/chats/${roomId}/agui`
+  // Build backend AGUI URL
+  const backendUrl = `${BACKEND_API_URL}/api/channels/${channelId}/agui`
 
   try {
     // Forward request to backend

@@ -1,10 +1,10 @@
 using AzureOpsCrew.Domain.Agents;
-using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.Channels;
 using Microsoft.EntityFrameworkCore;
 using CosmosAgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Cosmos.AgentEntityTypeConfiguration;
-using CosmosChatConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Cosmos.ChatEntityTypeConfiguration;
+using CosmosChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Cosmos.ChannelEntityTypeConfiguration;
 using SqliteAgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.AgentEntityTypeConfiguration;
-using SqliteChatConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ChatEntityTypeConfiguration;
+using SqliteChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ChannelEntityTypeConfiguration;
 
 namespace AzureOpsCrew.Infrastructure.Db;
 
@@ -16,7 +16,7 @@ public class AzureOpsCrewContext : DbContext
     }
 
     public DbSet<Agent> Agents => Set<Agent>();
-    public DbSet<Chat> Chats => Set<Chat>();
+    public DbSet<Channel> Channels => Set<Channel>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,13 +26,13 @@ public class AzureOpsCrewContext : DbContext
         {
             modelBuilder.HasDefaultContainer("AppContainer");
             modelBuilder.ApplyConfiguration(new CosmosAgentConfig());
-            modelBuilder.ApplyConfiguration(new CosmosChatConfig());
+            modelBuilder.ApplyConfiguration(new CosmosChannelConfig());
         }
         else
         {
             // Relational providers (SQLite, SQL Server, etc.)
             modelBuilder.ApplyConfiguration(new SqliteAgentConfig());
-            modelBuilder.ApplyConfiguration(new SqliteChatConfig());
+            modelBuilder.ApplyConfiguration(new SqliteChannelConfig());
         }
     }
 }

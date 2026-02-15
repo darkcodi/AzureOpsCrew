@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AzureOpsCrew.Infrastructure.Db.Migrations
 {
     [DbContext(typeof(AzureOpsCrewContext))]
-    [Migration("20260214055538_InitialCreate")]
+    [Migration("20260215171513_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -22,7 +22,7 @@ namespace AzureOpsCrew.Infrastructure.Db.Migrations
 
             modelBuilder.Entity("AzureOpsCrew.Domain.Agents.Agent", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<string>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
@@ -53,7 +53,7 @@ namespace AzureOpsCrew.Infrastructure.Db.Migrations
                     b.ToTable("Agent", (string)null);
                 });
 
-            modelBuilder.Entity("AzureOpsCrew.Domain.Chats.Chat", b =>
+            modelBuilder.Entity("AzureOpsCrew.Domain.Channels.Channel", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -83,14 +83,14 @@ namespace AzureOpsCrew.Infrastructure.Db.Migrations
 
                     b.HasIndex("ClientId");
 
-                    b.ToTable("Chat", (string)null);
+                    b.ToTable("Channel", (string)null);
                 });
 
             modelBuilder.Entity("AzureOpsCrew.Domain.Agents.Agent", b =>
                 {
                     b.OwnsOne("AzureOpsCrew.Domain.Agents.AgentInfo", "Info", b1 =>
                         {
-                            b1.Property<Guid>("AgentId")
+                            b1.Property<string>("AgentId")
                                 .HasColumnType("TEXT");
 
                             b1.Property<string>("AvaliableTools")

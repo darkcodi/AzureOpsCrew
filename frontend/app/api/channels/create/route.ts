@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import type { Room } from "@/lib/agents"
+import type { Channel } from "@/lib/agents"
 
 // Backend API URL - configurable via BACKEND_API_URL env var
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
 // Backend DTO structure
-interface CreateChatBodyDto {
+interface CreateChannelBodyDto {
   clientId: number
   name: string
   description?: string | null
@@ -13,7 +13,7 @@ interface CreateChatBodyDto {
 }
 
 // Backend response structure
-interface BackendChat {
+interface BackendChannel {
   id: string
   clientId: number
   name: string
@@ -31,19 +31,19 @@ export async function POST(req: NextRequest) {
     // Validate required fields
     if (!name?.trim()) {
       return NextResponse.json(
-        { error: "Room name is required" },
+        { error: "Channel name is required" },
         { status: 400 }
       )
     }
 
-    const backendBody: CreateChatBodyDto = {
+    const backendBody: CreateChannelBodyDto = {
       clientId: 1,
       name: name.trim(),
       description: null,
       agentIds: agentIds || [],
     }
 
-    const createUrl = `${BACKEND_API_URL}/api/chats/create`
+    const createUrl = `${BACKEND_API_URL}/api/channels/create`
 
     const response = await fetch(createUrl, {
       method: "POST",
@@ -56,24 +56,24 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       const errorData = await response.text()
       return NextResponse.json(
-        { error: errorData || "Failed to create room" },
+        { error: errorData || "Failed to create channel" },
         { status: response.status }
       )
     }
 
     const result = await response.json()
-    // Backend returns { chatId: "guid" }
+    // Backend returns { channelId: "guid" }
 
-    // Return the room in frontend format
-    const frontendRoom: Room = {
-      id: result.chatId || crypto.randomUUID(),
+    // Return the channel in frontend format
+    const frontendChannel: Channel = {
+      id: result.channelId || crypto.randomUUID(),
       name: name.trim(),
       agentIds: agentIds || [],
     }
 
-    return NextResponse.json(frontendRoom)
+    return NextResponse.json(frontendChannel)
   } catch (error) {
-    console.error("Error creating room:", error)
+    console.error("Error creating channel:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
