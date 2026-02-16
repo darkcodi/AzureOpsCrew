@@ -46,8 +46,7 @@ public static class ProviderConfigEndpoints
         {
             var configs = await context.Set<ProviderConfig>()
                 .Where(p => p.ClientId == clientId)
-                .OrderBy(p => p.ProviderType)
-                .ThenBy(p => p.Name)
+                .OrderBy(p => p.DateCreated)
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(configs);

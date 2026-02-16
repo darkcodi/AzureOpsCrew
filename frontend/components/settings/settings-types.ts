@@ -22,6 +22,8 @@ export interface ProviderConfig {
   rateLimit: number
   availableModels: string[]
   isDefault: boolean
+  /** ISO date string; used for sorting (oldest first) */
+  dateCreated?: string
 }
 
 export interface AppearanceConfig {

@@ -564,9 +564,15 @@ function ProvidersSection({
 
   const selectedProvider = providers.find((p) => p.id === selectedProviderId)
 
-  const filteredProviders = providers.filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredProviders = providers
+    .filter((p) =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      const tA = a.dateCreated ? new Date(a.dateCreated).getTime() : Infinity
+      const tB = b.dateCreated ? new Date(b.dateCreated).getTime() : Infinity
+      return tA - tB
+    })
 
   const updateProvider = (id: string, updates: Partial<ProviderConfig>) => {
     onProvidersChange(

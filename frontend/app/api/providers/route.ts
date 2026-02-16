@@ -11,6 +11,7 @@ interface BackendProviderConfig {
   apiEndpoint: string | null
   defaultModel: string | null
   isEnabled: boolean
+  dateCreated?: string
 }
 
 const PROVIDER_TYPE_TO_NAME: Record<number, string> = {
@@ -41,23 +42,30 @@ export async function GET(req: NextRequest) {
 
     const backend: BackendProviderConfig[] = await response.json()
 
-    const providers = backend.map((p) => {
-      const typeName = PROVIDER_TYPE_TO_NAME[p.providerType] ?? "OpenAI"
-      return {
-        backendId: p.id,
-        id: p.id,
-        name: p.name,
-        providerType: typeName,
-        status: p.isEnabled ? "enabled" : "disabled",
-        apiKey: p.apiKey ?? "",
-        baseUrl: p.apiEndpoint ?? "",
-        defaultModel: p.defaultModel ?? "",
-        timeout: 30,
-        rateLimit: 60,
-        availableModels: [] as string[],
-        isDefault: false,
-      }
-    })
+    const providers = backend
+      .map((p) => {
+        const typeName = PROVIDER_TYPE_TO_NAME[p.providerType] ?? "OpenAI"
+        return {
+          backendId: p.id,
+          id: p.id,
+          name: p.name,
+          providerType: typeName,
+          status: p.isEnabled ? "enabled" : "disabled",
+          apiKey: p.apiKey ?? "",
+          baseUrl: p.apiEndpoint ?? "",
+          defaultModel: p.defaultModel ?? "",
+          timeout: 30,
+          rateLimit: 60,
+          availableModels: [] as string[],
+          isDefault: false,
+          dateCreated: p.dateCreated,
+        }
+      })
+      .sort((a, b) => {
+        const tA = a.dateCreated ? new Date(a.dateCreated).getTime() : 0
+        const tB = b.dateCreated ? new Date(b.dateCreated).getTime() : 0
+        return tA - tB
+      })
 
     return NextResponse.json(providers)
   } catch (error) {

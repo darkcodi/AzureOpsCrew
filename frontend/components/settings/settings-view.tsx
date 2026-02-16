@@ -76,11 +76,16 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
           return
         }
         const list = Array.isArray(apiProviders) ? apiProviders : []
-        const nextSettings: SettingsState = { ...persisted, providers: list }
+        const sorted = [...list].sort((a, b) => {
+          const tA = a.dateCreated ? new Date(a.dateCreated).getTime() : Infinity
+          const tB = b.dateCreated ? new Date(b.dateCreated).getTime() : Infinity
+          return tA - tB
+        })
+        const nextSettings: SettingsState = { ...persisted, providers: sorted }
         setSettings(nextSettings)
         setSavedSettings(nextSettings)
         persistSettings(nextSettings)
-        setSelectedProviderId(list[0]?.id ?? null)
+        setSelectedProviderId(sorted[0]?.id ?? null)
       })
       .catch(() => {
         setSettings(persisted)
