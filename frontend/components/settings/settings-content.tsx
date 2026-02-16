@@ -73,6 +73,7 @@ interface SettingsContentProps {
   onNavigateToAllAgents?: () => void
   onSave?: () => void
   onSaveCurrentProvider?: () => void
+  onRemoveProvider?: (providerId: string) => void
   isSaving?: boolean
   saveError?: string | null
 }
@@ -89,6 +90,7 @@ export function SettingsContent({
   onNavigateToAllAgents,
   onSave,
   onSaveCurrentProvider,
+  onRemoveProvider,
   isSaving,
   saveError,
 }: SettingsContentProps) {
@@ -111,6 +113,7 @@ export function SettingsContent({
               }
               onSave={onSave}
               onSaveCurrentProvider={onSaveCurrentProvider}
+              onRemoveProvider={onRemoveProvider}
               isSaving={isSaving}
               saveError={saveError}
             />
@@ -515,6 +518,7 @@ function ProvidersSection({
   onProvidersChange,
   onSave,
   onSaveCurrentProvider,
+  onRemoveProvider,
   isSaving,
   saveError,
 }: {
@@ -526,6 +530,7 @@ function ProvidersSection({
   onProvidersChange: (providers: ProviderConfig[]) => void
   onSave?: () => void
   onSaveCurrentProvider?: () => void
+  onRemoveProvider?: (providerId: string) => void
   isSaving?: boolean
   saveError?: string | null
 }) {
@@ -832,11 +837,11 @@ function ProvidersSection({
               <ActionButton
                 variant="danger"
                 disabled={isSaving}
-                onClick={() => {
-                  onProvidersChange(providers.filter((p) => p.id !== selectedProvider.id))
-                  const remaining = providers.filter((p) => p.id !== selectedProvider.id)
-                  onSelectProvider(remaining[0]?.id ?? null)
-                }}
+                onClick={() =>
+                  selectedProvider?.id != null && onRemoveProvider
+                    ? onRemoveProvider(selectedProvider.id)
+                    : undefined
+                }
               >
                 Remove
               </ActionButton>

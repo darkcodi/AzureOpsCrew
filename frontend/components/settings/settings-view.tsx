@@ -206,6 +206,42 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
     }
   }, [settings, selectedProviderId, mergeSaveResults])
 
+  /** Remove the given provider: call BE delete if it exists there, then update FE state. */
+  const handleRemoveProvider = useCallback(
+    async (providerId: string) => {
+      const provider = settings.providers.find((p) => p.id === providerId)
+      if (!provider) return
+      setSaveError(null)
+      setIsSaving(true)
+      try {
+        if (provider.backendId) {
+          const res = await fetch(`/api/providers/${provider.backendId}`, {
+            method: "DELETE",
+          })
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}))
+            throw new Error(data.error ?? "Failed to remove provider")
+          }
+        }
+        const remaining = settings.providers.filter((p) => p.id !== providerId)
+        const nextSettings: SettingsState = { ...settings, providers: remaining }
+        const nextSaved: SettingsState = {
+          ...savedSettings,
+          providers: savedSettings.providers.filter((p) => p.id !== providerId),
+        }
+        setSettings(nextSettings)
+        setSavedSettings(nextSaved)
+        setSelectedProviderId(remaining[0]?.id ?? null)
+        persistSettings(nextSettings)
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : "Failed to remove provider")
+      } finally {
+        setIsSaving(false)
+      }
+    },
+    [settings, savedSettings]
+  )
+
   const handleReset = useCallback(() => {
     setSettings(savedSettings)
   }, [savedSettings])
@@ -237,6 +273,7 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
           onNavigateToAllAgents={onNavigateToAllAgents}
           onSave={handleSave}
           onSaveCurrentProvider={handleSaveCurrentProvider}
+          onRemoveProvider={handleRemoveProvider}
           isSaving={isSaving}
           saveError={saveError}
         />
