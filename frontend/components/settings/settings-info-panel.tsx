@@ -3,6 +3,12 @@
 import { useState } from "react"
 import { Circle, ChevronDown, ChevronUp } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { type SettingsSection } from "./settings-sidebar"
 import { type ProviderConfig, type ProviderTestResult } from "./settings-types"
 
@@ -209,23 +215,31 @@ function ProviderInfo({
             const hiddenCount = models.length - initialCount
             return (
               <>
-                {visible.map((m) => {
-                  const defaultModel = isDefault(m)
-                  return (
-                    <div
-                      key={m.id}
-                      className="rounded-md px-2.5 py-1.5 text-xs"
-                      style={{
-                        backgroundColor: "hsl(228, 6%, 20%)",
-                        color: "hsl(210, 3%, 80%)",
-                        fontWeight: defaultModel ? 600 : undefined,
-                      }}
-                    >
-                      {m.name}
-                      {defaultModel ? " (default)" : ""}
-                    </div>
-                  )
-                })}
+                <TooltipProvider delayDuration={300}>
+                  {visible.map((m) => {
+                    const defaultModel = isDefault(m)
+                    return (
+                      <Tooltip key={m.id}>
+                        <TooltipTrigger asChild>
+                          <div
+                            className="cursor-default rounded-md px-2.5 py-1.5 text-xs"
+                            style={{
+                              backgroundColor: "hsl(228, 6%, 20%)",
+                              color: "hsl(210, 3%, 80%)",
+                              fontWeight: defaultModel ? 600 : undefined,
+                            }}
+                          >
+                            {m.id}
+                            {defaultModel ? " (default)" : ""}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-[220px]">
+                          {m.name}
+                        </TooltipContent>
+                      </Tooltip>
+                    )
+                  })}
+                </TooltipProvider>
                 {!showAll && hiddenCount > 0 && (
                   <button
                     type="button"
