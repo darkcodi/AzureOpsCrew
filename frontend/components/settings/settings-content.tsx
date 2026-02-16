@@ -347,16 +347,19 @@ function SelectInput({
   value,
   onChange,
   options,
+  disabled,
 }: {
   value: string
   onChange: (v: string) => void
   options: { value: string; label: string }[]
+  disabled?: boolean
 }) {
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="h-9 w-full rounded-md border px-3 text-sm outline-none transition-colors focus:ring-1"
+      disabled={disabled}
+      className="h-9 w-full rounded-md border px-3 text-sm outline-none transition-colors focus:ring-1 disabled:cursor-not-allowed disabled:opacity-70"
       style={{
         backgroundColor: "hsl(228, 7%, 14%)",
         borderColor: "hsl(228, 6%, 30%)",
@@ -645,6 +648,27 @@ function ProvidersSection({
                 )}
               </div>
             </div>
+
+            <FormField label="Type">
+              <SelectInput
+                value={selectedProvider.providerType ?? selectedProvider.name}
+                onChange={() => {}}
+                options={(() => {
+                  const known: { value: string; label: string }[] = [
+                    { value: "OpenAI", label: "OpenAI" },
+                    { value: "Azure OpenAI", label: "Azure OpenAI" },
+                    { value: "Anthropic", label: "Anthropic" },
+                    { value: "Ollama (Local)", label: "Ollama (Local)" },
+                  ]
+                  const current = selectedProvider.providerType ?? selectedProvider.name
+                  if (current && !known.some((o) => o.value === current)) {
+                    return [...known, { value: current, label: current }]
+                  }
+                  return known
+                })()}
+                disabled
+              />
+            </FormField>
 
             <FormField label="Name">
               <TextInput

@@ -1,6 +1,7 @@
 export interface ProviderConfig {
   id: string
   name: string
+  providerType?: string
   status: "connected" | "needs-key" | "disabled"
   apiKey: string
   baseUrl: string
@@ -54,6 +55,7 @@ export const defaultSettings: SettingsState = {
     {
       id: "openai",
       name: "OpenAI",
+      providerType: "OpenAI",
       status: "connected",
       apiKey: "sk-••••••••••••••••••••••••••••••••",
       baseUrl: "https://api.openai.com/v1",
@@ -72,6 +74,7 @@ export const defaultSettings: SettingsState = {
     {
       id: "azure-openai",
       name: "Azure OpenAI",
+      providerType: "Azure OpenAI",
       status: "needs-key",
       apiKey: "",
       baseUrl: "https://your-resource.openai.azure.com/",
@@ -84,6 +87,7 @@ export const defaultSettings: SettingsState = {
     {
       id: "anthropic",
       name: "Anthropic",
+      providerType: "Anthropic",
       status: "disabled",
       apiKey: "",
       baseUrl: "https://api.anthropic.com/v1",
@@ -96,6 +100,7 @@ export const defaultSettings: SettingsState = {
     {
       id: "ollama",
       name: "Ollama (Local)",
+      providerType: "Ollama (Local)",
       status: "connected",
       apiKey: "",
       baseUrl: "http://localhost:11434",
