@@ -147,24 +147,19 @@ function ProviderInfo({ provider }: { provider: ProviderConfig }) {
         </div>
       </InfoSection>
 
-      {provider.availableModels.length > 0 && (
-        <InfoSection title="Available models">
-          <div className="flex flex-col gap-1">
-            {provider.availableModels.map((model) => (
-              <div
-                key={model}
-                className="rounded-md px-2.5 py-1.5 text-xs"
-                style={{
-                  backgroundColor: "hsl(228, 6%, 20%)",
-                  color: "hsl(210, 3%, 80%)",
-                }}
-              >
-                {model}
-              </div>
-            ))}
+      <InfoSection title="Available models">
+        <div className="flex flex-col gap-1">
+          <div
+            className="rounded-md px-2.5 py-1.5 text-xs"
+            style={{
+              backgroundColor: "hsl(228, 6%, 20%)",
+              color: "hsl(210, 3%, 80%)",
+            }}
+          >
+            gpt-5-2-chat (default)
           </div>
-        </InfoSection>
-      )}
+        </div>
+      </InfoSection>
 
       <InfoSection title="Notes">
         <ul className="flex flex-col gap-1.5">
