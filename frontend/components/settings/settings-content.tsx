@@ -342,7 +342,7 @@ function TextInput({
           backgroundColor: "hsl(228, 7%, 14%)",
           borderColor: "hsl(228, 6%, 30%)",
           color: "hsl(210, 3%, 90%)",
-          paddingRight: rightElement ? "5rem" : undefined,
+          paddingRight: rightElement ? "2.5rem" : undefined,
         }}
       />
       {rightElement && (
