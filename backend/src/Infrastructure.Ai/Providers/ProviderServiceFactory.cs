@@ -11,7 +11,8 @@ public sealed class ProviderServiceFactory : IProviderServiceFactory
     {
         { ProviderType.OpenAI, typeof(OpenAIProviderService) },
         { ProviderType.Anthropic, typeof(AnthropicProviderService) },
-        { ProviderType.Ollama, typeof(OllamaProviderService) }
+        { ProviderType.Ollama, typeof(OllamaProviderService) },
+        { ProviderType.OpenRouter, typeof(OpenRouterProviderService) }
     };
 
     public ProviderServiceFactory(IServiceProvider serviceProvider)

@@ -17,6 +17,7 @@ const PROVIDER_TYPE_TO_NAME: Record<number, string> = {
   100: "OpenAI",
   200: "Anthropic",
   300: "Ollama (Local)",
+  400: "OpenRouter",
 }
 
 export async function GET(req: NextRequest) {

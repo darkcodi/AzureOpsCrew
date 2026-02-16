@@ -134,6 +134,10 @@ public static class ServiceCollectionExtensions
             .Services.AddHttpClient<OllamaProviderService>(client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(30);
+            })
+            .Services.AddHttpClient<OpenRouterProviderService>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
             });
     }
 }

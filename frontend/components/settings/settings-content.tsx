@@ -11,6 +11,7 @@ import {
   Sparkles,
   Brain,
   Server,
+  Globe,
   FileEdit,
   Pencil,
   Loader2,
@@ -61,6 +62,12 @@ const KNOWN_PROVIDERS: {
     name: "Ollama",
     Icon: Server,
     template: defaultSettings.providers.find((p) => p.id === "ollama")!,
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    Icon: Globe,
+    template: defaultSettings.providers.find((p) => p.id === "openrouter")!,
   },
 ].filter((p) => p.template != null)
 
@@ -741,6 +748,7 @@ function ProvidersSection({
                     { value: "Azure OpenAI", label: "Azure OpenAI" },
                     { value: "Anthropic", label: "Anthropic" },
                     { value: "Ollama (Local)", label: "Ollama (Local)" },
+                    { value: "OpenRouter", label: "OpenRouter" },
                   ]
                   const current = selectedProvider.providerType ?? selectedProvider.name
                   if (current && !known.some((o) => o.value === current)) {

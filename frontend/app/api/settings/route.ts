@@ -8,6 +8,7 @@ const PROVIDER_TYPE_FROM_NAME: Record<string, number> = {
   Anthropic: 200,
   "Ollama (Local)": 300,
   Ollama: 300,
+  OpenRouter: 400,
 }
 
 interface FrontendProvider {
