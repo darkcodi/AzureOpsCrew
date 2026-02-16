@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Circle, ChevronDown, ChevronUp } from "lucide-react"
+import { Circle, ChevronDown, ChevronUp, Search } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Tooltip,
@@ -152,6 +153,7 @@ function ProviderInfo({
   onToggleSelectedModel?: (modelId: string) => void
 }) {
   const [modelsExpanded, setModelsExpanded] = useState(false)
+  const [modelsSearchQuery, setModelsSearchQuery] = useState("")
   const hasTestResult = providerTestResult != null
   const statusColor = hasTestResult && providerTestResult.success
     ? "hsl(145, 65%, 45%)"
@@ -227,12 +229,46 @@ function ProviderInfo({
               .filter((m): m is { id: string; name: string } => m != null)
             const unselected = all.filter((m) => !selectedSet.has(m.id))
             const models = [...selectedModelsOrdered, ...unselected]
+            const query = modelsSearchQuery.trim().toLowerCase()
+            const filtered = query
+              ? models.filter(
+                  (m) =>
+                    m.id.toLowerCase().includes(query) || m.name.toLowerCase().includes(query)
+                )
+              : models
             const initialCount = 5
-            const showAll = modelsExpanded || models.length <= initialCount
-            const visible = showAll ? models : models.slice(0, initialCount)
-            const hiddenCount = models.length - initialCount
+            const showAll = modelsExpanded || filtered.length <= initialCount
+            const visible = showAll ? filtered : filtered.slice(0, initialCount)
+            const hiddenCount = filtered.length - initialCount
             return (
               <>
+                <div className="relative mb-2">
+                  <Search
+                    className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
+                    style={{ color: "hsl(214, 5%, 55%)" }}
+                  />
+                  <Input
+                    type="search"
+                    placeholder="Search models..."
+                    value={modelsSearchQuery}
+                    onChange={(e) => setModelsSearchQuery(e.target.value)}
+                    className="h-8 pl-8 text-xs"
+                    style={{
+                      backgroundColor: "hsl(228, 6%, 20%)",
+                      borderColor: "hsl(228, 6%, 25%)",
+                      color: "hsl(210, 3%, 80%)",
+                    }}
+                  />
+                </div>
+                {filtered.length === 0 ? (
+                  <p
+                    className="text-xs leading-relaxed"
+                    style={{ color: "hsl(214, 5%, 55%)" }}
+                  >
+                    {query ? `No models match "${modelsSearchQuery.trim()}".` : "No models available."}
+                  </p>
+                ) : (
+                  <>
                 <TooltipProvider delayDuration={300}>
                   {visible.map((m) => {
                     const isDefaultModel = isDefault(m)
@@ -280,7 +316,7 @@ function ProviderInfo({
                     Show {hiddenCount} more
                   </button>
                 )}
-                {showAll && models.length > initialCount && (
+                {showAll && filtered.length > initialCount && (
                   <button
                     type="button"
                     onClick={() => setModelsExpanded(false)}
@@ -293,6 +329,8 @@ function ProviderInfo({
                     <ChevronUp className="h-3.5 w-3.5" />
                     Show less
                   </button>
+                )}
+                  </>
                 )}
               </>
             )
