@@ -198,28 +198,34 @@ function ProviderInfo({
               Press &ldquo;Test&rdquo; to see available models.
             </p>
           ) : (() => {
-            const models = providerTestResult.availableModels
+            const isDefault = (m: { id: string; name: string }) =>
+              provider.defaultModel && (m.id === provider.defaultModel || m.name === provider.defaultModel)
+            const models = [...providerTestResult.availableModels].sort((a, b) =>
+              isDefault(a) ? -1 : isDefault(b) ? 1 : 0
+            )
             const initialCount = 5
             const showAll = modelsExpanded || models.length <= initialCount
             const visible = showAll ? models : models.slice(0, initialCount)
             const hiddenCount = models.length - initialCount
             return (
               <>
-                {visible.map((m) => (
-                  <div
-                    key={m.id}
-                    className="rounded-md px-2.5 py-1.5 text-xs"
-                    style={{
-                      backgroundColor: "hsl(228, 6%, 20%)",
-                      color: "hsl(210, 3%, 80%)",
-                    }}
-                  >
-                    {m.name}
-                    {provider.defaultModel && (m.id === provider.defaultModel || m.name === provider.defaultModel)
-                      ? " (default)"
-                      : ""}
-                  </div>
-                ))}
+                {visible.map((m) => {
+                  const defaultModel = isDefault(m)
+                  return (
+                    <div
+                      key={m.id}
+                      className="rounded-md px-2.5 py-1.5 text-xs"
+                      style={{
+                        backgroundColor: "hsl(228, 6%, 20%)",
+                        color: "hsl(210, 3%, 80%)",
+                        fontWeight: defaultModel ? 600 : undefined,
+                      }}
+                    >
+                      {m.name}
+                      {defaultModel ? " (default)" : ""}
+                    </div>
+                  )
+                })}
                 {!showAll && hiddenCount > 0 && (
                   <button
                     type="button"
