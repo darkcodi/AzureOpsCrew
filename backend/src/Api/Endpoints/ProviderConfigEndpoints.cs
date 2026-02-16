@@ -185,7 +185,7 @@ public static class ProviderConfigEndpoints
                 result.LatencyMs,
                 result.CheckedAt,
                 result.Quota,
-                result.AvailableModels?.Select(m => new ModelInfoDto(m.Id, m.Name, m.ContextSize)).ToArray()));
+                result.AvailableModels?.OrderBy(m => m.Id, StringComparer.OrdinalIgnoreCase).Select(m => new ModelInfoDto(m.Id, m.Name, m.ContextSize)).ToArray()));
         })
         .AddEndpointFilter<ValidationFilter<TestConnectionBodyDto>>()
         .Produces<TestConnectionResponseDto>(StatusCodes.Status200OK)
@@ -214,7 +214,7 @@ public static class ProviderConfigEndpoints
                 result.LatencyMs,
                 result.CheckedAt,
                 result.Quota,
-                result.AvailableModels?.Select(m => new ModelInfoDto(m.Id, m.Name, m.ContextSize)).ToArray()));
+                result.AvailableModels?.OrderBy(m => m.Id, StringComparer.OrdinalIgnoreCase).Select(m => new ModelInfoDto(m.Id, m.Name, m.ContextSize)).ToArray()));
         })
         .Produces<TestConnectionResponseDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
@@ -235,7 +235,7 @@ public static class ProviderConfigEndpoints
             var service = providerServiceFactory.GetService(config.ProviderType);
             var models = await service.ListModelsAsync(config, cancellationToken);
 
-            return Results.Ok(models);
+            return Results.Ok(models.OrderBy(m => m.Id, StringComparer.OrdinalIgnoreCase).ToArray());
         })
         .Produces<ProviderModelInfo[]>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);

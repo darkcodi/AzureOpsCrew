@@ -221,14 +221,19 @@ function ProviderInfo({
           ) : (() => {
             const isDefault = (m: { id: string; name: string }) =>
               provider.defaultModel && (m.id === provider.defaultModel || m.name === provider.defaultModel)
-            const all = providerTestResult.availableModels
+            const all = [...(providerTestResult.availableModels ?? [])].sort((a, b) =>
+              a.id.localeCompare(b.id, undefined, { sensitivity: "base" })
+            )
             const selectedOrder = selectedModels.filter((id) => all.some((m) => m.id === id))
             const selectedSet = new Set(selectedOrder)
             const selectedModelsOrdered = selectedOrder
               .map((id) => all.find((m) => m.id === id))
               .filter((m): m is { id: string; name: string } => m != null)
             const unselected = all.filter((m) => !selectedSet.has(m.id))
-            const models = [...selectedModelsOrdered, ...unselected]
+            const selectedSorted = [...selectedModelsOrdered].sort((a, b) =>
+              a.id.localeCompare(b.id, undefined, { sensitivity: "base" })
+            )
+            const models = [...selectedSorted, ...unselected]
             const query = modelsSearchQuery.trim().toLowerCase()
             const filtered = query
               ? models.filter(
