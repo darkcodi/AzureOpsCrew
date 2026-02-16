@@ -146,7 +146,14 @@ export default function Home() {
     )
   }, [])
 
-  const handleDeleteAgent = useCallback((agentId: string) => {
+  const handleDeleteAgent = useCallback(async (agentId: string) => {
+    const response = await fetch(`/api/agents/${agentId}`, {
+      method: "DELETE",
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error ?? "Failed to delete agent")
+    }
     setAgents((prev) => prev.filter((a) => a.id !== agentId))
     setChannels((prev) =>
       prev.map((c) => ({
