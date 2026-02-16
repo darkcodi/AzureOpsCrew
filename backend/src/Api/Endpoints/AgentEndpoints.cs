@@ -1,6 +1,7 @@
 ﻿using AzureOpsCrew.Api.Endpoints.Dtos.Agents;
 using AzureOpsCrew.Domain.AgentManagements;
 using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 
@@ -54,6 +55,35 @@ namespace AzureOpsCrew.Api.Endpoints
                 return found is null ? Results.NotFound() : Results.Ok(found);
             })
             .Produces<Agent>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound);
+
+            group.MapDelete("/{id}", async (Guid id, AzureOpsCrewContext context, CancellationToken cancellationToken) =>
+            {
+                var found = await context.Set<Agent>()
+                    .SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+                if (found is null)
+                {
+                    return Results.NotFound();
+                }
+
+                var agentIdString = found.Id.ToString();
+
+                var channelsWithAgent = await context.Set<Channel>()
+                    .Where(c => c.AgentIds.Contains(agentIdString))
+                    .ToListAsync(cancellationToken);
+
+                foreach (var channel in channelsWithAgent)
+                {
+                    channel.RemoveAgent(agentIdString);
+                }
+
+                context.Set<Agent>().Remove(found);
+                await context.SaveChangesAsync(cancellationToken);
+
+                return Results.NoContent();
+            })
+            .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound);
         }
     }
