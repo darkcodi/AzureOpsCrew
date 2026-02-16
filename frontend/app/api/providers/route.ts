@@ -11,6 +11,7 @@ interface BackendProviderConfig {
   apiEndpoint: string | null
   defaultModel: string | null
   isEnabled: boolean
+  modelsCount: number
   dateCreated?: string
 }
 
@@ -52,6 +53,7 @@ export async function GET(req: NextRequest) {
           name: p.name,
           providerType: typeName,
           status: p.isEnabled ? "enabled" : "disabled",
+          modelsCount: p.modelsCount ?? 0,
           apiKey: p.apiKey ?? "",
           baseUrl: p.apiEndpoint ?? "",
           defaultModel: p.defaultModel ?? "",

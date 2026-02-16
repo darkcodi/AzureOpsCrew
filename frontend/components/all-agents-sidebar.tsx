@@ -9,6 +9,7 @@ interface Provider {
   name: string
   providerType: string
   status: string
+  modelsCount: number
 }
 
 export function AllAgentsSidebar() {
@@ -75,17 +76,29 @@ export function AllAgentsSidebar() {
           </div>
         )}
         {!isLoading && !error && providers.length > 0 && (
-          <ul className="space-y-0.5">
+          <ul className="space-y-2 px-3">
             {providers.map((p) => (
               <li
                 key={p.id}
-                className="truncate px-4 py-2 text-sm"
+                className="rounded-lg px-3 py-2.5"
                 style={{
-                  color: "hsl(214, 10%, 85%)",
+                  backgroundColor: "hsl(228, 6%, 18%)",
+                  border: "1px solid hsl(228, 6%, 22%)",
                 }}
-                title={`${p.name} (${p.providerType})`}
               >
-                {p.name}
+                <div
+                  className="truncate text-sm font-medium"
+                  style={{ color: "hsl(214, 10%, 90%)" }}
+                  title={`${p.name} (${p.providerType})`}
+                >
+                  {p.name}
+                </div>
+                <div
+                  className="mt-1 text-xs"
+                  style={{ color: "hsl(214, 5%, 55%)" }}
+                >
+                  Models count: {p.modelsCount}
+                </div>
               </li>
             ))}
           </ul>
