@@ -1,4 +1,5 @@
 using AzureOpsCrew.Api.Endpoints.Dtos.Providers;
+using AzureOpsCrew.Api.Endpoints.Filters;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +34,7 @@ public static class ProviderConfigEndpoints
 
             return Results.Created($"/api/providers/{config.Id}", config);
         })
+        .AddEndpointFilter<ValidationFilter<CreateProviderConfigBodyDto>>()
         .Produces<ProviderConfig>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest);
 
@@ -84,6 +86,7 @@ public static class ProviderConfigEndpoints
 
             return Results.Ok(found);
         })
+        .AddEndpointFilter<ValidationFilter<UpdateProviderConfigBodyDto>>()
         .Produces<ProviderConfig>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status400BadRequest);
