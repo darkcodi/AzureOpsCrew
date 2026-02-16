@@ -15,12 +15,16 @@ import { type ProviderConfig, type ProviderTestResult } from "./settings-types"
 interface SettingsInfoPanelProps {
   activeSection: SettingsSection
   selectedProvider: ProviderConfig | null
+  selectedModels?: string[]
+  onToggleSelectedModel?: (modelId: string) => void
   providerTestResult?: ProviderTestResult | null
 }
 
 export function SettingsInfoPanel({
   activeSection,
   selectedProvider,
+  selectedModels = [],
+  onToggleSelectedModel,
   providerTestResult = null,
 }: SettingsInfoPanelProps) {
   return (
@@ -34,7 +38,12 @@ export function SettingsInfoPanel({
       <ScrollArea className="flex-1">
         <div className="p-4">
           {activeSection === "providers" && selectedProvider && (
-            <ProviderInfo provider={selectedProvider} providerTestResult={providerTestResult} />
+            <ProviderInfo
+              provider={selectedProvider}
+              providerTestResult={providerTestResult}
+              selectedModels={selectedModels}
+              onToggleSelectedModel={onToggleSelectedModel}
+            />
           )}
           {activeSection === "providers" && !selectedProvider && (
             <GeneralProviderInfo />
@@ -134,9 +143,13 @@ function formatCheckedAt(checkedAt?: string): string {
 function ProviderInfo({
   provider,
   providerTestResult,
+  selectedModels = [],
+  onToggleSelectedModel,
 }: {
   provider: ProviderConfig
   providerTestResult: ProviderTestResult | null
+  selectedModels?: string[]
+  onToggleSelectedModel?: (modelId: string) => void
 }) {
   const [modelsExpanded, setModelsExpanded] = useState(false)
   const hasTestResult = providerTestResult != null
@@ -218,16 +231,21 @@ function ProviderInfo({
                 <TooltipProvider delayDuration={300}>
                   {visible.map((m) => {
                     const defaultModel = isDefault(m)
+                    const isSelected = selectedModels.includes(m.id)
                     return (
                       <Tooltip key={m.id}>
                         <TooltipTrigger asChild>
                           <div
-                            className="cursor-default rounded-md px-2.5 py-1.5 text-xs"
+                            className="cursor-pointer rounded-md px-2.5 py-1.5 text-xs transition-colors"
                             style={{
                               backgroundColor: "hsl(228, 6%, 20%)",
                               color: "hsl(210, 3%, 80%)",
                               fontWeight: defaultModel ? 600 : undefined,
+                              border: isSelected
+                                ? "1px solid hsl(235, 86%, 65%)"
+                                : "1px solid transparent",
                             }}
+                            onClick={() => onToggleSelectedModel?.(m.id)}
                           >
                             {m.id}
                             {defaultModel ? " (default)" : ""}

@@ -5,6 +5,7 @@ import {
   Search,
   Circle,
   XCircle,
+  X,
   Eye,
   EyeOff,
   Plus,
@@ -92,6 +93,7 @@ interface SettingsContentProps {
   onSaveCurrentProvider?: () => void
   onTestProvider?: () => void
   onRemoveProvider?: (providerId: string) => void
+  onToggleSelectedModel?: (modelId: string) => void
   isSaving?: boolean
   isTesting?: boolean
   saveError?: string | null
@@ -111,6 +113,7 @@ export function SettingsContent({
   onSaveCurrentProvider,
   onTestProvider,
   onRemoveProvider,
+  onToggleSelectedModel,
   isSaving,
   isTesting,
   saveError,
@@ -136,6 +139,7 @@ export function SettingsContent({
               onSaveCurrentProvider={onSaveCurrentProvider}
               onTestProvider={onTestProvider}
               onRemoveProvider={onRemoveProvider}
+              onToggleSelectedModel={onToggleSelectedModel}
               isSaving={isSaving}
               isTesting={isTesting}
               saveError={saveError}
@@ -543,6 +547,7 @@ function ProvidersSection({
   onSaveCurrentProvider,
   onTestProvider,
   onRemoveProvider,
+  onToggleSelectedModel,
   isSaving,
   isTesting,
   saveError,
@@ -557,6 +562,7 @@ function ProvidersSection({
   onSaveCurrentProvider?: () => void
   onTestProvider?: () => void
   onRemoveProvider?: (providerId: string) => void
+  onToggleSelectedModel?: (modelId: string) => void
   isSaving?: boolean
   isTesting?: boolean
   saveError?: string | null
@@ -1055,6 +1061,39 @@ function ProvidersSection({
                 }
                 placeholder="https://api.example.com/v1"
               />
+            </FormField>
+
+            <FormField label="Selected models">
+              <div className="flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-md px-2.5 py-2" style={{ backgroundColor: "hsl(228, 7%, 14%)", border: "1px solid hsl(228, 6%, 30%)" }}>
+                {(selectedProvider.selectedModels ?? []).length === 0 ? (
+                  <span className="text-xs" style={{ color: "hsl(214, 5%, 55%)" }}>
+                    Click models in the panel to select
+                  </span>
+                ) : (
+                  (selectedProvider.selectedModels ?? []).map((modelId) => (
+                    <span
+                      key={modelId}
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs"
+                      style={{
+                        backgroundColor: "hsl(228, 6%, 25%)",
+                        color: "hsl(210, 3%, 90%)",
+                        border: "1px solid hsl(235, 86%, 65%)",
+                      }}
+                    >
+                      {modelId}
+                      <button
+                        type="button"
+                        onClick={() => onToggleSelectedModel?.(modelId)}
+                        className="ml-0.5 rounded-sm p-0.5 transition-colors hover:bg-[hsl(228,6%,35%)]"
+                        style={{ color: "hsl(214, 5%, 65%)" }}
+                        aria-label={`Remove ${modelId}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
             </FormField>
 
             <FormField label="Default model (optional)">

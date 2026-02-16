@@ -112,7 +112,8 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
             p.apiKey !== saved.apiKey ||
             p.baseUrl !== saved.baseUrl ||
             p.defaultModel !== saved.defaultModel ||
-            p.isDefault !== saved.isDefault
+            p.isDefault !== saved.isDefault ||
+            JSON.stringify(p.selectedModels ?? []) !== JSON.stringify(saved.selectedModels ?? [])
           )
         })
         .map((p) => p.id)
@@ -330,6 +331,25 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
     [settings, savedSettings]
   )
 
+  /** Toggle a model in the selected provider's selectedModels list. */
+  const handleToggleSelectedModel = useCallback(
+    (modelId: string) => {
+      if (!selectedProviderId) return
+      setSettings((prev) => ({
+        ...prev,
+        providers: prev.providers.map((p) => {
+          if (p.id !== selectedProviderId) return p
+          const current = p.selectedModels ?? []
+          const next = current.includes(modelId)
+            ? current.filter((id) => id !== modelId)
+            : [...current, modelId]
+          return { ...p, selectedModels: next }
+        }),
+      }))
+    },
+    [selectedProviderId]
+  )
+
   const handleReset = useCallback(() => {
     setSettings(savedSettings)
   }, [savedSettings])
@@ -363,6 +383,7 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
           onSaveCurrentProvider={handleSaveCurrentProvider}
           onTestProvider={handleTestProvider}
           onRemoveProvider={handleRemoveProvider}
+          onToggleSelectedModel={handleToggleSelectedModel}
           isSaving={isSaving}
           isTesting={isTesting}
           saveError={saveError}
@@ -372,6 +393,8 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
         <SettingsInfoPanel
           activeSection={activeSection}
           selectedProvider={selectedProvider}
+          selectedModels={selectedProvider?.selectedModels ?? []}
+          onToggleSelectedModel={handleToggleSelectedModel}
           providerTestResult={
             selectedProviderId ? providerTestResults[selectedProviderId] ?? null : null
           }

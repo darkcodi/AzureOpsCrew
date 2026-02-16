@@ -26,5 +26,8 @@ public record CreateProviderConfigBodyDto
     [StringLength(200, ErrorMessage = "DefaultModel must be at most 200 characters.")]
     public string? DefaultModel { get; set; }
 
+    [StringLength(4000, ErrorMessage = "SelectedModels must be at most 4000 characters.")]
+    public string? SelectedModels { get; set; }
+
     public bool IsEnabled { get; set; } = true;
 }

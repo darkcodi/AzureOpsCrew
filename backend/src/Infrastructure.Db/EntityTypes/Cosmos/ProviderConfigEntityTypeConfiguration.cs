@@ -24,6 +24,7 @@ public sealed class ProviderConfigEntityTypeConfiguration : IEntityTypeConfigura
         builder.Property(p => p.ApiKey).ToJsonProperty("apiKey");
         builder.Property(p => p.ApiEndpoint).ToJsonProperty("apiEndpoint");
         builder.Property(p => p.DefaultModel).ToJsonProperty("defaultModel");
+        builder.Property(p => p.SelectedModels).ToJsonProperty("selectedModels");
         builder.Property(p => p.IsEnabled).ToJsonProperty("isEnabled");
         builder.Property(p => p.DateCreated).ToJsonProperty("dateCreated");
         builder.Property(p => p.DateModified).ToJsonProperty("dateModified");

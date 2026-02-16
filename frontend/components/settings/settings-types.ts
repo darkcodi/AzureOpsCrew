@@ -21,6 +21,7 @@ export interface ProviderConfig {
   timeout: number
   rateLimit: number
   availableModels: string[]
+  selectedModels?: string[]
   isDefault: boolean
   /** ISO date string; used for sorting (oldest first) */
   dateCreated?: string

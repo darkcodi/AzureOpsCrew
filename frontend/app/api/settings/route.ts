@@ -22,6 +22,7 @@ interface FrontendProvider {
   apiKey: string
   baseUrl: string
   defaultModel: string
+  selectedModels?: string[]
   isDefault?: boolean
 }
 
@@ -55,6 +56,7 @@ export async function PUT(req: NextRequest) {
             apiKey: p.apiKey,
             apiEndpoint: p.baseUrl || null,
             defaultModel: p.defaultModel || null,
+            selectedModels: p.selectedModels?.length ? JSON.stringify(p.selectedModels) : null,
             isEnabled,
           }),
         })
@@ -78,6 +80,7 @@ export async function PUT(req: NextRequest) {
             apiKey: p.apiKey,
             apiEndpoint: p.baseUrl || null,
             defaultModel: p.defaultModel || null,
+            selectedModels: p.selectedModels?.length ? JSON.stringify(p.selectedModels) : null,
             isEnabled,
           }),
         })

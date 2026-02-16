@@ -28,7 +28,8 @@ public static class ProviderConfigEndpoints
                 body.ApiKey,
                 body.ApiEndpoint,
                 body.DefaultModel,
-                body.IsEnabled);
+                body.IsEnabled,
+                body.SelectedModels);
 
             // Test connection before saving
             var service = providerServiceFactory.GetService(config.ProviderType);
@@ -105,7 +106,7 @@ public static class ProviderConfigEndpoints
             if (found is null)
                 return Results.NotFound();
 
-            found.Update(body.Name, body.ApiKey, body.ApiEndpoint, body.DefaultModel, body.IsEnabled);
+            found.Update(body.Name, body.ApiKey, body.ApiEndpoint, body.DefaultModel, body.IsEnabled, body.SelectedModels);
 
             // Test connection before saving
             var service = providerServiceFactory.GetService(found.ProviderType);

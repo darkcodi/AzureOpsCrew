@@ -10,6 +10,7 @@ interface BackendProviderConfig {
   apiKey: string
   apiEndpoint: string | null
   defaultModel: string | null
+  selectedModels: string | null
   isEnabled: boolean
   modelsCount: number
   dateCreated?: string
@@ -57,6 +58,7 @@ export async function GET(req: NextRequest) {
           apiKey: p.apiKey ?? "",
           baseUrl: p.apiEndpoint ?? "",
           defaultModel: p.defaultModel ?? "",
+          selectedModels: p.selectedModels ? JSON.parse(p.selectedModels) as string[] : [],
           timeout: 30,
           rateLimit: 60,
           availableModels: [] as string[],
