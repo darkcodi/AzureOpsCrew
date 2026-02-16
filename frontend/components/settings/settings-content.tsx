@@ -1096,13 +1096,27 @@ function ProvidersSection({
               </div>
             </FormField>
 
-            <FormField label="Default model (optional)">
-              <TextInput
-                value={selectedProvider.defaultModel}
-                onChange={(v) =>
-                  updateProvider(selectedProvider.id, { defaultModel: v })
+            <FormField
+              label="Default model (optional)"
+              description="Choose from your selected models above."
+            >
+              <SelectInput
+                value={
+                  selectedProvider.defaultModel &&
+                  (selectedProvider.selectedModels ?? []).includes(selectedProvider.defaultModel)
+                    ? selectedProvider.defaultModel
+                    : ""
                 }
-                placeholder="Model name"
+                onChange={(v) =>
+                  updateProvider(selectedProvider.id, { defaultModel: v || "" })
+                }
+                options={[
+                  { value: "", label: "None" },
+                  ...(selectedProvider.selectedModels ?? []).map((id) => ({
+                    value: id,
+                    label: id,
+                  })),
+                ]}
               />
             </FormField>
 
