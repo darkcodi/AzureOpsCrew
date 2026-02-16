@@ -767,6 +767,35 @@ function ProvidersSection({
               </div>
             )}
 
+            {(selectedProvider.providerType ?? selectedProvider.name) === "OpenAI" && (
+              <div
+                className="mb-4 rounded-lg border px-4 py-3"
+                style={{
+                  backgroundColor: "hsl(228, 6%, 22%)",
+                  borderColor: "hsl(228, 6%, 32%)",
+                }}
+              >
+                <h4
+                  className="mb-1.5 text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "hsl(214, 5%, 65%)" }}
+                >
+                  Description
+                </h4>
+                <p className="text-sm" style={{ color: "hsl(210, 3%, 85%)" }}>
+                  OpenAI provides GPT models and the ChatGPT API. Create an account and use the API for completions, embeddings, and more.{" "}
+                  <a
+                    href="https://platform.openai.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline transition-colors hover:opacity-80"
+                    style={{ color: "hsl(235, 86%, 65%)" }}
+                  >
+                    platform.openai.com
+                  </a>
+                </p>
+              </div>
+            )}
+
             <FormField label="Type">
               <SelectInput
                 value={selectedProvider.providerType ?? selectedProvider.name}
@@ -802,20 +831,42 @@ function ProvidersSection({
             <FormField
               label="API Key"
               description={
-                (selectedProvider.providerType ?? selectedProvider.name) === "OpenRouter" ? (
-                  <>
-                    Get your API key at{" "}
-                    <a
-                      href="https://openrouter.ai/settings/keys"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline transition-colors hover:opacity-80"
-                      style={{ color: "hsl(235, 86%, 65%)" }}
-                    >
-                      openrouter.ai/settings/keys
-                    </a>
-                  </>
-                ) : undefined
+                (() => {
+                  const providerType = selectedProvider.providerType ?? selectedProvider.name
+                  if (providerType === "OpenRouter") {
+                    return (
+                      <>
+                        Get your API key at{" "}
+                        <a
+                          href="https://openrouter.ai/settings/keys"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline transition-colors hover:opacity-80"
+                          style={{ color: "hsl(235, 86%, 65%)" }}
+                        >
+                          openrouter.ai/settings/keys
+                        </a>
+                      </>
+                    )
+                  }
+                  if (providerType === "OpenAI") {
+                    return (
+                      <>
+                        Get your API key at{" "}
+                        <a
+                          href="https://platform.openai.com/api-keys"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline transition-colors hover:opacity-80"
+                          style={{ color: "hsl(235, 86%, 65%)" }}
+                        >
+                          platform.openai.com/api-keys
+                        </a>
+                      </>
+                    )
+                  }
+                  return undefined
+                })()
               }
             >
               <TextInput
