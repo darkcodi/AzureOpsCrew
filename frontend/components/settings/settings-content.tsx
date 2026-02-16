@@ -67,6 +67,9 @@ interface SettingsContentProps {
   selectedProviderId: string | null
   onSelectProvider: (id: string) => void
   onNavigateToAllAgents?: () => void
+  onSave?: () => void
+  isSaving?: boolean
+  saveError?: string | null
 }
 
 export function SettingsContent({
@@ -76,6 +79,9 @@ export function SettingsContent({
   selectedProviderId,
   onSelectProvider,
   onNavigateToAllAgents,
+  onSave,
+  isSaving,
+  saveError,
 }: SettingsContentProps) {
   return (
     <div
@@ -92,6 +98,9 @@ export function SettingsContent({
               onProvidersChange={(providers) =>
                 onSettingsChange({ ...settings, providers })
               }
+              onSave={onSave}
+              isSaving={isSaving}
+              saveError={saveError}
             />
           )}
           {activeSection === "agents" && (
@@ -472,11 +481,17 @@ function ProvidersSection({
   selectedProviderId,
   onSelectProvider,
   onProvidersChange,
+  onSave,
+  isSaving,
+  saveError,
 }: {
   providers: ProviderConfig[]
   selectedProviderId: string | null
   onSelectProvider: (id: string) => void
   onProvidersChange: (providers: ProviderConfig[]) => void
+  onSave?: () => void
+  isSaving?: boolean
+  saveError?: string | null
 }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [showApiKey, setShowApiKey] = useState(false)
@@ -741,8 +756,19 @@ function ProvidersSection({
               />
             </FormField>
 
+            {saveError && (
+              <p className="mt-2 text-sm" style={{ color: "hsl(0, 70%, 55%)" }}>
+                {saveError}
+              </p>
+            )}
             <div className="mt-6 flex gap-3">
-              <ActionButton variant="primary">Save</ActionButton>
+              <ActionButton
+                variant="primary"
+                onClick={onSave}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving…" : "Save"}
+              </ActionButton>
               <ActionButton variant="secondary">Test</ActionButton>
               <ActionButton
                 variant="danger"

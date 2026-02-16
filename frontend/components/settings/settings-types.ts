@@ -1,5 +1,7 @@
 export interface ProviderConfig {
   id: string
+  /** Backend GUID when loaded from or saved to the API */
+  backendId?: string
   name: string
   providerType?: string
   status: "connected" | "needs-key" | "disabled"

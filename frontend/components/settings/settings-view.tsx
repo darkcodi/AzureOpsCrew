@@ -37,6 +37,21 @@ function persistSettings(state: SettingsState) {
   }
 }
 
+function mergeBackendIds(
+  local: SettingsState["providers"],
+  fromApi: Array<{ id: string; backendId?: string; name: string; providerType?: string }>
+): SettingsState["providers"] {
+  const byBackendId = new Map(fromApi.filter((p) => p.backendId).map((p) => [p.backendId!, p]))
+  return local.map((p) => {
+    if (p.backendId) return p
+    const match = fromApi.find(
+      (b) => b.name === p.name && (b.providerType ?? b.name) === (p.providerType ?? p.name)
+    )
+    if (match?.backendId) return { ...p, backendId: match.backendId }
+    return p
+  })
+}
+
 /** Current user display name from persisted settings (for use outside Settings). */
 export function getDisplayNameFromStorage(): string {
   return loadPersistedSettings().account.displayName || "User"
@@ -60,6 +75,21 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
     const persisted = loadPersistedSettings()
     setSettings(persisted)
     setSavedSettings(persisted)
+
+    fetch("/api/providers?clientId=1")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((apiProviders: Array<{ id: string; backendId?: string; name: string; providerType?: string }>) => {
+        if (apiProviders.length === 0) return
+        setSettings((prev) => ({
+          ...prev,
+          providers: mergeBackendIds(prev.providers, apiProviders),
+        }))
+        setSavedSettings((prev) => ({
+          ...prev,
+          providers: mergeBackendIds(prev.providers, apiProviders),
+        }))
+      })
+      .catch(() => {})
   }, [])
 
   const hasUnsavedChanges = useMemo(
@@ -67,9 +97,41 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
     [settings, savedSettings]
   )
 
-  const handleSave = useCallback(() => {
-    setSavedSettings(settings)
-    persistSettings(settings)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleSave = useCallback(async () => {
+    setSaveError(null)
+    setIsSaving(true)
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providers: settings.providers }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? "Failed to save settings")
+      }
+      const data = (await res.json()) as { providers?: Array<{ id: string; backendId: string }> }
+      let nextState = settings
+      if (data.providers?.length) {
+        const byId = new Map(data.providers.map((r) => [r.id, r.backendId]))
+        nextState = {
+          ...settings,
+          providers: settings.providers.map((p) =>
+            byId.has(p.id) ? { ...p, backendId: byId.get(p.id) } : p
+          ),
+        }
+        setSettings(nextState)
+      }
+      setSavedSettings(nextState)
+      persistSettings(nextState)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save")
+    } finally {
+      setIsSaving(false)
+    }
   }, [settings])
 
   const handleReset = useCallback(() => {
@@ -98,6 +160,9 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
           selectedProviderId={selectedProviderId}
           onSelectProvider={setSelectedProviderId}
           onNavigateToAllAgents={onNavigateToAllAgents}
+          onSave={handleSave}
+          isSaving={isSaving}
+          saveError={saveError}
         />
 
         {/* Right pane: contextual info */}
@@ -122,11 +187,17 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
           >
             Unsaved changes
           </span>
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
+            {saveError && (
+              <span className="text-sm" style={{ color: "hsl(0, 70%, 55%)" }}>
+                {saveError}
+              </span>
+            )}
             <button
               type="button"
               onClick={handleReset}
-              className="rounded-md px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90"
+              disabled={isSaving}
+              className="rounded-md px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{
                 backgroundColor: "hsl(228, 6%, 30%)",
                 color: "hsl(210, 3%, 90%)",
@@ -137,13 +208,14 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
             <button
               type="button"
               onClick={handleSave}
-              className="rounded-md px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90"
+              disabled={isSaving}
+              className="rounded-md px-5 py-2 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{
                 backgroundColor: "hsl(235, 86%, 65%)",
                 color: "#fff",
               }}
             >
-              Save
+              {isSaving ? "Saving…" : "Save"}
             </button>
           </div>
         </div>
