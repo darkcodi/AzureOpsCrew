@@ -115,9 +115,12 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
         const byId = new Map(data.providers.map((r) => [r.id, r.backendId]))
         nextState = {
           ...settings,
-          providers: settings.providers.map((p) =>
-            byId.has(p.id) ? { ...p, backendId: byId.get(p.id) } : p
-          ),
+          providers: settings.providers.map((p) => {
+            if (!byId.has(p.id)) return p
+            const backendId = byId.get(p.id)!
+            const status = p.status === "disabled" ? "disabled" : "enabled"
+            return { ...p, backendId, status }
+          }),
         }
         setSettings(nextState)
       }
