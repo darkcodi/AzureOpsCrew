@@ -72,6 +72,7 @@ interface SettingsContentProps {
   onSelectProvider: (id: string) => void
   onNavigateToAllAgents?: () => void
   onSave?: () => void
+  onSaveCurrentProvider?: () => void
   isSaving?: boolean
   saveError?: string | null
 }
@@ -87,6 +88,7 @@ export function SettingsContent({
   onSelectProvider,
   onNavigateToAllAgents,
   onSave,
+  onSaveCurrentProvider,
   isSaving,
   saveError,
 }: SettingsContentProps) {
@@ -108,6 +110,7 @@ export function SettingsContent({
                 onSettingsChange({ ...settings, providers })
               }
               onSave={onSave}
+              onSaveCurrentProvider={onSaveCurrentProvider}
               isSaving={isSaving}
               saveError={saveError}
             />
@@ -504,6 +507,7 @@ function ProvidersSection({
   onSelectProvider,
   onProvidersChange,
   onSave,
+  onSaveCurrentProvider,
   isSaving,
   saveError,
 }: {
@@ -514,6 +518,7 @@ function ProvidersSection({
   onSelectProvider: (id: string) => void
   onProvidersChange: (providers: ProviderConfig[]) => void
   onSave?: () => void
+  onSaveCurrentProvider?: () => void
   isSaving?: boolean
   saveError?: string | null
 }) {
@@ -794,8 +799,15 @@ function ProvidersSection({
             <div className="mt-6 flex gap-3">
               <ActionButton
                 variant="primary"
-                onClick={onSave}
-                disabled={isSaving || !hasUnsavedChanges}
+                onClick={onSaveCurrentProvider}
+                disabled={
+                  isSaving ||
+                  !selectedProviderId ||
+                  !(
+                    modifiedProviderIds.has(selectedProviderId) ||
+                    !selectedProvider.backendId
+                  )
+                }
               >
                 {isSaving ? "Saving…" : "Save"}
               </ActionButton>

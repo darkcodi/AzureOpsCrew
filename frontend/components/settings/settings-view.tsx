@@ -116,6 +116,27 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
+  const mergeSaveResults = useCallback(
+    (
+      state: SettingsState,
+      data: { providers?: Array<{ id: string; backendId: string }> }
+    ): SettingsState => {
+      if (!data.providers?.length) return state
+      const byId = new Map(data.providers.map((r) => [r.id, r.backendId]))
+      return {
+        ...state,
+        providers: state.providers.map((p) => {
+          if (!byId.has(p.id)) return p
+          const backendId = byId.get(p.id)!
+          const status = p.status === "disabled" ? "disabled" : "enabled"
+          return { ...p, backendId, status }
+        }),
+      }
+    },
+    []
+  )
+
+  /** Save all providers (used by footer Save). */
   const handleSave = useCallback(async () => {
     setSaveError(null)
     setIsSaving(true)
@@ -130,20 +151,8 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
         throw new Error(data.error ?? "Failed to save settings")
       }
       const data = (await res.json()) as { providers?: Array<{ id: string; backendId: string }> }
-      let nextState = settings
-      if (data.providers?.length) {
-        const byId = new Map(data.providers.map((r) => [r.id, r.backendId]))
-        nextState = {
-          ...settings,
-          providers: settings.providers.map((p) => {
-            if (!byId.has(p.id)) return p
-            const backendId = byId.get(p.id)!
-            const status = p.status === "disabled" ? "disabled" : "enabled"
-            return { ...p, backendId, status }
-          }),
-        }
-        setSettings(nextState)
-      }
+      const nextState = mergeSaveResults(settings, data)
+      setSettings(nextState)
       setSavedSettings(nextState)
       persistSettings(nextState)
     } catch (err) {
@@ -151,7 +160,51 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
     } finally {
       setIsSaving(false)
     }
-  }, [settings])
+  }, [settings, mergeSaveResults])
+
+  /** Save only the currently selected provider (used by provider-detail Save). */
+  const handleSaveCurrentProvider = useCallback(async () => {
+    if (!selectedProviderId) return
+    const current = settings.providers.find((p) => p.id === selectedProviderId)
+    if (!current) return
+    setSaveError(null)
+    setIsSaving(true)
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providers: [current] }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? "Failed to save provider")
+      }
+      const data = (await res.json()) as { providers?: Array<{ id: string; backendId: string }> }
+      const nextState = mergeSaveResults(settings, data)
+      setSettings(nextState)
+      // Only update the saved snapshot for the provider we just saved; leave other providers' saved state unchanged so they stay "Modified" if they have local changes
+      const savedProvider = nextState.providers.find((p) => p.id === selectedProviderId)
+      if (savedProvider) {
+        setSavedSettings((prev) => {
+          const idx = prev.providers.findIndex((p) => p.id === selectedProviderId)
+          if (idx >= 0) {
+            return {
+              ...prev,
+              providers: prev.providers.map((p) =>
+                p.id === selectedProviderId ? savedProvider : p
+              ),
+            }
+          }
+          return { ...prev, providers: [...prev.providers, savedProvider] }
+        })
+      }
+      persistSettings(nextState)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save provider")
+    } finally {
+      setIsSaving(false)
+    }
+  }, [settings, selectedProviderId, mergeSaveResults])
 
   const handleReset = useCallback(() => {
     setSettings(savedSettings)
@@ -183,6 +236,7 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
           onSelectProvider={setSelectedProviderId}
           onNavigateToAllAgents={onNavigateToAllAgents}
           onSave={handleSave}
+          onSaveCurrentProvider={handleSaveCurrentProvider}
           isSaving={isSaving}
           saveError={saveError}
         />
