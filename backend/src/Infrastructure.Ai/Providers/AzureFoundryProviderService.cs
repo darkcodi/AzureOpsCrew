@@ -30,10 +30,11 @@ public sealed class AzureFoundryProviderService : IProviderService
                 ? "https://{your-resource}.openai.azure.com"
                 : config.ApiEndpoint.TrimEnd('/');
 
-            // Azure OpenAI uses /openai/deployments endpoint with api-version query param
-            var deploymentsUrl = $"{endpoint}/openai/deployments?api-version={DefaultApiVersion}";
+            // Use /openai/models endpoint to list available base models
+            // Note: Deployment names must be configured manually - they differ from model names
+            var modelsUrl = $"{endpoint}/openai/models?api-version={DefaultApiVersion}";
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, deploymentsUrl);
+            using var request = new HttpRequestMessage(HttpMethod.Get, modelsUrl);
             request.Headers.Add("api-key", config.ApiKey);
 
             using var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -55,26 +56,21 @@ public sealed class AzureFoundryProviderService : IProviderService
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
             var doc = JsonDocument.Parse(json);
-            var deploymentsElement = doc.RootElement.GetProperty("data");
+            var modelsElement = doc.RootElement.GetProperty("data");
 
-            var models = deploymentsElement.EnumerateArray()
-                .Select(d => new ProviderModelInfo(
-                    d.GetProperty("id").GetString()!,
-                    d.GetProperty("id").GetString()!))
+            var models = modelsElement.EnumerateArray()
+                .Select(m => new ProviderModelInfo(
+                    m.GetProperty("id").GetString()!,
+                    m.GetProperty("id").GetString()!))
                 .ToArray();
 
-            // Validate model if specified
+            // Validate deployment/model if specified
+            // Note: DefaultModel should be the deployment name (e.g., "gpt-5-2-chat")
+            // not the base model name (e.g., "gpt-5.2-chat-2025-12-11")
             if (!string.IsNullOrWhiteSpace(config.DefaultModel))
             {
-                var modelExists = models.Any(m => string.Equals(
-                    m.Id,
-                    config.DefaultModel,
-                    StringComparison.Ordinal));
-
-                if (!modelExists)
-                {
-                    return TestConnectionResult.ValidationFailed($"Deployment '{config.DefaultModel}' not found in available deployments");
-                }
+                // For Azure OpenAI, we can't validate deployment names via the models API
+                // Skip validation and assume the user has configured the correct deployment name
             }
 
             stopwatch.Stop();
@@ -100,9 +96,10 @@ public sealed class AzureFoundryProviderService : IProviderService
             ? "https://{your-resource}.openai.azure.com"
             : config.ApiEndpoint.TrimEnd('/');
 
-        var deploymentsUrl = $"{endpoint}/openai/deployments?api-version={DefaultApiVersion}";
+        // Use /openai/models endpoint to list available base models
+        var modelsUrl = $"{endpoint}/openai/models?api-version={DefaultApiVersion}";
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, deploymentsUrl);
+        using var request = new HttpRequestMessage(HttpMethod.Get, modelsUrl);
         request.Headers.Add("api-key", config.ApiKey);
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -111,12 +108,12 @@ public sealed class AzureFoundryProviderService : IProviderService
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
         var doc = JsonDocument.Parse(json);
 
-        var deployments = doc.RootElement.GetProperty("data");
+        var models = doc.RootElement.GetProperty("data");
 
-        return deployments.EnumerateArray()
-            .Select(d => new ProviderModelInfo(
-                d.GetProperty("id").GetString()!,
-                d.GetProperty("id").GetString()!))
+        return models.EnumerateArray()
+            .Select(m => new ProviderModelInfo(
+                m.GetProperty("id").GetString()!,
+                m.GetProperty("id").GetString()!))
             .ToArray();
     }
 }

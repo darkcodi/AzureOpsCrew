@@ -9,6 +9,8 @@ const PROVIDER_TYPE_FROM_NAME: Record<string, number> = {
   "Ollama (Local)": 300,
   Ollama: 300,
   OpenRouter: 400,
+  AzureFoundry: 500,
+  "Azure Foundry": 500,
 }
 
 interface FrontendProvider {

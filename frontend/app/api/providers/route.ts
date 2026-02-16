@@ -19,6 +19,7 @@ const PROVIDER_TYPE_TO_NAME: Record<number, string> = {
   200: "Anthropic",
   300: "Ollama (Local)",
   400: "OpenRouter",
+  500: "AzureFoundry",
 }
 
 export async function GET(req: NextRequest) {
