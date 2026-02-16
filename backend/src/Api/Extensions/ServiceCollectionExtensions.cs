@@ -1,8 +1,10 @@
 using Azure.AI.OpenAI;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.AgentManagements;
+using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Infrastructure.Ai.AgentManagements;
 using AzureOpsCrew.Infrastructure.Ai.AgentManagements.Microsoft;
+using AzureOpsCrew.Infrastructure.Ai.Providers;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
@@ -116,5 +118,13 @@ public static class ServiceCollectionExtensions
             .AddTransient<Local0AgentFactory>()
             .AddTransient<Local1AgentFactory>()
             .AddTransient<MicrosoftFoundryAgentFactory>();
+    }
+
+    public static void AddProviderServices(this IServiceCollection services)
+    {
+        services.AddTransient<IProviderServiceFactory, ProviderServiceFactory>()
+            .AddTransient<OpenAIProviderService>()
+            .AddTransient<AnthropicProviderService>()
+            .AddTransient<OllamaProviderService>();
     }
 }

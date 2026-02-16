@@ -55,6 +55,7 @@ try
     builder.Services.AddDatabase(builder.Configuration);
     builder.Services.AddAgentManagements();
     builder.Services.AddIChatClient();
+    builder.Services.AddProviderServices();
 
     // Configure AG-UI
     builder.Services.AddHttpClient();
@@ -107,6 +108,7 @@ try
     app.MapTestEndpoints();
     app.MapAgentEndpoints();
     app.MapChannelEndpoints();
+    app.MapProviderConfigEndpoints();
 
     app.MapAllAgUi();
 
