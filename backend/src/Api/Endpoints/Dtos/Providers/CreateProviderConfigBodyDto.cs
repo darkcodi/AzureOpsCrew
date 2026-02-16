@@ -16,9 +16,8 @@ public record CreateProviderConfigBodyDto
     [Required(ErrorMessage = "ProviderType is required.")]
     public ProviderType ProviderType { get; set; }
 
-    [Required(ErrorMessage = "ApiKey is required.")]
-    [StringLength(500, MinimumLength = 1, ErrorMessage = "ApiKey must be between 1 and 500 characters.")]
-    public string ApiKey { get; set; } = string.Empty;
+    [StringLength(500, ErrorMessage = "ApiKey must be at most 500 characters.")]
+    public string? ApiKey { get; set; }
 
     [Required(ErrorMessage = "ApiEndpoint is required.")]
     [StringLength(500, MinimumLength = 1, ErrorMessage = "ApiEndpoint must be between 1 and 500 characters.")]

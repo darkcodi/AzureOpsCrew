@@ -11,7 +11,7 @@ public sealed class ProviderConfig
         int clientId,
         string name,
         ProviderType providerType,
-        string apiKey,
+        string? apiKey,
         string? apiEndpoint = null,
         string? defaultModel = null,
         bool isEnabled = true)
@@ -30,14 +30,14 @@ public sealed class ProviderConfig
     public int ClientId { get; private set; }
     public string Name { get; private set; }
     public ProviderType ProviderType { get; private set; }
-    public string ApiKey { get; private set; }
+    public string? ApiKey { get; private set; }
     public string? ApiEndpoint { get; private set; }
     public string? DefaultModel { get; private set; }
     public bool IsEnabled { get; private set; }
     public DateTime DateCreated { get; set; } = DateTime.UtcNow;
     public DateTime? DateModified { get; private set; }
 
-    public void Update(string name, string apiKey, string? apiEndpoint, string? defaultModel, bool? isEnabled = null)
+    public void Update(string name, string? apiKey, string? apiEndpoint, string? defaultModel, bool? isEnabled = null)
     {
         Name = name;
         ApiKey = apiKey;
