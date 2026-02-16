@@ -209,7 +209,7 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
     }
   }, [settings, selectedProviderId, mergeSaveResults])
 
-  /** Test connection for the currently selected provider (works for both saved and draft). */
+  /** Test connection for the currently selected provider (works for both saved and draft). Always uses /api/providers/test with body. */
   const handleTestProvider = useCallback(async () => {
     if (!selectedProviderId) return
     const current = settings.providers.find((p) => p.id === selectedProviderId)
@@ -217,23 +217,16 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
     setIsTesting(true)
     setSaveError(null)
     try {
-      const url = current.backendId
-        ? `/api/providers/${current.backendId}/test`
-        : "/api/providers/test"
-      const res = await fetch(url, {
+      const res = await fetch("/api/providers/test", {
         method: "POST",
-        ...(current.backendId
-          ? {}
-          : {
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                providerType: current.providerType ?? current.name,
-                name: current.name,
-                apiKey: current.apiKey,
-                baseUrl: current.baseUrl,
-                defaultModel: current.defaultModel,
-              }),
-            }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          providerType: current.providerType ?? current.name,
+          name: current.name,
+          apiKey: current.apiKey,
+          baseUrl: current.baseUrl,
+          defaultModel: current.defaultModel,
+        }),
       })
       const data = await res.json().catch(() => ({})) as { success?: boolean; message?: string }
       if (!res.ok) {
