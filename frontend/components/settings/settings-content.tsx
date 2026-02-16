@@ -594,7 +594,7 @@ function ProvidersSection({
             className="mb-2 text-xs font-semibold uppercase tracking-wider"
             style={{ color: "hsl(214, 5%, 55%)" }}
           >
-            Enabled providers
+            Providers
           </h3>
           <div className="flex flex-col gap-1">
             {filteredProviders.map((provider) => (
