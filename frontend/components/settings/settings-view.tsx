@@ -1,10 +1,46 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import { SettingsSidebar, type SettingsSection } from "./settings-sidebar"
 import { SettingsContent } from "./settings-content"
 import { SettingsInfoPanel } from "./settings-info-panel"
 import { type SettingsState, defaultSettings } from "./settings-types"
+
+const SETTINGS_STORAGE_KEY = "azureopscrew-settings"
+
+function loadPersistedSettings(): SettingsState {
+  if (typeof window === "undefined") return defaultSettings
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY)
+    if (!raw) return defaultSettings
+    const loaded = JSON.parse(raw) as Partial<SettingsState>
+    return {
+      ...defaultSettings,
+      ...loaded,
+      account: { ...defaultSettings.account, ...loaded.account },
+      appearance: { ...defaultSettings.appearance, ...loaded.appearance },
+      notifications: { ...defaultSettings.notifications, ...loaded.notifications },
+      routing: { ...defaultSettings.routing, ...loaded.routing },
+      advanced: { ...defaultSettings.advanced, ...loaded.advanced },
+      providers: Array.isArray(loaded.providers) ? loaded.providers : defaultSettings.providers,
+    }
+  } catch {
+    return defaultSettings
+  }
+}
+
+function persistSettings(state: SettingsState) {
+  try {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state))
+  } catch {
+    // ignore quota or parse errors
+  }
+}
+
+/** Current user display name from persisted settings (for use outside Settings). */
+export function getDisplayNameFromStorage(): string {
+  return loadPersistedSettings().account.displayName || "User"
+}
 
 export function SettingsView() {
   const [activeSection, setActiveSection] =
@@ -16,6 +52,12 @@ export function SettingsView() {
     "openai"
   )
 
+  useEffect(() => {
+    const persisted = loadPersistedSettings()
+    setSettings(persisted)
+    setSavedSettings(persisted)
+  }, [])
+
   const hasUnsavedChanges = useMemo(
     () => JSON.stringify(settings) !== JSON.stringify(savedSettings),
     [settings, savedSettings]
@@ -23,6 +65,7 @@ export function SettingsView() {
 
   const handleSave = useCallback(() => {
     setSavedSettings(settings)
+    persistSettings(settings)
   }, [settings])
 
   const handleReset = useCallback(() => {

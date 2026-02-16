@@ -25,7 +25,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import { HUMANS } from "@/components/direct-messages-right-pane"
+import { HUMANS, HUMAN_ID } from "@/components/direct-messages-right-pane"
 import { Search, User, Plus, Loader2 } from "lucide-react"
 
 function MemberContextMenu({
@@ -82,6 +82,7 @@ interface MemberListProps {
   allAgents: Agent[]
   activeAgentIds: string[]
   streamingAgentId?: string | null
+  displayName: string
   onToggleAgent: (agentId: string) => void | Promise<void>
   onOpenInDM?: (agentId: string, message?: string) => void
   onKickMember?: (agentId: string) => void | Promise<void>
@@ -175,6 +176,7 @@ export function MemberList({
   allAgents,
   activeAgentIds,
   streamingAgentId = null,
+  displayName,
   onToggleAgent,
   onOpenInDM,
   onKickMember,
@@ -213,9 +215,12 @@ export function MemberList({
     !query || agent.name.toLowerCase().includes(query)
   const filteredWorking = workingAgents.filter(matchesSearch)
   const filteredAvailable = availableAgents.filter(matchesSearch)
-  const filteredHumans = HUMANS.filter(
-    (h) => !query || h.name.toLowerCase().includes(query)
-  )
+  const currentUserName = displayName || "You"
+  const filteredHumans = HUMANS.filter((h) => {
+    if (!query) return true
+    const name = h.id === HUMAN_ID ? currentUserName : h.name
+    return name.toLowerCase().includes(query)
+  })
   const matchesHuman = filteredHumans.length > 0
 
   return (
@@ -332,7 +337,7 @@ export function MemberList({
               Humans
             </div>
             {filteredHumans.map((human) =>
-              human.name === "You" ? (
+              human.id === HUMAN_ID ? (
                 <MemberContextMenu
                   key={human.id}
                   userId={human.id}
@@ -372,7 +377,7 @@ export function MemberList({
                         <User className="h-4 w-4" />
                       </div>
                       <div className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-sm">You</span>
+                        <span className="truncate text-sm">{currentUserName}</span>
                         <span
                           className="inline-flex items-center gap-1.5 text-xs"
                           style={{ color: "hsl(214, 5%, 55%)" }}
@@ -427,7 +432,7 @@ export function MemberList({
                       </div>
                       <div className="px-4 pt-14 pb-4">
                         <h3 className="text-xl font-bold" style={{ color: "hsl(210, 3%, 98%)" }}>
-                          You
+                          {currentUserName}
                         </h3>
                         <p className="text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>
                           Human

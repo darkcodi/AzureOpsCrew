@@ -13,6 +13,7 @@ interface DirectMessagesSidebarProps {
   activeId: string | null
   /** Currently selected item for the right pane (agent id or HUMAN_ID). */
   selectedCardId: string | null
+  displayName: string
   onSelect: (id: string) => void
 }
 
@@ -20,6 +21,7 @@ export function DirectMessagesSidebar({
   agents,
   activeId,
   selectedCardId,
+  displayName,
   onSelect,
 }: DirectMessagesSidebarProps) {
   const [search, setSearch] = useState("")
@@ -199,7 +201,9 @@ export function DirectMessagesSidebar({
                 >
                   <User className="h-4 w-4" />
                 </div>
-                <span className="truncate">{human.name}</span>
+                <span className="truncate">
+                  {human.id === HUMAN_ID ? displayName : human.name}
+                </span>
                 <span
                   className="ml-auto inline-flex items-center gap-1.5 text-xs"
                   style={{ color: "hsl(214, 5%, 55%)" }}

@@ -8,7 +8,7 @@ import { ChannelArea } from "@/components/channel-area"
 import { DirectMessagesView } from "@/components/direct-messages-view"
 import { ManageAgentsDialog } from "@/components/manage-agents-dialog"
 import { AllAgentsSidebar } from "@/components/all-agents-sidebar"
-import { SettingsView } from "@/components/settings/settings-view"
+import { SettingsView, getDisplayNameFromStorage } from "@/components/settings/settings-view"
 
 export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("channels")
@@ -19,7 +19,15 @@ export default function Home() {
   const [activeChannelId, setActiveChannelId] = useState<string>("")
   const [activeDMId, setActiveDMId] = useState<string | null>(null)
   const [pendingDMMessage, setPendingDMMessage] = useState<string | null>(null)
+  const [displayName, setDisplayName] = useState(() =>
+    typeof window !== "undefined" ? getDisplayNameFromStorage() : "User"
+  )
   const activeChannel = channels.find((c) => c.id === activeChannelId) ?? channels[0]
+
+  // Refresh display name from persisted settings when returning from Settings
+  useEffect(() => {
+    if (viewMode !== "settings") setDisplayName(getDisplayNameFromStorage())
+  }, [viewMode])
 
   // Load agents from backend on mount
   useEffect(() => {
@@ -191,6 +199,7 @@ export default function Home() {
               key={activeChannel.id}
               channel={activeChannel}
               allAgents={agents}
+              displayName={displayName}
               onUpdateChannel={handleUpdateChannel}
               onAddAgent={handleAddAgent}
               onUpdateAgent={handleUpdateAgent}
@@ -219,6 +228,7 @@ export default function Home() {
           activeDMId={activeDMId}
           setActiveDMId={setActiveDMId}
           agents={agents}
+          displayName={displayName}
           pendingDMMessage={pendingDMMessage}
           onClearPendingDMMessage={() => setPendingDMMessage(null)}
         />

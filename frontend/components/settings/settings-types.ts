@@ -36,8 +36,13 @@ export interface AdvancedConfig {
   maxConcurrentRequests: number
 }
 
+export interface AccountConfig {
+  displayName: string
+}
+
 export interface SettingsState {
   providers: ProviderConfig[]
+  account: AccountConfig
   appearance: AppearanceConfig
   notifications: NotificationConfig
   routing: RoutingConfig
@@ -100,6 +105,9 @@ export const defaultSettings: SettingsState = {
       isDefault: false,
     },
   ],
+  account: {
+    displayName: "User",
+  },
   appearance: {
     theme: "dark",
     fontSize: "medium",

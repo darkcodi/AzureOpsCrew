@@ -16,6 +16,7 @@ import { type SettingsSection } from "./settings-sidebar"
 import {
   type ProviderConfig,
   type SettingsState,
+  type AccountConfig,
   type AppearanceConfig,
   type NotificationConfig,
   type RoutingConfig,
@@ -71,7 +72,14 @@ export function SettingsContent({
               }
             />
           )}
-          {activeSection === "account" && <AccountSection />}
+          {activeSection === "account" && (
+            <AccountSection
+              account={settings.account}
+              onAccountChange={(account) =>
+                onSettingsChange({ ...settings, account })
+              }
+            />
+          )}
           {activeSection === "appearance" && (
             <AppearanceSection
               appearance={settings.appearance}
@@ -782,7 +790,14 @@ function AdvancedSection({
  * Account Section
  * ───────────────────────────────────────────────── */
 
-function AccountSection() {
+function AccountSection({
+  account,
+  onAccountChange,
+}: {
+  account: AccountConfig
+  onAccountChange: (account: AccountConfig) => void
+}) {
+  const initial = (account.displayName || "U").trim().toUpperCase().slice(0, 1) || "U"
   return (
     <div>
       <SectionHeader
@@ -801,14 +816,14 @@ function AccountSection() {
             color: "#fff",
           }}
         >
-          U
+          {initial}
         </div>
         <div>
           <div
             className="text-base font-semibold"
             style={{ color: "hsl(210, 3%, 95%)" }}
           >
-            User
+            {account.displayName || "User"}
           </div>
           <div className="text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>
             Local account
@@ -818,7 +833,11 @@ function AccountSection() {
 
       <div className="mt-6">
         <FormField label="Display name">
-          <TextInput value="User" onChange={() => {}} placeholder="Your display name" />
+          <TextInput
+            value={account.displayName ?? ""}
+            onChange={(v) => onAccountChange({ ...account, displayName: v })}
+            placeholder="Your display name"
+          />
         </FormField>
       </div>
     </div>
