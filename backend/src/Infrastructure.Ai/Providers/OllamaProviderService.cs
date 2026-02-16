@@ -29,6 +29,31 @@ public sealed class OllamaProviderService : IProviderService
                 return TestConnectionResult.NetworkError($"HTTP {response.StatusCode}: {response.ReasonPhrase}");
             }
 
+            // Validate model if specified
+            if (!string.IsNullOrWhiteSpace(config.DefaultModel))
+            {
+                var json = await response.Content.ReadAsStringAsync(cancellationToken);
+                var doc = JsonDocument.Parse(json);
+
+                if (doc.RootElement.TryGetProperty("models", out var models))
+                {
+                    var modelExists = models.EnumerateArray()
+                        .Any(m => string.Equals(
+                            m.GetProperty("model").GetString(),
+                            config.DefaultModel,
+                            StringComparison.Ordinal));
+
+                    if (!modelExists)
+                    {
+                        return TestConnectionResult.ValidationFailed($"Model '{config.DefaultModel}' not found in available models");
+                    }
+                }
+                else
+                {
+                    return TestConnectionResult.ValidationFailed($"Model '{config.DefaultModel}' not found in available models");
+                }
+            }
+
             return TestConnectionResult.Successful();
         }
         catch (HttpRequestException ex)

@@ -5,6 +5,15 @@ namespace AzureOpsCrew.Infrastructure.Ai.Providers;
 
 public sealed class AnthropicProviderService : IProviderService
 {
+    private static readonly string[] KnownModels =
+    [
+        "claude-sonnet-4-20250514",
+        "claude-3-5-sonnet-20241022",
+        "claude-3-5-sonnet-20240620",
+        "claude-3-opus-20240229",
+        "claude-3-haiku-20240307"
+    ];
+
     private readonly HttpClient _httpClient;
 
     public AnthropicProviderService(HttpClient httpClient)
@@ -18,6 +27,15 @@ public sealed class AnthropicProviderService : IProviderService
         if (string.IsNullOrWhiteSpace(config.ApiKey))
         {
             return TestConnectionResult.ValidationFailed("API key is required");
+        }
+
+        // Validate model if specified
+        if (!string.IsNullOrWhiteSpace(config.DefaultModel))
+        {
+            if (!KnownModels.Contains(config.DefaultModel, StringComparer.Ordinal))
+            {
+                return TestConnectionResult.ValidationFailed($"Model '{config.DefaultModel}' is not a valid Anthropic model");
+            }
         }
 
         try
