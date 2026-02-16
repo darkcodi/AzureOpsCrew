@@ -738,6 +738,35 @@ function ProvidersSection({
               </div>
             </div>
 
+            {(selectedProvider.providerType ?? selectedProvider.name) === "OpenRouter" && (
+              <div
+                className="mb-4 rounded-lg border px-4 py-3"
+                style={{
+                  backgroundColor: "hsl(228, 6%, 22%)",
+                  borderColor: "hsl(228, 6%, 32%)",
+                }}
+              >
+                <h4
+                  className="mb-1.5 text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "hsl(214, 5%, 65%)" }}
+                >
+                  Description
+                </h4>
+                <p className="text-sm" style={{ color: "hsl(210, 3%, 85%)" }}>
+                  OpenRouter is a unified API for LLMs. Use one API key to access many models with better prices and uptime.{" "}
+                  <a
+                    href="https://openrouter.ai/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline transition-colors hover:opacity-80"
+                    style={{ color: "hsl(235, 86%, 65%)" }}
+                  >
+                    openrouter.ai
+                  </a>
+                </p>
+              </div>
+            )}
+
             <FormField label="Type">
               <SelectInput
                 value={selectedProvider.providerType ?? selectedProvider.name}
