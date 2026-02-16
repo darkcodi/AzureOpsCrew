@@ -617,7 +617,7 @@ function ProvidersSection({
                     onClick={() => {
                       onProvidersChange([
                         ...providers,
-                        { ...template, id: newId, status: "draft" },
+                        { ...template, id: newId, status: "draft", apiKey: "" },
                       ])
                       onSelectProvider(newId)
                       setAddProviderDialogOpen(false)
