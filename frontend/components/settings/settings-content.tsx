@@ -730,58 +730,12 @@ function AdvancedSection({
       />
 
       <FormField
-        label="Debug mode"
-        description="Enable verbose logging and debug overlays."
+        label="Developer mode"
+        description="Enable developer overlays and non-released features."
       >
         <ToggleSwitch
           checked={advanced.debugMode}
           onChange={(v) => onAdvancedChange({ ...advanced, debugMode: v })}
-        />
-      </FormField>
-
-      <FormField label="Log level">
-        <SelectInput
-          value={advanced.logLevel}
-          onChange={(v) =>
-            onAdvancedChange({
-              ...advanced,
-              logLevel: v as AdvancedConfig["logLevel"],
-            })
-          }
-          options={[
-            { value: "error", label: "Error" },
-            { value: "warn", label: "Warning" },
-            { value: "info", label: "Info" },
-            { value: "debug", label: "Debug" },
-          ]}
-        />
-      </FormField>
-
-      <FormField
-        label="Request timeout (s)"
-        description="Global timeout for all outgoing requests."
-      >
-        <NumberInput
-          value={advanced.requestTimeout}
-          onChange={(v) =>
-            onAdvancedChange({ ...advanced, requestTimeout: v })
-          }
-          min={5}
-          max={300}
-        />
-      </FormField>
-
-      <FormField
-        label="Max concurrent requests"
-        description="Maximum number of simultaneous API calls."
-      >
-        <NumberInput
-          value={advanced.maxConcurrentRequests}
-          onChange={(v) =>
-            onAdvancedChange({ ...advanced, maxConcurrentRequests: v })
-          }
-          min={1}
-          max={50}
         />
       </FormField>
     </div>

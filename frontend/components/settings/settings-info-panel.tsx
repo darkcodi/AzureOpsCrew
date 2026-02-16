@@ -241,9 +241,7 @@ function AdvancedInfo() {
       </InfoSection>
       <InfoSection title="Notes">
         <ul className="flex flex-col gap-1.5">
-          <NoteBullet>Debug mode increases log verbosity significantly.</NoteBullet>
-          <NoteBullet>High concurrency may trigger provider rate limits.</NoteBullet>
-          <NoteBullet>Timeout values affect all providers globally.</NoteBullet>
+          <NoteBullet>Developer mode enables overlays and non-released features.</NoteBullet>
         </ul>
       </InfoSection>
     </>
