@@ -12,6 +12,7 @@ import {
   Brain,
   Server,
   Globe,
+  Cloud,
   FileEdit,
   Pencil,
   Loader2,
@@ -68,6 +69,12 @@ const KNOWN_PROVIDERS: {
     name: "OpenRouter",
     Icon: Globe,
     template: defaultSettings.providers.find((p) => p.id === "openrouter")!,
+  },
+  {
+    id: "azure-foundry",
+    name: "Azure Foundry",
+    Icon: Cloud,
+    template: defaultSettings.providers.find((p) => p.id === "azure-foundry")!,
   },
 ].filter((p) => p.template != null)
 
@@ -860,6 +867,35 @@ function ProvidersSection({
               </div>
             )}
 
+            {(selectedProvider.providerType ?? selectedProvider.name) === "AzureFoundry" && (
+              <div
+                className="mb-4 rounded-lg border px-4 py-3"
+                style={{
+                  backgroundColor: "hsl(228, 6%, 22%)",
+                  borderColor: "hsl(228, 6%, 32%)",
+                }}
+              >
+                <h4
+                  className="mb-1.5 text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "hsl(214, 5%, 65%)" }}
+                >
+                  Description
+                </h4>
+                <p className="text-sm" style={{ color: "hsl(210, 3%, 85%)" }}>
+                  Azure AI Foundry (formerly Azure AI Studio) provides access to OpenAI models and other AI services hosted on Azure.{" "}
+                  <a
+                    href="https://ai.azure.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline transition-colors hover:opacity-80"
+                    style={{ color: "hsl(235, 86%, 65%)" }}
+                  >
+                    ai.azure.com
+                  </a>
+                </p>
+              </div>
+            )}
+
             <FormField label="Type">
               <SelectInput
                 value={selectedProvider.providerType ?? selectedProvider.name}
@@ -867,7 +903,7 @@ function ProvidersSection({
                 options={(() => {
                   const known: { value: string; label: string }[] = [
                     { value: "OpenAI", label: "OpenAI" },
-                    { value: "Azure OpenAI", label: "Azure OpenAI" },
+                    { value: "AzureFoundry", label: "Azure Foundry" },
                     { value: "Anthropic", label: "Anthropic" },
                     { value: "Ollama (Local)", label: "Ollama (Local)" },
                     { value: "OpenRouter", label: "OpenRouter" },
@@ -957,6 +993,22 @@ function ProvidersSection({
                           style={{ color: "hsl(235, 86%, 65%)" }}
                         >
                           ollama.com
+                        </a>
+                      </>
+                    )
+                  }
+                  if (providerType === "AzureFoundry") {
+                    return (
+                      <>
+                        Get your API key from your Azure OpenAI resource in the{" "}
+                        <a
+                          href="https://portal.azure.com/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline transition-colors hover:opacity-80"
+                          style={{ color: "hsl(235, 86%, 65%)" }}
+                        >
+                          Azure Portal
                         </a>
                       </>
                     )

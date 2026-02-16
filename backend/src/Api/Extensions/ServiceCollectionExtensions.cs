@@ -138,6 +138,10 @@ public static class ServiceCollectionExtensions
             .Services.AddHttpClient<OpenRouterProviderService>(client =>
             {
                 client.Timeout = TimeSpan.FromSeconds(30);
+            })
+            .Services.AddHttpClient<AzureFoundryProviderService>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
             });
     }
 }
