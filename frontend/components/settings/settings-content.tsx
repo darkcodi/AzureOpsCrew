@@ -471,9 +471,12 @@ function ActionButton({
 function ProviderStatusBadge({
   status,
   isModified,
+  isUnsaved,
 }: {
   status: ProviderConfig["status"]
   isModified?: boolean
+  /** When true (no backendId yet), always show "Draft" until saved */
+  isUnsaved?: boolean
 }) {
   const config = {
     draft: {
@@ -489,7 +492,11 @@ function ProviderStatusBadge({
     color: "hsl(40, 85%, 55%)",
     label: "Modified",
   }
-  const { icon: Icon, color, label } = isModified ? modifiedStyle : config[status]
+  const { icon: Icon, color, label } = isModified
+    ? modifiedStyle
+    : isUnsaved
+      ? config.draft
+      : config[status]
 
   return (
     <span className="flex items-center gap-1 text-xs" style={{ color }}>
@@ -587,9 +594,10 @@ function ProvidersSection({
                   {provider.name}
                 </span>
                 <ProviderStatusBadge
-                status={provider.status}
-                isModified={modifiedProviderIds.has(provider.id)}
-              />
+                  status={provider.status}
+                  isModified={modifiedProviderIds.has(provider.id)}
+                  isUnsaved={!provider.backendId}
+                />
               </button>
             ))}
             <button
@@ -686,9 +694,10 @@ function ProvidersSection({
               </h3>
               <div className="flex items-center gap-2">
                 <ProviderStatusBadge
-                status={selectedProvider.status}
-                isModified={modifiedProviderIds.has(selectedProvider.id)}
-              />
+                  status={selectedProvider.status}
+                  isModified={modifiedProviderIds.has(selectedProvider.id)}
+                  isUnsaved={!selectedProvider.backendId}
+                />
                 {selectedProvider.isDefault && (
                   <span
                     className="text-xs"
@@ -785,7 +794,13 @@ function ProvidersSection({
                 checked={selectedProvider.status !== "disabled"}
                 onChange={(v) =>
                   updateProvider(selectedProvider.id, {
-                    status: v ? "enabled" : "disabled",
+                    status: selectedProvider.backendId
+                      ? v
+                        ? "enabled"
+                        : "disabled"
+                      : v
+                        ? "draft"
+                        : "disabled",
                   })
                 }
               />
