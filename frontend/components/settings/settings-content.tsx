@@ -850,7 +850,7 @@ function ProvidersSection({
               </ActionButton>
               <ActionButton
                 variant="secondary"
-                disabled={isSaving || isTesting || !selectedProvider?.backendId}
+                disabled={isSaving || isTesting}
                 onClick={onTestProvider}
               >
                 {isTesting ? "Testing…" : "Test"}

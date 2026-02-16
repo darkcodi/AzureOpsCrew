@@ -111,7 +111,32 @@ public static class ProviderConfigEndpoints
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status404NotFound);
 
-        // TEST CONNECTION
+        // TEST CONNECTION (by inline config, for drafts / not-yet-saved providers) — must be before /{id}/test
+        group.MapPost("/test", async (
+            TestConnectionBodyDto body,
+            IProviderServiceFactory providerServiceFactory,
+            CancellationToken cancellationToken) =>
+        {
+            var config = new ProviderConfig(
+                Guid.Empty,
+                0,
+                body.Name ?? "Test",
+                body.ProviderType,
+                body.ApiKey,
+                body.ApiEndpoint,
+                body.DefaultModel,
+                true);
+            var service = providerServiceFactory.GetService(config.ProviderType);
+            var success = await service.TestConnectionAsync(config, cancellationToken);
+            return Results.Ok(new TestConnectionResponseDto(
+                success,
+                success ? "Connection successful" : "Connection failed"));
+        })
+        .AddEndpointFilter<ValidationFilter<TestConnectionBodyDto>>()
+        .Produces<TestConnectionResponseDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest);
+
+        // TEST CONNECTION (by saved provider id)
         group.MapPost("/{id}/test", async (
             Guid id,
             IProviderServiceFactory providerServiceFactory,

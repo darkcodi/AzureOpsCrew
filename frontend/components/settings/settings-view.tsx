@@ -209,23 +209,31 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
     }
   }, [settings, selectedProviderId, mergeSaveResults])
 
-  /** Test connection for the currently selected provider (must be saved). */
+  /** Test connection for the currently selected provider (works for both saved and draft). */
   const handleTestProvider = useCallback(async () => {
     if (!selectedProviderId) return
     const current = settings.providers.find((p) => p.id === selectedProviderId)
-    if (!current?.backendId) {
-      toast({
-        title: "Save first",
-        description: "Save the provider before testing the connection.",
-        variant: "destructive",
-      })
-      return
-    }
+    if (!current) return
     setIsTesting(true)
     setSaveError(null)
     try {
-      const res = await fetch(`/api/providers/${current.backendId}/test`, {
+      const url = current.backendId
+        ? `/api/providers/${current.backendId}/test`
+        : "/api/providers/test"
+      const res = await fetch(url, {
         method: "POST",
+        ...(current.backendId
+          ? {}
+          : {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                providerType: current.providerType ?? current.name,
+                name: current.name,
+                apiKey: current.apiKey,
+                baseUrl: current.baseUrl,
+                defaultModel: current.defaultModel,
+              }),
+            }),
       })
       const data = await res.json().catch(() => ({})) as { success?: boolean; message?: string }
       if (!res.ok) {
