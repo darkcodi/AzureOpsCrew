@@ -826,9 +826,12 @@ function ProvidersSection({
               >
                 {isSaving ? "Saving…" : "Save"}
               </ActionButton>
-              <ActionButton variant="secondary">Test</ActionButton>
+              <ActionButton variant="secondary" disabled={isSaving}>
+                Test
+              </ActionButton>
               <ActionButton
                 variant="danger"
+                disabled={isSaving}
                 onClick={() => {
                   onProvidersChange(providers.filter((p) => p.id !== selectedProvider.id))
                   const remaining = providers.filter((p) => p.id !== selectedProvider.id)
