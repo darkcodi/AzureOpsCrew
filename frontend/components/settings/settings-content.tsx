@@ -929,7 +929,12 @@ function ProvidersSection({
             </FormField>
 
             <FormField
-              label="API Key"
+              label={
+                (() => {
+                  const providerType = selectedProvider.providerType ?? selectedProvider.name
+                  return providerType === "Ollama (Local)" ? "API Key (optional)" : "API Key"
+                })()
+              }
               description={
                 (() => {
                   const providerType = selectedProvider.providerType ?? selectedProvider.name
