@@ -1,6 +1,7 @@
 "use client"
 
-import { Circle } from "lucide-react"
+import { useState } from "react"
+import { Circle, ChevronDown, ChevronUp } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { type SettingsSection } from "./settings-sidebar"
 import { type ProviderConfig, type ProviderTestResult } from "./settings-types"
@@ -131,6 +132,7 @@ function ProviderInfo({
   provider: ProviderConfig
   providerTestResult: ProviderTestResult | null
 }) {
+  const [modelsExpanded, setModelsExpanded] = useState(false)
   const hasTestResult = providerTestResult != null
   const statusColor = hasTestResult && providerTestResult.success
     ? "hsl(145, 65%, 45%)"
@@ -195,23 +197,60 @@ function ProviderInfo({
             >
               Press &ldquo;Test&rdquo; to see available models.
             </p>
-          ) : (
-            providerTestResult.availableModels.map((m) => (
-              <div
-                key={m.id}
-                className="rounded-md px-2.5 py-1.5 text-xs"
-                style={{
-                  backgroundColor: "hsl(228, 6%, 20%)",
-                  color: "hsl(210, 3%, 80%)",
-                }}
-              >
-                {m.name}
-                {provider.defaultModel && (m.id === provider.defaultModel || m.name === provider.defaultModel)
-                  ? " (default)"
-                  : ""}
-              </div>
-            ))
-          )}
+          ) : (() => {
+            const models = providerTestResult.availableModels
+            const initialCount = 5
+            const showAll = modelsExpanded || models.length <= initialCount
+            const visible = showAll ? models : models.slice(0, initialCount)
+            const hiddenCount = models.length - initialCount
+            return (
+              <>
+                {visible.map((m) => (
+                  <div
+                    key={m.id}
+                    className="rounded-md px-2.5 py-1.5 text-xs"
+                    style={{
+                      backgroundColor: "hsl(228, 6%, 20%)",
+                      color: "hsl(210, 3%, 80%)",
+                    }}
+                  >
+                    {m.name}
+                    {provider.defaultModel && (m.id === provider.defaultModel || m.name === provider.defaultModel)
+                      ? " (default)"
+                      : ""}
+                  </div>
+                ))}
+                {!showAll && hiddenCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setModelsExpanded(true)}
+                    className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs transition-opacity hover:opacity-90"
+                    style={{
+                      backgroundColor: "hsl(228, 6%, 25%)",
+                      color: "hsl(214, 5%, 65%)",
+                    }}
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    Show {hiddenCount} more
+                  </button>
+                )}
+                {showAll && models.length > initialCount && (
+                  <button
+                    type="button"
+                    onClick={() => setModelsExpanded(false)}
+                    className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs transition-opacity hover:opacity-90"
+                    style={{
+                      backgroundColor: "hsl(228, 6%, 25%)",
+                      color: "hsl(214, 5%, 65%)",
+                    }}
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                    Show less
+                  </button>
+                )}
+              </>
+            )
+          })()}
         </div>
       </InfoSection>
 
