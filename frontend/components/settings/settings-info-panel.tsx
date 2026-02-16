@@ -235,9 +235,10 @@ function ProviderInfo({
               <>
                 <TooltipProvider delayDuration={300}>
                   {visible.map((m) => {
-                    const defaultModel = isDefault(m)
+                    const isDefaultModel = isDefault(m)
                     const isSelected = selectedModels.includes(m.id)
-                    const border = defaultModel
+                    const showDefaultStyle = isDefaultModel && isSelected
+                    const border = showDefaultStyle
                       ? "2px solid hsl(235, 86%, 65%)"
                       : isSelected
                         ? "1px solid hsl(235, 86%, 65%)"
@@ -250,7 +251,7 @@ function ProviderInfo({
                             style={{
                               backgroundColor: "hsl(228, 6%, 20%)",
                               color: "hsl(210, 3%, 80%)",
-                              fontWeight: defaultModel ? 600 : undefined,
+                              fontWeight: showDefaultStyle ? 600 : undefined,
                               border,
                             }}
                             onClick={() => onToggleSelectedModel?.(m.id)}
