@@ -1,20 +1,11 @@
 using AzureOpsCrew.Domain.Providers;
 using System.Diagnostics;
-using System.Text;
+using System.Text.Json;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Providers;
 
 public sealed class AnthropicProviderService : IProviderService
 {
-    private static readonly ProviderModelInfo[] KnownModels =
-    [
-        new("claude-sonnet-4-20250514", "Claude Sonnet 4", 200000),
-        new("claude-3-5-sonnet-20241022", "Claude 3.5 Sonnet", 200000),
-        new("claude-3-5-sonnet-20240620", "Claude 3.5 Sonnet (June)", 200000),
-        new("claude-3-opus-20240229", "Claude 3 Opus", 200000),
-        new("claude-3-haiku-20240307", "Claude 3 Haiku", 200000)
-    ];
-
     private readonly HttpClient _httpClient;
 
     public AnthropicProviderService(HttpClient httpClient)
@@ -30,41 +21,52 @@ public sealed class AnthropicProviderService : IProviderService
             return TestConnectionResult.ValidationFailed("API key is required");
         }
 
-        // Validate model if specified
-        if (!string.IsNullOrWhiteSpace(config.DefaultModel))
-        {
-            if (!KnownModels.Any(m => string.Equals(m.Id, config.DefaultModel, StringComparison.Ordinal)))
-            {
-                return TestConnectionResult.ValidationFailed($"Model '{config.DefaultModel}' is not a valid Anthropic model");
-            }
-        }
-
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
             var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
-                ? "https://api.anthropic.com"
-                : config.ApiEndpoint;
+                ? "https://api.anthropic.com/v1"
+                : config.ApiEndpoint.TrimEnd('/');
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, $"{endpoint}/v1/messages");
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{endpoint}/models");
             request.Headers.Add("x-api-key", config.ApiKey);
             request.Headers.Add("anthropic-version", "2023-06-01");
-            request.Content = new StringContent(
-                """{"model":"claude-3-5-sonnet-20241022","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}""",
-                Encoding.UTF8,
-                "application/json");
 
             using var response = await _httpClient.SendAsync(request, cancellationToken);
 
-            // Will return 400 with specific error if auth works, 401 if not
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 return TestConnectionResult.AuthenticationFailed("Invalid API key");
             }
 
+            if (!response.IsSuccessStatusCode)
+            {
+                return TestConnectionResult.NetworkError($"HTTP {response.StatusCode}: {response.ReasonPhrase}");
+            }
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            var doc = JsonDocument.Parse(json);
+            var modelsElement = doc.RootElement.GetProperty("data");
+
+            var models = ParseModels(modelsElement);
+
+            // Validate model if specified
+            if (!string.IsNullOrWhiteSpace(config.DefaultModel))
+            {
+                var modelExists = models.Any(m => string.Equals(
+                    m.Id,
+                    config.DefaultModel,
+                    StringComparison.Ordinal));
+
+                if (!modelExists)
+                {
+                    return TestConnectionResult.ValidationFailed($"Model '{config.DefaultModel}' not found in available models");
+                }
+            }
+
             stopwatch.Stop();
-            return TestConnectionResult.Successful(stopwatch.ElapsedMilliseconds, KnownModels);
+            return TestConnectionResult.Successful(stopwatch.ElapsedMilliseconds, models);
         }
         catch (HttpRequestException ex)
         {
@@ -80,9 +82,46 @@ public sealed class AnthropicProviderService : IProviderService
         }
     }
 
-    public Task<ProviderModelInfo[]> ListModelsAsync(ProviderConfig config, CancellationToken cancellationToken)
+    public async Task<ProviderModelInfo[]> ListModelsAsync(ProviderConfig config, CancellationToken cancellationToken)
     {
-        // Anthropic has fixed models - return known list
-        return Task.FromResult(KnownModels);
+        var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
+            ? "https://api.anthropic.com/v1"
+            : config.ApiEndpoint.TrimEnd('/');
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{endpoint}/models");
+        request.Headers.Add("x-api-key", config.ApiKey);
+        request.Headers.Add("anthropic-version", "2023-06-01");
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        var doc = JsonDocument.Parse(json);
+
+        var modelsElement = doc.RootElement.GetProperty("data");
+        return ParseModels(modelsElement);
+    }
+
+    private static ProviderModelInfo[] ParseModels(JsonElement modelsElement)
+    {
+        var result = new List<ProviderModelInfo>();
+
+        foreach (var model in modelsElement.EnumerateArray())
+        {
+            var id = model.GetProperty("id").GetString()!;
+            var displayName = model.TryGetProperty("display_name", out var nameElement)
+                ? nameElement.GetString()!
+                : id;
+
+            long? contextSize = null;
+            if (model.TryGetProperty("context_window_size", out var ctxElement))
+            {
+                contextSize = ctxElement.GetInt64();
+            }
+
+            result.Add(new ProviderModelInfo(id, displayName, contextSize));
+        }
+
+        return [.. result];
     }
 }
