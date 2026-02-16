@@ -738,28 +738,6 @@ function ProvidersSection({
               />
             </FormField>
 
-            <FormField label="Timeout (s)">
-              <NumberInput
-                value={selectedProvider.timeout}
-                onChange={(v) =>
-                  updateProvider(selectedProvider.id, { timeout: v })
-                }
-                min={1}
-                max={300}
-              />
-            </FormField>
-
-            <FormField label="Rate limit (req/min)">
-              <NumberInput
-                value={selectedProvider.rateLimit}
-                onChange={(v) =>
-                  updateProvider(selectedProvider.id, { rateLimit: v })
-                }
-                min={0}
-                max={1000}
-              />
-            </FormField>
-
             <div className="mt-6 flex gap-3">
               <ActionButton variant="primary">Save</ActionButton>
               <ActionButton variant="secondary">Test</ActionButton>
