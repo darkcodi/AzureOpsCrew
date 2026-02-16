@@ -738,10 +738,33 @@ function ProvidersSection({
               />
             </FormField>
 
+            <FormField
+              label="Enabled"
+              description="When off, this provider is disabled and won't be used."
+            >
+              <ToggleSwitch
+                checked={selectedProvider.status !== "disabled"}
+                onChange={(v) =>
+                  updateProvider(selectedProvider.id, {
+                    status: v ? "connected" : "disabled",
+                  })
+                }
+              />
+            </FormField>
+
             <div className="mt-6 flex gap-3">
               <ActionButton variant="primary">Save</ActionButton>
               <ActionButton variant="secondary">Test</ActionButton>
-              <ActionButton variant="danger">Disable</ActionButton>
+              <ActionButton
+                variant="danger"
+                onClick={() => {
+                  onProvidersChange(providers.filter((p) => p.id !== selectedProvider.id))
+                  const remaining = providers.filter((p) => p.id !== selectedProvider.id)
+                  onSelectProvider(remaining[0]?.id ?? null)
+                }}
+              >
+                Remove
+              </ActionButton>
             </div>
           </div>
         )}
