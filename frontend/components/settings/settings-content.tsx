@@ -573,9 +573,12 @@ function ProvidersSection({
   const [removeProviderPending, setRemoveProviderPending] =
     useState<ProviderConfig | null>(null)
   const [isRemovingProvider, setIsRemovingProvider] = useState(false)
+  const [customModelInput, setCustomModelInput] = useState("")
   const { toast } = useToast()
 
   const selectedProvider = providers.find((p) => p.id === selectedProviderId)
+  const isAzureFoundry =
+    (selectedProvider?.providerType ?? selectedProvider?.name) === "AzureFoundry"
 
   const filteredProviders = providers
     .filter((p) =>
@@ -1065,33 +1068,82 @@ function ProvidersSection({
 
             <FormField label="Selected models">
               <div className="flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-md px-2.5 py-2" style={{ backgroundColor: "hsl(228, 7%, 14%)", border: "1px solid hsl(228, 6%, 30%)" }}>
-                {(selectedProvider.selectedModels ?? []).length === 0 ? (
+                {(selectedProvider.selectedModels ?? []).length === 0 && !isAzureFoundry ? (
                   <span className="text-xs" style={{ color: "hsl(214, 5%, 55%)" }}>
                     Click models in the panel to select
                   </span>
-                ) : (
-                  (selectedProvider.selectedModels ?? []).map((modelId) => (
-                    <span
-                      key={modelId}
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs"
-                      style={{
-                        backgroundColor: "hsl(228, 6%, 25%)",
-                        color: "hsl(210, 3%, 90%)",
-                        border: "1px solid hsl(235, 86%, 65%)",
-                      }}
-                    >
-                      {modelId}
-                      <button
-                        type="button"
-                        onClick={() => onToggleSelectedModel?.(modelId)}
-                        className="ml-0.5 rounded-sm p-0.5 transition-colors hover:bg-[hsl(228,6%,35%)]"
-                        style={{ color: "hsl(214, 5%, 65%)" }}
-                        aria-label={`Remove ${modelId}`}
+                ) : null}
+                {(selectedProvider.selectedModels ?? []).length > 0
+                  ? (selectedProvider.selectedModels ?? []).map((modelId) => (
+                      <span
+                        key={modelId}
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs"
+                        style={{
+                          backgroundColor: "hsl(228, 6%, 25%)",
+                          color: "hsl(210, 3%, 90%)",
+                          border: "1px solid hsl(235, 86%, 65%)",
+                        }}
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))
+                        {modelId}
+                        <button
+                          type="button"
+                          onClick={() => onToggleSelectedModel?.(modelId)}
+                          className="ml-0.5 rounded-sm p-0.5 transition-colors hover:bg-[hsl(228,6%,35%)]"
+                          style={{ color: "hsl(214, 5%, 65%)" }}
+                          aria-label={`Remove ${modelId}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))
+                  : null}
+                {isAzureFoundry && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={customModelInput}
+                      onChange={(e) => setCustomModelInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          const name = customModelInput.trim()
+                          if (!name) return
+                          const current = selectedProvider.selectedModels ?? []
+                          if (current.includes(name)) return
+                          updateProvider(selectedProvider.id, {
+                            selectedModels: [...current, name],
+                          })
+                          setCustomModelInput("")
+                        }
+                      }}
+                      placeholder="Type custom model name..."
+                      className="w-40 rounded border bg-transparent px-2 py-1 text-xs outline-none transition-colors focus:ring-1"
+                      style={{
+                        borderColor: "hsl(228, 6%, 30%)",
+                        color: "hsl(210, 3%, 90%)",
+                      }}
+                      aria-label="Add custom model name"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const name = customModelInput.trim()
+                        if (!name) return
+                        const current = selectedProvider.selectedModels ?? []
+                        if (current.includes(name)) return
+                        updateProvider(selectedProvider.id, {
+                          selectedModels: [...current, name],
+                        })
+                        setCustomModelInput("")
+                      }}
+                      className="shrink-0 rounded p-1 transition-colors hover:bg-[hsl(228,6%,35%)]"
+                      style={{ color: "hsl(214, 5%, 65%)" }}
+                      aria-label="Add custom model"
+                      title="Add custom model"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </span>
                 )}
               </div>
             </FormField>
