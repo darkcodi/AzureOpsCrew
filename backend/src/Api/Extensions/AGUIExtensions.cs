@@ -1,9 +1,9 @@
+using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
+using Microsoft.Extensions.AI;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
-using Microsoft.Extensions.AI;
 
 namespace AzureOpsCrew.Api.Extensions;
 

@@ -1,9 +1,8 @@
+using Serilog;
 using System.Buffers;
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
-using Serilog;
 
 namespace AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
 

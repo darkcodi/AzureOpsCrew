@@ -187,7 +187,12 @@ public static class ChannelAgUiFactory
     public static Workflow BuildWorkflow(IReadOnlyList<AIAgent> agents)
     {
         return AgentWorkflowBuilder
-            .BuildSequential(agents.ToArray());
+        .CreateGroupChatBuilderWith(chatAgents => new RoundRobinGroupChatManager(agents)
+        {
+            MaximumIterationCount = 3
+        })
+        .AddParticipants(agents)
+        .Build();
     }
 
     public static AIAgent BuildWorkflowAgent(Workflow workflow, Guid channelId)
