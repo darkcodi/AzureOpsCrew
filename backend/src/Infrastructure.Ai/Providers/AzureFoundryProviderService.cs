@@ -14,7 +14,7 @@ public sealed class AzureFoundryProviderService : IProviderService
         _httpClient = httpClient;
     }
 
-    public async Task<TestConnectionResult> TestConnectionAsync(ProviderConfig config, CancellationToken cancellationToken)
+    public async Task<TestConnectionResult> TestConnectionAsync(Provider config, CancellationToken cancellationToken)
     {
         // Validate API key
         if (string.IsNullOrWhiteSpace(config.ApiKey))
@@ -90,7 +90,7 @@ public sealed class AzureFoundryProviderService : IProviderService
         }
     }
 
-    public async Task<ProviderModelInfo[]> ListModelsAsync(ProviderConfig config, CancellationToken cancellationToken)
+    public async Task<ProviderModelInfo[]> ListModelsAsync(Provider config, CancellationToken cancellationToken)
     {
         var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
             ? "https://{your-resource}.openai.azure.com"

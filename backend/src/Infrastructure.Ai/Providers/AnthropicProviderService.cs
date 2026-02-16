@@ -13,7 +13,7 @@ public sealed class AnthropicProviderService : IProviderService
         _httpClient = httpClient;
     }
 
-    public async Task<TestConnectionResult> TestConnectionAsync(ProviderConfig config, CancellationToken cancellationToken)
+    public async Task<TestConnectionResult> TestConnectionAsync(Provider config, CancellationToken cancellationToken)
     {
         // Validate API key
         if (string.IsNullOrWhiteSpace(config.ApiKey))
@@ -82,7 +82,7 @@ public sealed class AnthropicProviderService : IProviderService
         }
     }
 
-    public async Task<ProviderModelInfo[]> ListModelsAsync(ProviderConfig config, CancellationToken cancellationToken)
+    public async Task<ProviderModelInfo[]> ListModelsAsync(Provider config, CancellationToken cancellationToken)
     {
         var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
             ? "https://api.anthropic.com/v1"

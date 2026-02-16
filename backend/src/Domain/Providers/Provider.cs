@@ -1,12 +1,12 @@
 namespace AzureOpsCrew.Domain.Providers;
 
-public sealed class ProviderConfig
+public sealed class Provider
 {
-    private ProviderConfig()
+    private Provider()
     {
     }
 
-    public ProviderConfig(
+    public Provider(
         Guid id,
         int clientId,
         string name,

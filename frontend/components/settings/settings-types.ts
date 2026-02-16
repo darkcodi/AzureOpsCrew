@@ -8,7 +8,7 @@ export interface ProviderTestResult {
   availableModels?: Array<{ id: string; name: string }>
 }
 
-export interface ProviderConfig {
+export interface Provider {
   id: string
   /** Backend GUID when loaded from or saved to the API */
   backendId?: string
@@ -57,7 +57,7 @@ export interface AccountConfig {
 }
 
 export interface SettingsState {
-  providers: ProviderConfig[]
+  providers: Provider[]
   account: AccountConfig
   appearance: AppearanceConfig
   notifications: NotificationConfig

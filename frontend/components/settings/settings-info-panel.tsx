@@ -11,11 +11,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { type SettingsSection } from "./settings-sidebar"
-import { type ProviderConfig, type ProviderTestResult } from "./settings-types"
+import { type Provider, type ProviderTestResult } from "./settings-types"
 
 interface SettingsInfoPanelProps {
   activeSection: SettingsSection
-  selectedProvider: ProviderConfig | null
+  selectedProvider: Provider | null
   selectedModels?: string[]
   onToggleSelectedModel?: (modelId: string) => void
   providerTestResult?: ProviderTestResult | null
@@ -147,7 +147,7 @@ function ProviderInfo({
   selectedModels = [],
   onToggleSelectedModel,
 }: {
-  provider: ProviderConfig
+  provider: Provider
   providerTestResult: ProviderTestResult | null
   selectedModels?: string[]
   onToggleSelectedModel?: (modelId: string) => void

@@ -33,7 +33,7 @@ import type { Agent } from "@/lib/agents"
 import { ManageAgentsDialog } from "@/components/manage-agents-dialog"
 import { type SettingsSection } from "./settings-sidebar"
 import {
-  type ProviderConfig,
+  type Provider,
   type SettingsState,
   type AccountConfig,
   type AppearanceConfig,
@@ -47,7 +47,7 @@ const KNOWN_PROVIDERS: {
   id: string
   name: string
   Icon: React.ComponentType<{ className?: string }>
-  template: ProviderConfig
+  template: Provider
 }[] = [
   {
     id: "anthropic",
@@ -516,7 +516,7 @@ function ProviderStatusBadge({
   isModified,
   isUnsaved,
 }: {
-  status: ProviderConfig["status"]
+  status: Provider["status"]
   isModified?: boolean
   /** When true (no backendId yet), always show "Draft" until saved */
   isUnsaved?: boolean
@@ -565,12 +565,12 @@ function ProvidersSection({
   isTesting,
   saveError,
 }: {
-  providers: ProviderConfig[]
+  providers: Provider[]
   modifiedProviderIds: Set<string>
   hasUnsavedChanges?: boolean
   selectedProviderId: string | null
   onSelectProvider: (id: string) => void
-  onProvidersChange: (providers: ProviderConfig[]) => void
+  onProvidersChange: (providers: Provider[]) => void
   onSave?: () => void
   onSaveCurrentProvider?: () => void
   onTestProvider?: () => void
@@ -584,7 +584,7 @@ function ProvidersSection({
   const [showApiKey, setShowApiKey] = useState(false)
   const [addProviderDialogOpen, setAddProviderDialogOpen] = useState(false)
   const [removeProviderPending, setRemoveProviderPending] =
-    useState<ProviderConfig | null>(null)
+    useState<Provider | null>(null)
   const [isRemovingProvider, setIsRemovingProvider] = useState(false)
   const [customModelInput, setCustomModelInput] = useState("")
   const { toast } = useToast()
@@ -603,7 +603,7 @@ function ProvidersSection({
       return tA - tB
     })
 
-  const updateProvider = (id: string, updates: Partial<ProviderConfig>) => {
+  const updateProvider = (id: string, updates: Partial<Provider>) => {
     onProvidersChange(
       providers.map((p) => (p.id === id ? { ...p, ...updates } : p))
     )

@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
 
-public sealed class ProviderConfigEntityTypeConfiguration : IEntityTypeConfiguration<ProviderConfig>
+public sealed class ProviderEntityTypeConfiguration : IEntityTypeConfiguration<Provider>
 {
-    public void Configure(EntityTypeBuilder<ProviderConfig> builder)
+    public void Configure(EntityTypeBuilder<Provider> builder)
     {
-        builder.ToTable(nameof(ProviderConfig));
+        builder.ToTable("Provider");
 
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Id)

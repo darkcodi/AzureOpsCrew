@@ -13,7 +13,7 @@ public sealed class OllamaProviderService : IProviderService
         _httpClient = httpClient;
     }
 
-    public async Task<TestConnectionResult> TestConnectionAsync(ProviderConfig config, CancellationToken cancellationToken)
+    public async Task<TestConnectionResult> TestConnectionAsync(Provider config, CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
 
@@ -81,7 +81,7 @@ public sealed class OllamaProviderService : IProviderService
         }
     }
 
-    public async Task<ProviderModelInfo[]> ListModelsAsync(ProviderConfig config, CancellationToken cancellationToken)
+    public async Task<ProviderModelInfo[]> ListModelsAsync(Provider config, CancellationToken cancellationToken)
     {
         var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
             ? "http://localhost:11434"

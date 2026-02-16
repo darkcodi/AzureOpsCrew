@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Cosmos;
 
-public sealed class ProviderConfigEntityTypeConfiguration : IEntityTypeConfiguration<ProviderConfig>
+public sealed class ProviderEntityTypeConfiguration : IEntityTypeConfiguration<Provider>
 {
-    public void Configure(EntityTypeBuilder<ProviderConfig> builder)
+    public void Configure(EntityTypeBuilder<Provider> builder)
     {
-        builder.ToContainer("ProviderConfig");
+        builder.ToContainer("Provider");
 
         builder.HasPartitionKey(p => p.ClientId);
 

@@ -6,21 +6,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
-public static class ProviderConfigEndpoints
+public static class ProviderEndpoints
 {
-    public static void MapProviderConfigEndpoints(this IEndpointRouteBuilder routeBuilder)
+    public static void MapProviderEndpoints(this IEndpointRouteBuilder routeBuilder)
     {
         var group = routeBuilder.MapGroup("/api/providers")
             .WithTags("Providers");
 
         // CREATE
         group.MapPost("/create", async (
-            CreateProviderConfigBodyDto body,
+            CreateProviderBodyDto body,
             AzureOpsCrewContext context,
             IProviderServiceFactory providerServiceFactory,
             CancellationToken cancellationToken) =>
         {
-            var config = new ProviderConfig(
+            var config = new Provider(
                 Guid.NewGuid(),
                 body.ClientId,
                 body.Name,
@@ -59,8 +59,8 @@ public static class ProviderConfigEndpoints
 
             return Results.Created($"/api/providers/{config.Id}", config);
         })
-        .AddEndpointFilter<ValidationFilter<CreateProviderConfigBodyDto>>()
-        .Produces<ProviderConfig>(StatusCodes.Status201Created)
+        .AddEndpointFilter<ValidationFilter<CreateProviderBodyDto>>()
+        .Produces<Provider>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest);
 
         // LIST (by client)
@@ -69,14 +69,14 @@ public static class ProviderConfigEndpoints
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var configs = await context.Set<ProviderConfig>()
+            var configs = await context.Set<Provider>()
                 .Where(p => p.ClientId == clientId)
                 .OrderBy(p => p.DateCreated)
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(configs);
         })
-        .Produces<ProviderConfig[]>(StatusCodes.Status200OK);
+        .Produces<Provider[]>(StatusCodes.Status200OK);
 
         // GET by ID
         group.MapGet("/{id}", async (
@@ -84,23 +84,23 @@ public static class ProviderConfigEndpoints
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var found = await context.Set<ProviderConfig>()
+            var found = await context.Set<Provider>()
                 .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
             return found is null ? Results.NotFound() : Results.Ok(found);
         })
-        .Produces<ProviderConfig>(StatusCodes.Status200OK)
+        .Produces<Provider>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
         // UPDATE
         group.MapPut("/{id}", async (
             Guid id,
-            UpdateProviderConfigBodyDto body,
+            UpdateProviderBodyDto body,
             AzureOpsCrewContext context,
             IProviderServiceFactory providerServiceFactory,
             CancellationToken cancellationToken) =>
         {
-            var found = await context.Set<ProviderConfig>()
+            var found = await context.Set<Provider>()
                 .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
             if (found is null)
@@ -135,8 +135,8 @@ public static class ProviderConfigEndpoints
 
             return Results.Ok(found);
         })
-        .AddEndpointFilter<ValidationFilter<UpdateProviderConfigBodyDto>>()
-        .Produces<ProviderConfig>(StatusCodes.Status200OK)
+        .AddEndpointFilter<ValidationFilter<UpdateProviderBodyDto>>()
+        .Produces<Provider>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status400BadRequest);
 
@@ -146,13 +146,13 @@ public static class ProviderConfigEndpoints
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var found = await context.Set<ProviderConfig>()
+            var found = await context.Set<Provider>()
                 .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
             if (found is null)
                 return Results.NotFound();
 
-            context.Set<ProviderConfig>().Remove(found);
+            context.Set<Provider>().Remove(found);
             await context.SaveChangesAsync(cancellationToken);
 
             return Results.NoContent();
@@ -166,7 +166,7 @@ public static class ProviderConfigEndpoints
             IProviderServiceFactory providerServiceFactory,
             CancellationToken cancellationToken) =>
         {
-            var config = new ProviderConfig(
+            var config = new Provider(
                 Guid.Empty,
                 0,
                 body.Name ?? "Test",
@@ -198,7 +198,7 @@ public static class ProviderConfigEndpoints
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var config = await context.Set<ProviderConfig>()
+            var config = await context.Set<Provider>()
                 .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
             if (config is null)
@@ -226,7 +226,7 @@ public static class ProviderConfigEndpoints
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var config = await context.Set<ProviderConfig>()
+            var config = await context.Set<Provider>()
                 .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
             if (config is null)
