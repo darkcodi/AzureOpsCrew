@@ -251,7 +251,13 @@ export default function Home() {
         </>
       )}
       {viewMode === "settings" && (
-        <SettingsView onNavigateToAllAgents={() => setViewMode("all-agents")} />
+        <SettingsView
+          allAgents={agents}
+          onAddAgent={handleAddAgent}
+          onUpdateAgent={handleUpdateAgent}
+          onDeleteAgent={handleDeleteAgent}
+          onNavigateToAllAgents={() => setViewMode("all-agents")}
+        />
       )}
     </main>
   )

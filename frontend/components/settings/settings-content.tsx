@@ -29,6 +29,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
+import type { Agent } from "@/lib/agents"
+import { ManageAgentsDialog } from "@/components/manage-agents-dialog"
 import { type SettingsSection } from "./settings-sidebar"
 import {
   type ProviderConfig,
@@ -88,6 +90,10 @@ interface SettingsContentProps {
   onSettingsChange: (settings: SettingsState) => void
   selectedProviderId: string | null
   onSelectProvider: (id: string) => void
+  allAgents: Agent[]
+  onAddAgent: (agent: Agent) => void | Promise<void>
+  onUpdateAgent: (agent: Agent) => void
+  onDeleteAgent: (agentId: string) => void | Promise<void>
   onNavigateToAllAgents?: () => void
   onSave?: () => void
   onSaveCurrentProvider?: () => void
@@ -108,6 +114,10 @@ export function SettingsContent({
   onSettingsChange,
   selectedProviderId,
   onSelectProvider,
+  allAgents,
+  onAddAgent,
+  onUpdateAgent,
+  onDeleteAgent,
   onNavigateToAllAgents,
   onSave,
   onSaveCurrentProvider,
@@ -146,7 +156,13 @@ export function SettingsContent({
             />
           )}
           {activeSection === "agents" && (
-            <AgentsSection onNavigateToAllAgents={onNavigateToAllAgents} />
+            <AgentsSection
+              allAgents={allAgents}
+              onAddAgent={onAddAgent}
+              onUpdateAgent={onUpdateAgent}
+              onDeleteAgent={onDeleteAgent}
+              onNavigateToAllAgents={onNavigateToAllAgents}
+            />
           )}
           {activeSection === "routing" && (
             <RoutingSection
@@ -1332,8 +1348,16 @@ function ProvidersSection({
  * ───────────────────────────────────────────────── */
 
 function AgentsSection({
+  allAgents,
+  onAddAgent,
+  onUpdateAgent,
+  onDeleteAgent,
   onNavigateToAllAgents,
 }: {
+  allAgents: Agent[]
+  onAddAgent: (agent: Agent) => void | Promise<void>
+  onUpdateAgent: (agent: Agent) => void
+  onDeleteAgent: (agentId: string) => void | Promise<void>
   onNavigateToAllAgents?: () => void
 }) {
   return (
@@ -1342,36 +1366,14 @@ function AgentsSection({
         title="Agents"
         description="Configure default agent behaviors, model assignments, and system prompts."
       />
-      <div
-        className="rounded-lg border p-8 text-center"
-        style={{
-          borderColor: "hsl(228, 6%, 30%)",
-          color: "hsl(214, 5%, 55%)",
-        }}
-      >
-        <p className="text-sm">
-          Agent settings are managed per-agent. Use the{" "}
-          {onNavigateToAllAgents ? (
-            <button
-              type="button"
-              onClick={onNavigateToAllAgents}
-              className="underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent rounded"
-              style={{
-                color: "hsl(235, 86%, 65%)",
-                backgroundColor: "transparent",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-              }}
-            >
-              All Agents
-            </button>
-          ) : (
-            <span style={{ color: "hsl(235, 86%, 65%)" }}>All Agents</span>
-          )}{" "}
-          view to configure individual agents.
-        </p>
-      </div>
+      <ManageAgentsDialog
+        allAgents={allAgents}
+        onAddAgent={onAddAgent}
+        onUpdateAgent={onUpdateAgent}
+        onDeleteAgent={onDeleteAgent}
+        embedded
+        hideHeader
+      />
     </div>
   )
 }

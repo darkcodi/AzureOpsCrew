@@ -33,6 +33,8 @@ interface ManageAgentsDialogProps {
   onDeleteAgent: (agentId: string) => void | Promise<void>
   /** When true, render as full-page tab content (no overlay, no close button). */
   embedded?: boolean
+  /** When true and embedded, hide the inner header (for use inside Settings). */
+  hideHeader?: boolean
 }
 
 type View = "list" | "edit" | "create"
@@ -50,6 +52,7 @@ export function ManageAgentsDialog({
   onUpdateAgent,
   onDeleteAgent,
   embedded = false,
+  hideHeader = false,
 }: ManageAgentsDialogProps) {
   const [view, setView] = useState<View>("list")
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
@@ -140,36 +143,57 @@ export function ManageAgentsDialog({
       style={{ backgroundColor: embedded ? "transparent" : "hsl(228, 6%, 20%)", ...(embedded ? {} : { maxHeight: "85vh" }) }}
     >
       {/* Header */}
-      <div
-        className="flex shrink-0 items-center gap-3 px-5 py-4"
-        style={{ borderBottom: "1px solid hsl(228, 6%, 28%)" }}
-      >
-        {view !== "list" && (
+      {!(embedded && hideHeader) && (
+        <div
+          className="flex shrink-0 items-center gap-3 px-5 py-4"
+          style={{ borderBottom: "1px solid hsl(228, 6%, 28%)" }}
+        >
+          {view !== "list" && (
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className="transition-opacity hover:opacity-80"
+              style={{ color: "hsl(214, 5%, 55%)" }}
+              aria-label="Back to list"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+          <h2 className="flex-1 text-lg font-semibold" style={{ color: "hsl(0, 0%, 100%)" }}>
+            {view === "list" ? "All Agents" : view === "create" ? "New Agent" : "Edit Agent"}
+          </h2>
+          {!embedded && onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="transition-opacity hover:opacity-80"
+              style={{ color: "hsl(214, 5%, 55%)" }}
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Back button when header is hidden (e.g. Settings) and user is in create/edit */}
+      {embedded && hideHeader && view !== "list" && (
+        <div
+          className="flex shrink-0 items-center border-b px-5 py-2"
+          style={{ borderColor: "hsl(228, 6%, 28%)" }}
+        >
           <button
             type="button"
             onClick={() => setView("list")}
-            className="transition-opacity hover:opacity-80"
+            className="flex items-center gap-1.5 transition-opacity hover:opacity-80"
             style={{ color: "hsl(214, 5%, 55%)" }}
             aria-label="Back to list"
           >
             <ChevronLeft className="h-5 w-5" />
+            <span className="text-sm">Back to list</span>
           </button>
-        )}
-        <h2 className="flex-1 text-lg font-semibold" style={{ color: "hsl(0, 0%, 100%)" }}>
-          {view === "list" ? "All Agents" : view === "create" ? "New Agent" : "Edit Agent"}
-        </h2>
-        {!embedded && onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="transition-opacity hover:opacity-80"
-            style={{ color: "hsl(214, 5%, 55%)" }}
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        )}
-      </div>
+        </div>
+      )}
 
         {/* Body */}
         {view === "list" ? (

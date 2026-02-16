@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useMemo, useEffect } from "react"
+import type { Agent } from "@/lib/agents"
 import { SettingsSidebar, type SettingsSection } from "./settings-sidebar"
 import { SettingsContent } from "./settings-content"
 import { SettingsInfoPanel } from "./settings-info-panel"
@@ -44,10 +45,20 @@ export function getDisplayNameFromStorage(): string {
 }
 
 interface SettingsViewProps {
+  allAgents: Agent[]
+  onAddAgent: (agent: Agent) => void | Promise<void>
+  onUpdateAgent: (agent: Agent) => void
+  onDeleteAgent: (agentId: string) => void | Promise<void>
   onNavigateToAllAgents?: () => void
 }
 
-export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
+export function SettingsView({
+  allAgents,
+  onAddAgent,
+  onUpdateAgent,
+  onDeleteAgent,
+  onNavigateToAllAgents,
+}: SettingsViewProps) {
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("providers")
   const [settings, setSettings] = useState<SettingsState>(() => ({
@@ -378,6 +389,10 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
           onSettingsChange={setSettings}
           selectedProviderId={selectedProviderId}
           onSelectProvider={setSelectedProviderId}
+          allAgents={allAgents}
+          onAddAgent={onAddAgent}
+          onUpdateAgent={onUpdateAgent}
+          onDeleteAgent={onDeleteAgent}
           onNavigateToAllAgents={onNavigateToAllAgents}
           onSave={handleSave}
           onSaveCurrentProvider={handleSaveCurrentProvider}
