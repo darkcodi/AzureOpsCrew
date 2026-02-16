@@ -66,6 +66,7 @@ interface SettingsContentProps {
   settings: SettingsState
   savedSettings: SettingsState
   modifiedProviderIds: Set<string>
+  hasUnsavedChanges?: boolean
   onSettingsChange: (settings: SettingsState) => void
   selectedProviderId: string | null
   onSelectProvider: (id: string) => void
@@ -80,6 +81,7 @@ export function SettingsContent({
   settings,
   savedSettings,
   modifiedProviderIds,
+  hasUnsavedChanges,
   onSettingsChange,
   selectedProviderId,
   onSelectProvider,
@@ -99,6 +101,7 @@ export function SettingsContent({
             <ProvidersSection
               providers={settings.providers}
               modifiedProviderIds={modifiedProviderIds}
+              hasUnsavedChanges={hasUnsavedChanges}
               selectedProviderId={selectedProviderId}
               onSelectProvider={onSelectProvider}
               onProvidersChange={(providers) =>
@@ -496,6 +499,7 @@ function ProviderStatusBadge({
 function ProvidersSection({
   providers,
   modifiedProviderIds,
+  hasUnsavedChanges,
   selectedProviderId,
   onSelectProvider,
   onProvidersChange,
@@ -505,6 +509,7 @@ function ProvidersSection({
 }: {
   providers: ProviderConfig[]
   modifiedProviderIds: Set<string>
+  hasUnsavedChanges?: boolean
   selectedProviderId: string | null
   onSelectProvider: (id: string) => void
   onProvidersChange: (providers: ProviderConfig[]) => void
@@ -790,7 +795,7 @@ function ProvidersSection({
               <ActionButton
                 variant="primary"
                 onClick={onSave}
-                disabled={isSaving}
+                disabled={isSaving || !hasUnsavedChanges}
               >
                 {isSaving ? "Saving…" : "Save"}
               </ActionButton>

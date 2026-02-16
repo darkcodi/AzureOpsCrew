@@ -177,6 +177,7 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
           settings={settings}
           savedSettings={savedSettings}
           modifiedProviderIds={modifiedProviderIds}
+          hasUnsavedChanges={hasUnsavedChanges}
           onSettingsChange={setSettings}
           selectedProviderId={selectedProviderId}
           onSelectProvider={setSelectedProviderId}
