@@ -37,21 +37,6 @@ function persistSettings(state: SettingsState) {
   }
 }
 
-function mergeBackendIds(
-  local: SettingsState["providers"],
-  fromApi: Array<{ id: string; backendId?: string; name: string; providerType?: string }>
-): SettingsState["providers"] {
-  const byBackendId = new Map(fromApi.filter((p) => p.backendId).map((p) => [p.backendId!, p]))
-  return local.map((p) => {
-    if (p.backendId) return p
-    const match = fromApi.find(
-      (b) => b.name === p.name && (b.providerType ?? b.name) === (p.providerType ?? p.name)
-    )
-    if (match?.backendId) return { ...p, backendId: match.backendId }
-    return p
-  })
-}
-
 /** Current user display name from persisted settings (for use outside Settings). */
 export function getDisplayNameFromStorage(): string {
   return loadPersistedSettings().account.displayName || "User"
@@ -64,32 +49,43 @@ interface SettingsViewProps {
 export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("providers")
-  const [settings, setSettings] = useState<SettingsState>(defaultSettings)
-  const [savedSettings, setSavedSettings] =
-    useState<SettingsState>(defaultSettings)
-  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
-    "openai"
-  )
+  const [settings, setSettings] = useState<SettingsState>(() => ({
+    ...defaultSettings,
+    providers: [],
+  }))
+  const [savedSettings, setSavedSettings] = useState<SettingsState>(() => ({
+    ...defaultSettings,
+    providers: [],
+  }))
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null)
 
   useEffect(() => {
     const persisted = loadPersistedSettings()
-    setSettings(persisted)
-    setSavedSettings(persisted)
 
     fetch("/api/providers?clientId=1")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((apiProviders: Array<{ id: string; backendId?: string; name: string; providerType?: string }>) => {
-        if (apiProviders.length === 0) return
-        setSettings((prev) => ({
-          ...prev,
-          providers: mergeBackendIds(prev.providers, apiProviders),
-        }))
-        setSavedSettings((prev) => ({
-          ...prev,
-          providers: mergeBackendIds(prev.providers, apiProviders),
-        }))
+      .then((res) => {
+        if (!res.ok) return null
+        return res.json()
       })
-      .catch(() => {})
+      .then((apiProviders: SettingsState["providers"] | null) => {
+        if (apiProviders == null) {
+          setSettings(persisted)
+          setSavedSettings(persisted)
+          setSelectedProviderId(persisted.providers[0]?.id ?? null)
+          return
+        }
+        const list = Array.isArray(apiProviders) ? apiProviders : []
+        const nextSettings: SettingsState = { ...persisted, providers: list }
+        setSettings(nextSettings)
+        setSavedSettings(nextSettings)
+        persistSettings(nextSettings)
+        setSelectedProviderId(list[0]?.id ?? null)
+      })
+      .catch(() => {
+        setSettings(persisted)
+        setSavedSettings(persisted)
+        setSelectedProviderId(persisted.providers[0]?.id ?? null)
+      })
   }, [])
 
   const hasUnsavedChanges = useMemo(
