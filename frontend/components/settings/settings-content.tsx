@@ -798,7 +798,7 @@ function ProvidersSection({
               />
             </FormField>
 
-            <FormField label="Default model">
+            <FormField label="Default model (optional)">
               <TextInput
                 value={selectedProvider.defaultModel}
                 onChange={(v) =>

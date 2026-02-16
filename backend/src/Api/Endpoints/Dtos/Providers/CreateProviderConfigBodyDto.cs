@@ -24,9 +24,8 @@ public record CreateProviderConfigBodyDto
     [StringLength(500, MinimumLength = 1, ErrorMessage = "ApiEndpoint must be between 1 and 500 characters.")]
     public string ApiEndpoint { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "DefaultModel is required.")]
-    [StringLength(200, MinimumLength = 1, ErrorMessage = "DefaultModel must be between 1 and 200 characters.")]
-    public string DefaultModel { get; set; } = string.Empty;
+    [StringLength(200, ErrorMessage = "DefaultModel must be at most 200 characters.")]
+    public string? DefaultModel { get; set; }
 
     public bool IsEnabled { get; set; } = true;
 }
