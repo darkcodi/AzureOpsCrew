@@ -3,16 +3,18 @@
 import { Circle } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { type SettingsSection } from "./settings-sidebar"
-import { type ProviderConfig } from "./settings-types"
+import { type ProviderConfig, type ProviderTestResult } from "./settings-types"
 
 interface SettingsInfoPanelProps {
   activeSection: SettingsSection
   selectedProvider: ProviderConfig | null
+  providerTestResult?: ProviderTestResult | null
 }
 
 export function SettingsInfoPanel({
   activeSection,
   selectedProvider,
+  providerTestResult = null,
 }: SettingsInfoPanelProps) {
   return (
     <div
@@ -25,7 +27,7 @@ export function SettingsInfoPanel({
       <ScrollArea className="flex-1">
         <div className="p-4">
           {activeSection === "providers" && selectedProvider && (
-            <ProviderInfo provider={selectedProvider} />
+            <ProviderInfo provider={selectedProvider} providerTestResult={providerTestResult} />
           )}
           {activeSection === "providers" && !selectedProvider && (
             <GeneralProviderInfo />
@@ -106,56 +108,110 @@ function NoteBullet({ children }: { children: React.ReactNode }) {
  * Provider-specific info
  * ───────────────────────────────────────────────── */
 
-function ProviderInfo({ provider }: { provider: ProviderConfig }) {
-  const statusColor =
-    provider.status === "enabled"
-      ? "hsl(145, 65%, 45%)"
+function formatCheckedAt(checkedAt?: string): string {
+  if (!checkedAt) return "—"
+  try {
+    const d = new Date(checkedAt)
+    if (Number.isNaN(d.getTime())) return checkedAt
+    const now = new Date()
+    const diffMs = now.getTime() - d.getTime()
+    if (diffMs < 60_000) return "just now"
+    if (diffMs < 3600_000) return `${Math.floor(diffMs / 60_000)} min ago`
+    if (diffMs < 86400_000) return `${Math.floor(diffMs / 3600_000)} h ago`
+    return d.toLocaleString()
+  } catch {
+    return checkedAt
+  }
+}
+
+function ProviderInfo({
+  provider,
+  providerTestResult,
+}: {
+  provider: ProviderConfig
+  providerTestResult: ProviderTestResult | null
+}) {
+  const hasTestResult = providerTestResult != null
+  const statusColor = hasTestResult && providerTestResult.success
+    ? "hsl(145, 65%, 45%)"
+    : hasTestResult && !providerTestResult.success
+      ? "hsl(0, 70%, 55%)"
       : "hsl(214, 5%, 55%)"
 
   return (
     <>
-      <InfoSection title="Live Status">
+      <InfoSection title="Test result">
         <div
           className="mb-3 rounded-lg border p-3"
           style={{ borderColor: "hsl(228, 6%, 25%)" }}
         >
-          <div className="mb-2 flex items-center gap-2">
-            <Circle
-              className="h-2.5 w-2.5"
-              style={{ color: statusColor, fill: statusColor }}
-            />
-            <span
-              className="text-sm font-semibold"
-              style={{ color: "hsl(210, 3%, 95%)" }}
+          {!hasTestResult ? (
+            <p
+              className="text-xs leading-relaxed"
+              style={{ color: "hsl(214, 5%, 55%)" }}
             >
-              {provider.name}
-            </span>
-          </div>
-          <InfoRow label="Latency" value={provider.status === "enabled" ? "220 ms" : "—"} />
-          <InfoRow label="Last check" value={provider.status === "enabled" ? "just now" : "—"} />
-          <InfoRow
-            label="Quota"
-            value={provider.status === "enabled" ? "OK" : "—"}
-            valueColor={
-              provider.status === "enabled"
-                ? "hsl(145, 65%, 45%)"
-                : undefined
-            }
-          />
+              Press &ldquo;Test&rdquo; to check connectivity and see latency, last check, and quota.
+            </p>
+          ) : (
+            <>
+              <div className="mb-2 flex items-center gap-2">
+                <Circle
+                  className="h-2.5 w-2.5"
+                  style={{ color: statusColor, fill: statusColor }}
+                />
+                <span
+                  className="text-sm font-semibold"
+                  style={{ color: "hsl(210, 3%, 95%)" }}
+                >
+                  {provider.name}
+                </span>
+              </div>
+              <InfoRow
+                label="Latency"
+                value={providerTestResult.latencyMs != null ? `${providerTestResult.latencyMs} ms` : "—"}
+              />
+              <InfoRow
+                label="Last check"
+                value={formatCheckedAt(providerTestResult.checkedAt)}
+              />
+              <InfoRow
+                label="Quota"
+                value={providerTestResult.quota ?? "—"}
+                valueColor={
+                  providerTestResult.success ? "hsl(145, 65%, 45%)" : "hsl(0, 70%, 55%)"
+                }
+              />
+            </>
+          )}
         </div>
       </InfoSection>
 
       <InfoSection title="Available models">
         <div className="flex flex-col gap-1">
-          <div
-            className="rounded-md px-2.5 py-1.5 text-xs"
-            style={{
-              backgroundColor: "hsl(228, 6%, 20%)",
-              color: "hsl(210, 3%, 80%)",
-            }}
-          >
-            gpt-5-2-chat (default)
-          </div>
+          {!providerTestResult?.availableModels?.length ? (
+            <p
+              className="text-xs leading-relaxed"
+              style={{ color: "hsl(214, 5%, 55%)" }}
+            >
+              Press &ldquo;Test&rdquo; to see available models.
+            </p>
+          ) : (
+            providerTestResult.availableModels.map((m) => (
+              <div
+                key={m.id}
+                className="rounded-md px-2.5 py-1.5 text-xs"
+                style={{
+                  backgroundColor: "hsl(228, 6%, 20%)",
+                  color: "hsl(210, 3%, 80%)",
+                }}
+              >
+                {m.name}
+                {provider.defaultModel && (m.id === provider.defaultModel || m.name === provider.defaultModel)
+                  ? " (default)"
+                  : ""}
+              </div>
+            ))
+          )}
         </div>
       </InfoSection>
 
@@ -175,7 +231,7 @@ function GeneralProviderInfo() {
     <>
       <InfoSection title="Providers">
         <p className="text-xs leading-relaxed" style={{ color: "hsl(214, 5%, 65%)" }}>
-          Select a provider from the list to view its live status,
+          Select a provider from the list to view its test result,
           available models, and configuration details.
         </p>
       </InfoSection>

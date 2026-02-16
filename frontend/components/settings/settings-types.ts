@@ -1,3 +1,13 @@
+/** Result of a provider connection test (from Test button). */
+export interface ProviderTestResult {
+  success: boolean
+  message?: string
+  latencyMs?: number
+  checkedAt?: string
+  quota?: string
+  availableModels?: Array<{ id: string; name: string }>
+}
+
 export interface ProviderConfig {
   id: string
   /** Backend GUID when loaded from or saved to the API */

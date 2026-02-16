@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from "react"
 import { SettingsSidebar, type SettingsSection } from "./settings-sidebar"
 import { SettingsContent } from "./settings-content"
 import { SettingsInfoPanel } from "./settings-info-panel"
-import { type SettingsState, defaultSettings } from "./settings-types"
+import { type SettingsState, type ProviderTestResult, defaultSettings } from "./settings-types"
 import { useToast } from "@/hooks/use-toast"
 
 const SETTINGS_STORAGE_KEY = "azureopscrew-settings"
@@ -117,6 +117,7 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
+  const [providerTestResults, setProviderTestResults] = useState<Record<string, ProviderTestResult>>({})
   const { toast } = useToast()
 
   const mergeSaveResults = useCallback(
@@ -228,7 +229,7 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
           defaultModel: current.defaultModel,
         }),
       })
-      const data = await res.json().catch(() => ({})) as { success?: boolean; message?: string }
+      const data = await res.json().catch(() => ({})) as ProviderTestResult & { success?: boolean; message?: string }
       if (!res.ok) {
         toast({
           title: "Test failed",
@@ -237,6 +238,17 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
         })
         return
       }
+      setProviderTestResults((prev) => ({
+        ...prev,
+        [selectedProviderId]: {
+          success: data.success ?? false,
+          message: data.message,
+          latencyMs: data.latencyMs,
+          checkedAt: data.checkedAt,
+          quota: data.quota,
+          availableModels: data.availableModels,
+        },
+      }))
       if (data.success) {
         toast({ title: "Connection successful", description: data.message ?? undefined })
       } else {
@@ -336,6 +348,9 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
         <SettingsInfoPanel
           activeSection={activeSection}
           selectedProvider={selectedProvider}
+          providerTestResult={
+            selectedProviderId ? providerTestResults[selectedProviderId] ?? null : null
+          }
         />
       </div>
 
