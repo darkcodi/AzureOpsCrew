@@ -1,6 +1,6 @@
 "use client"
 
-import { Users, Settings, MessageCircle, Hash } from "lucide-react"
+import { Settings, MessageCircle, Hash } from "lucide-react"
 import {
   Tooltip,
   TooltipContent,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-export type ViewMode = "channels" | "direct-messages" | "all-agents" | "settings"
+export type ViewMode = "channels" | "direct-messages" | "settings"
 
 interface IconSidebarProps {
   viewMode: ViewMode
@@ -23,7 +23,6 @@ export function IconSidebar({
   const topItems = [
     { icon: Hash, label: "Channels", onClick: () => onViewChange("channels"), active: viewMode === "channels" },
     { icon: MessageCircle, label: "Direct messages", onClick: () => onViewChange("direct-messages"), active: viewMode === "direct-messages" },
-    { icon: Users, label: "All agents", onClick: () => onViewChange("all-agents"), active: viewMode === "all-agents" },
   ]
 
   const isSettingsActive = viewMode === "settings"

@@ -6,8 +6,6 @@ import { IconSidebar, type ViewMode } from "@/components/icon-sidebar"
 import { ChannelSidebar } from "@/components/channel-sidebar"
 import { ChannelArea } from "@/components/channel-area"
 import { DirectMessagesView } from "@/components/direct-messages-view"
-import { ManageAgentsDialog } from "@/components/manage-agents-dialog"
-import { AllAgentsSidebar } from "@/components/all-agents-sidebar"
 import { SettingsView, getDisplayNameFromStorage } from "@/components/settings/settings-view"
 
 export default function Home() {
@@ -233,30 +231,12 @@ export default function Home() {
           onClearPendingDMMessage={() => setPendingDMMessage(null)}
         />
       )}
-      {viewMode === "all-agents" && (
-        <>
-          <AllAgentsSidebar />
-          <div
-            className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-            style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
-          >
-            <ManageAgentsDialog
-              allAgents={agents}
-              onAddAgent={handleAddAgent}
-              onUpdateAgent={handleUpdateAgent}
-              onDeleteAgent={handleDeleteAgent}
-              embedded
-            />
-          </div>
-        </>
-      )}
       {viewMode === "settings" && (
         <SettingsView
           allAgents={agents}
           onAddAgent={handleAddAgent}
           onUpdateAgent={handleUpdateAgent}
           onDeleteAgent={handleDeleteAgent}
-          onNavigateToAllAgents={() => setViewMode("all-agents")}
         />
       )}
     </main>

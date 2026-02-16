@@ -49,7 +49,6 @@ interface SettingsViewProps {
   onAddAgent: (agent: Agent) => void | Promise<void>
   onUpdateAgent: (agent: Agent) => void
   onDeleteAgent: (agentId: string) => void | Promise<void>
-  onNavigateToAllAgents?: () => void
 }
 
 export function SettingsView({
@@ -57,7 +56,6 @@ export function SettingsView({
   onAddAgent,
   onUpdateAgent,
   onDeleteAgent,
-  onNavigateToAllAgents,
 }: SettingsViewProps) {
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("providers")
@@ -393,7 +391,6 @@ export function SettingsView({
           onAddAgent={onAddAgent}
           onUpdateAgent={onUpdateAgent}
           onDeleteAgent={onDeleteAgent}
-          onNavigateToAllAgents={onNavigateToAllAgents}
           onSave={handleSave}
           onSaveCurrentProvider={handleSaveCurrentProvider}
           onTestProvider={handleTestProvider}

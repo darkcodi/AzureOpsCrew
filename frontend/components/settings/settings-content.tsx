@@ -94,7 +94,6 @@ interface SettingsContentProps {
   onAddAgent: (agent: Agent) => void | Promise<void>
   onUpdateAgent: (agent: Agent) => void
   onDeleteAgent: (agentId: string) => void | Promise<void>
-  onNavigateToAllAgents?: () => void
   onSave?: () => void
   onSaveCurrentProvider?: () => void
   onTestProvider?: () => void
@@ -118,7 +117,6 @@ export function SettingsContent({
   onAddAgent,
   onUpdateAgent,
   onDeleteAgent,
-  onNavigateToAllAgents,
   onSave,
   onSaveCurrentProvider,
   onTestProvider,
@@ -161,7 +159,6 @@ export function SettingsContent({
               onAddAgent={onAddAgent}
               onUpdateAgent={onUpdateAgent}
               onDeleteAgent={onDeleteAgent}
-              onNavigateToAllAgents={onNavigateToAllAgents}
             />
           )}
           {activeSection === "routing" && (
@@ -1352,13 +1349,11 @@ function AgentsSection({
   onAddAgent,
   onUpdateAgent,
   onDeleteAgent,
-  onNavigateToAllAgents,
 }: {
   allAgents: Agent[]
   onAddAgent: (agent: Agent) => void | Promise<void>
   onUpdateAgent: (agent: Agent) => void
   onDeleteAgent: (agentId: string) => void | Promise<void>
-  onNavigateToAllAgents?: () => void
 }) {
   return (
     <div>
