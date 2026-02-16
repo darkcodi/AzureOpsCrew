@@ -617,7 +617,9 @@ function ProvidersSection({
                       e.currentTarget.style.backgroundColor = "transparent"
                     }}
                   >
-                    <Icon className="h-5 w-5 shrink-0" style={{ color: "hsl(214, 5%, 65%)" }} />
+                    <span className="h-5 w-5 shrink-0" style={{ color: "hsl(214, 5%, 65%)" }}>
+                      <Icon className="h-5 w-5 shrink-0" />
+                    </span>
                     <span>{name}</span>
                   </button>
                 )
