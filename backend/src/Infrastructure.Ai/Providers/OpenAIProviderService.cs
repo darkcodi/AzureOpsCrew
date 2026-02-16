@@ -12,8 +12,14 @@ public sealed class OpenAIProviderService : IProviderService
         _httpClient = httpClient;
     }
 
-    public async Task<bool> TestConnectionAsync(ProviderConfig config, CancellationToken cancellationToken)
+    public async Task<TestConnectionResult> TestConnectionAsync(ProviderConfig config, CancellationToken cancellationToken)
     {
+        // Validate API key
+        if (string.IsNullOrWhiteSpace(config.ApiKey))
+        {
+            return TestConnectionResult.ValidationFailed("API key is required");
+        }
+
         try
         {
             var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
@@ -25,11 +31,29 @@ public sealed class OpenAIProviderService : IProviderService
 
             using var response = await _httpClient.SendAsync(request, cancellationToken);
 
-            return response.IsSuccessStatusCode;
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                return TestConnectionResult.AuthenticationFailed("Invalid API key");
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return TestConnectionResult.NetworkError($"HTTP {response.StatusCode}: {response.ReasonPhrase}");
+            }
+
+            return TestConnectionResult.Successful();
         }
-        catch
+        catch (HttpRequestException ex)
         {
-            return false;
+            return TestConnectionResult.NetworkError(ex.Message);
+        }
+        catch (TaskCanceledException)
+        {
+            return TestConnectionResult.Timeout();
+        }
+        catch (Exception ex)
+        {
+            return TestConnectionResult.UnknownError(ex.Message);
         }
     }
 

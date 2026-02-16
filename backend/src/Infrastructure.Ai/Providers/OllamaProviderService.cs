@@ -12,7 +12,7 @@ public sealed class OllamaProviderService : IProviderService
         _httpClient = httpClient;
     }
 
-    public async Task<bool> TestConnectionAsync(ProviderConfig config, CancellationToken cancellationToken)
+    public async Task<TestConnectionResult> TestConnectionAsync(ProviderConfig config, CancellationToken cancellationToken)
     {
         try
         {
@@ -24,11 +24,24 @@ public sealed class OllamaProviderService : IProviderService
                 $"{endpoint}/api/tags",
                 cancellationToken);
 
-            return response.IsSuccessStatusCode;
+            if (!response.IsSuccessStatusCode)
+            {
+                return TestConnectionResult.NetworkError($"HTTP {response.StatusCode}: {response.ReasonPhrase}");
+            }
+
+            return TestConnectionResult.Successful();
         }
-        catch
+        catch (HttpRequestException ex)
         {
-            return false;
+            return TestConnectionResult.NetworkError(ex.Message);
+        }
+        catch (TaskCanceledException)
+        {
+            return TestConnectionResult.Timeout();
+        }
+        catch (Exception ex)
+        {
+            return TestConnectionResult.UnknownError(ex.Message);
         }
     }
 

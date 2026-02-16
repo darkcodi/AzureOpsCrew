@@ -1,4 +1,5 @@
 using AzureOpsCrew.Domain.Providers;
+using System.Text;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Providers;
 
@@ -11,8 +12,14 @@ public sealed class AnthropicProviderService : IProviderService
         _httpClient = httpClient;
     }
 
-    public async Task<bool> TestConnectionAsync(ProviderConfig config, CancellationToken cancellationToken)
+    public async Task<TestConnectionResult> TestConnectionAsync(ProviderConfig config, CancellationToken cancellationToken)
     {
+        // Validate API key
+        if (string.IsNullOrWhiteSpace(config.ApiKey))
+        {
+            return TestConnectionResult.ValidationFailed("API key is required");
+        }
+
         try
         {
             var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
@@ -22,16 +29,32 @@ public sealed class AnthropicProviderService : IProviderService
             using var request = new HttpRequestMessage(HttpMethod.Post, $"{endpoint}/v1/messages");
             request.Headers.Add("x-api-key", config.ApiKey);
             request.Headers.Add("anthropic-version", "2023-06-01");
-            request.Content = new StringContent("""{"model":"claude-3-5-sonnet-20241022","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}""");
+            request.Content = new StringContent(
+                """{"model":"claude-3-5-sonnet-20241022","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}""",
+                Encoding.UTF8,
+                "application/json");
 
             using var response = await _httpClient.SendAsync(request, cancellationToken);
 
             // Will return 400 with specific error if auth works, 401 if not
-            return response.StatusCode != System.Net.HttpStatusCode.Unauthorized;
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                return TestConnectionResult.AuthenticationFailed("Invalid API key");
+            }
+
+            return TestConnectionResult.Successful();
         }
-        catch
+        catch (HttpRequestException ex)
         {
-            return false;
+            return TestConnectionResult.NetworkError(ex.Message);
+        }
+        catch (TaskCanceledException)
+        {
+            return TestConnectionResult.Timeout();
+        }
+        catch (Exception ex)
+        {
+            return TestConnectionResult.UnknownError(ex.Message);
         }
     }
 

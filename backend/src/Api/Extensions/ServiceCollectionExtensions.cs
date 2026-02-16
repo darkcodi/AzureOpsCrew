@@ -123,8 +123,17 @@ public static class ServiceCollectionExtensions
     public static void AddProviderServices(this IServiceCollection services)
     {
         services.AddTransient<IProviderServiceFactory, ProviderServiceFactory>()
-            .AddTransient<OpenAIProviderService>()
-            .AddTransient<AnthropicProviderService>()
-            .AddTransient<OllamaProviderService>();
+            .AddHttpClient<OpenAIProviderService>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            })
+            .Services.AddHttpClient<AnthropicProviderService>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            })
+            .Services.AddHttpClient<OllamaProviderService>(client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
     }
 }

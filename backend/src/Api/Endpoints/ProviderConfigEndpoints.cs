@@ -127,10 +127,12 @@ public static class ProviderConfigEndpoints
                 body.DefaultModel,
                 true);
             var service = providerServiceFactory.GetService(config.ProviderType);
-            var success = await service.TestConnectionAsync(config, cancellationToken);
+            var result = await service.TestConnectionAsync(config, cancellationToken);
+
             return Results.Ok(new TestConnectionResponseDto(
-                success,
-                success ? "Connection successful" : "Connection failed"));
+                result.Success,
+                result.Success ? "Connection successful" : result.ErrorDetails,
+                result.ErrorType));
         })
         .AddEndpointFilter<ValidationFilter<TestConnectionBodyDto>>()
         .Produces<TestConnectionResponseDto>(StatusCodes.Status200OK)
@@ -150,11 +152,12 @@ public static class ProviderConfigEndpoints
                 return Results.NotFound();
 
             var service = providerServiceFactory.GetService(config.ProviderType);
-            var success = await service.TestConnectionAsync(config, cancellationToken);
+            var result = await service.TestConnectionAsync(config, cancellationToken);
 
             return Results.Ok(new TestConnectionResponseDto(
-                success,
-                success ? "Connection successful" : "Connection failed"));
+                result.Success,
+                result.Success ? "Connection successful" : result.ErrorDetails,
+                result.ErrorType));
         })
         .Produces<TestConnectionResponseDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
