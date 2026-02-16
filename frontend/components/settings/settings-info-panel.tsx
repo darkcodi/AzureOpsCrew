@@ -280,7 +280,7 @@ function ProviderInfo({
                     const isSelected = selectedModels.includes(m.id)
                     const showDefaultStyle = isDefaultModel && isSelected
                     const border = showDefaultStyle
-                      ? "2px solid hsl(235, 86%, 65%)"
+                      ? "2px solid hsl(142, 58%, 45%)"
                       : isSelected
                         ? "1px solid hsl(235, 86%, 65%)"
                         : "1px solid transparent"
@@ -290,7 +290,7 @@ function ProviderInfo({
                           <div
                             className="cursor-pointer rounded-md px-2.5 py-1.5 text-xs transition-colors"
                             style={{
-                              backgroundColor: "hsl(228, 6%, 20%)",
+                              backgroundColor: showDefaultStyle ? "hsl(228, 6%, 24%)" : "hsl(228, 6%, 20%)",
                               color: "hsl(210, 3%, 80%)",
                               fontWeight: showDefaultStyle ? 600 : undefined,
                               border,
