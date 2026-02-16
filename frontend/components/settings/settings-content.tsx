@@ -802,6 +802,35 @@ function ProvidersSection({
               </div>
             )}
 
+            {(selectedProvider.providerType ?? selectedProvider.name) === "Anthropic" && (
+              <div
+                className="mb-4 rounded-lg border px-4 py-3"
+                style={{
+                  backgroundColor: "hsl(228, 6%, 22%)",
+                  borderColor: "hsl(228, 6%, 32%)",
+                }}
+              >
+                <h4
+                  className="mb-1.5 text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "hsl(214, 5%, 65%)" }}
+                >
+                  Description
+                </h4>
+                <p className="text-sm" style={{ color: "hsl(210, 3%, 85%)" }}>
+                  Anthropic builds Claude, a family of AI assistants. Use the API for chat, long context, and tool use.{" "}
+                  <a
+                    href="https://www.anthropic.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline transition-colors hover:opacity-80"
+                    style={{ color: "hsl(235, 86%, 65%)" }}
+                  >
+                    anthropic.com
+                  </a>
+                </p>
+              </div>
+            )}
+
             <FormField label="Type">
               <SelectInput
                 value={selectedProvider.providerType ?? selectedProvider.name}
@@ -867,6 +896,22 @@ function ProvidersSection({
                           style={{ color: "hsl(235, 86%, 65%)" }}
                         >
                           platform.openai.com/api-keys
+                        </a>
+                      </>
+                    )
+                  }
+                  if (providerType === "Anthropic") {
+                    return (
+                      <>
+                        Get your API key at{" "}
+                        <a
+                          href="https://console.anthropic.com/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline transition-colors hover:opacity-80"
+                          style={{ color: "hsl(235, 86%, 65%)" }}
+                        >
+                          console.anthropic.com
                         </a>
                       </>
                     )
