@@ -97,7 +97,7 @@ export function SettingsContent({
             />
           )}
 
-          {activeSection === "routing" && (
+          {(activeSection === "routing" || activeSection === "appearance") && (
             <div
               className="mt-10 rounded-lg border py-3 px-4 text-center text-sm"
               style={{
@@ -856,7 +856,10 @@ function AppearanceSection({
   onAppearanceChange: (a: AppearanceConfig) => void
 }) {
   return (
-    <div>
+    <div
+      className="pointer-events-none select-none opacity-60"
+      aria-disabled="true"
+    >
       <SectionHeader
         title="Appearance"
         description="Customize the look and feel of the application."
