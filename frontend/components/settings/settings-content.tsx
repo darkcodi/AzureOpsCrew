@@ -431,12 +431,6 @@ function ProvidersSection({
       <SectionHeader
         title="Settings"
         description="Connect model backends (cloud/local). Keys are stored locally and never shown again after save."
-        tabs={[
-          { id: "providers", label: "Providers" },
-          { id: "agents", label: "Agents" },
-          { id: "routing", label: "Routing" },
-        ]}
-        activeTab="providers"
       />
 
       <SearchBar
