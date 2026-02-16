@@ -278,7 +278,10 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
       const isDraft = !provider.backendId
       if (isDraft) {
         // Draft: never call BE; remove from state and persist only.
+        const deletedIndex = settings.providers.findIndex((p) => p.id === providerId)
         const remaining = settings.providers.filter((p) => p.id !== providerId)
+        const nextSelected =
+          deletedIndex > 0 ? remaining[deletedIndex - 1] : remaining[0]
         const nextSettings: SettingsState = { ...settings, providers: remaining }
         const nextSaved: SettingsState = {
           ...savedSettings,
@@ -286,7 +289,7 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
         }
         setSettings(nextSettings)
         setSavedSettings(nextSaved)
-        setSelectedProviderId(remaining[0]?.id ?? null)
+        setSelectedProviderId(nextSelected?.id ?? null)
         persistSettings(nextSettings)
         return
       }
@@ -299,7 +302,10 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
           const data = await res.json().catch(() => ({}))
           throw new Error(data.error ?? "Failed to remove provider")
         }
+        const deletedIndex = settings.providers.findIndex((p) => p.id === providerId)
         const remaining = settings.providers.filter((p) => p.id !== providerId)
+        const nextSelected =
+          deletedIndex > 0 ? remaining[deletedIndex - 1] : remaining[0]
         const nextSettings: SettingsState = { ...settings, providers: remaining }
         const nextSaved: SettingsState = {
           ...savedSettings,
@@ -307,7 +313,7 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
         }
         setSettings(nextSettings)
         setSavedSettings(nextSaved)
-        setSelectedProviderId(remaining[0]?.id ?? null)
+        setSelectedProviderId(nextSelected?.id ?? null)
         persistSettings(nextSettings)
       } catch (err) {
         setSaveError(err instanceof Error ? err.message : "Failed to remove provider")
