@@ -14,7 +14,7 @@ using Serilog;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
-public static class AgUiEndpoints
+public static class ChannelAgUiEndpoints
 {
     public static void MapAllAgUi(this IEndpointRouteBuilder app)
     {
@@ -85,10 +85,10 @@ public static class AgUiEndpoints
             var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
             return new AGUIServerSentEventsResult(events, sseLogger, jsonSerializerOptions);
         })
-        .WithTags("Agents");
+        .WithTags("AG-UI");
 
-        app.MapPost("/api/chats/{chatId:guid}/agui", async (
-            [FromRoute] Guid chatId,
+        app.MapPost("/api/channels/{id:guid}/agui", async (
+            [FromRoute(Name = "id")] Guid channelId,
             [FromBody] RunAgentInput? input,
             OpenAIClient openAiClient,
             AzureOpsCrewContext dbContext,
@@ -96,7 +96,7 @@ public static class AgUiEndpoints
             CancellationToken cancellationToken) =>
         {
             if (input is null) return Results.BadRequest();
-            Log.Information("Received AG-UI event for chat with id {ChatId} with threadId {ThreadId} and runId {RunId}", chatId, input.ThreadId, input.RunId);
+            Log.Information("Received AG-UI event for channel with id {ChannelId} with threadId {ThreadId} and runId {RunId}", channelId, input.ThreadId, input.RunId);
             Log.Information("Input: {Input}", JsonConvert.SerializeObject(input));
 
             var jsonOptions = http.RequestServices.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>();
@@ -105,14 +105,14 @@ public static class AgUiEndpoints
             var messages = input.Messages.AsChatMessages(jsonSerializerOptions);
             var clientTools = input.Tools?.AsAITools().ToList();
 
-            // 1) Load chat + participants
-            var chat = await dbContext.Chats.SingleOrDefaultAsync(c => c.Id == chatId, cancellationToken);
-            if (chat is null)
-                return Results.BadRequest($"Unknown chat with id: {chatId}");
+            // 1) Load channel + participants
+            var channel = await dbContext.Channels.SingleOrDefaultAsync(c => c.Id == channelId, cancellationToken);
+            if (channel is null)
+                return Results.BadRequest($"Unknown channel with id: {channelId}");
 
-            var agendIds = chat.AgentIds.Select(Guid.Parse).ToList();
+            var agendIds = channel.AgentIds.Select(Guid.Parse).ToList();
             if(!agendIds.Any())
-                return Results.BadRequest($"Chat with id {chatId} has no agents added");
+                return Results.BadRequest($"Channel with id {channelId} has no agents added");
 
             var agents = await dbContext.Agents
                 .Where(a => agendIds.Contains(a.Id))
@@ -124,18 +124,18 @@ public static class AgUiEndpoints
             // 2) Create internal agents
             //WARNING: ChatClientAgentRunOptions are ignored from input !!! We should keep the context to ourselves
             var internalAgents = agents
-                .Select(a => ChatAgUiFactory.CreateChatAgent(openAiClient, a, clientTools, input))
+                .Select(a => ChannelAgUiFactory.CreateChannelAgent(openAiClient, a, clientTools, input))
                 .ToList();
 
             // 3) Build workflow -> workflow agent
-            var workflow = ChatAgUiFactory.BuildWorkflow(internalAgents);
-            var workflowAgent = ChatAgUiFactory.BuildWorkflowAgent(workflow, chatId);
+            var workflow = ChannelAgUiFactory.BuildWorkflow(internalAgents);
+            var workflowAgent = ChannelAgUiFactory.BuildWorkflowAgent(workflow, channelId);
 
             // 4) Restore/create session
             AgentSession session;
-            if (false)//(chat.ConversationId is not null) // Use SerializedSession or dedicated aggregate root related to ConversationId JsonElement? or string
+            if (false)//(channel.ConversationId is not null) // Use SerializedSession or dedicated aggregate root related to ConversationId JsonElement? or string
             {
-                session = await workflowAgent.DeserializeSessionAsync(JsonElement.Parse(chat.ConversationId));
+                session = await workflowAgent.DeserializeSessionAsync(JsonElement.Parse(channel.ConversationId));
             }
             else
             {
@@ -178,29 +178,34 @@ public static class AgUiEndpoints
                 sseLogger,
                 jsonSerializerOptions);
         })
-        .WithTags("ChatAgUi");
+        .WithTags("AG-UI");
     }
 }
 
-public static class ChatAgUiFactory
+public static class ChannelAgUiFactory
 {
     public static Workflow BuildWorkflow(IReadOnlyList<AIAgent> agents)
     {
         return AgentWorkflowBuilder
-            .BuildSequential(agents.ToArray());
+        .CreateGroupChatBuilderWith(chatAgents => new RoundRobinGroupChatManager(agents)
+        {
+            MaximumIterationCount = 3
+        })
+        .AddParticipants(agents)
+        .Build();
     }
 
-    public static AIAgent BuildWorkflowAgent(Workflow workflow, Guid chatId)
+    public static AIAgent BuildWorkflowAgent(Workflow workflow, Guid channelId)
     {
         return workflow.AsAgent(
-            id: chatId.ToString(),
-            name: $"chat-{chatId}",
+            id: channelId.ToString(),
+            name: $"channel-{channelId}",
             includeExceptionDetails: false
         // , includeWorkflowOutputsInResponse: true  // idk
         );
     }
 
-    public static AIAgent CreateChatAgent(
+    public static AIAgent CreateChannelAgent(
         OpenAIClient openAiClient,
         Domain.Agents.Agent agentEntity,
         IReadOnlyList<AITool>? clientTools,

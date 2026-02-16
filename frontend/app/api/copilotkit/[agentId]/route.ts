@@ -18,7 +18,7 @@ export async function POST(
   const aguiUrl = `${BACKEND_API_URL}/api/agents/${agentId}/agui`
   const aguiAgent = new HttpAgent({ url: aguiUrl })
   const runtime = new CopilotRuntime({
-    agents: { aguiAgent },
+    agents: { aguiAgent } as any,
   })
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
     runtime,

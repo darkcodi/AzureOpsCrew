@@ -1,22 +1,22 @@
- "use client"
- 
- import type { Room } from "@/lib/agents"
- import { Hash, PanelRightClose, PanelRightOpen } from "lucide-react"
+"use client"
 
-interface ChatHeaderProps {
-  room: Room
+import type { Channel } from "@/lib/agents"
+import { Hash, PanelRightClose, PanelRightOpen } from "lucide-react"
+
+interface ChannelHeaderProps {
+  channel: Channel
   onManageAgents: () => void
   showMembers: boolean
   onToggleMembers: () => void
 }
 
-export function ChatHeader({
-  room,
+export function ChannelHeader({
+  channel,
   onManageAgents,
   showMembers,
   onToggleMembers,
-}: ChatHeaderProps) {
-  const agentCount = room.agentIds.length
+}: ChannelHeaderProps) {
+  const agentCount = channel.agentIds.length
 
   return (
     <header
@@ -28,7 +28,7 @@ export function ChatHeader({
     >
       <Hash className="h-5 w-5 shrink-0" style={{ color: "hsl(214, 5%, 55%)" }} />
       <span className="font-semibold" style={{ color: "hsl(0, 0%, 100%)" }}>
-        {room.name}
+        {channel.name}
       </span>
 
       <span className="ml-2 text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>

@@ -15,7 +15,7 @@ namespace AzureOpsCrew.Infrastructure.Db.Migrations
                 name: "Agent",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Id = table.Column<string>(type: "TEXT", nullable: false),
                     ProviderAgentId = table.Column<string>(type: "TEXT", nullable: false),
                     ClientId = table.Column<int>(type: "INTEGER", nullable: false),
                     Info_Name = table.Column<string>(type: "TEXT", nullable: false),
@@ -33,7 +33,7 @@ namespace AzureOpsCrew.Infrastructure.Db.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Chat",
+                name: "Channel",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
@@ -46,7 +46,7 @@ namespace AzureOpsCrew.Infrastructure.Db.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Chat", x => x.Id);
+                    table.PrimaryKey("PK_Channel", x => x.Id);
                 });
 
             migrationBuilder.CreateIndex(
@@ -55,8 +55,8 @@ namespace AzureOpsCrew.Infrastructure.Db.Migrations
                 column: "ClientId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Chat_ClientId",
-                table: "Chat",
+                name: "IX_Channel_ClientId",
+                table: "Channel",
                 column: "ClientId");
         }
 
@@ -67,7 +67,7 @@ namespace AzureOpsCrew.Infrastructure.Db.Migrations
                 name: "Agent");
 
             migrationBuilder.DropTable(
-                name: "Chat");
+                name: "Channel");
         }
     }
 }

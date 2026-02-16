@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server"
-import { AGUIEvent, AGUI_EVENT_TYPES } from "@/lib/types/agui"
+import type { AGUIEvent } from "@ag-ui/core"
+import { EventType } from "@ag-ui/core"
 
 // Backend API URL - configurable via BACKEND_API_URL env var
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
@@ -13,22 +14,20 @@ interface ChatMessage {
 
 interface ChatRequest {
   messages: ChatMessage[]
-  agentId: string
   customSystemPrompt?: string
   customModel?: string
 }
 
 /**
- * POST /api/chat-agui/[roomId]
+ * POST /api/channel-agui/[channelId]
  *
- * Proxies requests to the backend AGUI endpoint at /api/chats/{chatId}/agui
- * Maps roomId to chatId and transforms message formats.
+ * Proxies requests to the backend AGUI endpoint at /api/channels/{channelId}/agui
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ roomId: string }> }
+  { params }: { params: Promise<{ channelId: string }> }
 ) {
-  const { roomId } = await params
+  const { channelId } = await params
 
   // Parse request body
   const body: ChatRequest = await req.json()
@@ -51,8 +50,8 @@ export async function POST(
     tools: undefined,
   }
 
-  // Build backend AGUI URL - roomId maps to chatId
-  const backendUrl = `${BACKEND_API_URL}/api/chats/${roomId}/agui`
+  // Build backend AGUI URL
+  const backendUrl = `${BACKEND_API_URL}/api/channels/${channelId}/agui`
 
   try {
     // Forward request to backend
@@ -127,24 +126,34 @@ export async function POST(
                 try {
                   const event: AGUIEvent = JSON.parse(data)
 
-                  // Transform AGUI events to frontend-compatible format
-                  // TextMessageContentEvent -> text-delta format
-                  if (event.type === AGUI_EVENT_TYPES.TEXT_MESSAGE_CONTENT) {
-                    const delta = (event as any).delta
-                    if (delta) {
-                      controller.enqueue(
-                        encoder.encode(`data: ${JSON.stringify({ type: "text-delta", textDelta: delta })}\n\n`)
-                      )
-                    }
+                  // Forward TEXT_MESSAGE_START event (includes authorName for agent identification)
+                  if (event.type === EventType.TEXT_MESSAGE_START) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
+                    )
+                  }
+
+                  // Forward TEXT_MESSAGE_CONTENT event as-is
+                  if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
+                    )
+                  }
+
+                  // Forward TEXT_MESSAGE_END event
+                  if (event.type === EventType.TEXT_MESSAGE_END) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
+                    )
                   }
 
                   // For now, also forward tool events and other events as-is
                   // The frontend can be extended to handle these
                   if (
-                    event.type === AGUI_EVENT_TYPES.TOOL_CALL_START ||
-                    event.type === AGUI_EVENT_TYPES.TOOL_CALL_ARGS ||
-                    event.type === AGUI_EVENT_TYPES.TOOL_CALL_END ||
-                    event.type === AGUI_EVENT_TYPES.TOOL_CALL_RESULT
+                    event.type === EventType.TOOL_CALL_START ||
+                    event.type === EventType.TOOL_CALL_ARGS ||
+                    event.type === EventType.TOOL_CALL_END ||
+                    event.type === EventType.TOOL_CALL_RESULT
                   ) {
                     controller.enqueue(
                       encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
@@ -153,9 +162,9 @@ export async function POST(
 
                   // Forward run events for monitoring
                   if (
-                    event.type === AGUI_EVENT_TYPES.RUN_STARTED ||
-                    event.type === AGUI_EVENT_TYPES.RUN_FINISHED ||
-                    event.type === AGUI_EVENT_TYPES.RUN_ERROR
+                    event.type === EventType.RUN_STARTED ||
+                    event.type === EventType.RUN_FINISHED ||
+                    event.type === EventType.RUN_ERROR
                   ) {
                     controller.enqueue(
                       encoder.encode(`data: ${JSON.stringify(event)}\n\n`)

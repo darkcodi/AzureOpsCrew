@@ -3,15 +3,17 @@
 import { User } from "lucide-react"
 import type { Agent } from "@/lib/agents"
 
-const HUMAN_ID = "user"
+export const HUMAN_ID = "user"
 
-export const HUMANS = [
-  { id: HUMAN_ID, name: "You", status: "Online" as const },
-  { id: "human:alex-c", name: "Alex C", status: "Offline" as const },
-  { id: "human:alex-k", name: "Alex K", status: "Offline" as const },
-  { id: "human:illya", name: "Illya", status: "Offline" as const },
-  { id: "human:ivan", name: "Ivan", status: "Offline" as const },
-] as const
+type Human = { id: string; name: string; status: "Online" | "Offline" }
+
+export const HUMANS: Human[] = [
+  { id: HUMAN_ID, name: "You", status: "Online" },
+  { id: "human:alex-c", name: "Alex C", status: "Offline" },
+  { id: "human:alex-k", name: "Alex K", status: "Offline" },
+  { id: "human:illya", name: "Illya", status: "Offline" },
+  { id: "human:ivan", name: "Ivan", status: "Offline" },
+]
 
 export function isHumanId(id: string): boolean {
   return HUMANS.some((h) => h.id === id)
@@ -249,5 +251,3 @@ export function DirectMessagesRightPane({
     </div>
   )
 }
-
-export { HUMAN_ID }

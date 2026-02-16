@@ -1,9 +1,9 @@
+using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
+using Microsoft.Extensions.AI;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
-using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
-using Microsoft.Extensions.AI;
 
 namespace AzureOpsCrew.Api.Extensions;
 
@@ -103,11 +103,12 @@ public static class AGUIExtensions
         };
 
         string? currentMessageId = null;
+        string? currentOriginalMessageId = null; // Track original ID for comparison
         await foreach (var chatResponse in updates.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
             if (chatResponse is { Contents.Count: > 0 } &&
                 chatResponse.Contents[0] is TextContent &&
-                !string.Equals(currentMessageId, chatResponse.MessageId, StringComparison.Ordinal))
+                !string.Equals(currentOriginalMessageId, chatResponse.MessageId, StringComparison.Ordinal))
             {
                 // End the previous message if there was one
                 if (currentMessageId is not null)
@@ -118,23 +119,30 @@ public static class AGUIExtensions
                     };
                 }
 
+                // Prepend AuthorName to message ID with "|" separator for agent identification
+                var messageIdWithAuthor = !string.IsNullOrEmpty(chatResponse.AuthorName)
+                    ? $"{chatResponse.AuthorName}|{chatResponse.MessageId}"
+                    : chatResponse.MessageId!;
+
                 // Start the new message
                 yield return new TextMessageStartEvent
                 {
-                    MessageId = chatResponse.MessageId!,
+                    MessageId = messageIdWithAuthor,
                     Role = chatResponse.Role!.Value.Value
                 };
 
-                currentMessageId = chatResponse.MessageId;
+                currentMessageId = messageIdWithAuthor;
+                currentOriginalMessageId = chatResponse.MessageId;
             }
 
             // Emit text content if present
             if (chatResponse is { Contents.Count: > 0 } && chatResponse.Contents[0] is TextContent textContent &&
                 !string.IsNullOrEmpty(textContent.Text))
             {
+                // Use the currentMessageId which already has the author prefix
                 yield return new TextMessageContentEvent
                 {
-                    MessageId = chatResponse.MessageId!,
+                    MessageId = currentMessageId!,
                     Delta = textContent.Text
                 };
             }

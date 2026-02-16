@@ -5,8 +5,8 @@ import { ArrowUp } from "lucide-react"
 import type { InputProps } from "@copilotkit/react-ui"
 
 interface MessageInputProps {
-  /** Channel/room name for placeholder, e.g. "general". Ignored if placeholder is set. */
-  roomName?: string
+  /** Channel name for placeholder, e.g. "general". Ignored if placeholder is set. */
+  channelName?: string
   /** Optional placeholder override (e.g. "Message @Agent..." for DMs). */
   placeholder?: string
   onSend: (text: string) => void
@@ -14,13 +14,13 @@ interface MessageInputProps {
 }
 
 export function MessageInput({
-  roomName = "",
+  channelName = "",
   placeholder: placeholderProp,
   onSend,
   disabled,
 }: MessageInputProps) {
   const placeholder =
-    placeholderProp ?? (roomName ? `Message #${roomName}` : "Message...")
+    placeholderProp ?? (channelName ? `Message #${channelName}` : "Message...")
   const [value, setValue] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 

@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { useState } from "react"
 import { UserPlus, MoreHorizontal, Moon, Send } from "lucide-react"
 import type { Agent } from "@/lib/agents"
@@ -17,11 +18,10 @@ interface AgentProfilePopoverProps {
   onOpenInDM?: (agentId: string, message?: string) => void
 }
 
-export function AgentProfilePopover({
-  agent,
-  children,
-  onOpenInDM,
-}: AgentProfilePopoverProps) {
+export const AgentProfilePopover = React.forwardRef<
+  HTMLDivElement,
+  AgentProfilePopoverProps
+>(function AgentProfilePopover({ agent, children, onOpenInDM }, ref) {
   const [message, setMessage] = useState("")
   const [open, setOpen] = useState(false)
 
@@ -39,9 +39,14 @@ export function AgentProfilePopover({
     }
   }
 
+  const triggerChild =
+    React.isValidElement(children) && ref != null
+      ? React.cloneElement(children as React.ReactElement<{ ref?: React.Ref<HTMLDivElement> }>, { ref })
+      : children
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
+      <PopoverTrigger asChild>{triggerChild}</PopoverTrigger>
       <PopoverContent
         align="start"
         side="left"
@@ -184,4 +189,4 @@ export function AgentProfilePopover({
       </PopoverContent>
     </Popover>
   )
-}
+})

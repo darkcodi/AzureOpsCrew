@@ -1,14 +1,14 @@
-﻿#pragma warning disable CS8618
+#pragma warning disable CS8618
 
-namespace AzureOpsCrew.Domain.Chats
+namespace AzureOpsCrew.Domain.Channels
 {
-    public class Chat
+    public class Channel
     {
-        private Chat()
+        private Channel()
         {
         }
 
-        public Chat(Guid id, int clientId, string name)
+        public Channel(Guid id, int clientId, string name)
         {
             Id = id;
             ClientId = clientId;
@@ -18,7 +18,7 @@ namespace AzureOpsCrew.Domain.Chats
         public Guid Id { get; set; }
 
         public int ClientId { get; set; }
-        
+
         public string Name { get; set; }
 
         public string? Description { get; set; }

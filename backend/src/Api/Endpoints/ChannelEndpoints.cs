@@ -1,20 +1,20 @@
-﻿using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
+using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
 using AzureOpsCrew.Domain.Agents;
-using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
-public static class ChatEndpoints
+public static class ChannelEndpoints
 {
-    public static void MapChatEndpoints(this IEndpointRouteBuilder routeBuilder)
+    public static void MapChannelEndpoints(this IEndpointRouteBuilder routeBuilder)
     {
-        var group = routeBuilder.MapGroup("/api/chats")
-            .WithTags("Chats");
+        var group = routeBuilder.MapGroup("/api/channels")
+            .WithTags("Channels");
 
         group.MapPost("/create", async (
-            CreateChatBodyDto body,
+            CreateChannelBodyDto body,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
@@ -29,17 +29,17 @@ public static class ChatEndpoints
                     return Results.BadRequest("One or more AgentIds are invalid or do not belong to the client.");
             }
 
-            var chat = new Chat(Guid.NewGuid(), body.ClientId, body.Name)
+            var channel = new Channel(Guid.NewGuid(), body.ClientId, body.Name)
             {
                 Description = body.Description,
                 AgentIds = body.AgentIds.Select(a => a.ToString("D")).ToArray()
             };
 
-            await context.AddAsync(chat, cancellationToken);
+            await context.AddAsync(channel, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
             // draft output: guid
-            return Results.Created($"/api/chats/{chat.Id}", new { chatId = chat.Id });
+            return Results.Created($"/api/channels/{channel.Id}", new { channelId = channel.Id });
         })
         .Produces(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest);
@@ -50,13 +50,13 @@ public static class ChatEndpoints
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var chat = await context.Set<Chat>()
+            var channel = await context.Set<Channel>()
                 .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
 
-            if (chat is null)
-                return Results.BadRequest($"Unknown chat with id: {id}");
+            if (channel is null)
+                return Results.BadRequest($"Unknown channel with id: {id}");
 
-            chat.AddAgent(body.AgentId.ToString("D"));
+            channel.AddAgent(body.AgentId.ToString("D"));
 
             await context.SaveChangesAsync(cancellationToken);
 
@@ -71,13 +71,13 @@ public static class ChatEndpoints
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var chat = await context.Set<Chat>()
+            var channel = await context.Set<Channel>()
                 .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
 
-            if (chat is null)
-                return Results.BadRequest($"Unknown chat with id: {id}");
+            if (channel is null)
+                return Results.BadRequest($"Unknown channel with id: {id}");
 
-            chat.RemoveAgent(body.AgentId.ToString("D"));
+            channel.RemoveAgent(body.AgentId.ToString("D"));
 
             await context.SaveChangesAsync(cancellationToken);
 
@@ -91,14 +91,14 @@ public static class ChatEndpoints
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var chats = await context.Set<Chat>()
+            var channels = await context.Set<Channel>()
                 .Where(c => c.ClientId == clientId)
                 .OrderBy(c => c.DateCreated)
                 .ToListAsync(cancellationToken);
 
-            return Results.Ok(chats);
+            return Results.Ok(channels);
         })
-        .Produces<Chat[]>(StatusCodes.Status200OK)
+        .Produces<Channel[]>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
 
         group.MapGet("/{id}", async (
@@ -106,12 +106,31 @@ public static class ChatEndpoints
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var chat = await context.Set<Chat>()
+            var channel = await context.Set<Channel>()
                 .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
 
-            return chat is null ? Results.NotFound() : Results.Ok(chat);
+            return channel is null ? Results.NotFound() : Results.Ok(channel);
         })
-        .Produces<Chat>(StatusCodes.Status200OK)
+        .Produces<Channel>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
+        group.MapDelete("/{id}", async (
+            Guid id,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+            if (channel is null)
+                return Results.NotFound();
+
+            context.Set<Channel>().Remove(channel);
+            await context.SaveChangesAsync(cancellationToken);
+
+            return Results.NoContent();
+        })
+        .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status404NotFound);
     }
 }

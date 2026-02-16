@@ -1,3 +1,4 @@
+using Serilog;
 using System.Buffers;
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
@@ -77,6 +78,7 @@ public class AGUIServerSentEventsResult : IResult, IDisposable
     {
         await foreach (BaseEvent evt in events.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
+            LogEvent(evt);
             yield return new SseItem<BaseEvent>(evt);
         }
     }
@@ -86,7 +88,82 @@ public class AGUIServerSentEventsResult : IResult, IDisposable
     {
         foreach (BaseEvent evt in events)
         {
+            LogEvent(evt);
             yield return new SseItem<BaseEvent>(evt);
+        }
+    }
+
+    private static void LogEvent(BaseEvent evt)
+    {
+        switch (evt)
+        {
+            case RunStartedEvent e:
+            {
+                Log.Information("AGUI Event: RunStarted - ThreadId: {ThreadId}, RunId: {RunId}", e.ThreadId, e.RunId);
+                break;
+            }
+            case RunFinishedEvent e:
+            {
+                Log.Information("AGUI Event: RunFinished - ThreadId: {ThreadId}, RunId: {RunId}", e.ThreadId, e.RunId);
+                break;
+            }
+            case RunErrorEvent e:
+            {
+                Log.Error("AGUI Event: RunError - Code: {Code}, Message: {Message}", e.Code, e.Message);
+                break;
+            }
+            case TextMessageStartEvent e:
+            {
+                Log.Information("AGUI Event: TextMessageStart - MessageId: {MessageId}, Role: {Role}", e.MessageId, e.Role);
+                break;
+            }
+            case TextMessageContentEvent e:
+            {
+                Log.Information("AGUI Event: TextMessageContent - MessageId: {MessageId}, Delta: {Delta}", e.MessageId, e.Delta);
+                break;
+            }
+            case TextMessageEndEvent e:
+            {
+                Log.Information("AGUI Event: TextMessageEnd - MessageId: {MessageId}", e.MessageId);
+                break;
+            }
+            case ToolCallStartEvent e:
+            {
+                Log.Information("AGUI Event: ToolCallStart - ToolCallId: {ToolCallId}, ToolCallName: {ToolCallName}, ParentMessageId: {ParentMessageId}",
+                    e.ToolCallId, e.ToolCallName, e.ParentMessageId);
+                break;
+            }
+            case ToolCallArgsEvent e:
+            {
+                Log.Information("AGUI Event: ToolCallArgs - ToolCallId: {ToolCallId}, Delta: {Delta}", e.ToolCallId, e.Delta);
+                break;
+            }
+            case ToolCallEndEvent e:
+            {
+                Log.Information("AGUI Event: ToolCallEnd - ToolCallId: {ToolCallId}", e.ToolCallId);
+                break;
+            }
+            case ToolCallResultEvent e:
+            {
+                Log.Information("AGUI Event: ToolCallResult - MessageId: {MessageId}, ToolCallId: {ToolCallId}, Role: {Role}",
+                    e.MessageId, e.ToolCallId, e.Role);
+                break;
+            }
+            case StateSnapshotEvent e:
+            {
+                Log.Information("AGUI Event: StateSnapshot");
+                break;
+            }
+            case StateDeltaEvent e:
+            {
+                Log.Information("AGUI Event: StateDelta");
+                break;
+            }
+            default:
+            {
+                Log.Warning("AGUI Event: Unknown event type: {EventType}", evt.GetType().Name);
+                break;
+            }
         }
     }
 

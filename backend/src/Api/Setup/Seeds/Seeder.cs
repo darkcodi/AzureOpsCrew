@@ -1,6 +1,6 @@
 ﻿using Azure.Core;
 using AzureOpsCrew.Domain.Agents;
-using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 
@@ -65,7 +65,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             foreach (var agent in agents)
                 await AddAgentIfNotExists(agent);
 
-            var chat = new Chat(generalChatId, clientId, "General")
+            var channel = new Channel(generalChatId, clientId, "General")
             {
                 Description = "General discussion and collaboration",
                 ConversationId = null,
@@ -73,7 +73,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 DateCreated = DateTime.UtcNow
             };
 
-            await AddChatIfNotExists(chat);
+            await AddChannelIfNotExists(channel);
 
             await _context.SaveChangesAsync();
         }
@@ -88,14 +88,14 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 _context.Add(agent);
         }
 
-        private async Task AddChatIfNotExists(Chat chat)
+        private async Task AddChannelIfNotExists(Channel channel)
         {
-            var exists = await _context.Set<Chat>()
+            var exists = await _context.Set<Channel>()
                 .AsNoTracking()
-                .AnyAsync(c => c.Id == chat.Id);
+                .AnyAsync(c => c.Id == channel.Id);
 
             if (!exists)
-                _context.Add(chat);
+                _context.Add(channel);
         }
     }
 }

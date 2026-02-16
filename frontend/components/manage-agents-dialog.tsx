@@ -2,10 +2,20 @@
 
 import { useState } from "react"
 import type { Agent } from "@/lib/agents"
-import { X, Plus, Pencil, Trash2, ChevronLeft, Save } from "lucide-react"
+import { X, Plus, Pencil, Trash2, ChevronLeft, Save, Loader2 } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useToast } from "@/hooks/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 const availableModels = [
+  { id: "gpt-5-2-chat", name: "GPT-5.2 Chat" },
   { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
   { id: "openai/gpt-4o", name: "GPT-4o" },
   { id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini" },
@@ -20,7 +30,7 @@ interface ManageAgentsDialogProps {
   onClose?: () => void
   onAddAgent: (agent: Agent) => void | Promise<void>
   onUpdateAgent: (agent: Agent) => void
-  onDeleteAgent: (agentId: string) => void
+  onDeleteAgent: (agentId: string) => void | Promise<void>
   /** When true, render as full-page tab content (no overlay, no close button). */
   embedded?: boolean
 }
@@ -43,6 +53,9 @@ export function ManageAgentsDialog({
 }: ManageAgentsDialogProps) {
   const [view, setView] = useState<View>("list")
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
+  const [deleteAgentPending, setDeleteAgentPending] = useState<Agent | null>(null)
+  const [isDeletingAgent, setIsDeletingAgent] = useState(false)
+  const { toast } = useToast()
 
   // Form state
   const [name, setName] = useState("")
@@ -121,6 +134,7 @@ export function ManageAgentsDialog({
   }
 
   const content = (
+    <>
     <div
       className={embedded ? "flex min-h-0 flex-1 flex-col overflow-hidden" : "relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-lg"}
       style={{ backgroundColor: embedded ? "transparent" : "hsl(228, 6%, 20%)", ...(embedded ? {} : { maxHeight: "85vh" }) }}
@@ -198,7 +212,7 @@ export function ManageAgentsDialog({
                     </button>
                     <button
                       type="button"
-                      onClick={() => onDeleteAgent(agent.id)}
+                      onClick={() => setDeleteAgentPending(agent)}
                       className="rounded-md p-1.5 transition-opacity hover:opacity-80"
                       style={{ color: "hsl(0, 70%, 55%)" }}
                       aria-label={"Delete " + agent.name}
@@ -346,6 +360,79 @@ export function ManageAgentsDialog({
           </ScrollArea>
         )}
       </div>
+
+    <Dialog
+      open={!!deleteAgentPending}
+      onOpenChange={(open) => {
+        if (!open) {
+          setDeleteAgentPending(null)
+          setIsDeletingAgent(false)
+        }
+      }}
+    >
+      <DialogContent
+        className="rounded-lg border-0 p-6 shadow-lg"
+        style={{
+          backgroundColor: "rgb(49, 51, 56)",
+          color: "rgb(255, 255, 255)",
+        }}
+      >
+        <DialogHeader className="space-y-2 text-left">
+          <DialogTitle className="text-lg font-semibold text-white">
+            Delete Agent
+          </DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-1 text-sm" style={{ color: "rgb(163, 163, 163)" }}>
+              <p>
+                Are you sure you want to delete{" "}
+                <span className="font-medium text-white">
+                  {deleteAgentPending?.name ?? ""}
+                </span>
+                ?
+              </p>
+              <p>This cannot be undone.</p>
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex flex-row justify-end gap-2 sm:justify-end">
+          <button
+            type="button"
+            onClick={() => setDeleteAgentPending(null)}
+            className="rounded-md px-4 py-2 text-sm font-medium transition-colors hover:opacity-90"
+            style={{
+              backgroundColor: "rgb(64, 66, 72)",
+              color: "rgb(255, 255, 255)",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isDeletingAgent}
+            onClick={async () => {
+              if (!deleteAgentPending) return
+              setIsDeletingAgent(true)
+              try {
+                await onDeleteAgent(deleteAgentPending.id)
+                setDeleteAgentPending(null)
+              } catch {
+                setIsDeletingAgent(false)
+                toast({ title: "Failed to delete agent", variant: "destructive" })
+              }
+            }}
+            className="flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:pointer-events-none disabled:opacity-70"
+            style={{ backgroundColor: "rgb(220, 53, 69)" }}
+          >
+            {isDeletingAgent ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Delete Agent"
+            )}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 
   if (embedded) {

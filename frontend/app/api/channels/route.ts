@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import type { Room } from "@/lib/agents"
+import type { Channel } from "@/lib/agents"
 
 // Backend API URL - configurable via BACKEND_API_URL env var
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
 // Backend response structure
-interface BackendChat {
+interface BackendChannel {
   id: string
   clientId: number
   name: string
@@ -17,9 +17,9 @@ interface BackendChat {
 
 export async function GET(req: NextRequest) {
   try {
-    const roomsUrl = `${BACKEND_API_URL}/api/chats?clientId=1`
+    const channelsUrl = `${BACKEND_API_URL}/api/channels?clientId=1`
 
-    const response = await fetch(roomsUrl, {
+    const response = await fetch(channelsUrl, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -29,24 +29,24 @@ export async function GET(req: NextRequest) {
     if (!response.ok) {
       const errorData = await response.text()
       return NextResponse.json(
-        { error: errorData || "Failed to fetch rooms" },
+        { error: errorData || "Failed to fetch channels" },
         { status: response.status }
       )
     }
 
-    const backendChats: BackendChat[] = await response.json()
+    const backendChannels: BackendChannel[] = await response.json()
 
-    // Transform backend chats to frontend Room interface
-    const frontendRooms: Room[] = backendChats.map((chat) => ({
-      id: chat.id,
-      name: chat.name,
-      agentIds: chat.agentIds || [],
-      dateCreated: chat.dateCreated,
+    // Transform backend channels to frontend Channel interface
+    const frontendChannels: Channel[] = backendChannels.map((channel) => ({
+      id: channel.id,
+      name: channel.name,
+      agentIds: channel.agentIds || [],
+      dateCreated: channel.dateCreated,
     }))
 
-    return NextResponse.json(frontendRooms)
+    return NextResponse.json(frontendChannels)
   } catch (error) {
-    console.error("Error fetching rooms:", error)
+    console.error("Error fetching channels:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

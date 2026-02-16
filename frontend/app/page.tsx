@@ -1,26 +1,24 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { defaultAgents, defaultRooms, type Agent, type Room } from "@/lib/agents"
+import { type Agent, type Channel } from "@/lib/agents"
 import { IconSidebar, type ViewMode } from "@/components/icon-sidebar"
 import { ChannelSidebar } from "@/components/channel-sidebar"
-import { ChatArea } from "@/components/chat-area"
+import { ChannelArea } from "@/components/channel-area"
 import { DirectMessagesView } from "@/components/direct-messages-view"
 import { ManageAgentsDialog } from "@/components/manage-agents-dialog"
 import { AllAgentsSidebar } from "@/components/all-agents-sidebar"
 
 export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("channels")
-  const [agents, setAgents] = useState<Agent[]>(defaultAgents)
+  const [agents, setAgents] = useState<Agent[]>([])
   const [isLoadingAgents, setIsLoadingAgents] = useState(true)
-  const [rooms, setRooms] = useState<Room[]>(defaultRooms)
-  const [isLoadingRooms, setIsLoadingRooms] = useState(true)
-  const [activeRoomId, setActiveRoomId] = useState(() => defaultRooms[0]?.id ?? "")
-  const [activeDMId, setActiveDMId] = useState<string | null>(
-    () => defaultAgents[0]?.id ?? null
-  )
+  const [channels, setChannels] = useState<Channel[]>([])
+  const [isLoadingChannels, setIsLoadingChannels] = useState(true)
+  const [activeChannelId, setActiveChannelId] = useState<string>("")
+  const [activeDMId, setActiveDMId] = useState<string | null>(null)
   const [pendingDMMessage, setPendingDMMessage] = useState<string | null>(null)
-  const activeRoom = rooms.find((r) => r.id === activeRoomId) ?? rooms[0]
+  const activeChannel = channels.find((c) => c.id === activeChannelId) ?? channels[0]
 
   // Load agents from backend on mount
   useEffect(() => {
@@ -43,63 +41,87 @@ export default function Home() {
     loadAgents()
   }, [])
 
-  // Load rooms from backend on mount
+  // Load channels from backend on mount
   useEffect(() => {
-    async function loadRooms() {
+    async function loadChannels() {
       try {
-        setIsLoadingRooms(true)
-        const response = await fetch("/api/rooms?clientId=1")
+        setIsLoadingChannels(true)
+        const response = await fetch("/api/channels?clientId=1")
         if (response.ok) {
-          const backendRooms: Room[] = await response.json()
-          if (backendRooms.length > 0) {
-            setRooms(backendRooms)
-            // Set active room to first backend room
-            setActiveRoomId(backendRooms[0].id)
+          const backendChannels: Channel[] = await response.json()
+          if (backendChannels.length > 0) {
+            setChannels(backendChannels)
+            // Set active channel to first backend channel
+            setActiveChannelId(backendChannels[0].id)
           }
         }
       } catch (error) {
-        console.error("Failed to load rooms from backend:", error)
+        console.error("Failed to load channels from backend:", error)
       } finally {
-        setIsLoadingRooms(false)
+        setIsLoadingChannels(false)
       }
     }
-    loadRooms()
+    loadChannels()
   }, [])
 
-  const handleCreateRoom = useCallback(async (name: string) => {
+  const handleCreateChannel = useCallback(async (name: string) => {
     try {
-      const response = await fetch("/api/rooms/create", {
+      const response = await fetch("/api/channels/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, agentIds: [] }),
       })
 
       if (response.ok) {
-        const newRoom: Room = await response.json()
-        setRooms((prev) => [...prev, newRoom])
-        setActiveRoomId(newRoom.id)
+        const newChannel: Channel = await response.json()
+        setChannels((prev) => [...prev, newChannel])
+        setActiveChannelId(newChannel.id)
       } else {
         // Fallback to local creation
         const id = crypto.randomUUID()
-        const newRoom: Room = { id, name, agentIds: [] }
-        setRooms((prev) => [...prev, newRoom])
-        setActiveRoomId(id)
+        const newChannel: Channel = { id, name, agentIds: [], dateCreated: new Date().toISOString() }
+        setChannels((prev) => [...prev, newChannel])
+        setActiveChannelId(id)
       }
     } catch (error) {
-      console.error("Failed to create room:", error)
+      console.error("Failed to create channel:", error)
       // Fallback to local creation
       const id = crypto.randomUUID()
-      const newRoom: Room = { id, name, agentIds: [] }
-      setRooms((prev) => [...prev, newRoom])
-      setActiveRoomId(id)
+      const newChannel: Channel = { id, name, agentIds: [], dateCreated: new Date().toISOString() }
+      setChannels((prev) => [...prev, newChannel])
+      setActiveChannelId(id)
     }
   }, [])
 
-  const handleUpdateRoom = useCallback((updatedRoom: Room) => {
-    setRooms((prev) =>
-      prev.map((r) => (r.id === updatedRoom.id ? updatedRoom : r))
+  const handleUpdateChannel = useCallback((updatedChannel: Channel) => {
+    setChannels((prev) =>
+      prev.map((c) => (c.id === updatedChannel.id ? updatedChannel : c))
     )
   }, [])
+
+  const handleDeleteChannel = useCallback(async (channelId: string) => {
+    try {
+      const response = await fetch(`/api/channels/${channelId}`, {
+        method: "DELETE",
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error ?? "Failed to delete channel")
+      }
+      setChannels((prev) => {
+        const next = prev.filter((c) => c.id !== channelId)
+        return next
+      })
+      setActiveChannelId((current) => {
+        if (current !== channelId) return current
+        const remaining = channels.filter((c) => c.id !== channelId)
+        return remaining[0]?.id ?? ""
+      })
+    } catch (error) {
+      console.error("Failed to delete channel:", error)
+      throw error
+    }
+  }, [channels])
 
   const handleAddAgent = useCallback(async (agent: Agent) => {
     // Reload agents from backend after creation to ensure consistency
@@ -124,12 +146,19 @@ export default function Home() {
     )
   }, [])
 
-  const handleDeleteAgent = useCallback((agentId: string) => {
+  const handleDeleteAgent = useCallback(async (agentId: string) => {
+    const response = await fetch(`/api/agents/${agentId}`, {
+      method: "DELETE",
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error ?? "Failed to delete agent")
+    }
     setAgents((prev) => prev.filter((a) => a.id !== agentId))
-    setRooms((prev) =>
-      prev.map((r) => ({
-        ...r,
-        agentIds: r.agentIds.filter((id) => id !== agentId),
+    setChannels((prev) =>
+      prev.map((c) => ({
+        ...c,
+        agentIds: c.agentIds.filter((id) => id !== agentId),
       }))
     )
   }, [])
@@ -150,21 +179,38 @@ export default function Home() {
       {viewMode === "channels" && (
         <>
           <ChannelSidebar
-            rooms={rooms}
-            activeRoomId={activeRoomId}
-            onRoomSelect={setActiveRoomId}
-            onCreateRoom={handleCreateRoom}
+            channels={channels}
+            activeChannelId={activeChannelId}
+            onChannelSelect={setActiveChannelId}
+            onCreateChannel={handleCreateChannel}
+            onChannelDelete={handleDeleteChannel}
           />
-          <ChatArea
-            key={activeRoom.id}
-            room={activeRoom}
-            allAgents={agents}
-            onUpdateRoom={handleUpdateRoom}
-            onAddAgent={handleAddAgent}
-            onUpdateAgent={handleUpdateAgent}
-            onDeleteAgent={handleDeleteAgent}
-            onOpenInDM={handleOpenAgentInDM}
-          />
+          {activeChannel ? (
+            <ChannelArea
+              key={activeChannel.id}
+              channel={activeChannel}
+              allAgents={agents}
+              onUpdateChannel={handleUpdateChannel}
+              onAddAgent={handleAddAgent}
+              onUpdateAgent={handleUpdateAgent}
+              onDeleteAgent={handleDeleteAgent}
+              onOpenInDM={handleOpenAgentInDM}
+            />
+          ) : isLoadingChannels ? (
+            <div
+              className="flex flex-1 items-center justify-center"
+              style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
+            >
+              <div style={{ color: "hsl(214, 5%, 55%)" }}>Loading channels...</div>
+            </div>
+          ) : (
+            <div
+              className="flex flex-1 items-center justify-center"
+              style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
+            >
+              <div style={{ color: "hsl(214, 5%, 55%)" }}>No channels found</div>
+            </div>
+          )}
         </>
       )}
       {viewMode === "direct-messages" && (

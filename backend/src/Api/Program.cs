@@ -29,6 +29,9 @@ try
             Title = "AzureOpsCrew HTTP Api",
             Version = "v1"
         });
+
+        // Sort operations alphabetically by tag and path
+        options.OrderActionsBy((apiDesc) => $"{apiDesc.RelativePath}");
     });
 
     // Configure settings and database
@@ -87,7 +90,7 @@ try
         app.MapOpenApi();
         app.MapSwagger();
         app.UseSwaggerUI();
-        app.MapGet("/", () => Results.Redirect("/swagger"));
+        app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
     }
 
     app.UseHttpsRedirection();
@@ -95,8 +98,8 @@ try
     // Map endpoints
     app.MapTestEndpoints();
     app.MapAgentEndpoints();
-    app.MapChatEndpoints();
-    
+    app.MapChannelEndpoints();
+
     app.MapAllAgUi();
 
     await app.Services.RunDbSetup(builder.Configuration);
