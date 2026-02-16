@@ -34,6 +34,7 @@ public sealed class ProviderConfig
     public string? ApiEndpoint { get; private set; }
     public string? DefaultModel { get; private set; }
     public bool IsEnabled { get; private set; }
+    public int ModelsCount { get; private set; }
     public DateTime DateCreated { get; set; } = DateTime.UtcNow;
     public DateTime? DateModified { get; private set; }
 
@@ -52,5 +53,10 @@ public sealed class ProviderConfig
     {
         IsEnabled = enabled;
         DateModified = DateTime.UtcNow;
+    }
+
+    public void SetModelsCount(int count)
+    {
+        ModelsCount = count;
     }
 }

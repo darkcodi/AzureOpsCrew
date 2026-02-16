@@ -47,6 +47,12 @@ public static class ProviderConfigEndpoints
                 });
             }
 
+            // Set models count from test result
+            if (testResult.AvailableModels != null)
+            {
+                config.SetModelsCount(testResult.AvailableModels.Length);
+            }
+
             await context.AddAsync(config, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
@@ -116,6 +122,12 @@ public static class ProviderConfigEndpoints
                         ErrorType = testResult.ErrorType
                     }
                 });
+            }
+
+            // Set models count from test result
+            if (testResult.AvailableModels != null)
+            {
+                found.SetModelsCount(testResult.AvailableModels.Length);
             }
 
             await context.SaveChangesAsync(cancellationToken);
