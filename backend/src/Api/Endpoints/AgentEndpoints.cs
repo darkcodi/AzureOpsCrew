@@ -69,9 +69,10 @@ namespace AzureOpsCrew.Api.Endpoints
 
                 var agentIdString = found.Id.ToString();
 
-                var channelsWithAgent = await context.Set<Channel>()
+                var allChannels = await context.Set<Channel>().ToListAsync(cancellationToken);
+                var channelsWithAgent = allChannels
                     .Where(c => c.AgentIds.Contains(agentIdString))
-                    .ToListAsync(cancellationToken);
+                    .ToList();
 
                 foreach (var channel in channelsWithAgent)
                 {
