@@ -76,8 +76,10 @@ interface SettingsContentProps {
   onNavigateToAllAgents?: () => void
   onSave?: () => void
   onSaveCurrentProvider?: () => void
+  onTestProvider?: () => void
   onRemoveProvider?: (providerId: string) => void
   isSaving?: boolean
+  isTesting?: boolean
   saveError?: string | null
 }
 
@@ -93,8 +95,10 @@ export function SettingsContent({
   onNavigateToAllAgents,
   onSave,
   onSaveCurrentProvider,
+  onTestProvider,
   onRemoveProvider,
   isSaving,
+  isTesting,
   saveError,
 }: SettingsContentProps) {
   return (
@@ -116,8 +120,10 @@ export function SettingsContent({
               }
               onSave={onSave}
               onSaveCurrentProvider={onSaveCurrentProvider}
+              onTestProvider={onTestProvider}
               onRemoveProvider={onRemoveProvider}
               isSaving={isSaving}
+              isTesting={isTesting}
               saveError={saveError}
             />
           )}
@@ -521,8 +527,10 @@ function ProvidersSection({
   onProvidersChange,
   onSave,
   onSaveCurrentProvider,
+  onTestProvider,
   onRemoveProvider,
   isSaving,
+  isTesting,
   saveError,
 }: {
   providers: ProviderConfig[]
@@ -533,8 +541,10 @@ function ProvidersSection({
   onProvidersChange: (providers: ProviderConfig[]) => void
   onSave?: () => void
   onSaveCurrentProvider?: () => void
+  onTestProvider?: () => void
   onRemoveProvider?: (providerId: string) => void
   isSaving?: boolean
+  isTesting?: boolean
   saveError?: string | null
 }) {
   const [searchQuery, setSearchQuery] = useState("")
@@ -838,8 +848,12 @@ function ProvidersSection({
               >
                 {isSaving ? "Saving…" : "Save"}
               </ActionButton>
-              <ActionButton variant="secondary" disabled={isSaving}>
-                Test
+              <ActionButton
+                variant="secondary"
+                disabled={isSaving || isTesting || !selectedProvider?.backendId}
+                onClick={onTestProvider}
+              >
+                {isTesting ? "Testing…" : "Test"}
               </ActionButton>
               <ActionButton
                 variant="danger"

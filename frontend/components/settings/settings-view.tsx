@@ -5,6 +5,7 @@ import { SettingsSidebar, type SettingsSection } from "./settings-sidebar"
 import { SettingsContent } from "./settings-content"
 import { SettingsInfoPanel } from "./settings-info-panel"
 import { type SettingsState, defaultSettings } from "./settings-types"
+import { useToast } from "@/hooks/use-toast"
 
 const SETTINGS_STORAGE_KEY = "azureopscrew-settings"
 
@@ -115,6 +116,8 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
 
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isTesting, setIsTesting] = useState(false)
+  const { toast } = useToast()
 
   const mergeSaveResults = useCallback(
     (
@@ -206,6 +209,53 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
     }
   }, [settings, selectedProviderId, mergeSaveResults])
 
+  /** Test connection for the currently selected provider (must be saved). */
+  const handleTestProvider = useCallback(async () => {
+    if (!selectedProviderId) return
+    const current = settings.providers.find((p) => p.id === selectedProviderId)
+    if (!current?.backendId) {
+      toast({
+        title: "Save first",
+        description: "Save the provider before testing the connection.",
+        variant: "destructive",
+      })
+      return
+    }
+    setIsTesting(true)
+    setSaveError(null)
+    try {
+      const res = await fetch(`/api/providers/${current.backendId}/test`, {
+        method: "POST",
+      })
+      const data = await res.json().catch(() => ({})) as { success?: boolean; message?: string }
+      if (!res.ok) {
+        toast({
+          title: "Test failed",
+          description: data.message ?? "Could not test connection",
+          variant: "destructive",
+        })
+        return
+      }
+      if (data.success) {
+        toast({ title: "Connection successful", description: data.message ?? undefined })
+      } else {
+        toast({
+          title: "Connection failed",
+          description: data.message ?? undefined,
+          variant: "destructive",
+        })
+      }
+    } catch {
+      toast({
+        title: "Test failed",
+        description: "Network or server error",
+        variant: "destructive",
+      })
+    } finally {
+      setIsTesting(false)
+    }
+  }, [settings.providers, selectedProviderId, toast])
+
   /** Remove the given provider: call BE delete if it exists there, then update FE state. */
   const handleRemoveProvider = useCallback(
     async (providerId: string) => {
@@ -274,8 +324,10 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
           onNavigateToAllAgents={onNavigateToAllAgents}
           onSave={handleSave}
           onSaveCurrentProvider={handleSaveCurrentProvider}
+          onTestProvider={handleTestProvider}
           onRemoveProvider={handleRemoveProvider}
           isSaving={isSaving}
+          isTesting={isTesting}
           saveError={saveError}
         />
 
