@@ -48,16 +48,16 @@ const KNOWN_PROVIDERS: {
   template: ProviderConfig
 }[] = [
   {
-    id: "openai",
-    name: "OpenAI",
-    Icon: Sparkles,
-    template: defaultSettings.providers.find((p) => p.id === "openai")!,
-  },
-  {
     id: "anthropic",
     name: "Anthropic",
     Icon: Brain,
     template: defaultSettings.providers.find((p) => p.id === "anthropic")!,
+  },
+  {
+    id: "azure-foundry",
+    name: "Azure Foundry",
+    Icon: Cloud,
+    template: defaultSettings.providers.find((p) => p.id === "azure-foundry")!,
   },
   {
     id: "ollama",
@@ -66,16 +66,16 @@ const KNOWN_PROVIDERS: {
     template: defaultSettings.providers.find((p) => p.id === "ollama")!,
   },
   {
+    id: "openai",
+    name: "OpenAI",
+    Icon: Sparkles,
+    template: defaultSettings.providers.find((p) => p.id === "openai")!,
+  },
+  {
     id: "openrouter",
     name: "OpenRouter",
     Icon: Globe,
     template: defaultSettings.providers.find((p) => p.id === "openrouter")!,
-  },
-  {
-    id: "azure-foundry",
-    name: "Azure Foundry",
-    Icon: Cloud,
-    template: defaultSettings.providers.find((p) => p.id === "azure-foundry")!,
   },
 ].filter((p) => p.template != null)
 
@@ -911,10 +911,10 @@ function ProvidersSection({
                 onChange={() => {}}
                 options={(() => {
                   const known: { value: string; label: string }[] = [
-                    { value: "OpenAI", label: "OpenAI" },
-                    { value: "AzureFoundry", label: "Azure Foundry" },
                     { value: "Anthropic", label: "Anthropic" },
+                    { value: "AzureFoundry", label: "Azure Foundry" },
                     { value: "Ollama (Local)", label: "Ollama (Local)" },
+                    { value: "OpenAI", label: "OpenAI" },
                     { value: "OpenRouter", label: "OpenRouter" },
                   ]
                   const current = selectedProvider.providerType ?? selectedProvider.name
