@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
         name: p.name,
         providerType: typeName,
         status: p.isEnabled ? "enabled" : "disabled",
-        apiKey: p.apiKey ? "••••••••••••••••••••••" : "",
+        apiKey: p.apiKey ?? "",
         baseUrl: p.apiEndpoint ?? "",
         defaultModel: p.defaultModel ?? "",
         timeout: 30,
