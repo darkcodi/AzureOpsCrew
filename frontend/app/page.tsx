@@ -250,7 +250,9 @@ export default function Home() {
           </div>
         </>
       )}
-      {viewMode === "settings" && <SettingsView />}
+      {viewMode === "settings" && (
+        <SettingsView onNavigateToAllAgents={() => setViewMode("all-agents")} />
+      )}
     </main>
   )
 }

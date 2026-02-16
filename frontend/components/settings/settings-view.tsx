@@ -42,7 +42,11 @@ export function getDisplayNameFromStorage(): string {
   return loadPersistedSettings().account.displayName || "User"
 }
 
-export function SettingsView() {
+interface SettingsViewProps {
+  onNavigateToAllAgents?: () => void
+}
+
+export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
   const [activeSection, setActiveSection] =
     useState<SettingsSection>("providers")
   const [settings, setSettings] = useState<SettingsState>(defaultSettings)
@@ -93,6 +97,7 @@ export function SettingsView() {
           onSettingsChange={setSettings}
           selectedProviderId={selectedProviderId}
           onSelectProvider={setSelectedProviderId}
+          onNavigateToAllAgents={onNavigateToAllAgents}
         />
 
         {/* Right pane: contextual info */}

@@ -29,6 +29,7 @@ interface SettingsContentProps {
   onSettingsChange: (settings: SettingsState) => void
   selectedProviderId: string | null
   onSelectProvider: (id: string) => void
+  onNavigateToAllAgents?: () => void
 }
 
 export function SettingsContent({
@@ -37,6 +38,7 @@ export function SettingsContent({
   onSettingsChange,
   selectedProviderId,
   onSelectProvider,
+  onNavigateToAllAgents,
 }: SettingsContentProps) {
   return (
     <div
@@ -55,7 +57,9 @@ export function SettingsContent({
               }
             />
           )}
-          {activeSection === "agents" && <AgentsSection />}
+          {activeSection === "agents" && (
+            <AgentsSection onNavigateToAllAgents={onNavigateToAllAgents} />
+          )}
           {activeSection === "routing" && (
             <RoutingSection
               routing={settings.routing}
@@ -620,7 +624,11 @@ function ProvidersSection({
  * Agents Section
  * ───────────────────────────────────────────────── */
 
-function AgentsSection() {
+function AgentsSection({
+  onNavigateToAllAgents,
+}: {
+  onNavigateToAllAgents?: () => void
+}) {
   return (
     <div>
       <SectionHeader
@@ -636,7 +644,24 @@ function AgentsSection() {
       >
         <p className="text-sm">
           Agent settings are managed per-agent. Use the{" "}
-          <span style={{ color: "hsl(235, 86%, 65%)" }}>All Agents</span>{" "}
+          {onNavigateToAllAgents ? (
+            <button
+              type="button"
+              onClick={onNavigateToAllAgents}
+              className="underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent rounded"
+              style={{
+                color: "hsl(235, 86%, 65%)",
+                backgroundColor: "transparent",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+              }}
+            >
+              All Agents
+            </button>
+          ) : (
+            <span style={{ color: "hsl(235, 86%, 65%)" }}>All Agents</span>
+          )}{" "}
           view to configure individual agents.
         </p>
       </div>
