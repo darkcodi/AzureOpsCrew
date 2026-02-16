@@ -17,6 +17,7 @@ public static class ProviderConfigEndpoints
         group.MapPost("/create", async (
             CreateProviderConfigBodyDto body,
             AzureOpsCrewContext context,
+            IProviderServiceFactory providerServiceFactory,
             CancellationToken cancellationToken) =>
         {
             var config = new ProviderConfig(
@@ -28,6 +29,23 @@ public static class ProviderConfigEndpoints
                 body.ApiEndpoint,
                 body.DefaultModel,
                 body.IsEnabled);
+
+            // Test connection before saving
+            var service = providerServiceFactory.GetService(config.ProviderType);
+            var testResult = await service.TestConnectionAsync(config, cancellationToken);
+            if (!testResult.Success)
+            {
+                return Results.BadRequest(new
+                {
+                    Error = "Connection test failed",
+                    TestResult = new
+                    {
+                        Success = false,
+                        Message = testResult.ErrorDetails,
+                        ErrorType = testResult.ErrorType
+                    }
+                });
+            }
 
             await context.AddAsync(config, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
@@ -72,6 +90,7 @@ public static class ProviderConfigEndpoints
             Guid id,
             UpdateProviderConfigBodyDto body,
             AzureOpsCrewContext context,
+            IProviderServiceFactory providerServiceFactory,
             CancellationToken cancellationToken) =>
         {
             var found = await context.Set<ProviderConfig>()
@@ -81,6 +100,24 @@ public static class ProviderConfigEndpoints
                 return Results.NotFound();
 
             found.Update(body.Name, body.ApiKey, body.ApiEndpoint, body.DefaultModel, body.IsEnabled);
+
+            // Test connection before saving
+            var service = providerServiceFactory.GetService(found.ProviderType);
+            var testResult = await service.TestConnectionAsync(found, cancellationToken);
+            if (!testResult.Success)
+            {
+                return Results.BadRequest(new
+                {
+                    Error = "Connection test failed",
+                    TestResult = new
+                    {
+                        Success = false,
+                        Message = testResult.ErrorDetails,
+                        ErrorType = testResult.ErrorType
+                    }
+                });
+            }
+
             await context.SaveChangesAsync(cancellationToken);
 
             return Results.Ok(found);
