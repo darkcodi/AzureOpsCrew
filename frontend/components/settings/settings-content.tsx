@@ -10,9 +10,19 @@ import {
   EyeOff,
   RotateCw,
   Plus,
+  Sparkles,
+  Brain,
+  Server,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { type SettingsSection } from "./settings-sidebar"
 import {
   type ProviderConfig,
@@ -22,7 +32,34 @@ import {
   type NotificationConfig,
   type RoutingConfig,
   type AdvancedConfig,
+  defaultSettings,
 } from "./settings-types"
+
+const KNOWN_PROVIDERS: {
+  id: string
+  name: string
+  Icon: React.ComponentType<{ className?: string }>
+  template: ProviderConfig
+}[] = [
+  {
+    id: "openai",
+    name: "OpenAI",
+    Icon: Sparkles,
+    template: defaultSettings.providers.find((p) => p.id === "openai")!,
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic",
+    Icon: Brain,
+    template: defaultSettings.providers.find((p) => p.id === "anthropic")!,
+  },
+  {
+    id: "ollama",
+    name: "Ollama",
+    Icon: Server,
+    template: defaultSettings.providers.find((p) => p.id === "ollama")!,
+  },
+].filter((p) => p.template != null)
 
 interface SettingsContentProps {
   activeSection: SettingsSection
@@ -441,6 +478,7 @@ function ProvidersSection({
 }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [showApiKey, setShowApiKey] = useState(false)
+  const [addProviderDialogOpen, setAddProviderDialogOpen] = useState(false)
 
   const selectedProvider = providers.find((p) => p.id === selectedProviderId)
 
@@ -507,25 +545,7 @@ function ProvidersSection({
             ))}
             <button
               type="button"
-              onClick={() => {
-                const newId = `custom-${Date.now()}`
-                onProvidersChange([
-                  ...providers,
-                  {
-                    id: newId,
-                    name: "New provider",
-                    status: "needs-key",
-                    apiKey: "",
-                    baseUrl: "",
-                    defaultModel: "",
-                    timeout: 30,
-                    rateLimit: 60,
-                    availableModels: [],
-                    isDefault: false,
-                  },
-                ])
-                onSelectProvider(newId)
-              }}
+              onClick={() => setAddProviderDialogOpen(true)}
               className="mb-1 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed px-3 py-2.5 text-left text-sm font-medium transition-all"
               style={{
                 color: "hsl(214, 5%, 65%)",
@@ -548,6 +568,60 @@ function ProvidersSection({
             </button>
           </div>
         </div>
+
+        <Dialog open={addProviderDialogOpen} onOpenChange={setAddProviderDialogOpen}>
+          <DialogContent
+            className="rounded-lg border-0 p-6 shadow-lg"
+            style={{
+              backgroundColor: "rgb(49, 51, 56)",
+              color: "rgb(255, 255, 255)",
+            }}
+          >
+            <DialogHeader className="space-y-2 text-left">
+              <DialogTitle className="text-lg font-semibold text-white">
+                Add provider
+              </DialogTitle>
+              <DialogDescription asChild>
+                <p className="text-sm" style={{ color: "rgb(163, 163, 163)" }}>
+                  Choose a provider to add to your settings.
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-0.5 py-2">
+              {KNOWN_PROVIDERS.map(({ id, name, Icon, template }) => {
+                const existingIds = new Set(providers.map((p) => p.id))
+                const newId = existingIds.has(id)
+                  ? `${id}-${Date.now()}`
+                  : id
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => {
+                      onProvidersChange([
+                        ...providers,
+                        { ...template, id: newId },
+                      ])
+                      onSelectProvider(newId)
+                      setAddProviderDialogOpen(false)
+                    }}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors"
+                    style={{ color: "hsl(210, 3%, 90%)" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "hsl(228, 6%, 28%)"
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent"
+                    }}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" style={{ color: "hsl(214, 5%, 65%)" }} />
+                    <span>{name}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Provider detail form */}
         {selectedProvider && (
