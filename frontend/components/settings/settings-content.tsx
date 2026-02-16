@@ -646,6 +646,16 @@ function ProvidersSection({
               </div>
             </div>
 
+            <FormField label="Name">
+              <TextInput
+                value={selectedProvider.name}
+                onChange={(v) =>
+                  updateProvider(selectedProvider.id, { name: v })
+                }
+                placeholder="Provider display name"
+              />
+            </FormField>
+
             <FormField label="API Key">
               <TextInput
                 value={selectedProvider.apiKey}
