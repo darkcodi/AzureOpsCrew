@@ -110,9 +110,7 @@ function ProviderInfo({ provider }: { provider: ProviderConfig }) {
   const statusColor =
     provider.status === "connected"
       ? "hsl(145, 65%, 45%)"
-      : provider.status === "needs-key"
-        ? "hsl(40, 85%, 55%)"
-        : "hsl(214, 5%, 55%)"
+      : "hsl(214, 5%, 55%)"
 
   return (
     <>

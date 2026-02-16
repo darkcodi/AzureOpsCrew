@@ -4,7 +4,6 @@ import { useState } from "react"
 import {
   Search,
   Circle,
-  AlertCircle,
   XCircle,
   Eye,
   EyeOff,
@@ -12,6 +11,7 @@ import {
   Sparkles,
   Brain,
   Server,
+  FileEdit,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -458,12 +458,12 @@ function ActionButton({
 
 function ProviderStatusBadge({ status }: { status: ProviderConfig["status"] }) {
   const config = {
-    connected: { icon: Circle, color: "hsl(145, 65%, 45%)", label: "Connected" },
-    "needs-key": {
-      icon: AlertCircle,
-      color: "hsl(40, 85%, 55%)",
-      label: "Needs key",
+    draft: {
+      icon: FileEdit,
+      color: "hsl(214, 60%, 55%)",
+      label: "Draft",
     },
+    connected: { icon: Circle, color: "hsl(145, 65%, 45%)", label: "Connected" },
     disabled: { icon: XCircle, color: "hsl(214, 5%, 55%)", label: "Disabled" },
   }
   const { icon: Icon, color, label } = config[status]
@@ -617,7 +617,7 @@ function ProvidersSection({
                     onClick={() => {
                       onProvidersChange([
                         ...providers,
-                        { ...template, id: newId },
+                        { ...template, id: newId, status: "draft" },
                       ])
                       onSelectProvider(newId)
                       setAddProviderDialogOpen(false)

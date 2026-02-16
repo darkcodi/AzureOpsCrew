@@ -4,7 +4,7 @@ export interface ProviderConfig {
   backendId?: string
   name: string
   providerType?: string
-  status: "connected" | "needs-key" | "disabled"
+  status: "connected" | "disabled" | "draft"
   apiKey: string
   baseUrl: string
   defaultModel: string
@@ -77,7 +77,7 @@ export const defaultSettings: SettingsState = {
       id: "azure-openai",
       name: "Azure OpenAI",
       providerType: "Azure OpenAI",
-      status: "needs-key",
+      status: "disabled",
       apiKey: "",
       baseUrl: "https://your-resource.openai.azure.com/",
       defaultModel: "gpt-4.1",
