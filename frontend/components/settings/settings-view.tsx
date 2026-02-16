@@ -269,22 +269,35 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
     }
   }, [settings.providers, selectedProviderId, toast])
 
-  /** Remove the given provider: call BE delete if it exists there, then update FE state. */
+  /** Remove the given provider. Draft (no backendId): FE-only. Saved: call BE delete then update FE. */
   const handleRemoveProvider = useCallback(
     async (providerId: string) => {
       const provider = settings.providers.find((p) => p.id === providerId)
       if (!provider) return
       setSaveError(null)
+      const isDraft = !provider.backendId
+      if (isDraft) {
+        // Draft: never call BE; remove from state and persist only.
+        const remaining = settings.providers.filter((p) => p.id !== providerId)
+        const nextSettings: SettingsState = { ...settings, providers: remaining }
+        const nextSaved: SettingsState = {
+          ...savedSettings,
+          providers: savedSettings.providers.filter((p) => p.id !== providerId),
+        }
+        setSettings(nextSettings)
+        setSavedSettings(nextSaved)
+        setSelectedProviderId(remaining[0]?.id ?? null)
+        persistSettings(nextSettings)
+        return
+      }
       setIsSaving(true)
       try {
-        if (provider.backendId) {
-          const res = await fetch(`/api/providers/${provider.backendId}`, {
-            method: "DELETE",
-          })
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}))
-            throw new Error(data.error ?? "Failed to remove provider")
-          }
+        const res = await fetch(`/api/providers/${provider.backendId}`, {
+          method: "DELETE",
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error ?? "Failed to remove provider")
         }
         const remaining = settings.providers.filter((p) => p.id !== providerId)
         const nextSettings: SettingsState = { ...settings, providers: remaining }
