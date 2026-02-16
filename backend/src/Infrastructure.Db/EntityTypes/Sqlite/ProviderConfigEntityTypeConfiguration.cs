@@ -42,6 +42,9 @@ public sealed class ProviderConfigEntityTypeConfiguration : IEntityTypeConfigura
         builder.Property(p => p.DefaultModel)
                .HasMaxLength(200);
 
+        builder.Property(p => p.IsEnabled)
+               .HasDefaultValue(true);
+
         builder.Property(p => p.DateCreated)
                .IsRequired();
 

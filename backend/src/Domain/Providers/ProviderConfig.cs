@@ -13,7 +13,8 @@ public sealed class ProviderConfig
         ProviderType providerType,
         string apiKey,
         string? apiEndpoint = null,
-        string? defaultModel = null)
+        string? defaultModel = null,
+        bool isEnabled = true)
     {
         Id = id;
         ClientId = clientId;
@@ -22,6 +23,7 @@ public sealed class ProviderConfig
         ApiKey = apiKey;
         ApiEndpoint = apiEndpoint;
         DefaultModel = defaultModel;
+        IsEnabled = isEnabled;
     }
 
     public Guid Id { get; private set; }
@@ -31,15 +33,24 @@ public sealed class ProviderConfig
     public string ApiKey { get; private set; }
     public string? ApiEndpoint { get; private set; }
     public string? DefaultModel { get; private set; }
+    public bool IsEnabled { get; private set; }
     public DateTime DateCreated { get; set; } = DateTime.UtcNow;
     public DateTime? DateModified { get; private set; }
 
-    public void Update(string name, string apiKey, string? apiEndpoint, string? defaultModel)
+    public void Update(string name, string apiKey, string? apiEndpoint, string? defaultModel, bool? isEnabled = null)
     {
         Name = name;
         ApiKey = apiKey;
         ApiEndpoint = apiEndpoint;
         DefaultModel = defaultModel;
+        if (isEnabled.HasValue)
+            IsEnabled = isEnabled.Value;
+        DateModified = DateTime.UtcNow;
+    }
+
+    public void SetEnabled(bool enabled)
+    {
+        IsEnabled = enabled;
         DateModified = DateTime.UtcNow;
     }
 }

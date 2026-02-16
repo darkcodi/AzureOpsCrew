@@ -25,7 +25,8 @@ public static class ProviderConfigEndpoints
                 body.ProviderType,
                 body.ApiKey,
                 body.ApiEndpoint,
-                body.DefaultModel);
+                body.DefaultModel,
+                body.IsEnabled);
 
             await context.AddAsync(config, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
@@ -78,7 +79,7 @@ public static class ProviderConfigEndpoints
             if (found is null)
                 return Results.NotFound();
 
-            found.Update(body.Name, body.ApiKey, body.ApiEndpoint, body.DefaultModel);
+            found.Update(body.Name, body.ApiKey, body.ApiEndpoint, body.DefaultModel, body.IsEnabled);
             await context.SaveChangesAsync(cancellationToken);
 
             return Results.Ok(found);

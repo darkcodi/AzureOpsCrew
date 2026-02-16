@@ -10,4 +10,5 @@ public record CreateProviderConfigBodyDto
     public string ApiKey { get; set; } = string.Empty;
     public string? ApiEndpoint { get; set; }
     public string? DefaultModel { get; set; }
+    public bool IsEnabled { get; set; } = true;
 }
