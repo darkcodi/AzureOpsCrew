@@ -235,6 +235,7 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
         persistSettings(nextSettings)
       } catch (err) {
         setSaveError(err instanceof Error ? err.message : "Failed to remove provider")
+        throw err
       } finally {
         setIsSaving(false)
       }

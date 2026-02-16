@@ -13,6 +13,7 @@ import {
   Server,
   FileEdit,
   Pencil,
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -22,7 +23,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
 import { type SettingsSection } from "./settings-sidebar"
 import {
   type ProviderConfig,
@@ -537,6 +540,10 @@ function ProvidersSection({
   const [searchQuery, setSearchQuery] = useState("")
   const [showApiKey, setShowApiKey] = useState(false)
   const [addProviderDialogOpen, setAddProviderDialogOpen] = useState(false)
+  const [removeProviderPending, setRemoveProviderPending] =
+    useState<ProviderConfig | null>(null)
+  const [isRemovingProvider, setIsRemovingProvider] = useState(false)
+  const { toast } = useToast()
 
   const selectedProvider = providers.find((p) => p.id === selectedProviderId)
 
@@ -838,9 +845,7 @@ function ProvidersSection({
                 variant="danger"
                 disabled={isSaving}
                 onClick={() =>
-                  selectedProvider?.id != null && onRemoveProvider
-                    ? onRemoveProvider(selectedProvider.id)
-                    : undefined
+                  selectedProvider != null ? setRemoveProviderPending(selectedProvider) : undefined
                 }
               >
                 Remove
@@ -849,6 +854,84 @@ function ProvidersSection({
           </div>
         )}
       </div>
+
+      {/* Remove provider confirmation */}
+      <Dialog
+        open={!!removeProviderPending}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRemoveProviderPending(null)
+            setIsRemovingProvider(false)
+          }
+        }}
+      >
+        <DialogContent
+          className="rounded-lg border-0 p-6 shadow-lg"
+          style={{
+            backgroundColor: "rgb(49, 51, 56)",
+            color: "rgb(255, 255, 255)",
+          }}
+        >
+          <DialogHeader className="space-y-2 text-left">
+            <DialogTitle className="text-lg font-semibold text-white">
+              Remove Provider
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-1 text-sm" style={{ color: "rgb(163, 163, 163)" }}>
+                <p>
+                  Are you sure you want to remove{" "}
+                  <span className="font-medium text-white">
+                    {removeProviderPending?.name ?? ""}
+                  </span>
+                  ?
+                </p>
+                <p>This cannot be undone.</p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-row justify-end gap-2 sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setRemoveProviderPending(null)}
+              disabled={isRemovingProvider}
+              className="rounded-md px-4 py-2 text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-70"
+              style={{
+                backgroundColor: "rgb(64, 66, 72)",
+                color: "rgb(255, 255, 255)",
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isRemovingProvider}
+              onClick={async () => {
+                if (!removeProviderPending || !onRemoveProvider) return
+                setIsRemovingProvider(true)
+                try {
+                  await onRemoveProvider(removeProviderPending.id)
+                  setRemoveProviderPending(null)
+                  toast({ title: "Provider removed" })
+                } catch {
+                  setIsRemovingProvider(false)
+                  toast({
+                    title: "Failed to remove provider",
+                    variant: "destructive",
+                  })
+                }
+              }}
+              className="flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:pointer-events-none disabled:opacity-70"
+              style={{ backgroundColor: "rgb(220, 53, 69)" }}
+            >
+              {isRemovingProvider ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Remove"
+              )}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
