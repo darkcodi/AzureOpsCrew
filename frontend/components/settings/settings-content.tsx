@@ -88,6 +88,19 @@ export function SettingsContent({
               }
             />
           )}
+
+          {activeSection === "routing" && (
+            <div
+              className="mt-10 rounded-lg border py-3 px-4 text-center text-sm"
+              style={{
+                borderColor: "hsl(228, 7%, 28%)",
+                color: "hsl(214, 5%, 55%)",
+                backgroundColor: "hsl(228, 7%, 18%)",
+              }}
+            >
+              This settings page is still in development (WIP).
+            </div>
+          )}
         </div>
       </ScrollArea>
     </div>
@@ -633,7 +646,10 @@ function RoutingSection({
   onRoutingChange: (r: RoutingConfig) => void
 }) {
   return (
-    <div>
+    <div
+      className="pointer-events-none select-none opacity-60"
+      aria-disabled="true"
+    >
       <SectionHeader
         title="Routing"
         description="Control how requests are routed between providers and models."
