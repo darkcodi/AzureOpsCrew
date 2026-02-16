@@ -4,7 +4,7 @@ export interface ProviderConfig {
   backendId?: string
   name: string
   providerType?: string
-  status: "connected" | "disabled" | "draft"
+  status: "enabled" | "disabled" | "draft"
   apiKey: string
   baseUrl: string
   defaultModel: string
@@ -58,7 +58,7 @@ export const defaultSettings: SettingsState = {
       id: "openai",
       name: "OpenAI",
       providerType: "OpenAI",
-      status: "connected",
+      status: "enabled",
       apiKey: "sk-••••••••••••••••••••••••••••••••",
       baseUrl: "https://api.openai.com/v1",
       defaultModel: "gpt-5-2-chat",
@@ -103,7 +103,7 @@ export const defaultSettings: SettingsState = {
       id: "ollama",
       name: "Ollama (Local)",
       providerType: "Ollama (Local)",
-      status: "connected",
+      status: "enabled",
       apiKey: "",
       baseUrl: "http://localhost:11434",
       defaultModel: "llama3",

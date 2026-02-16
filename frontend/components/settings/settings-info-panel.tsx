@@ -108,7 +108,7 @@ function NoteBullet({ children }: { children: React.ReactNode }) {
 
 function ProviderInfo({ provider }: { provider: ProviderConfig }) {
   const statusColor =
-    provider.status === "connected"
+    provider.status === "enabled"
       ? "hsl(145, 65%, 45%)"
       : "hsl(214, 5%, 55%)"
 
@@ -131,13 +131,13 @@ function ProviderInfo({ provider }: { provider: ProviderConfig }) {
               {provider.name}
             </span>
           </div>
-          <InfoRow label="Latency" value={provider.status === "connected" ? "220 ms" : "—"} />
-          <InfoRow label="Last check" value={provider.status === "connected" ? "just now" : "—"} />
+          <InfoRow label="Latency" value={provider.status === "enabled" ? "220 ms" : "—"} />
+          <InfoRow label="Last check" value={provider.status === "enabled" ? "just now" : "—"} />
           <InfoRow
             label="Quota"
-            value={provider.status === "connected" ? "OK" : "—"}
+            value={provider.status === "enabled" ? "OK" : "—"}
             valueColor={
-              provider.status === "connected"
+              provider.status === "enabled"
                 ? "hsl(145, 65%, 45%)"
                 : undefined
             }

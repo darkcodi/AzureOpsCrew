@@ -463,7 +463,7 @@ function ProviderStatusBadge({ status }: { status: ProviderConfig["status"] }) {
       color: "hsl(214, 60%, 55%)",
       label: "Draft",
     },
-    connected: { icon: Circle, color: "hsl(145, 65%, 45%)", label: "Connected" },
+    enabled: { icon: Circle, color: "hsl(145, 65%, 45%)", label: "Enabled" },
     disabled: { icon: XCircle, color: "hsl(214, 5%, 55%)", label: "Disabled" },
   }
   const { icon: Icon, color, label } = config[status]
@@ -529,7 +529,7 @@ function ProvidersSection({
             className="mb-2 text-xs font-semibold uppercase tracking-wider"
             style={{ color: "hsl(214, 5%, 55%)" }}
           >
-            Connected providers
+            Enabled providers
           </h3>
           <div className="flex flex-col gap-1">
             {filteredProviders.map((provider) => (
@@ -750,7 +750,7 @@ function ProvidersSection({
                 checked={selectedProvider.status !== "disabled"}
                 onChange={(v) =>
                   updateProvider(selectedProvider.id, {
-                    status: v ? "connected" : "disabled",
+                    status: v ? "enabled" : "disabled",
                   })
                 }
               />
