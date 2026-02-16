@@ -294,7 +294,7 @@ function FormField({
 }: {
   label: string
   children: React.ReactNode
-  description?: string
+  description?: React.ReactNode
 }) {
   return (
     <div className="mb-4">
@@ -305,7 +305,7 @@ function FormField({
         {label}
       </label>
       {children}
-      {description && (
+      {description != null && (
         <p
           className="mt-1 text-xs"
           style={{ color: "hsl(214, 5%, 55%)" }}
@@ -799,7 +799,25 @@ function ProvidersSection({
               />
             </FormField>
 
-            <FormField label="API Key">
+            <FormField
+              label="API Key"
+              description={
+                (selectedProvider.providerType ?? selectedProvider.name) === "OpenRouter" ? (
+                  <>
+                    Get your API key at{" "}
+                    <a
+                      href="https://openrouter.ai/settings/keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline transition-colors hover:opacity-80"
+                      style={{ color: "hsl(235, 86%, 65%)" }}
+                    >
+                      openrouter.ai/settings/keys
+                    </a>
+                  </>
+                ) : undefined
+              }
+            >
               <TextInput
                 value={selectedProvider.apiKey}
                 onChange={(v) =>
