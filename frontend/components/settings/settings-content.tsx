@@ -8,7 +8,6 @@ import {
   XCircle,
   Eye,
   EyeOff,
-  RotateCw,
   Plus,
   Sparkles,
   Brain,
@@ -691,29 +690,19 @@ function ProvidersSection({
                 type={showApiKey ? "text" : "password"}
                 placeholder="Enter API key..."
                 rightElement={
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="rounded p-1 transition-colors hover:bg-[hsl(228,6%,35%)]"
-                      style={{ color: "hsl(214, 5%, 65%)" }}
-                      aria-label={showApiKey ? "Hide API key" : "Show API key"}
-                    >
-                      {showApiKey ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-colors hover:bg-[hsl(228,6%,35%)]"
-                      style={{ color: "hsl(210, 3%, 90%)" }}
-                    >
-                      <RotateCw className="h-3 w-3" />
-                      Rotate
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="rounded p-1 transition-colors hover:bg-[hsl(228,6%,35%)]"
+                    style={{ color: "hsl(214, 5%, 65%)" }}
+                    aria-label={showApiKey ? "Hide API key" : "Show API key"}
+                  >
+                    {showApiKey ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 }
               />
             </FormField>
