@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   RotateCw,
+  Plus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -504,6 +505,47 @@ function ProvidersSection({
                 <ProviderStatusBadge status={provider.status} />
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => {
+                const newId = `custom-${Date.now()}`
+                onProvidersChange([
+                  ...providers,
+                  {
+                    id: newId,
+                    name: "New provider",
+                    status: "needs-key",
+                    apiKey: "",
+                    baseUrl: "",
+                    defaultModel: "",
+                    timeout: 30,
+                    rateLimit: 60,
+                    availableModels: [],
+                    isDefault: false,
+                  },
+                ])
+                onSelectProvider(newId)
+              }}
+              className="mb-1 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed px-3 py-2.5 text-left text-sm font-medium transition-all"
+              style={{
+                color: "hsl(214, 5%, 65%)",
+                borderColor: "hsl(228, 6%, 32%)",
+                backgroundColor: "transparent",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "hsl(228, 6%, 18%)"
+                e.currentTarget.style.borderColor = "hsl(235, 86%, 65%)"
+                e.currentTarget.style.color = "hsl(210, 3%, 90%)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent"
+                e.currentTarget.style.borderColor = "hsl(228, 6%, 32%)"
+                e.currentTarget.style.color = "hsl(214, 5%, 65%)"
+              }}
+            >
+              <Plus className="h-4 w-4 shrink-0" />
+              <span>Add Provider</span>
+            </button>
           </div>
         </div>
 
