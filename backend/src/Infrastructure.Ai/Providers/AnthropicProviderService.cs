@@ -1,17 +1,18 @@
 using AzureOpsCrew.Domain.Providers;
+using System.Diagnostics;
 using System.Text;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Providers;
 
 public sealed class AnthropicProviderService : IProviderService
 {
-    private static readonly string[] KnownModels =
+    private static readonly ProviderModelInfo[] KnownModels =
     [
-        "claude-sonnet-4-20250514",
-        "claude-3-5-sonnet-20241022",
-        "claude-3-5-sonnet-20240620",
-        "claude-3-opus-20240229",
-        "claude-3-haiku-20240307"
+        new("claude-sonnet-4-20250514", "Claude Sonnet 4", 200000),
+        new("claude-3-5-sonnet-20241022", "Claude 3.5 Sonnet", 200000),
+        new("claude-3-5-sonnet-20240620", "Claude 3.5 Sonnet (June)", 200000),
+        new("claude-3-opus-20240229", "Claude 3 Opus", 200000),
+        new("claude-3-haiku-20240307", "Claude 3 Haiku", 200000)
     ];
 
     private readonly HttpClient _httpClient;
@@ -32,11 +33,13 @@ public sealed class AnthropicProviderService : IProviderService
         // Validate model if specified
         if (!string.IsNullOrWhiteSpace(config.DefaultModel))
         {
-            if (!KnownModels.Contains(config.DefaultModel, StringComparer.Ordinal))
+            if (!KnownModels.Any(m => string.Equals(m.Id, config.DefaultModel, StringComparison.Ordinal)))
             {
                 return TestConnectionResult.ValidationFailed($"Model '{config.DefaultModel}' is not a valid Anthropic model");
             }
         }
+
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -60,7 +63,8 @@ public sealed class AnthropicProviderService : IProviderService
                 return TestConnectionResult.AuthenticationFailed("Invalid API key");
             }
 
-            return TestConnectionResult.Successful();
+            stopwatch.Stop();
+            return TestConnectionResult.Successful(stopwatch.ElapsedMilliseconds, KnownModels);
         }
         catch (HttpRequestException ex)
         {
@@ -79,13 +83,6 @@ public sealed class AnthropicProviderService : IProviderService
     public Task<ProviderModelInfo[]> ListModelsAsync(ProviderConfig config, CancellationToken cancellationToken)
     {
         // Anthropic has fixed models - return known list
-        return Task.FromResult(new ProviderModelInfo[]
-        {
-            new("claude-sonnet-4-20250514", "Claude Sonnet 4", 200000),
-            new("claude-3-5-sonnet-20241022", "Claude 3.5 Sonnet", 200000),
-            new("claude-3-5-sonnet-20240620", "Claude 3.5 Sonnet (June)", 200000),
-            new("claude-3-opus-20240229", "Claude 3 Opus", 200000),
-            new("claude-3-haiku-20240307", "Claude 3 Haiku", 200000)
-        });
+        return Task.FromResult(KnownModels);
     }
 }

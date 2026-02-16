@@ -1,4 +1,5 @@
 using AzureOpsCrew.Domain.Providers;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Providers;
@@ -19,6 +20,8 @@ public sealed class OpenAIProviderService : IProviderService
         {
             return TestConnectionResult.ValidationFailed("API key is required");
         }
+
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -41,18 +44,23 @@ public sealed class OpenAIProviderService : IProviderService
                 return TestConnectionResult.NetworkError($"HTTP {response.StatusCode}: {response.ReasonPhrase}");
             }
 
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            var doc = JsonDocument.Parse(json);
+            var modelsElement = doc.RootElement.GetProperty("data");
+
+            var models = modelsElement.EnumerateArray()
+                .Select(m => new ProviderModelInfo(
+                    m.GetProperty("id").GetString()!,
+                    m.GetProperty("id").GetString()!))
+                .ToArray();
+
             // Validate model if specified
             if (!string.IsNullOrWhiteSpace(config.DefaultModel))
             {
-                var json = await response.Content.ReadAsStringAsync(cancellationToken);
-                var doc = JsonDocument.Parse(json);
-                var models = doc.RootElement.GetProperty("data");
-
-                var modelExists = models.EnumerateArray()
-                    .Any(m => string.Equals(
-                        m.GetProperty("id").GetString(),
-                        config.DefaultModel,
-                        StringComparison.Ordinal));
+                var modelExists = models.Any(m => string.Equals(
+                    m.Id,
+                    config.DefaultModel,
+                    StringComparison.Ordinal));
 
                 if (!modelExists)
                 {
@@ -60,7 +68,8 @@ public sealed class OpenAIProviderService : IProviderService
                 }
             }
 
-            return TestConnectionResult.Successful();
+            stopwatch.Stop();
+            return TestConnectionResult.Successful(stopwatch.ElapsedMilliseconds, models);
         }
         catch (HttpRequestException ex)
         {

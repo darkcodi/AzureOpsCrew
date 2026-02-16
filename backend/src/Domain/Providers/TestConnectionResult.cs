@@ -3,9 +3,14 @@ namespace AzureOpsCrew.Domain.Providers;
 public sealed record TestConnectionResult(
     bool Success,
     string? ErrorType = null,
-    string? ErrorDetails = null)
+    string? ErrorDetails = null,
+    long? LatencyMs = null,
+    DateTimeOffset? CheckedAt = null,
+    string? Quota = null,
+    ProviderModelInfo[]? AvailableModels = null)
 {
-    public static TestConnectionResult Successful() => new(true);
+    public static TestConnectionResult Successful(long latencyMs, ProviderModelInfo[] availableModels) =>
+        new(true, null, null, latencyMs, DateTimeOffset.UtcNow, "OK", availableModels);
 
     public static TestConnectionResult ValidationFailed(string message) =>
         new(false, "validation", message);

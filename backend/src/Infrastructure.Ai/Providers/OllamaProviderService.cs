@@ -1,4 +1,5 @@
 using AzureOpsCrew.Domain.Providers;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Providers;
@@ -14,6 +15,8 @@ public sealed class OllamaProviderService : IProviderService
 
     public async Task<TestConnectionResult> TestConnectionAsync(ProviderConfig config, CancellationToken cancellationToken)
     {
+        var stopwatch = Stopwatch.StartNew();
+
         try
         {
             var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
@@ -29,32 +32,40 @@ public sealed class OllamaProviderService : IProviderService
                 return TestConnectionResult.NetworkError($"HTTP {response.StatusCode}: {response.ReasonPhrase}");
             }
 
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            var doc = JsonDocument.Parse(json);
+
+            if (!doc.RootElement.TryGetProperty("models", out var modelsElement))
+            {
+                stopwatch.Stop();
+                return TestConnectionResult.Successful(stopwatch.ElapsedMilliseconds, []);
+            }
+
+            var models = modelsElement.EnumerateArray()
+                .Select(m => new ProviderModelInfo(
+                    m.GetProperty("model").GetString()!,
+                    m.GetProperty("name").GetString()!,
+                    m.TryGetProperty("details", out var details) &&
+                     details.TryGetProperty("context_length", out var ctx)
+                        ? ctx.GetInt64() : null))
+                .ToArray();
+
             // Validate model if specified
             if (!string.IsNullOrWhiteSpace(config.DefaultModel))
             {
-                var json = await response.Content.ReadAsStringAsync(cancellationToken);
-                var doc = JsonDocument.Parse(json);
+                var modelExists = models.Any(m => string.Equals(
+                    m.Id,
+                    config.DefaultModel,
+                    StringComparison.Ordinal));
 
-                if (doc.RootElement.TryGetProperty("models", out var models))
-                {
-                    var modelExists = models.EnumerateArray()
-                        .Any(m => string.Equals(
-                            m.GetProperty("model").GetString(),
-                            config.DefaultModel,
-                            StringComparison.Ordinal));
-
-                    if (!modelExists)
-                    {
-                        return TestConnectionResult.ValidationFailed($"Model '{config.DefaultModel}' not found in available models");
-                    }
-                }
-                else
+                if (!modelExists)
                 {
                     return TestConnectionResult.ValidationFailed($"Model '{config.DefaultModel}' not found in available models");
                 }
             }
 
-            return TestConnectionResult.Successful();
+            stopwatch.Stop();
+            return TestConnectionResult.Successful(stopwatch.ElapsedMilliseconds, models);
         }
         catch (HttpRequestException ex)
         {

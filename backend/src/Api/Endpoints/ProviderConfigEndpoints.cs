@@ -132,7 +132,11 @@ public static class ProviderConfigEndpoints
             return Results.Ok(new TestConnectionResponseDto(
                 result.Success,
                 result.Success ? "Connection successful" : result.ErrorDetails,
-                result.ErrorType));
+                result.ErrorType,
+                result.LatencyMs,
+                result.CheckedAt,
+                result.Quota,
+                result.AvailableModels?.Select(m => new ModelInfoDto(m.Id, m.Name, m.ContextSize)).ToArray()));
         })
         .AddEndpointFilter<ValidationFilter<TestConnectionBodyDto>>()
         .Produces<TestConnectionResponseDto>(StatusCodes.Status200OK)
@@ -157,7 +161,11 @@ public static class ProviderConfigEndpoints
             return Results.Ok(new TestConnectionResponseDto(
                 result.Success,
                 result.Success ? "Connection successful" : result.ErrorDetails,
-                result.ErrorType));
+                result.ErrorType,
+                result.LatencyMs,
+                result.CheckedAt,
+                result.Quota,
+                result.AvailableModels?.Select(m => new ModelInfoDto(m.Id, m.Name, m.ContextSize)).ToArray()));
         })
         .Produces<TestConnectionResponseDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
