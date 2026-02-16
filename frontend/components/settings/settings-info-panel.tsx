@@ -219,9 +219,14 @@ function ProviderInfo({
           ) : (() => {
             const isDefault = (m: { id: string; name: string }) =>
               provider.defaultModel && (m.id === provider.defaultModel || m.name === provider.defaultModel)
-            const models = [...providerTestResult.availableModels].sort((a, b) =>
-              isDefault(a) ? -1 : isDefault(b) ? 1 : 0
-            )
+            const all = providerTestResult.availableModels
+            const selectedOrder = selectedModels.filter((id) => all.some((m) => m.id === id))
+            const selectedSet = new Set(selectedOrder)
+            const selectedModelsOrdered = selectedOrder
+              .map((id) => all.find((m) => m.id === id))
+              .filter((m): m is { id: string; name: string } => m != null)
+            const unselected = all.filter((m) => !selectedSet.has(m.id))
+            const models = [...selectedModelsOrdered, ...unselected]
             const initialCount = 5
             const showAll = modelsExpanded || models.length <= initialCount
             const visible = showAll ? models : models.slice(0, initialCount)
@@ -232,6 +237,11 @@ function ProviderInfo({
                   {visible.map((m) => {
                     const defaultModel = isDefault(m)
                     const isSelected = selectedModels.includes(m.id)
+                    const border = defaultModel
+                      ? "2px solid hsl(235, 86%, 65%)"
+                      : isSelected
+                        ? "1px solid hsl(235, 86%, 65%)"
+                        : "1px solid transparent"
                     return (
                       <Tooltip key={m.id}>
                         <TooltipTrigger asChild>
@@ -241,14 +251,11 @@ function ProviderInfo({
                               backgroundColor: "hsl(228, 6%, 20%)",
                               color: "hsl(210, 3%, 80%)",
                               fontWeight: defaultModel ? 600 : undefined,
-                              border: isSelected
-                                ? "1px solid hsl(235, 86%, 65%)"
-                                : "1px solid transparent",
+                              border,
                             }}
                             onClick={() => onToggleSelectedModel?.(m.id)}
                           >
                             {m.id}
-                            {defaultModel ? " (default)" : ""}
                           </div>
                         </TooltipTrigger>
                         <TooltipContent side="left" className="max-w-[220px]">
