@@ -12,6 +12,7 @@ import {
   Brain,
   Server,
   FileEdit,
+  Pencil,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -63,6 +64,8 @@ const KNOWN_PROVIDERS: {
 interface SettingsContentProps {
   activeSection: SettingsSection
   settings: SettingsState
+  savedSettings: SettingsState
+  modifiedProviderIds: Set<string>
   onSettingsChange: (settings: SettingsState) => void
   selectedProviderId: string | null
   onSelectProvider: (id: string) => void
@@ -75,6 +78,8 @@ interface SettingsContentProps {
 export function SettingsContent({
   activeSection,
   settings,
+  savedSettings,
+  modifiedProviderIds,
   onSettingsChange,
   selectedProviderId,
   onSelectProvider,
@@ -93,6 +98,7 @@ export function SettingsContent({
           {activeSection === "providers" && (
             <ProvidersSection
               providers={settings.providers}
+              modifiedProviderIds={modifiedProviderIds}
               selectedProviderId={selectedProviderId}
               onSelectProvider={onSelectProvider}
               onProvidersChange={(providers) =>
@@ -456,7 +462,13 @@ function ActionButton({
  * Providers Section
  * ───────────────────────────────────────────────── */
 
-function ProviderStatusBadge({ status }: { status: ProviderConfig["status"] }) {
+function ProviderStatusBadge({
+  status,
+  isModified,
+}: {
+  status: ProviderConfig["status"]
+  isModified?: boolean
+}) {
   const config = {
     draft: {
       icon: FileEdit,
@@ -466,7 +478,12 @@ function ProviderStatusBadge({ status }: { status: ProviderConfig["status"] }) {
     enabled: { icon: Circle, color: "hsl(145, 65%, 45%)", label: "Enabled" },
     disabled: { icon: XCircle, color: "hsl(214, 5%, 55%)", label: "Disabled" },
   }
-  const { icon: Icon, color, label } = config[status]
+  const modifiedStyle = {
+    icon: Pencil,
+    color: "hsl(40, 85%, 55%)",
+    label: "Modified",
+  }
+  const { icon: Icon, color, label } = isModified ? modifiedStyle : config[status]
 
   return (
     <span className="flex items-center gap-1 text-xs" style={{ color }}>
@@ -478,6 +495,7 @@ function ProviderStatusBadge({ status }: { status: ProviderConfig["status"] }) {
 
 function ProvidersSection({
   providers,
+  modifiedProviderIds,
   selectedProviderId,
   onSelectProvider,
   onProvidersChange,
@@ -486,6 +504,7 @@ function ProvidersSection({
   saveError,
 }: {
   providers: ProviderConfig[]
+  modifiedProviderIds: Set<string>
   selectedProviderId: string | null
   onSelectProvider: (id: string) => void
   onProvidersChange: (providers: ProviderConfig[]) => void
@@ -557,7 +576,10 @@ function ProvidersSection({
                 >
                   {provider.name}
                 </span>
-                <ProviderStatusBadge status={provider.status} />
+                <ProviderStatusBadge
+                status={provider.status}
+                isModified={modifiedProviderIds.has(provider.id)}
+              />
               </button>
             ))}
             <button
@@ -653,7 +675,10 @@ function ProvidersSection({
                 {selectedProvider.name}
               </h3>
               <div className="flex items-center gap-2">
-                <ProviderStatusBadge status={selectedProvider.status} />
+                <ProviderStatusBadge
+                status={selectedProvider.status}
+                isModified={modifiedProviderIds.has(selectedProvider.id)}
+              />
                 {selectedProvider.isDefault && (
                   <span
                     className="text-xs"

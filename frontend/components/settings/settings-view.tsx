@@ -93,6 +93,26 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
     [settings, savedSettings]
   )
 
+  const modifiedProviderIds = useMemo(() => {
+    const savedById = new Map(savedSettings.providers.map((p) => [p.id, p]))
+    return new Set(
+      settings.providers
+        .filter((p) => {
+          const saved = savedById.get(p.id)
+          if (!saved || !p.backendId) return false
+          return (
+            p.name !== saved.name ||
+            p.status !== saved.status ||
+            p.apiKey !== saved.apiKey ||
+            p.baseUrl !== saved.baseUrl ||
+            p.defaultModel !== saved.defaultModel ||
+            p.isDefault !== saved.isDefault
+          )
+        })
+        .map((p) => p.id)
+    )
+  }, [settings.providers, savedSettings.providers])
+
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -155,6 +175,8 @@ export function SettingsView({ onNavigateToAllAgents }: SettingsViewProps) {
         <SettingsContent
           activeSection={activeSection}
           settings={settings}
+          savedSettings={savedSettings}
+          modifiedProviderIds={modifiedProviderIds}
           onSettingsChange={setSettings}
           selectedProviderId={selectedProviderId}
           onSelectProvider={setSelectedProviderId}
