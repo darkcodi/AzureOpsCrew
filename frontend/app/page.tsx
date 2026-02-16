@@ -8,6 +8,7 @@ import { ChannelArea } from "@/components/channel-area"
 import { DirectMessagesView } from "@/components/direct-messages-view"
 import { ManageAgentsDialog } from "@/components/manage-agents-dialog"
 import { AllAgentsSidebar } from "@/components/all-agents-sidebar"
+import { SettingsView } from "@/components/settings/settings-view"
 
 export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("channels")
@@ -239,6 +240,7 @@ export default function Home() {
           </div>
         </>
       )}
+      {viewMode === "settings" && <SettingsView />}
     </main>
   )
 }
