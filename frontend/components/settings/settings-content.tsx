@@ -964,9 +964,22 @@ function ProvidersSection({
               <ActionButton
                 variant="danger"
                 disabled={isSaving}
-                onClick={() =>
-                  selectedProvider != null ? setRemoveProviderPending(selectedProvider) : undefined
-                }
+                onClick={async () => {
+                  if (!selectedProvider || !onRemoveProvider) return
+                  if (!selectedProvider.backendId) {
+                    try {
+                      await onRemoveProvider(selectedProvider.id)
+                      toast({ title: "Provider removed" })
+                    } catch {
+                      toast({
+                        title: "Failed to remove provider",
+                        variant: "destructive",
+                      })
+                    }
+                  } else {
+                    setRemoveProviderPending(selectedProvider)
+                  }
+                }}
               >
                 Remove
               </ActionButton>
