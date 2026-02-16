@@ -831,6 +831,35 @@ function ProvidersSection({
               </div>
             )}
 
+            {(selectedProvider.providerType ?? selectedProvider.name) === "Ollama (Local)" && (
+              <div
+                className="mb-4 rounded-lg border px-4 py-3"
+                style={{
+                  backgroundColor: "hsl(228, 6%, 22%)",
+                  borderColor: "hsl(228, 6%, 32%)",
+                }}
+              >
+                <h4
+                  className="mb-1.5 text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "hsl(214, 5%, 65%)" }}
+                >
+                  Description
+                </h4>
+                <p className="text-sm" style={{ color: "hsl(210, 3%, 85%)" }}>
+                  Ollama runs LLMs locally on your machine. No API key or cloud account needed—install and pull models to get started.{" "}
+                  <a
+                    href="https://ollama.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline transition-colors hover:opacity-80"
+                    style={{ color: "hsl(235, 86%, 65%)" }}
+                  >
+                    ollama.com
+                  </a>
+                </p>
+              </div>
+            )}
+
             <FormField label="Type">
               <SelectInput
                 value={selectedProvider.providerType ?? selectedProvider.name}
@@ -912,6 +941,22 @@ function ProvidersSection({
                           style={{ color: "hsl(235, 86%, 65%)" }}
                         >
                           console.anthropic.com
+                        </a>
+                      </>
+                    )
+                  }
+                  if (providerType === "Ollama (Local)") {
+                    return (
+                      <>
+                        No API key needed for local use. Install and get started at{" "}
+                        <a
+                          href="https://ollama.com/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline transition-colors hover:opacity-80"
+                          style={{ color: "hsl(235, 86%, 65%)" }}
+                        >
+                          ollama.com
                         </a>
                       </>
                     )
