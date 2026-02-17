@@ -7,6 +7,8 @@ using Microsoft.OpenApi;
 using Newtonsoft.Json;
 using Serilog;
 
+#pragma warning disable ASP0013
+
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateLogger();
@@ -19,6 +21,20 @@ try
 
     // Use Serilog
     builder.Host.UseSerilog();
+
+    // Configure app settings with environment variables as highest priority
+    builder.Host.ConfigureAppConfiguration((context, config) =>
+    {
+        // Clear default sources
+        config.Sources.Clear();
+
+        // Add sources in order of increasing priority (environment variables win)
+        config
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json",
+                optional: true, reloadOnChange: true)
+            .AddEnvironmentVariables();
+    });
 
     // Enable OpenAPI/Swagger
     builder.Services.AddOpenApi();
