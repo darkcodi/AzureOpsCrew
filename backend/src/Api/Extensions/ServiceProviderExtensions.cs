@@ -19,14 +19,35 @@ public static class ServiceProviderExtensions
         Log.Information("Database migrations completed in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
     }
 
+    public static async Task RunEnsureCreated(this IServiceProvider provider)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        Log.Information("Ensuring database exists and creating if necessary...");
+        using (var scope = provider.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
+            await context.Database.EnsureCreatedAsync();
+        }
+        stopwatch.Stop();
+        Log.Information("Database creation check completed in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
+    }
+
     public static async Task RunDbSetup(this IServiceProvider provider, IConfiguration configuration)
     {
         var dbProvider = configuration["DatabaseProvider"];
-        Log.Information("Running migrations for database provider: {DbProvider}", dbProvider);
+        Log.Information("Running database setup for provider: {DbProvider}", dbProvider);
 
-        if (!string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"Only SQLite is supported. Unknown DB provider '{dbProvider}'.");
-
-        await provider.RunSqlMigrations();
+        if (string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+        {
+            await provider.RunSqlMigrations();
+        }
+        else if (string.Equals(dbProvider, "SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            await provider.RunEnsureCreated();
+        }
+        else
+        {
+            throw new InvalidOperationException($"Unknown DB provider '{dbProvider}'. Supported providers: Sqlite, SqlServer");
+        }
     }
 }

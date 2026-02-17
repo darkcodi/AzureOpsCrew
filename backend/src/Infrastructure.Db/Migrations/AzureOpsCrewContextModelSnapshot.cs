@@ -3,6 +3,7 @@ using System;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -15,33 +16,37 @@ namespace AzureOpsCrew.Infrastructure.Db.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.3");
+            modelBuilder
+                .HasAnnotation("ProductVersion", "10.0.3")
+                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+
+            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
             modelBuilder.Entity("AzureOpsCrew.Domain.Agents.Agent", b =>
                 {
                     b.Property<string>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("ClientId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("int");
 
                     b.Property<string>("Color")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("nvarchar(max)")
                         .HasDefaultValue("#43b581");
 
                     b.Property<DateTime>("DateCreated")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Provider")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ProviderAgentId")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -54,27 +59,27 @@ namespace AzureOpsCrew.Infrastructure.Db.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("AgentIds")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ClientId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("int");
 
                     b.Property<string>("ConversationId")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("DateCreated")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -88,26 +93,26 @@ namespace AzureOpsCrew.Infrastructure.Db.Migrations
                     b.OwnsOne("AzureOpsCrew.Domain.Agents.AgentInfo", "Info", b1 =>
                         {
                             b1.Property<string>("AgentId")
-                                .HasColumnType("TEXT");
+                                .HasColumnType("nvarchar(450)");
 
                             b1.Property<string>("AvaliableTools")
                                 .IsRequired()
-                                .HasColumnType("TEXT");
+                                .HasColumnType("nvarchar(max)");
 
                             b1.Property<string>("Description")
-                                .HasColumnType("TEXT");
+                                .HasColumnType("nvarchar(max)");
 
                             b1.Property<string>("Model")
                                 .IsRequired()
-                                .HasColumnType("TEXT");
+                                .HasColumnType("nvarchar(max)");
 
                             b1.Property<string>("Name")
                                 .IsRequired()
-                                .HasColumnType("TEXT");
+                                .HasColumnType("nvarchar(max)");
 
                             b1.Property<string>("Prompt")
                                 .IsRequired()
-                                .HasColumnType("TEXT");
+                                .HasColumnType("nvarchar(max)");
 
                             b1.HasKey("AgentId");
 

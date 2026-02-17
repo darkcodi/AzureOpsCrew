@@ -12,7 +12,18 @@ services:
       - AzureOpenAI__Model=gpt-5-2-chat
       - DatabaseProvider=Sqlite
       - Sqlite__DataSource=Data Source=azureopscrew.db
+      - SqlServer__ConnectionString=Server=sqlserver;Database=AzureOpsCrew;User Id=sa;Password=YourStrong@Password;TrustServerCertificate=True;
       - EnableSeeding=true
     ports:
       - "42100:80"
     restart: on-failure
+
+  # sqlserver:
+  #   image: mcr.microsoft.com/mssql/server:2022-latest
+  #   container_name: sqlserver
+  #   environment:
+  #     - ACCEPT_EULA=Y
+  #     - SA_PASSWORD=YourStrong@Password
+  #   ports:
+  #     - "1433:1433"
+  #   restart: unless-stopped

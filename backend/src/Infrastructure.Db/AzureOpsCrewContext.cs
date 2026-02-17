@@ -1,8 +1,8 @@
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using Microsoft.EntityFrameworkCore;
-using SqliteAgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.AgentEntityTypeConfiguration;
-using SqliteChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ChannelEntityTypeConfiguration;
+using AgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.AgentEntityTypeConfiguration;
+using ChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ChannelEntityTypeConfiguration;
 
 namespace AzureOpsCrew.Infrastructure.Db;
 
@@ -18,7 +18,7 @@ public class AzureOpsCrewContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfiguration(new SqliteAgentConfig());
-        modelBuilder.ApplyConfiguration(new SqliteChannelConfig());
+        modelBuilder.ApplyConfiguration(new AgentConfig());
+        modelBuilder.ApplyConfiguration(new ChannelConfig());
     }
 }

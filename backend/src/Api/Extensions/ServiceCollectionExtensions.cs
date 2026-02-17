@@ -46,16 +46,44 @@ public static class ServiceCollectionExtensions
         });
     }
 
+    public static IServiceCollection AddSqlServerSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
+    {
+        services.Configure<SqlServerSettings>(configuration.GetSection(configurationKey));
+        services.AddOptions<SqlServerSettings>()
+            .Validate(settings => !string.IsNullOrEmpty(settings.ConnectionString),
+                "SQL Server settings are not properly configured. Please double-check the configuration.")
+            .ValidateOnStart();
+        return services;
+    }
+
+    public static void AddEFCoreSqlServerDb(this IServiceCollection services)
+    {
+        services.AddDbContext<AzureOpsCrewContext>((sp, options) =>
+        {
+            var sqlServerSettings = sp.GetRequiredService<IOptions<SqlServerSettings>>().Value;
+            options.UseSqlServer(sqlServerSettings.ConnectionString!);
+        });
+    }
+
     public static void AddDatabase(this IServiceCollection services, IConfiguration configuration)
     {
         var provider = configuration["DatabaseProvider"];
         Log.Information("Configuring database provider: {DbProvider}", provider);
 
-        if (!string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"Only SQLite is supported. Unknown DB provider '{provider}'.");
-
-        services.AddSQLiteSettings(configuration, "Sqlite");
-        services.AddEFCoreSqliteDb();
+        if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSQLiteSettings(configuration, "Sqlite");
+            services.AddEFCoreSqliteDb();
+        }
+        else if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSqlServerSettings(configuration, "SqlServer");
+            services.AddEFCoreSqlServerDb();
+        }
+        else
+        {
+            throw new InvalidOperationException($"Unknown DB provider '{provider}'. Supported providers: Sqlite, SqlServer");
+        }
     }
 
     public static void AddIChatClient(this IServiceCollection services)

@@ -80,6 +80,12 @@ try
             Log.Information("Database Provider: Sqlite");
             Log.Information("SQLite Settings: {SqliteSettings}", JsonConvert.SerializeObject(sqliteSettings));
         }
+        else if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            var sqlServerSettings = app.Services.GetRequiredService<IOptions<SqlServerSettings>>().Value;
+            Log.Information("Database Provider: SqlServer");
+            Log.Information("SQL Server Settings: {SqlServerSettings}", JsonConvert.SerializeObject(sqlServerSettings));
+        }
         else
         {
             Log.Warning("Unknown DatabaseProvider value: {Provider}", provider);
