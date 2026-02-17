@@ -169,16 +169,25 @@ export function ManageAgentsDialog({
         const newAgent = await response.json()
         await onAddAgent(newAgent)
       } else if (editingAgent) {
-        // For edit, still use local update for now
-        // TODO: Implement backend update endpoint
-        onUpdateAgent({
-          ...editingAgent,
-          name: trimmed,
-          avatar: trimmed[0].toUpperCase(),
-          color,
-          systemPrompt: prompt.trim() || `You are ${trimmed}, a helpful AI assistant.`,
-          model,
+        const response = await fetch(`/api/agents/${editingAgent.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: trimmed,
+            model,
+            systemPrompt: prompt.trim() || `You are ${trimmed}, a helpful AI assistant.`,
+            color,
+            providerId,
+          }),
         })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error((errorData as { error?: string }).error || "Failed to update agent")
+        }
+
+        const updatedAgent = await response.json()
+        onUpdateAgent(updatedAgent)
       }
       setView("list")
     } catch (error) {
