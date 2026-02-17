@@ -38,7 +38,7 @@ public sealed class Provider
     public bool IsEnabled { get; private set; }
     public string? SelectedModels { get; private set; }
     public int ModelsCount { get; private set; }
-    public DateTime DateCreated { get; set; } = DateTime.UtcNow;
+    public DateTime DateCreated { get; private set; } = DateTime.UtcNow;
     public DateTime? DateModified { get; private set; }
 
     public void Update(string name, string? apiKey, string? apiEndpoint, string? defaultModel, bool? isEnabled = null, string? selectedModels = null)

@@ -1,4 +1,4 @@
-﻿using Azure.Core;
+﻿using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Providers;
@@ -10,26 +10,24 @@ namespace AzureOpsCrew.Api.Setup.Seeds
     public class Seeder
     {
         private readonly AzureOpsCrewContext _context;
+        private readonly AiSettings _aiSettings;
 
-        public Seeder(AzureOpsCrewContext context)
+        public Seeder(AzureOpsCrewContext context, AiSettings aiSettings)
         {
             _context = context;
+            _aiSettings = aiSettings;
         }
 
         public async Task Seed()
         {
             const int clientId = 1;
 
-            // Get the first available provider
-            var provider = await _context.Set<Provider>()
-                .OrderBy(p => p.DateCreated)
-                .FirstOrDefaultAsync();
-
-            if (provider == null)
-            {
-                // No provider available, cannot seed agents
-                return;
-            }
+            var providerId = Guid.Parse("5f4e3d10-0123-4000-9abc-def123456789");
+            var provider = new Provider(providerId, clientId,
+                name: "Azure OpenAI", ProviderType.AzureFoundry, _aiSettings.ApiKey,
+                apiEndpoint: "https://azureopscrewglobfoundry.openai.azure.com/",
+                selectedModels: "[\"gpt-5-2-chat\"]", defaultModel: "gpt-5-2-chat");
+            await AddProviderIfNotExists(provider);
 
             var managerId = Guid.Parse("6a5d8a20-1234-4000-a1b2-c3d4e5f6a7b8");
             var azDevOpsId = Guid.Parse("7b6e9b30-2345-4111-b2c3-d4e5f6a7b8c9");
@@ -84,10 +82,19 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 AgentIds = agents.Select(a => a.Id.ToString()).ToArray(),
                 DateCreated = DateTime.UtcNow
             };
-
             await AddChannelIfNotExists(channel);
 
             await _context.SaveChangesAsync();
+        }
+
+        private async Task AddProviderIfNotExists(Provider provider)
+        {
+            var exists = await _context.Set<Provider>()
+                .AsNoTracking()
+                .AnyAsync(p => p.Id == provider.Id);
+
+            if (!exists)
+                _context.Add(provider);
         }
 
         private async Task AddAgentIfNotExists(Agent agent)
