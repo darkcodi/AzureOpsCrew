@@ -18,7 +18,7 @@ public static class ServiceProviderExtensions
         using (var scope = provider.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
-            var seeder = new Seeder(context);
+            var seeder = new Seeder(context, configuration);
 
             await seeder.Seed();
         }
