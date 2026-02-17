@@ -24,7 +24,5 @@ public static class ServiceProviderExtensions
         }
 
         Log.Information("Seeding default entities succesfully complete..");
-
     }
-
 }

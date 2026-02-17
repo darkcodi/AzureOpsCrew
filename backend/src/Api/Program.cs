@@ -19,9 +19,6 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Use Serilog
-    builder.Host.UseSerilog();
-
     // Configure app settings with environment variables as highest priority
     builder.Host.ConfigureAppConfiguration((context, config) =>
     {
@@ -35,6 +32,9 @@ try
                 optional: true, reloadOnChange: true)
             .AddEnvironmentVariables();
     });
+
+    // Use Serilog
+    builder.Host.UseSerilog();
 
     // Enable OpenAPI/Swagger
     builder.Services.AddOpenApi();
@@ -111,7 +111,7 @@ try
 
     app.MapAllAgUi();
 
-    await app.Services.RunDbSetup(builder.Configuration);
+    await app.Services.RunDbSetup();
     await app.Services.RunSeeding(builder.Configuration);
 
     app.Run();

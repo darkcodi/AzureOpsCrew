@@ -4,6 +4,6 @@
     {
         public string? Description { get; set; }
 
-        public AgentTool[] AvaliableTools { get; set; } = [];
+        public AgentTool[] AvailableTools { get; set; } = [];
     }
 }
