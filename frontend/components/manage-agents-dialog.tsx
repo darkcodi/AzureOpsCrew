@@ -19,19 +19,9 @@ interface Provider {
   name: string
   providerType: string
   status: string
-  isEnabled: boolean
+  selectedModels?: string[]
+  defaultModel?: string
 }
-
-const availableModels = [
-  { id: "gpt-5-2-chat", name: "GPT-5.2 Chat" },
-  { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
-  { id: "openai/gpt-4o", name: "GPT-4o" },
-  { id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini" },
-  { id: "openai/gpt-4.1", name: "GPT-4.1" },
-  { id: "anthropic/claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
-  { id: "anthropic/claude-haiku-3.5", name: "Claude Haiku 3.5" },
-  { id: "xai/grok-3-mini-fast", name: "Grok 3 Mini Fast" },
-]
 
 interface ManageAgentsDialogProps {
   allAgents: Agent[]
@@ -77,7 +67,7 @@ export function ManageAgentsDialog({
     fetch("/api/providers?clientId=1")
       .then((res) => res.json())
       .then((data: Provider[]) => {
-        setProviders(data.filter((p) => p.isEnabled))
+        setProviders(data.filter((p) => p.status === "enabled"))
         setIsLoadingProviders(false)
       })
       .catch(() => {
@@ -87,20 +77,44 @@ export function ManageAgentsDialog({
 
   // Form state
   const [name, setName] = useState("")
-  const [model, setModel] = useState(availableModels[0].id)
+  const [model, setModel] = useState("")
   const [prompt, setPrompt] = useState("")
   const [color, setColor] = useState(agentColors[0])
   const [providerId, setProviderId] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  // Derive available models from the selected provider
+  const selectedProvider = providers.find((p) => p.id === providerId)
+  const providerModels = selectedProvider?.selectedModels ?? []
+
+  // Auto-select default model when provider changes
+  useEffect(() => {
+    const provider = providers.find((p) => p.id === providerId)
+    if (!provider) return
+    const models = provider.selectedModels ?? []
+    if (provider.defaultModel && models.includes(provider.defaultModel)) {
+      setModel(provider.defaultModel)
+    } else if (models.length > 0) {
+      setModel(models[0])
+    } else {
+      setModel("")
+    }
+  }, [providerId, providers])
+
   const openCreate = () => {
     setEditingAgent(null)
     setName("")
-    setModel(availableModels[0].id)
     setPrompt("")
     setColor(agentColors[allAgents.length % agentColors.length])
-    setProviderId(providers.length > 0 ? providers[0].id : "")
+    const firstProvider = providers.length > 0 ? providers[0] : null
+    setProviderId(firstProvider?.id ?? "")
+    const models = firstProvider?.selectedModels ?? []
+    if (firstProvider?.defaultModel && models.includes(firstProvider.defaultModel)) {
+      setModel(firstProvider.defaultModel)
+    } else {
+      setModel(models[0] ?? "")
+    }
     setSaveError(null)
     setView("create")
   }
@@ -108,9 +122,14 @@ export function ManageAgentsDialog({
   const openEdit = (agent: Agent) => {
     setEditingAgent(agent)
     setName(agent.name)
-    setModel(agent.model)
     setPrompt(agent.systemPrompt)
     setColor(agent.color)
+    // Try to find the provider that has the agent's current model in its selectedModels
+    const matchingProvider = providers.find((p) =>
+      (p.selectedModels ?? []).includes(agent.model)
+    )
+    setProviderId(matchingProvider?.id ?? (providers.length > 0 ? providers[0].id : ""))
+    setModel(agent.model)
     setSaveError(null)
     setView("edit")
   }
@@ -119,7 +138,7 @@ export function ManageAgentsDialog({
     const trimmed = name.trim()
     if (!trimmed) return
 
-    if (view === "create" && !providerId) {
+    if (!providerId) {
       setSaveError("Please select a provider")
       return
     }
@@ -254,7 +273,7 @@ export function ManageAgentsDialog({
                       {agent.name}
                     </span>
                     <span className="truncate text-xs" style={{ color: "hsl(214, 5%, 55%)" }}>
-                      {availableModels.find((m) => m.id === agent.model)?.name ?? agent.model}
+                      {agent.model}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -319,47 +338,6 @@ export function ManageAgentsDialog({
                 />
               </div>
 
-              {/* Provider */}
-              {view === "create" && (
-                <div className="flex flex-col gap-1.5">
-                  <label
-                    htmlFor="agent-provider"
-                    className="text-xs font-bold uppercase tracking-wider"
-                    style={{ color: "hsl(214, 5%, 55%)" }}
-                  >
-                    Provider
-                  </label>
-                  {isLoadingProviders ? (
-                    <div className="flex items-center gap-2 text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Loading providers...</span>
-                    </div>
-                  ) : providers.length === 0 ? (
-                    <div className="text-sm" style={{ color: "hsl(0, 70%, 55%)" }}>
-                      No enabled providers found. Please enable a provider in Settings.
-                    </div>
-                  ) : (
-                    <select
-                      id="agent-provider"
-                      value={providerId}
-                      onChange={(e) => setProviderId(e.target.value)}
-                      className="w-full appearance-none rounded-md px-3 py-2 text-sm outline-none"
-                      style={{
-                        backgroundColor: "hsl(228, 7%, 14%)",
-                        color: "hsl(210, 3%, 90%)",
-                        border: "1px solid hsl(228, 6%, 30%)",
-                      }}
-                    >
-                      {providers.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.providerType})
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              )}
-
               {/* Color */}
               <div className="flex flex-col gap-1.5">
                 <span
@@ -386,6 +364,45 @@ export function ManageAgentsDialog({
                 </div>
               </div>
 
+              {/* Provider */}
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="agent-provider"
+                  className="text-xs font-bold uppercase tracking-wider"
+                  style={{ color: "hsl(214, 5%, 55%)" }}
+                >
+                  Provider
+                </label>
+                {isLoadingProviders ? (
+                  <div className="flex items-center gap-2 text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading providers...</span>
+                  </div>
+                ) : providers.length === 0 ? (
+                  <div className="text-sm" style={{ color: "hsl(0, 70%, 55%)" }}>
+                    No enabled providers found. Please enable a provider in Settings.
+                  </div>
+                ) : (
+                  <select
+                    id="agent-provider"
+                    value={providerId}
+                    onChange={(e) => setProviderId(e.target.value)}
+                    className="w-full appearance-none rounded-md px-3 py-2 text-sm outline-none"
+                    style={{
+                      backgroundColor: "hsl(228, 7%, 14%)",
+                      color: "hsl(210, 3%, 90%)",
+                      border: "1px solid hsl(228, 6%, 30%)",
+                    }}
+                  >
+                    {providers.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.providerType})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
               {/* LLM Model */}
               <div className="flex flex-col gap-1.5">
                 <label
@@ -395,23 +412,29 @@ export function ManageAgentsDialog({
                 >
                   LLM Model
                 </label>
-                <select
-                  id="agent-model"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="w-full appearance-none rounded-md px-3 py-2 text-sm outline-none"
-                  style={{
-                    backgroundColor: "hsl(228, 7%, 14%)",
-                    color: "hsl(210, 3%, 90%)",
-                    border: "1px solid hsl(228, 6%, 30%)",
-                  }}
-                >
-                  {availableModels.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
+                {providerModels.length === 0 ? (
+                  <div className="text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>
+                    {providerId ? "No selected models for this provider." : "Select a provider first."}
+                  </div>
+                ) : (
+                  <select
+                    id="agent-model"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="w-full appearance-none rounded-md px-3 py-2 text-sm outline-none"
+                    style={{
+                      backgroundColor: "hsl(228, 7%, 14%)",
+                      color: "hsl(210, 3%, 90%)",
+                      border: "1px solid hsl(228, 6%, 30%)",
+                    }}
+                  >
+                    {providerModels.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* System Prompt */}
@@ -442,7 +465,7 @@ export function ManageAgentsDialog({
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={!name.trim() || isSaving || (view === "create" && !providerId)}
+                disabled={!name.trim() || isSaving || !providerId}
                 className="flex items-center justify-center gap-2 rounded-md py-2.5 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
                 style={{ backgroundColor: "hsl(235, 86%, 65%)", color: "#fff" }}
               >
