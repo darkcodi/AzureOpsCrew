@@ -74,29 +74,15 @@ try
         Log.Information("AI Settings: {AiSettings}", JsonConvert.SerializeObject(aiSettings));
 
         var provider = builder.Configuration["DatabaseProvider"];
-        switch (provider?.Trim().ToLowerInvariant())
+        if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
         {
-            case "sqlite":
-                {
-                    var sqliteSettings = app.Services.GetRequiredService<IOptions<SQLiteSettings>>().Value;
-                    Log.Information("Database Provider: Sqlite");
-                    Log.Information("SQLite Settings: {SqliteSettings}", JsonConvert.SerializeObject(sqliteSettings));
-                    break;
-                }
-
-            case "cosmosdb":
-                {
-                    var cosmosSettings = app.Services.GetRequiredService<IOptions<CosmosSettings>>().Value;
-                    Log.Information("Database Provider: Cosmos");
-                    Log.Information("Cosmos DB Settings: {CosmosSettings}", JsonConvert.SerializeObject(cosmosSettings));
-                    break;
-                }
-
-            default:
-                {
-                    Log.Warning("Unknown DatabaseProvider value: {Provider}", provider);
-                    break;
-                }
+            var sqliteSettings = app.Services.GetRequiredService<IOptions<SQLiteSettings>>().Value;
+            Log.Information("Database Provider: Sqlite");
+            Log.Information("SQLite Settings: {SqliteSettings}", JsonConvert.SerializeObject(sqliteSettings));
+        }
+        else
+        {
+            Log.Warning("Unknown DatabaseProvider value: {Provider}", provider);
         }
     }
 

@@ -1,8 +1,6 @@
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using Microsoft.EntityFrameworkCore;
-using CosmosAgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Cosmos.AgentEntityTypeConfiguration;
-using CosmosChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Cosmos.ChannelEntityTypeConfiguration;
 using SqliteAgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.AgentEntityTypeConfiguration;
 using SqliteChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ChannelEntityTypeConfiguration;
 
@@ -20,19 +18,7 @@ public class AzureOpsCrewContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        var provider = Database.ProviderName;
-
-        if (provider == "Microsoft.EntityFrameworkCore.Cosmos")
-        {
-            modelBuilder.HasDefaultContainer("AppContainer");
-            modelBuilder.ApplyConfiguration(new CosmosAgentConfig());
-            modelBuilder.ApplyConfiguration(new CosmosChannelConfig());
-        }
-        else
-        {
-            // Relational providers (SQLite, SQL Server, etc.)
-            modelBuilder.ApplyConfiguration(new SqliteAgentConfig());
-            modelBuilder.ApplyConfiguration(new SqliteChannelConfig());
-        }
+        modelBuilder.ApplyConfiguration(new SqliteAgentConfig());
+        modelBuilder.ApplyConfiguration(new SqliteChannelConfig());
     }
 }

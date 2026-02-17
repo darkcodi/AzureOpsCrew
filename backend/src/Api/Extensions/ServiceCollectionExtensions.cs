@@ -15,25 +15,11 @@ namespace AzureOpsCrew.Api.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddCosmosSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
-    {
-        services.Configure<CosmosSettings>(configuration.GetSection(configurationKey));
-        services.AddOptions<CosmosSettings>()
-            .Validate(settings =>
-            {
-                return !string.IsNullOrEmpty(settings.AccountEndpoint) &&
-                       !string.IsNullOrEmpty(settings.AccountKey) &&
-                       !string.IsNullOrEmpty(settings.DatabaseName);
-            }, "Cosmos DB settings are not properly configured. Please double-check the configuration.")
-            .ValidateOnStart();
-        return services;
-    }
-
     public static IServiceCollection AddAiSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
     {
         services.Configure<AiSettings>(configuration.GetSection(configurationKey));
         services.AddOptions<AiSettings>()
-            .Validate(settings => settings.IsValid(), 
+            .Validate(settings => settings.IsValid(),
                 "AI settings are not properly configured. Please double-check the configuration.")
             .ValidateOnStart();
         return services;
@@ -51,36 +37,6 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static void AddEFCoreCosmosDb(this IServiceCollection services)
-    {
-        services.AddDbContext<AzureOpsCrewContext>((sp, options) =>
-        {
-            var cosmosSettings = sp.GetRequiredService<IOptions<CosmosSettings>>().Value;
-            options.UseCosmos(
-                cosmosSettings.AccountEndpoint!,
-                cosmosSettings.AccountKey!,
-                cosmosSettings.DatabaseName!,
-                cosmosOptions =>
-                {
-                    if (cosmosSettings.DisableSslValidation)
-                    {
-                        cosmosOptions.HttpClientFactory(() =>
-                        {
-                            var handler = new HttpClientHandler();
-                            handler.ServerCertificateCustomValidationCallback =
-                                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-                            return new HttpClient(handler);
-                        });
-                    }
-
-                    if (Enum.TryParse<Microsoft.Azure.Cosmos.ConnectionMode>(cosmosSettings.ConnectionMode, true, out var mode))
-                    {
-                        cosmosOptions.ConnectionMode(mode);
-                    }
-                });
-        });
-    }
-
     public static void AddEFCoreSqliteDb(this IServiceCollection services)
     {
         services.AddDbContext<AzureOpsCrewContext>((sp, options) =>
@@ -95,20 +51,11 @@ public static class ServiceCollectionExtensions
         var provider = configuration["DatabaseProvider"];
         Log.Information("Configuring database provider: {DbProvider}", provider);
 
-        if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-        {
-            services.AddSQLiteSettings(configuration, "Sqlite");
-            services.AddEFCoreSqliteDb();
-        }
-        else if (string.Equals(provider, "CosmosDb", StringComparison.OrdinalIgnoreCase))
-        {
-            services.AddCosmosSettings(configuration, "CosmosDb");
-            services.AddEFCoreCosmosDb();
-        }
-        else
-        {
-            throw new InvalidOperationException($"Unknown DB provider '{provider}'.");
-        }
+        if (!string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Only SQLite is supported. Unknown DB provider '{provider}'.");
+
+        services.AddSQLiteSettings(configuration, "Sqlite");
+        services.AddEFCoreSqliteDb();
     }
 
     public static void AddIChatClient(this IServiceCollection services)

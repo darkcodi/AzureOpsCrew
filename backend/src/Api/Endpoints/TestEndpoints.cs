@@ -20,22 +20,6 @@ namespace AzureOpsCrew.Api.Endpoints
             })
                 .Produces(200, typeof(object));
 
-            group.MapGet("/cosmos-health", async (AzureOpsCrewContext context, CancellationToken cancellationToken) =>
-            {
-                try
-                {
-                    await context.Set<Agent>().CountAsync(cancellationToken);
-                    return Results.Ok(new { status = "healthy", database = "cosmos" });
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "Cosmos test failed");
-                    return Results.StatusCode(503);
-                }
-            })
-                .Produces(200, typeof(object))
-                .Produces(503);
-
             group.MapGet("/agent", async (IChatClient chatClient) =>
             {
                 try

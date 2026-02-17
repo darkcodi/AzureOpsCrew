@@ -19,31 +19,14 @@ public static class ServiceProviderExtensions
         Log.Information("Database migrations completed in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
     }
 
-    public static async Task RunEnsureEFCoreCosmosDbCreated(this IServiceProvider provider)
-    {
-        // Measure the time taken to ensure the database is created
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        Log.Information("Starting database creation check...");
-        using (var scope = provider.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
-            await context.Database.EnsureCreatedAsync();
-        }
-        stopwatch.Stop();
-        Log.Information("Database creation check completed in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
-    }
-
     public static async Task RunDbSetup(this IServiceProvider provider, IConfiguration configuration)
     {
         var dbProvider = configuration["DatabaseProvider"];
         Log.Information("Running migrations for database provider: {DbProvider}", dbProvider);
 
-        if (string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-            await provider.RunSqlMigrations();
-        else if (string.Equals(dbProvider, "CosmosDb", StringComparison.OrdinalIgnoreCase))
-            await provider.RunEnsureEFCoreCosmosDbCreated();
-        else
-            throw new InvalidOperationException($"Unknown DB provider '{dbProvider}'.");
-    }
+        if (!string.Equals(dbProvider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Only SQLite is supported. Unknown DB provider '{dbProvider}'.");
 
+        await provider.RunSqlMigrations();
+    }
 }
