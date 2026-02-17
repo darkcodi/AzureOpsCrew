@@ -12,6 +12,7 @@ import { EventType } from "@ag-ui/core"
 interface ChannelAreaProps {
   channel: Channel
   allAgents: Agent[]
+  displayName: string
   onUpdateChannel: (channel: Channel) => void
   onAddAgent: (agent: Agent) => void
   onUpdateAgent: (agent: Agent) => void
@@ -22,6 +23,7 @@ interface ChannelAreaProps {
 export function ChannelArea({
   channel,
   allAgents,
+  displayName,
   onUpdateChannel,
   onAddAgent,
   onUpdateAgent,
@@ -257,6 +259,7 @@ export function ChannelArea({
           allAgents={allAgents}
           activeAgentIds={channel.agentIds}
           streamingAgentId={streamingAgentId}
+          displayName={displayName}
           onToggleAgent={handleToggleAgent}
           onOpenInDM={onOpenInDM}
           onKickMember={handleKickMember}

@@ -1,4 +1,4 @@
-﻿#pragma warning disable CS8618
+#pragma warning disable CS8618
 
 namespace AzureOpsCrew.Domain.Agents
 {
@@ -8,12 +8,12 @@ namespace AzureOpsCrew.Domain.Agents
         {
         }
 
-        public Agent(Guid id, int clientId, AgentInfo info, Provider provider, string providerAgentId, string color)
+        public Agent(Guid id, int clientId, AgentInfo info, Guid providerId, string providerAgentId, string color)
         {
             Id = id;
             ClientId = clientId;
             Info = info;
-            Provider = provider;
+            ProviderId = providerId;
             ProviderAgentId = providerAgentId;
             Color = color;
         }
@@ -26,10 +26,17 @@ namespace AzureOpsCrew.Domain.Agents
 
         public AgentInfo Info { get; private set; }
 
-        public Provider Provider { get; private set; }
+        public Guid ProviderId { get; private set; }
 
         public string Color { get; private set; } = "#43b581";
 
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
+
+        public void Update(AgentInfo info, Guid providerId, string color)
+        {
+            Info = info;
+            ProviderId = providerId;
+            Color = color ?? "#43b581";
+        }
     }
 }

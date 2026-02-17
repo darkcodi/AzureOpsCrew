@@ -12,6 +12,7 @@ interface DirectMessagesViewProps {
   activeDMId: string | null
   setActiveDMId: (id: string | null) => void
   agents: Agent[]
+  displayName: string
   pendingDMMessage?: string | null
   onClearPendingDMMessage?: () => void
 }
@@ -20,6 +21,7 @@ export function DirectMessagesView({
   activeDMId,
   setActiveDMId,
   agents,
+  displayName,
   pendingDMMessage = null,
   onClearPendingDMMessage,
 }: DirectMessagesViewProps) {
@@ -64,6 +66,7 @@ export function DirectMessagesView({
         agents={agents}
         activeId={activeDMId}
         selectedCardId={selectedCardId}
+        displayName={displayName}
         onSelect={handleSelectDM}
       />
       <DirectMessagesArea
@@ -78,6 +81,7 @@ export function DirectMessagesView({
         <DirectMessagesRightPane
           selectedCardId={selectedCardId}
           agents={agents}
+          displayName={displayName}
         />
       )}
     </>

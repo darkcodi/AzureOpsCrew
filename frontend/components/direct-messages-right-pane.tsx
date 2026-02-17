@@ -23,6 +23,7 @@ interface DirectMessagesRightPaneProps {
   /** Agent id or human id (e.g. "user", "human:alex-c"); null to show nothing. */
   selectedCardId: string | null
   agents: Agent[]
+  displayName: string
 }
 
 function AgentCard({ agent }: { agent: Agent }) {
@@ -192,6 +193,7 @@ function HumanCard({
 export function DirectMessagesRightPane({
   selectedCardId,
   agents,
+  displayName,
 }: DirectMessagesRightPaneProps) {
   if (!selectedCardId) {
     return (
@@ -215,7 +217,7 @@ export function DirectMessagesRightPane({
         style={{ backgroundColor: "hsl(228, 7%, 14%)" }}
       >
         <HumanCard
-          name={selectedHuman.name}
+          name={selectedHuman.id === HUMAN_ID ? displayName : selectedHuman.name}
           status={selectedHuman.status}
           description={
             selectedHuman.id === HUMAN_ID

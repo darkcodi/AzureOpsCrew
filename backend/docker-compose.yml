@@ -7,13 +7,12 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=80
-      - AzureOpenAI__Endpoint=https://azureopscrewglobfoundry.cognitiveservices.azure.com
-      - AzureOpenAI__ApiKey=${AZURE_OPENAI_API_KEY}
-      - AzureOpenAI__Model=gpt-5-2-chat
+      - ASPNETCORE_URLS=http://*:80
       - DatabaseProvider=Sqlite
       - Sqlite__DataSource=Data Source=azureopscrew.db
       - SqlServer__ConnectionString=Server=sqlserver;Database=AzureOpsCrew;User Id=sa;Password=YourStrong@Password;TrustServerCertificate=True;
       - EnableSeeding=true
+      - SeedingProviderKey=${AZURE_OPENAI_API_KEY}
     ports:
       - "42100:80"
     restart: on-failure

@@ -19,9 +19,6 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Use Serilog
-    builder.Host.UseSerilog();
-
     // Configure app settings with environment variables as highest priority
     builder.Host.ConfigureAppConfiguration((context, config) =>
     {
@@ -33,8 +30,12 @@ try
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json",
                 optional: true, reloadOnChange: true)
+            .AddUserSecrets(typeof(Program).Assembly)
             .AddEnvironmentVariables();
     });
+
+    // Use Serilog
+    builder.Host.UseSerilog();
 
     // Enable OpenAPI/Swagger
     builder.Services.AddOpenApi();
@@ -51,10 +52,8 @@ try
     });
 
     // Configure settings and database
-    builder.Services.AddAiSettings(builder.Configuration, "AzureOpenAI");
     builder.Services.AddDatabase(builder.Configuration);
-    builder.Services.AddAgentManagements();
-    builder.Services.AddIChatClient();
+    builder.Services.AddProviderServices();
 
     // Configure AG-UI
     builder.Services.AddHttpClient();
@@ -70,9 +69,6 @@ try
     // Log configuration settings at startup
     if (app.Environment.IsDevelopment())
     {
-        var aiSettings = app.Services.GetRequiredService<IOptions<AiSettings>>().Value;
-        Log.Information("AI Settings: {AiSettings}", JsonConvert.SerializeObject(aiSettings));
-
         var provider = builder.Configuration["DatabaseProvider"];
         if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
         {
@@ -107,10 +103,11 @@ try
     app.MapTestEndpoints();
     app.MapAgentEndpoints();
     app.MapChannelEndpoints();
+    app.MapProviderEndpoints();
 
     app.MapAllAgUi();
 
-    await app.Services.RunDbSetup(builder.Configuration);
+    await app.Services.RunDbSetup();
     await app.Services.RunSeeding(builder.Configuration);
 
     app.Run();

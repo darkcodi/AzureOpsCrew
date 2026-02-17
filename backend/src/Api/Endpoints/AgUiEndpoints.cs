@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
 using AzureOpsCrew.Api.Extensions;
+using AzureOpsCrew.Infrastructure.Ai.Providers;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
@@ -9,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using OpenAI;
 using Serilog;
 
 namespace AzureOpsCrew.Api.Endpoints;
@@ -23,7 +23,7 @@ public static class ChannelAgUiEndpoints
             "use them proactively to present information visually instead of plain text. " +
             "For example, show pipeline stages as a visual card, display work items in a list, or present metrics in a dashboard-style card.";
 
-        app.MapPost("/api/agents/{id}/agui", async ([FromRoute(Name = "id")] Guid agentId, [FromBody] RunAgentInput? input, OpenAIClient openIdClient, AzureOpsCrewContext dbContext, HttpContext context, CancellationToken cancellationToken) =>
+        app.MapPost("/api/agents/{id}/agui", async ([FromRoute(Name = "id")] Guid agentId, [FromBody] RunAgentInput? input, IProviderServiceFactory providerFactory, AzureOpsCrewContext dbContext, HttpContext context, CancellationToken cancellationToken) =>
         {
             if (input is null) return Results.BadRequest();
             Log.Information("Received AG-UI event for agent with id {AgentId} with threadId {ThreadId} and runId {RunId}", agentId, input.ThreadId, input.RunId);
@@ -59,11 +59,20 @@ public static class ChannelAgUiEndpoints
                 Log.Warning("Unknown agent with id: {AgentId}", agentId);
                 return Results.BadRequest($"Unknown agent with id: {agentId}");
             }
-
             Log.Information("Found agent {AgentId}", agent.Id);
 
+            // Find Provider
+            var provider = dbContext.Set<Domain.Providers.Provider>().SingleOrDefault(p => p.Id == agent.ProviderId);
+            if (provider is null)
+            {
+                Log.Warning("Unknown provider with id: {ProviderId} for agent {AgentId}", agent.ProviderId, agent.Id);
+                return Results.BadRequest($"Unknown provider with id: {agent.ProviderId}");
+            }
+            Log.Information("Found provider {ProviderId} for agent {AgentId}", provider.Id, agent.Id);
+
             // Create Ai Agent
-            var chatClient = openIdClient.GetChatClient(agent.Info.Model).AsIChatClient();
+            var providerService = providerFactory.GetService(provider.ProviderType);
+            var chatClient = providerService.CreateChatClient(provider, agent.Info.Model, cancellationToken);
 
             var aiAgent = chatClient.AsAIAgent(
                 name: agent.Info.Name,
@@ -90,7 +99,7 @@ public static class ChannelAgUiEndpoints
         app.MapPost("/api/channels/{id:guid}/agui", async (
             [FromRoute(Name = "id")] Guid channelId,
             [FromBody] RunAgentInput? input,
-            OpenAIClient openAiClient,
+            IProviderServiceFactory providerFactory,
             AzureOpsCrewContext dbContext,
             HttpContext http,
             CancellationToken cancellationToken) =>
@@ -119,12 +128,25 @@ public static class ChannelAgUiEndpoints
                 .ToListAsync(cancellationToken);
 
             if (agents.Count != agendIds.Count)
-                return Results.BadRequest($"Some agents was not found.");
+                return Results.BadRequest("Some agents was not found.");
+
+            var providerIds = agents.Select(a => a.ProviderId).Distinct().ToList();
+            var providers = await dbContext.Providers
+                .Where(p => providerIds.Contains(p.Id))
+                .ToListAsync(cancellationToken);
+            if (providers.Count != providerIds.Count)
+                return Results.BadRequest("Some providers was not found.");
 
             // 2) Create internal agents
             //WARNING: ChatClientAgentRunOptions are ignored from input !!! We should keep the context to ourselves
             var internalAgents = agents
-                .Select(a => ChannelAgUiFactory.CreateChannelAgent(openAiClient, a, clientTools, input))
+                .Select(a =>
+                {
+                    var provider = providers.Single(p => p.Id == a.ProviderId);
+                    var providerService = providerFactory.GetService(provider.ProviderType);
+                    var chatClient = providerService.CreateChatClient(provider, a.Info.Model, cancellationToken);
+                    return ChannelAgUiFactory.CreateChannelAgent(chatClient, a, clientTools, input);
+                })
                 .ToList();
 
             // 3) Build workflow -> workflow agent
@@ -206,7 +228,7 @@ public static class ChannelAgUiFactory
     }
 
     public static AIAgent CreateChannelAgent(
-        OpenAIClient openAiClient,
+        IChatClient chatClient,
         Domain.Agents.Agent agentEntity,
         IReadOnlyList<AITool>? clientTools,
         RunAgentInput input)
@@ -215,8 +237,6 @@ public static class ChannelAgUiFactory
             " When you have tools available (showPipelineStatus, showWorkItems, showResourceInfo, showDeployment, showMetrics), " +
             "use them proactively to present information visually instead of plain text. " +
             "For example, show pipeline stages as a visual card, display work items in a list, or present metrics in a dashboard-style card.";
-
-        var chatClient = openAiClient.GetChatClient(agentEntity.Info.Model).AsIChatClient();
 
         // Key: set tools/properties here, not via RunOptions (because workflow.AsAgent may not propagate them)
         var options = new ChatClientAgentOptions

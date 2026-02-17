@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { Agent } from "@/lib/agents"
 import { X, Plus, Pencil, Trash2, ChevronLeft, Save, Loader2 } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -14,16 +14,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-const availableModels = [
-  { id: "gpt-5-2-chat", name: "GPT-5.2 Chat" },
-  { id: "openai/gpt-4o-mini", name: "GPT-4o Mini" },
-  { id: "openai/gpt-4o", name: "GPT-4o" },
-  { id: "openai/gpt-4.1-mini", name: "GPT-4.1 Mini" },
-  { id: "openai/gpt-4.1", name: "GPT-4.1" },
-  { id: "anthropic/claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
-  { id: "anthropic/claude-haiku-3.5", name: "Claude Haiku 3.5" },
-  { id: "xai/grok-3-mini-fast", name: "Grok 3 Mini Fast" },
-]
+interface Provider {
+  id: string
+  name: string
+  providerType: string
+  status: string
+  selectedModels?: string[]
+  defaultModel?: string
+}
 
 interface ManageAgentsDialogProps {
   allAgents: Agent[]
@@ -33,6 +31,8 @@ interface ManageAgentsDialogProps {
   onDeleteAgent: (agentId: string) => void | Promise<void>
   /** When true, render as full-page tab content (no overlay, no close button). */
   embedded?: boolean
+  /** When true and embedded, hide the inner header (for use inside Settings). */
+  hideHeader?: boolean
 }
 
 type View = "list" | "edit" | "create"
@@ -50,6 +50,7 @@ export function ManageAgentsDialog({
   onUpdateAgent,
   onDeleteAgent,
   embedded = false,
+  hideHeader = false,
 }: ManageAgentsDialogProps) {
   const [view, setView] = useState<View>("list")
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
@@ -57,20 +58,63 @@ export function ManageAgentsDialog({
   const [isDeletingAgent, setIsDeletingAgent] = useState(false)
   const { toast } = useToast()
 
+  // Providers state
+  const [providers, setProviders] = useState<Provider[]>([])
+  const [isLoadingProviders, setIsLoadingProviders] = useState(true)
+
+  // Fetch providers on mount
+  useEffect(() => {
+    fetch("/api/providers?clientId=1")
+      .then((res) => res.json())
+      .then((data: Provider[]) => {
+        setProviders(data.filter((p) => p.status === "enabled"))
+        setIsLoadingProviders(false)
+      })
+      .catch(() => {
+        setIsLoadingProviders(false)
+      })
+  }, [])
+
   // Form state
   const [name, setName] = useState("")
-  const [model, setModel] = useState(availableModels[0].id)
+  const [model, setModel] = useState("")
   const [prompt, setPrompt] = useState("")
   const [color, setColor] = useState(agentColors[0])
+  const [providerId, setProviderId] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Derive available models from the selected provider
+  const selectedProvider = providers.find((p) => p.id === providerId)
+  const providerModels = selectedProvider?.selectedModels ?? []
+
+  // Auto-select default model when provider changes
+  useEffect(() => {
+    const provider = providers.find((p) => p.id === providerId)
+    if (!provider) return
+    const models = provider.selectedModels ?? []
+    if (provider.defaultModel && models.includes(provider.defaultModel)) {
+      setModel(provider.defaultModel)
+    } else if (models.length > 0) {
+      setModel(models[0])
+    } else {
+      setModel("")
+    }
+  }, [providerId, providers])
 
   const openCreate = () => {
     setEditingAgent(null)
     setName("")
-    setModel(availableModels[0].id)
     setPrompt("")
     setColor(agentColors[allAgents.length % agentColors.length])
+    const firstProvider = providers.length > 0 ? providers[0] : null
+    setProviderId(firstProvider?.id ?? "")
+    const models = firstProvider?.selectedModels ?? []
+    if (firstProvider?.defaultModel && models.includes(firstProvider.defaultModel)) {
+      setModel(firstProvider.defaultModel)
+    } else {
+      setModel(models[0] ?? "")
+    }
     setSaveError(null)
     setView("create")
   }
@@ -78,9 +122,14 @@ export function ManageAgentsDialog({
   const openEdit = (agent: Agent) => {
     setEditingAgent(agent)
     setName(agent.name)
-    setModel(agent.model)
     setPrompt(agent.systemPrompt)
     setColor(agent.color)
+    // Try to find the provider that has the agent's current model in its selectedModels
+    const matchingProvider = providers.find((p) =>
+      (p.selectedModels ?? []).includes(agent.model)
+    )
+    setProviderId(matchingProvider?.id ?? (providers.length > 0 ? providers[0].id : ""))
+    setModel(agent.model)
     setSaveError(null)
     setView("edit")
   }
@@ -88,6 +137,11 @@ export function ManageAgentsDialog({
   const handleSave = async () => {
     const trimmed = name.trim()
     if (!trimmed) return
+
+    if (!providerId) {
+      setSaveError("Please select a provider")
+      return
+    }
 
     setIsSaving(true)
     setSaveError(null)
@@ -103,6 +157,7 @@ export function ManageAgentsDialog({
             model,
             systemPrompt: prompt.trim() || `You are ${trimmed}, a helpful AI assistant.`,
             color,
+            providerId,
           }),
         })
 
@@ -114,16 +169,25 @@ export function ManageAgentsDialog({
         const newAgent = await response.json()
         await onAddAgent(newAgent)
       } else if (editingAgent) {
-        // For edit, still use local update for now
-        // TODO: Implement backend update endpoint
-        onUpdateAgent({
-          ...editingAgent,
-          name: trimmed,
-          avatar: trimmed[0].toUpperCase(),
-          color,
-          systemPrompt: prompt.trim() || `You are ${trimmed}, a helpful AI assistant.`,
-          model,
+        const response = await fetch(`/api/agents/${editingAgent.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: trimmed,
+            model,
+            systemPrompt: prompt.trim() || `You are ${trimmed}, a helpful AI assistant.`,
+            color,
+            providerId,
+          }),
         })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error((errorData as { error?: string }).error || "Failed to update agent")
+        }
+
+        const updatedAgent = await response.json()
+        onUpdateAgent(updatedAgent)
       }
       setView("list")
     } catch (error) {
@@ -140,36 +204,57 @@ export function ManageAgentsDialog({
       style={{ backgroundColor: embedded ? "transparent" : "hsl(228, 6%, 20%)", ...(embedded ? {} : { maxHeight: "85vh" }) }}
     >
       {/* Header */}
-      <div
-        className="flex shrink-0 items-center gap-3 px-5 py-4"
-        style={{ borderBottom: "1px solid hsl(228, 6%, 28%)" }}
-      >
-        {view !== "list" && (
+      {!(embedded && hideHeader) && (
+        <div
+          className="flex shrink-0 items-center gap-3 px-5 py-4"
+          style={{ borderBottom: "1px solid hsl(228, 6%, 28%)" }}
+        >
+          {view !== "list" && (
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className="transition-opacity hover:opacity-80"
+              style={{ color: "hsl(214, 5%, 55%)" }}
+              aria-label="Back to list"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+          <h2 className="flex-1 text-lg font-semibold" style={{ color: "hsl(0, 0%, 100%)" }}>
+            {view === "list" ? "All Agents" : view === "create" ? "New Agent" : "Edit Agent"}
+          </h2>
+          {!embedded && onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="transition-opacity hover:opacity-80"
+              style={{ color: "hsl(214, 5%, 55%)" }}
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Back button when header is hidden (e.g. Settings) and user is in create/edit */}
+      {embedded && hideHeader && view !== "list" && (
+        <div
+          className="flex shrink-0 items-center border-b px-5 py-2"
+          style={{ borderColor: "hsl(228, 6%, 28%)" }}
+        >
           <button
             type="button"
             onClick={() => setView("list")}
-            className="transition-opacity hover:opacity-80"
+            className="flex items-center gap-1.5 transition-opacity hover:opacity-80"
             style={{ color: "hsl(214, 5%, 55%)" }}
             aria-label="Back to list"
           >
             <ChevronLeft className="h-5 w-5" />
+            <span className="text-sm">Back to list</span>
           </button>
-        )}
-        <h2 className="flex-1 text-lg font-semibold" style={{ color: "hsl(0, 0%, 100%)" }}>
-          {view === "list" ? "All Agents" : view === "create" ? "New Agent" : "Edit Agent"}
-        </h2>
-        {!embedded && onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="transition-opacity hover:opacity-80"
-            style={{ color: "hsl(214, 5%, 55%)" }}
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        )}
-      </div>
+        </div>
+      )}
 
         {/* Body */}
         {view === "list" ? (
@@ -197,7 +282,7 @@ export function ManageAgentsDialog({
                       {agent.name}
                     </span>
                     <span className="truncate text-xs" style={{ color: "hsl(214, 5%, 55%)" }}>
-                      {availableModels.find((m) => m.id === agent.model)?.name ?? agent.model}
+                      {agent.model}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
@@ -288,6 +373,45 @@ export function ManageAgentsDialog({
                 </div>
               </div>
 
+              {/* Provider */}
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="agent-provider"
+                  className="text-xs font-bold uppercase tracking-wider"
+                  style={{ color: "hsl(214, 5%, 55%)" }}
+                >
+                  Provider
+                </label>
+                {isLoadingProviders ? (
+                  <div className="flex items-center gap-2 text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading providers...</span>
+                  </div>
+                ) : providers.length === 0 ? (
+                  <div className="text-sm" style={{ color: "hsl(0, 70%, 55%)" }}>
+                    No enabled providers found. Please enable a provider in Settings.
+                  </div>
+                ) : (
+                  <select
+                    id="agent-provider"
+                    value={providerId}
+                    onChange={(e) => setProviderId(e.target.value)}
+                    className="w-full appearance-none rounded-md px-3 py-2 text-sm outline-none"
+                    style={{
+                      backgroundColor: "hsl(228, 7%, 14%)",
+                      color: "hsl(210, 3%, 90%)",
+                      border: "1px solid hsl(228, 6%, 30%)",
+                    }}
+                  >
+                    {providers.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.providerType})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
               {/* LLM Model */}
               <div className="flex flex-col gap-1.5">
                 <label
@@ -297,23 +421,29 @@ export function ManageAgentsDialog({
                 >
                   LLM Model
                 </label>
-                <select
-                  id="agent-model"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="w-full appearance-none rounded-md px-3 py-2 text-sm outline-none"
-                  style={{
-                    backgroundColor: "hsl(228, 7%, 14%)",
-                    color: "hsl(210, 3%, 90%)",
-                    border: "1px solid hsl(228, 6%, 30%)",
-                  }}
-                >
-                  {availableModels.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
+                {providerModels.length === 0 ? (
+                  <div className="text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>
+                    {providerId ? "No selected models for this provider." : "Select a provider first."}
+                  </div>
+                ) : (
+                  <select
+                    id="agent-model"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="w-full appearance-none rounded-md px-3 py-2 text-sm outline-none"
+                    style={{
+                      backgroundColor: "hsl(228, 7%, 14%)",
+                      color: "hsl(210, 3%, 90%)",
+                      border: "1px solid hsl(228, 6%, 30%)",
+                    }}
+                  >
+                    {providerModels.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {/* System Prompt */}
@@ -344,7 +474,7 @@ export function ManageAgentsDialog({
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={!name.trim() || isSaving}
+                disabled={!name.trim() || isSaving || !providerId}
                 className="flex items-center justify-center gap-2 rounded-md py-2.5 text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-40"
                 style={{ backgroundColor: "hsl(235, 86%, 65%)", color: "#fff" }}
               >

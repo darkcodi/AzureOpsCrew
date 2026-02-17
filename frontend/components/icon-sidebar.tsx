@@ -1,6 +1,6 @@
 "use client"
 
-import { Users, Settings, MessageCircle, Hash } from "lucide-react"
+import { Settings, MessageCircle, Hash } from "lucide-react"
 import {
   Tooltip,
   TooltipContent,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-export type ViewMode = "channels" | "direct-messages" | "all-agents"
+export type ViewMode = "channels" | "direct-messages" | "settings"
 
 interface IconSidebarProps {
   viewMode: ViewMode
@@ -21,12 +21,11 @@ export function IconSidebar({
   onViewChange,
 }: IconSidebarProps) {
   const topItems = [
-    { icon: Hash, label: "Channels", onClick: () => onViewChange("channels"), active: viewMode === "channels" },
-    { icon: MessageCircle, label: "Direct messages", onClick: () => onViewChange("direct-messages"), active: viewMode === "direct-messages" },
-    { icon: Users, label: "All agents", onClick: () => onViewChange("all-agents"), active: viewMode === "all-agents" },
+    { icon: Hash, label: "Direct messages", onClick: () => onViewChange("direct-messages"), active: viewMode === "direct-messages" },
+    { icon: MessageCircle, label: "Channels", onClick: () => onViewChange("channels"), active: viewMode === "channels" },
   ]
 
-  const bottomItems = [{ icon: Settings, label: "Settings" }]
+  const isSettingsActive = viewMode === "settings"
 
   return (
     <TooltipProvider>
@@ -65,20 +64,26 @@ export function IconSidebar({
         </div>
 
         <div className="flex flex-col items-center gap-2">
-          {bottomItems.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              className="flex h-10 w-10 items-center justify-center rounded-2xl transition-all hover:rounded-xl"
-              style={{
-                backgroundColor: "hsl(228, 6%, 22%)",
-                color: "hsl(210, 3%, 80%)",
-              }}
-              aria-label={item.label}
-            >
-              <item.icon className="h-5 w-5" />
-            </button>
-          ))}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onViewChange("settings")}
+                className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-2xl transition-all hover:rounded-xl",
+                  isSettingsActive && "rounded-xl"
+                )}
+                style={{
+                  backgroundColor: isSettingsActive ? "hsl(235, 86%, 65%)" : "hsl(228, 6%, 22%)",
+                  color: isSettingsActive ? "#fff" : "hsl(210, 3%, 80%)",
+                }}
+                aria-label="Settings"
+              >
+                <Settings className="h-5 w-5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Settings</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </TooltipProvider>

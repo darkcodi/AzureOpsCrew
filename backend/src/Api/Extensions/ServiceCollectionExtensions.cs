@@ -1,68 +1,38 @@
-using Azure.AI.OpenAI;
 using AzureOpsCrew.Api.Settings;
-using AzureOpsCrew.Domain.AgentManagements;
-using AzureOpsCrew.Infrastructure.Ai.AgentManagements;
-using AzureOpsCrew.Infrastructure.Ai.AgentManagements.Microsoft;
+using AzureOpsCrew.Domain.Providers;
+using AzureOpsCrew.Infrastructure.Ai.Providers;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Options;
-using OpenAI;
-using System.ClientModel;
+using AzureOpsCrew.Infrastructure.Db.Migrations;
+using FluentMigrator.Runner;
 using Serilog;
 
 namespace AzureOpsCrew.Api.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddAiSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
+    public static SQLiteSettings AddSqliteSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
     {
-        services.Configure<AiSettings>(configuration.GetSection(configurationKey));
-        services.AddOptions<AiSettings>()
-            .Validate(settings => settings.IsValid(),
-                "AI settings are not properly configured. Please double-check the configuration.")
-            .ValidateOnStart();
-        return services;
-    }
+        var settings = configuration.GetSection(configurationKey).Get<SQLiteSettings>() ?? new SQLiteSettings();
 
-    public static IServiceCollection AddSQLiteSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
-    {
+        // Validate the settings immediately and throw an exception if invalid
+        if (string.IsNullOrEmpty(settings.DataSource)) throw new InvalidOperationException($"{configurationKey}__DataSource is required.");
+
         services.Configure<SQLiteSettings>(configuration.GetSection(configurationKey));
-        services.AddOptions<SQLiteSettings>()
-            .Validate(settings =>
-            {
-                return !string.IsNullOrEmpty(settings.DataSource);
-            }, "SQLite settings are not properly configured. Please double-check the configuration.")
-            .ValidateOnStart();
-        return services;
+        services.AddOptions<SQLiteSettings>();
+        return settings;
     }
 
-    public static void AddEFCoreSqliteDb(this IServiceCollection services)
+    public static SqlServerSettings AddSqlServerSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
     {
-        services.AddDbContext<AzureOpsCrewContext>((sp, options) =>
-        {
-            var sqliteSettings = sp.GetRequiredService<IOptions<SQLiteSettings>>().Value;
-            options.UseSqlite(sqliteSettings.DataSource!);
-        });
-    }
+        var settings = configuration.GetSection(configurationKey).Get<SqlServerSettings>() ?? new SqlServerSettings();
 
-    public static IServiceCollection AddSqlServerSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
-    {
+        // Validate the settings immediately and throw an exception if invalid
+        if (string.IsNullOrEmpty(settings.ConnectionString)) throw new InvalidOperationException($"{configurationKey}__ConnectionString is required.");
+
         services.Configure<SqlServerSettings>(configuration.GetSection(configurationKey));
-        services.AddOptions<SqlServerSettings>()
-            .Validate(settings => !string.IsNullOrEmpty(settings.ConnectionString),
-                "SQL Server settings are not properly configured. Please double-check the configuration.")
-            .ValidateOnStart();
-        return services;
-    }
-
-    public static void AddEFCoreSqlServerDb(this IServiceCollection services)
-    {
-        services.AddDbContext<AzureOpsCrewContext>((sp, options) =>
-        {
-            var sqlServerSettings = sp.GetRequiredService<IOptions<SqlServerSettings>>().Value;
-            options.UseSqlServer(sqlServerSettings.ConnectionString!);
-        });
+        services.AddOptions<SqlServerSettings>();
+        return settings;
     }
 
     public static void AddDatabase(this IServiceCollection services, IConfiguration configuration)
@@ -72,13 +42,33 @@ public static class ServiceCollectionExtensions
 
         if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
         {
-            services.AddSQLiteSettings(configuration, "Sqlite");
-            services.AddEFCoreSqliteDb();
+            var sqliteSettings = services.AddSqliteSettings(configuration, "Sqlite");
+            services.AddDbContext<AzureOpsCrewContext>(options =>
+            {
+                options.UseSqlite(sqliteSettings.DataSource!);
+            });
+            services.AddFluentMigratorCore()
+                .ConfigureRunner(rb =>
+                {
+                    rb.AddSQLite()
+                        .WithGlobalConnectionString(sqliteSettings.DataSource)
+                        .ScanIn(typeof(M001_InitialCreate).Assembly).For.All();
+                });
         }
         else if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
         {
-            services.AddSqlServerSettings(configuration, "SqlServer");
-            services.AddEFCoreSqlServerDb();
+            var sqlServerSettings = services.AddSqlServerSettings(configuration, "SqlServer");
+            services.AddDbContext<AzureOpsCrewContext>(options =>
+            {
+                options.UseSqlServer(sqlServerSettings.ConnectionString!);
+            });
+            services.AddFluentMigratorCore()
+                .ConfigureRunner(rb =>
+                {
+                    rb.AddSqlServer()
+                        .WithGlobalConnectionString(sqlServerSettings.ConnectionString)
+                        .ScanIn(typeof(M001_InitialCreate).Assembly).For.All();
+                });
         }
         else
         {
@@ -86,35 +76,28 @@ public static class ServiceCollectionExtensions
         }
     }
 
-    public static void AddIChatClient(this IServiceCollection services)
+    public static void AddProviderServices(this IServiceCollection services)
     {
-        services.AddScoped<OpenAIClient>(sp =>
+        services.AddTransient<IProviderServiceFactory, ProviderServiceFactory>();
+        services.AddHttpClient<AnthropicProviderService>(client =>
         {
-            var aiSettings = sp.GetRequiredService<IOptions<AiSettings>>().Value;
-            var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
-            return new AzureOpenAIClient(
-                    new Uri(aiSettings.Endpoint!),
-                    new ApiKeyCredential(aiSettings.ApiKey!),
-                    options);
+            client.Timeout = TimeSpan.FromSeconds(30);
         });
-        services.AddSingleton<IChatClient>(sp =>
+        services.AddHttpClient<AzureFoundryProviderService>(client =>
         {
-            var aiSettings = sp.GetRequiredService<IOptions<AiSettings>>().Value;
-            var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
-            var chatClient = new AzureOpenAIClient(
-                    new Uri(aiSettings.Endpoint!),
-                    new ApiKeyCredential(aiSettings.ApiKey!),
-                    options)
-                .GetChatClient(aiSettings.Model!);
-            return chatClient.AsIChatClient();
+            client.Timeout = TimeSpan.FromSeconds(30);
         });
-    }
-
-    public static void AddAgentManagements(this IServiceCollection services)
-    {
-        services.AddTransient<IAgentFactory, AgentFactory>()
-            .AddTransient<Local0AgentFactory>()
-            .AddTransient<Local1AgentFactory>()
-            .AddTransient<MicrosoftFoundryAgentFactory>();
+        services.AddHttpClient<OllamaProviderService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddHttpClient<OpenAIProviderService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddHttpClient<OpenRouterProviderService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
     }
 }

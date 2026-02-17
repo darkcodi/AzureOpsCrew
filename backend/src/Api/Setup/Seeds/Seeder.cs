@@ -1,6 +1,6 @@
-﻿using Azure.Core;
-using AzureOpsCrew.Domain.Agents;
+﻿using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
+using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,15 +9,24 @@ namespace AzureOpsCrew.Api.Setup.Seeds
     public class Seeder
     {
         private readonly AzureOpsCrewContext _context;
+        private readonly IConfiguration _configuration;
 
-        public Seeder(AzureOpsCrewContext context)
+        public Seeder(AzureOpsCrewContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         public async Task Seed()
         {
             const int clientId = 1;
+
+            var providerId = Guid.Parse("5f4e3d10-0123-4000-9abc-def123456789");
+            var provider = new Provider(providerId, clientId,
+                name: "Azure OpenAI", ProviderType.AzureFoundry, apiKey: _configuration["SeedingProviderKey"],
+                apiEndpoint: "https://azureopscrewglobfoundry.openai.azure.com/",
+                selectedModels: "[\"gpt-5-2-chat\"]", defaultModel: "gpt-5-2-chat");
+            await AddProviderIfNotExists(provider);
 
             var managerId = Guid.Parse("6a5d8a20-1234-4000-a1b2-c3d4e5f6a7b8");
             var azDevOpsId = Guid.Parse("7b6e9b30-2345-4111-b2c3-d4e5f6a7b8c9");
@@ -32,9 +41,9 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                         "gpt-5-2-chat")
                         {
                             Description = "Helps with planning, priorities, resource allocation, team coordination, and delivery",
-                            AvaliableTools = Array.Empty<AgentTool>()
+                            AvailableTools = Array.Empty<AgentTool>()
                         },
-                    Provider.Local0, "manager", "#43b581"
+                    provider.Id, "manager", "#43b581"
                 ),
 
                 new Agent(
@@ -45,9 +54,9 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                         "gpt-5-2-chat")
                         {
                             Description = "Expert in Azure DevOps pipelines, CI/CD, repos, boards, artifacts, and release management",
-                            AvaliableTools = Array.Empty<AgentTool>()
+                            AvailableTools = Array.Empty<AgentTool>()
                         },
-                    Provider.Local0, "azure-devops", "#0078d4"),
+                    provider.Id, "azure-devops", "#0078d4"),
 
                 new Agent(azDevId, clientId,
                     new AgentInfo(
@@ -56,9 +65,9 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                         "gpt-5-2-chat")
                         {
                             Description = "Expert in building and deploying apps on Azure: App Service, Functions, Container Apps, AKS, and more",
-                            AvaliableTools = Array.Empty<AgentTool>()
+                            AvailableTools = Array.Empty<AgentTool>()
                         },
-                    Provider.Local0, "azure-dev", "#00bcf2"
+                    provider.Id, "azure-dev", "#00bcf2"
                 )
             };
 
@@ -72,10 +81,19 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 AgentIds = agents.Select(a => a.Id.ToString()).ToArray(),
                 DateCreated = DateTime.UtcNow
             };
-
             await AddChannelIfNotExists(channel);
 
             await _context.SaveChangesAsync();
+        }
+
+        private async Task AddProviderIfNotExists(Provider provider)
+        {
+            var exists = await _context.Set<Provider>()
+                .AsNoTracking()
+                .AnyAsync(p => p.Id == provider.Id);
+
+            if (!exists)
+                _context.Add(provider);
         }
 
         private async Task AddAgentIfNotExists(Agent agent)

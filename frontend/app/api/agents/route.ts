@@ -14,7 +14,7 @@ interface BackendAgent {
     prompt: string
     model: string
     description: string | null
-    avaliableTools: string[]
+    availableTools: string[]
   }
   provider: number
   color: string

@@ -1,5 +1,4 @@
-﻿using AzureOpsCrew.Api.Endpoints.Dtos.Agents;
-using AzureOpsCrew.Domain.AgentManagements;
+using AzureOpsCrew.Api.Endpoints.Dtos.Agents;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Infrastructure.Db;
@@ -14,15 +13,15 @@ namespace AzureOpsCrew.Api.Endpoints
             var group = routeBuilder.MapGroup("/api/agents")
                 .WithTags("Agents");
 
-            group.MapPost("/create", async (CreateAgentBodyDto body, IAgentFactory agentFactory,AzureOpsCrewContext context, CancellationToken cancellationToken) =>
+            group.MapPost("/create", async (CreateAgentBodyDto body, AzureOpsCrewContext context, CancellationToken cancellationToken) =>
             {
-                var providerAgentId = await agentFactory.Create(body.Provider, body.Info!, cancellationToken);
+                var providerAgentId = Guid.NewGuid().ToString("D");
 
                 var agent = new Agent(
                     Guid.NewGuid(),
                     body.ClientId,
                     body.Info!,
-                    body.Provider,
+                    body.ProviderId,
                     providerAgentId,
                     body.Color
                 );
@@ -55,6 +54,30 @@ namespace AzureOpsCrew.Api.Endpoints
                 return found is null ? Results.NotFound() : Results.Ok(found);
             })
             .Produces<Agent>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound);
+
+            group.MapPut("/{id}", async (Guid id, UpdateAgentBodyDto body, AzureOpsCrewContext context, CancellationToken cancellationToken) =>
+            {
+                var found = await context.Set<Agent>()
+                    .SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+                if (found is null)
+                {
+                    return Results.NotFound();
+                }
+
+                if (body.Info is null)
+                {
+                    return Results.BadRequest("Info is required");
+                }
+
+                found.Update(body.Info, body.ProviderId, body.Color);
+                await context.SaveChangesAsync(cancellationToken);
+
+                return Results.Ok(found);
+            })
+            .Produces<Agent>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound);
 
             group.MapDelete("/{id}", async (Guid id, AzureOpsCrewContext context, CancellationToken cancellationToken) =>

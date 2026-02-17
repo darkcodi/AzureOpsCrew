@@ -39,16 +39,14 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
 
             infoBuilder.Property(i => i.Description);
 
-            infoBuilder.Property(i => i.AvaliableTools)
+            infoBuilder.Property(i => i.AvailableTools)
                        .HasConversion(
                            v => v == null ? null : string.Join(',', v.Select(x => x.ToString())),
                            s => (string.IsNullOrEmpty(s) || s == "[]") ? System.Array.Empty<AgentTool>() : s.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => Enum.Parse<AgentTool>(x)).ToArray());
         });
 
-        builder.Property(a => a.Provider)
-               .HasConversion(
-                   p => p.ToString(),
-                   s => Enum.Parse<Provider>(s));
+        builder.Property(a => a.ProviderId)
+               .IsRequired();
 
         builder.Property(a => a.Color)
                .IsRequired()
