@@ -21,8 +21,8 @@ export function IconSidebar({
   onViewChange,
 }: IconSidebarProps) {
   const topItems = [
-    { icon: Hash, label: "Channels", onClick: () => onViewChange("channels"), active: viewMode === "channels" },
-    { icon: MessageCircle, label: "Direct messages", onClick: () => onViewChange("direct-messages"), active: viewMode === "direct-messages" },
+    { icon: Hash, label: "Direct messages", onClick: () => onViewChange("direct-messages"), active: viewMode === "direct-messages" },
+    { icon: MessageCircle, label: "Channels", onClick: () => onViewChange("channels"), active: viewMode === "channels" },
   ]
 
   const isSettingsActive = viewMode === "settings"
