@@ -120,7 +120,7 @@ public sealed class AzureFoundryProviderService : IProviderService
             .ToArray();
     }
 
-    public async Task<IChatClient> CreateChatClientAsync(Provider config, string model, CancellationToken cancellationToken)
+    public IChatClient CreateChatClient(Provider config, string model, CancellationToken cancellationToken)
     {
         var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
         var chatClient = new AzureOpenAIClient(

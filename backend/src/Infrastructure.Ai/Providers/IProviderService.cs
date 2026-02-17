@@ -7,5 +7,5 @@ public interface IProviderService
 {
     Task<TestConnectionResult> TestConnectionAsync(Provider config, CancellationToken cancellationToken);
     Task<ProviderModelInfo[]> ListModelsAsync(Provider config, CancellationToken cancellationToken);
-    Task<IChatClient> CreateChatClientAsync(Provider config, string model, CancellationToken cancellationToken);
+    IChatClient CreateChatClient(Provider config, string model, CancellationToken cancellationToken);
 }

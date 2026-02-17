@@ -111,7 +111,7 @@ public sealed class OllamaProviderService : IProviderService
             .ToArray();
     }
 
-    public async Task<IChatClient> CreateChatClientAsync(Provider config, string model, CancellationToken cancellationToken)
+    public IChatClient CreateChatClient(Provider config, string model, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
     }
