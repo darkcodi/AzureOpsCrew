@@ -1,6 +1,9 @@
+using System.ClientModel;
 using AzureOpsCrew.Domain.Providers;
 using System.Diagnostics;
 using System.Text.Json;
+using Azure.AI.OpenAI;
+using Microsoft.Extensions.AI;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Providers;
 
@@ -115,5 +118,16 @@ public sealed class AzureFoundryProviderService : IProviderService
                 m.GetProperty("id").GetString()!,
                 m.GetProperty("id").GetString()!))
             .ToArray();
+    }
+
+    public async Task<IChatClient> CreateChatClientAsync(Provider config, string model, CancellationToken cancellationToken)
+    {
+        var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
+        var chatClient = new AzureOpenAIClient(
+                new Uri(config.ApiEndpoint!),
+                new ApiKeyCredential(config.ApiKey!),
+                options)
+            .GetChatClient(model);
+        return chatClient.AsIChatClient();
     }
 }

@@ -1,5 +1,4 @@
-﻿using AzureOpsCrew.Api.Settings;
-using AzureOpsCrew.Domain.Agents;
+﻿using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Infrastructure.Db;
@@ -10,12 +9,10 @@ namespace AzureOpsCrew.Api.Setup.Seeds
     public class Seeder
     {
         private readonly AzureOpsCrewContext _context;
-        private readonly AiSettings _aiSettings;
 
-        public Seeder(AzureOpsCrewContext context, AiSettings aiSettings)
+        public Seeder(AzureOpsCrewContext context)
         {
             _context = context;
-            _aiSettings = aiSettings;
         }
 
         public async Task Seed()
@@ -24,7 +21,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
 
             var providerId = Guid.Parse("5f4e3d10-0123-4000-9abc-def123456789");
             var provider = new Provider(providerId, clientId,
-                name: "Azure OpenAI", ProviderType.AzureFoundry, _aiSettings.ApiKey,
+                name: "Azure OpenAI", ProviderType.AzureFoundry, apiKey: "YOUR_API_KEY",
                 apiEndpoint: "https://azureopscrewglobfoundry.openai.azure.com/",
                 selectedModels: "[\"gpt-5-2-chat\"]", defaultModel: "gpt-5-2-chat");
             await AddProviderIfNotExists(provider);

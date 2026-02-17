@@ -52,9 +52,7 @@ try
     });
 
     // Configure settings and database
-    builder.Services.AddAiSettings(builder.Configuration, "AzureOpenAI");
     builder.Services.AddDatabase(builder.Configuration);
-    builder.Services.AddIChatClient();
     builder.Services.AddProviderServices();
 
     // Configure AG-UI
@@ -71,9 +69,6 @@ try
     // Log configuration settings at startup
     if (app.Environment.IsDevelopment())
     {
-        var aiSettings = app.Services.GetRequiredService<IOptions<AiSettings>>().Value;
-        Log.Information("AI Settings: {AiSettings}", JsonConvert.SerializeObject(aiSettings));
-
         var provider = builder.Configuration["DatabaseProvider"];
         if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
         {

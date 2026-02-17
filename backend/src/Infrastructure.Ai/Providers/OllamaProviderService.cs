@@ -1,6 +1,9 @@
+using System.ClientModel;
 using AzureOpsCrew.Domain.Providers;
 using System.Diagnostics;
 using System.Text.Json;
+using Azure.AI.OpenAI;
+using Microsoft.Extensions.AI;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Providers;
 
@@ -106,5 +109,10 @@ public sealed class OllamaProviderService : IProviderService
                  details.TryGetProperty("context_length", out var ctx)
                     ? ctx.GetInt64() : null))
             .ToArray();
+    }
+
+    public async Task<IChatClient> CreateChatClientAsync(Provider config, string model, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
     }
 }

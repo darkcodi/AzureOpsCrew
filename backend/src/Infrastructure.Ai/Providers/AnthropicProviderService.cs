@@ -1,6 +1,7 @@
 using AzureOpsCrew.Domain.Providers;
 using System.Diagnostics;
 using System.Text.Json;
+using Microsoft.Extensions.AI;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Providers;
 
@@ -100,6 +101,11 @@ public sealed class AnthropicProviderService : IProviderService
 
         var modelsElement = doc.RootElement.GetProperty("data");
         return ParseModels(modelsElement);
+    }
+
+    public async Task<IChatClient> CreateChatClientAsync(Provider config, string model, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
     }
 
     private static ProviderModelInfo[] ParseModels(JsonElement modelsElement)

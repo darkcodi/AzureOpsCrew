@@ -1,6 +1,4 @@
-using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Infrastructure.Db;
-using Microsoft.Extensions.Options;
 using Serilog;
 
 namespace AzureOpsCrew.Api.Setup.Seeds;
@@ -20,8 +18,7 @@ public static class ServiceProviderExtensions
         using (var scope = provider.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
-            var aiSettings = scope.ServiceProvider.GetRequiredService<IOptions<AiSettings>>().Value;
-            var seeder = new Seeder(context, aiSettings);
+            var seeder = new Seeder(context);
 
             await seeder.Seed();
         }

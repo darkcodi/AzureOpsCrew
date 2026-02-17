@@ -1,6 +1,7 @@
 using AzureOpsCrew.Api.Endpoints.Dtos.Providers;
 using AzureOpsCrew.Api.Endpoints.Filters;
 using AzureOpsCrew.Domain.Providers;
+using AzureOpsCrew.Infrastructure.Ai.Providers;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 

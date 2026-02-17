@@ -1,4 +1,6 @@
-namespace AzureOpsCrew.Domain.Providers;
+using AzureOpsCrew.Domain.Providers;
+
+namespace AzureOpsCrew.Infrastructure.Ai.Providers;
 
 public interface IProviderServiceFactory
 {

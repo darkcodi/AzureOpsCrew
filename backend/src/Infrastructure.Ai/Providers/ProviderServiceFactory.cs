@@ -9,11 +9,11 @@ public sealed class ProviderServiceFactory : IProviderServiceFactory
 
     private static readonly Dictionary<ProviderType, Type> ServiceTypes = new()
     {
-        { ProviderType.OpenAI, typeof(OpenAIProviderService) },
         { ProviderType.Anthropic, typeof(AnthropicProviderService) },
+        { ProviderType.AzureFoundry, typeof(AzureFoundryProviderService) },
         { ProviderType.Ollama, typeof(OllamaProviderService) },
+        { ProviderType.OpenAI, typeof(OpenAIProviderService) },
         { ProviderType.OpenRouter, typeof(OpenRouterProviderService) },
-        { ProviderType.AzureFoundry, typeof(AzureFoundryProviderService) }
     };
 
     public ProviderServiceFactory(IServiceProvider serviceProvider)
