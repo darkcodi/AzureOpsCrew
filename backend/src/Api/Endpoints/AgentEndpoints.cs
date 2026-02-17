@@ -1,5 +1,4 @@
 ﻿using AzureOpsCrew.Api.Endpoints.Dtos.Agents;
-using AzureOpsCrew.Domain.AgentManagements;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Infrastructure.Db;
@@ -14,15 +13,15 @@ namespace AzureOpsCrew.Api.Endpoints
             var group = routeBuilder.MapGroup("/api/agents")
                 .WithTags("Agents");
 
-            group.MapPost("/create", async (CreateAgentBodyDto body, IAgentFactory agentFactory,AzureOpsCrewContext context, CancellationToken cancellationToken) =>
+            group.MapPost("/create", async (CreateAgentBodyDto body, AzureOpsCrewContext context, CancellationToken cancellationToken) =>
             {
-                var providerAgentId = await agentFactory.Create(body.Provider, body.Info!, cancellationToken);
+                var providerAgentId = Guid.NewGuid().ToString("D");
 
                 var agent = new Agent(
                     Guid.NewGuid(),
                     body.ClientId,
                     body.Info!,
-                    body.Provider,
+                    body.ProviderId,
                     providerAgentId,
                     body.Color
                 );

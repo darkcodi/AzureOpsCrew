@@ -1,6 +1,7 @@
 ﻿using Azure.Core;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
+using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +20,17 @@ namespace AzureOpsCrew.Api.Setup.Seeds
         {
             const int clientId = 1;
 
+            // Get the first available provider
+            var provider = await _context.Set<Provider>()
+                .OrderBy(p => p.DateCreated)
+                .FirstOrDefaultAsync();
+
+            if (provider == null)
+            {
+                // No provider available, cannot seed agents
+                return;
+            }
+
             var managerId = Guid.Parse("6a5d8a20-1234-4000-a1b2-c3d4e5f6a7b8");
             var azDevOpsId = Guid.Parse("7b6e9b30-2345-4111-b2c3-d4e5f6a7b8c9");
             var azDevId = Guid.Parse("8c7f0c40-3456-4222-c3d4-e5f6a7b8c9d0");
@@ -34,7 +46,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                             Description = "Helps with planning, priorities, resource allocation, team coordination, and delivery",
                             AvaliableTools = Array.Empty<AgentTool>()
                         },
-                    Provider.Local0, "manager", "#43b581"
+                    provider.Id, "manager", "#43b581"
                 ),
 
                 new Agent(
@@ -47,7 +59,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                             Description = "Expert in Azure DevOps pipelines, CI/CD, repos, boards, artifacts, and release management",
                             AvaliableTools = Array.Empty<AgentTool>()
                         },
-                    Provider.Local0, "azure-devops", "#0078d4"),
+                    provider.Id, "azure-devops", "#0078d4"),
 
                 new Agent(azDevId, clientId,
                     new AgentInfo(
@@ -58,7 +70,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                             Description = "Expert in building and deploying apps on Azure: App Service, Functions, Container Apps, AKS, and more",
                             AvaliableTools = Array.Empty<AgentTool>()
                         },
-                    Provider.Local0, "azure-dev", "#00bcf2"
+                    provider.Id, "azure-dev", "#00bcf2"
                 )
             };
 

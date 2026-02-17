@@ -53,7 +53,6 @@ try
     // Configure settings and database
     builder.Services.AddAiSettings(builder.Configuration, "AzureOpenAI");
     builder.Services.AddDatabase(builder.Configuration);
-    builder.Services.AddAgentManagements();
     builder.Services.AddIChatClient();
     builder.Services.AddProviderServices();
 

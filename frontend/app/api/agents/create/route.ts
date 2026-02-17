@@ -5,18 +5,12 @@ import type { Agent } from "@/lib/agents"
 // Defaults to localhost:5000 for local development
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
-// Provider enum values matching backend
-enum Provider {
-  Local0 = 0,
-  Local1 = 1,
-  MicrosoftFoundry = 10,
-}
-
 // Backend response structure
 interface BackendAgent {
   id: string
   providerAgentId: string
   clientId: number
+  providerId: string
   info: {
     name: string
     prompt: string
@@ -24,7 +18,6 @@ interface BackendAgent {
     description: string | null
     avaliableTools: string[]
   }
-  provider: number
   color: string
   dateCreated: string
 }
@@ -32,7 +25,7 @@ interface BackendAgent {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { name, model, systemPrompt, color } = body
+    const { name, model, systemPrompt, color, providerId } = body
 
     // Validate required fields
     if (!name?.trim()) {
@@ -42,8 +35,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    if (!providerId) {
+      return NextResponse.json(
+        { error: "Provider ID is required" },
+        { status: 400 }
+      )
+    }
+
     // Backend expects CreateAgentBodyDto structure:
-    // { info: { name, prompt, model }, clientId, provider, color }
+    // { info: { name, prompt, model }, clientId, providerId, color }
     const backendBody = {
       info: {
         name: name.trim(),
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         model,
       },
       clientId: 1, // Default client ID
-      provider: Provider.Local0, // Default provider
+      providerId, // Provider ID from request
       color: color || "#43b581", // Default color
     }
 
