@@ -3,7 +3,7 @@ using FluentMigrator;
 namespace AzureOpsCrew.Infrastructure.Db.Migrations;
 
 [Migration(2026_02_16_17_06_28, "Add ModelsCount to ProviderConfig")]
-public class M005_AddModelsCountToProviderConfig : Migration
+public class M004_AddModelsCountToProviderConfig : Migration
 {
     public override void Up()
     {

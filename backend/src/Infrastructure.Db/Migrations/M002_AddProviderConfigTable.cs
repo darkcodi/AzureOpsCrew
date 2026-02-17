@@ -3,7 +3,7 @@ using FluentMigrator;
 namespace AzureOpsCrew.Infrastructure.Db.Migrations;
 
 [Migration(2026_02_16_05_05_54, "Add ProviderConfig table")]
-public class M003_AddProviderConfigTable : Migration
+public class M002_AddProviderConfigTable : Migration
 {
     public override void Up()
     {
