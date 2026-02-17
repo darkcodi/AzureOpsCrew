@@ -19,26 +19,6 @@ namespace AzureOpsCrew.Api.Endpoints
                 return Results.Ok(new { message = "pong" });
             })
                 .Produces(200, typeof(object));
-
-            group.MapGet("/agent", async (IChatClient chatClient) =>
-            {
-                try
-                {
-                    var writer = new ChatClientAgent(chatClient,
-                        "You are a creative copywriter. Generate catchy slogans and marketing copy. Be concise and impactful.",
-                        "CopyWriter",
-                        "A creative copywriter agent");
-                    var response = await writer.RunAsync(new ChatMessage(ChatRole.User, "Test message"));
-                    return Results.Ok(new { status = "healthy", text = response.Text });
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "Agent test failed");
-                    return Results.StatusCode(503);
-                }
-            })
-            .Produces(200, typeof(object))
-            .Produces(503);
         }
     }
 }
