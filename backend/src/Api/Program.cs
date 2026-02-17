@@ -30,6 +30,7 @@ try
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json",
                 optional: true, reloadOnChange: true)
+            .AddUserSecrets(typeof(Program).Assembly)
             .AddEnvironmentVariables();
     });
 
