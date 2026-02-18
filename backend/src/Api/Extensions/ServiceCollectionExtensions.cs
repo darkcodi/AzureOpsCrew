@@ -77,7 +77,7 @@ public static class ServiceCollectionExtensions
         }
     }
 
-    public static void AddProviderServices(this IServiceCollection services)
+    public static void AddProviderFacades(this IServiceCollection services)
     {
         services.AddTransient<IProviderFacadeResolver, ProviderFacadeResolver>();
         services.AddHttpClient<AnthropicProviderFacade>(client =>

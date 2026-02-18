@@ -53,7 +53,7 @@ try
 
     // Configure settings and database
     builder.Services.AddDatabase(builder.Configuration);
-    builder.Services.AddProviderServices();
+    builder.Services.AddProviderFacades();
 
     // Configure AG-UI
     builder.Services.AddHttpClient();
