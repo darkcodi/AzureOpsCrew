@@ -1,0 +1,118 @@
+name: Build & Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        type: choice
+        options:
+          - dev
+          - prod
+        default: dev
+      deploy:
+        description: 'Deploy after build'
+        type: boolean
+        default: true
+
+env:
+  ACR_NAME: azopscrewacr2dovm8
+  ACR_SERVER: azopscrewacr2dovm8.azurecr.io
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    outputs:
+      env_name: ${{ steps.env.outputs.name }}
+      resource_group: ${{ steps.env.outputs.rg }}
+      image_tag: ${{ github.sha }}
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set environment
+        id: env
+        run: |
+          echo "name=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          echo "rg=AzureOpsCrew-${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          echo "🎯 Environment: ${{ github.event.inputs.environment }}"
+          echo "🚀 Deploy enabled: ${{ github.event.inputs.deploy }}"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: '{"clientId":"${{ secrets.AZ_CLIENT_ID }}","clientSecret":"${{ secrets.AZ_SECRET }}","subscriptionId":"${{ secrets.AZ_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZ_TENANT_ID }}"}'
+
+      - name: ACR Login
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Build & Push Backend
+        run: |
+          echo "📦 Building Backend..."
+          docker build \
+            -t ${{ env.ACR_SERVER }}/backend:${{ github.sha }} \
+            -t ${{ env.ACR_SERVER }}/backend:${{ steps.env.outputs.name }}-latest \
+            -f backend/src/Api/Dockerfile \
+            backend/
+          docker push ${{ env.ACR_SERVER }}/backend:${{ github.sha }}
+          docker push ${{ env.ACR_SERVER }}/backend:${{ steps.env.outputs.name }}-latest
+          echo "✅ Backend pushed"
+
+      - name: Build & Push Frontend
+        run: |
+          echo "📦 Building Frontend..."
+          docker build \
+            -t ${{ env.ACR_SERVER }}/frontend:${{ github.sha }} \
+            -t ${{ env.ACR_SERVER }}/frontend:${{ steps.env.outputs.name }}-latest \
+            frontend/
+          docker push ${{ env.ACR_SERVER }}/frontend:${{ github.sha }}
+          docker push ${{ env.ACR_SERVER }}/frontend:${{ steps.env.outputs.name }}-latest
+          echo "✅ Frontend pushed"
+
+      - name: Build Summary
+        run: |
+          echo "## 📦 Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ steps.env.outputs.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Backend Image:** \`${{ env.ACR_SERVER }}/backend:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend Image:** \`${{ env.ACR_SERVER }}/frontend:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.deploy == 'true' }}
+    
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: '{"clientId":"${{ secrets.AZ_CLIENT_ID }}","clientSecret":"${{ secrets.AZ_SECRET }}","subscriptionId":"${{ secrets.AZ_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZ_TENANT_ID }}"}'
+
+      - name: Deploy Backend
+        run: |
+          echo "🚀 Deploying Backend to ${{ needs.build.outputs.env_name }}..."
+          az containerapp update \
+            --name ca-azopscrew-backend-${{ needs.build.outputs.env_name }} \
+            --resource-group ${{ needs.build.outputs.resource_group }} \
+            --image ${{ env.ACR_SERVER }}/backend:${{ needs.build.outputs.image_tag }}
+          echo "✅ Backend deployed"
+
+      - name: Deploy Frontend
+        run: |
+          echo "🚀 Deploying Frontend to ${{ needs.build.outputs.env_name }}..."
+          az containerapp update \
+            --name ca-azopscrew-frontend-${{ needs.build.outputs.env_name }} \
+            --resource-group ${{ needs.build.outputs.resource_group }} \
+            --image ${{ env.ACR_SERVER }}/frontend:${{ needs.build.outputs.image_tag }}
+          echo "✅ Frontend deployed"
+
+      - name: Deploy Summary
+        run: |
+          echo "## 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          BACKEND_URL=$(az containerapp show -n ca-azopscrew-backend-${{ needs.build.outputs.env_name }} -g ${{ needs.build.outputs.resource_group }} --query properties.configuration.ingress.fqdn -o tsv)
+          FRONTEND_URL=$(az containerapp show -n ca-azopscrew-frontend-${{ needs.build.outputs.env_name }} -g ${{ needs.build.outputs.resource_group }} --query properties.configuration.ingress.fqdn -o tsv)
+          echo "**Backend:** https://$BACKEND_URL" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend:** https://$FRONTEND_URL" >> $GITHUB_STEP_SUMMARY
