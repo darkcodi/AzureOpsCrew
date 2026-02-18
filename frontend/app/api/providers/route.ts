@@ -7,7 +7,7 @@ interface BackendProviderConfig {
   clientId: number
   name: string
   providerType: number
-  apiKey: string
+  hasApiKey: boolean
   apiEndpoint: string | null
   defaultModel: string | null
   selectedModels: string | null
@@ -55,7 +55,8 @@ export async function GET(req: NextRequest) {
           providerType: typeName,
           status: p.isEnabled ? "enabled" : "disabled",
           modelsCount: p.modelsCount ?? 0,
-          apiKey: p.apiKey ?? "",
+          apiKey: "",
+          hasApiKey: p.hasApiKey ?? false,
           baseUrl: p.apiEndpoint ?? "",
           defaultModel: p.defaultModel ?? "",
           selectedModels: p.selectedModels ? JSON.parse(p.selectedModels) as string[] : [],

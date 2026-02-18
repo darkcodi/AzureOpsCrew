@@ -12,6 +12,9 @@ public record TestConnectionBodyDto
     [StringLength(500)]
     public string ApiKey { get; set; } = string.Empty;
 
+    // Optional - if provided, fetch existing provider and use its API key if ApiKey is empty
+    public Guid? ProviderId { get; set; }
+
     [Required(ErrorMessage = "ApiEndpoint is required.")]
     [StringLength(500, MinimumLength = 1, ErrorMessage = "ApiEndpoint must be between 1 and 500 characters.")]
     public string ApiEndpoint { get; set; } = string.Empty;

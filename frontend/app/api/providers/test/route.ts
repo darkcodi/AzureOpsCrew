@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       baseUrl?: string
       apiEndpoint?: string
       defaultModel?: string
+      providerId?: string
     }
     const providerType =
       PROVIDER_TYPE_FROM_NAME[body.providerType ?? ""] ?? 100
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
     const backendBody = {
       providerType,
       apiKey: body.apiKey ?? "",
+      providerId: body.providerId ?? null,
       apiEndpoint,
       defaultModel: body.defaultModel ?? null,
       name: body.name ?? null,

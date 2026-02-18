@@ -954,7 +954,13 @@ function ProvidersSection({
               label={
                 (() => {
                   const providerType = selectedProvider.providerType ?? selectedProvider.name
-                  return providerType === "Ollama (Local)" ? "API Key (optional)" : "API Key"
+                  if (providerType === "Ollama (Local)") {
+                    return "API Key (optional)"
+                  }
+                  if (selectedProvider.backendId && selectedProvider.hasApiKey) {
+                    return "New API Key (leave blank to keep existing)"
+                  }
+                  return "API Key"
                 })()
               }
               description={
@@ -1050,7 +1056,11 @@ function ProvidersSection({
                   updateProvider(selectedProvider.id, { apiKey: v })
                 }
                 type={showApiKey ? "text" : "password"}
-                placeholder="Enter API key..."
+                placeholder={
+                  selectedProvider.backendId && selectedProvider.hasApiKey
+                    ? "Enter new key only if you want to change it"
+                    : "Enter API key..."
+                }
                 rightElement={
                   <button
                     type="button"

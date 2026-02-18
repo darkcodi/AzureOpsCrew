@@ -16,6 +16,8 @@ export interface Provider {
   providerType?: string
   status: "enabled" | "disabled" | "draft"
   apiKey: string
+  /** Indicates whether the backend has a stored API key (without revealing it) */
+  hasApiKey?: boolean
   baseUrl: string
   defaultModel: string
   timeout: number
