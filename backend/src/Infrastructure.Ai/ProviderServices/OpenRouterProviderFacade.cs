@@ -4,31 +4,44 @@ using System.Diagnostics;
 using System.Text.Json;
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
+using AzureOpsCrew.Domain.ProviderServices;
 
-namespace AzureOpsCrew.Infrastructure.Ai.Providers;
+namespace AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 
-public sealed class OllamaProviderService : IProviderService
+public sealed class OpenRouterProviderFacade : IProviderFacade
 {
+    private const string DefaultEndpoint = "https://openrouter.ai/api/v1";
     private readonly HttpClient _httpClient;
 
-    public OllamaProviderService(HttpClient httpClient)
+    public OpenRouterProviderFacade(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }
 
     public async Task<TestConnectionResult> TestConnectionAsync(Provider config, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(config.ApiKey))
+        {
+            return TestConnectionResult.ValidationFailed("API key is required");
+        }
+
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
             var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
-                ? "http://localhost:11434"
-                : config.ApiEndpoint;
+                ? DefaultEndpoint
+                : config.ApiEndpoint.TrimEnd('/');
 
-            var response = await _httpClient.GetAsync(
-                $"{endpoint}/api/tags",
-                cancellationToken);
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{endpoint}/models");
+            request.Headers.Add("Authorization", $"Bearer {config.ApiKey}");
+
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                return TestConnectionResult.AuthenticationFailed("Invalid API key");
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -37,23 +50,14 @@ public sealed class OllamaProviderService : IProviderService
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
             var doc = JsonDocument.Parse(json);
-
-            if (!doc.RootElement.TryGetProperty("models", out var modelsElement))
-            {
-                stopwatch.Stop();
-                return TestConnectionResult.Successful(stopwatch.ElapsedMilliseconds, []);
-            }
+            var modelsElement = doc.RootElement.GetProperty("data");
 
             var models = modelsElement.EnumerateArray()
                 .Select(m => new ProviderModelInfo(
-                    m.GetProperty("model").GetString()!,
-                    m.GetProperty("name").GetString()!,
-                    m.TryGetProperty("details", out var details) &&
-                     details.TryGetProperty("context_length", out var ctx)
-                        ? ctx.GetInt64() : null))
+                    m.GetProperty("id").GetString()!,
+                    m.GetProperty("id").GetString()!))
                 .ToArray();
 
-            // Validate model if specified
             if (!string.IsNullOrWhiteSpace(config.DefaultModel))
             {
                 var modelExists = models.Any(m => string.Equals(
@@ -87,32 +91,35 @@ public sealed class OllamaProviderService : IProviderService
     public async Task<ProviderModelInfo[]> ListModelsAsync(Provider config, CancellationToken cancellationToken)
     {
         var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
-            ? "http://localhost:11434"
-            : config.ApiEndpoint;
+            ? DefaultEndpoint
+            : config.ApiEndpoint.TrimEnd('/');
 
-        var response = await _httpClient.GetAsync(
-            $"{endpoint}/api/tags",
-            cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{endpoint}/models");
+        request.Headers.Add("Authorization", $"Bearer {config.ApiKey}");
 
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
         var doc = JsonDocument.Parse(json);
 
-        var models = doc.RootElement.GetProperty("models");
+        var models = doc.RootElement.GetProperty("data");
 
         return models.EnumerateArray()
             .Select(m => new ProviderModelInfo(
-                m.GetProperty("model").GetString()!,
-                m.GetProperty("name").GetString()!,
-                m.TryGetProperty("details", out var details) &&
-                 details.TryGetProperty("context_length", out var ctx)
-                    ? ctx.GetInt64() : null))
+                m.GetProperty("id").GetString()!,
+                m.GetProperty("id").GetString()!))
             .ToArray();
     }
 
     public IChatClient CreateChatClient(Provider config, string model, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
+        var chatClient = new AzureOpenAIClient(
+                new Uri(config.ApiEndpoint!),
+                new ApiKeyCredential(config.ApiKey!),
+                options)
+            .GetChatClient(model);
+        return chatClient.AsIChatClient();
     }
 }

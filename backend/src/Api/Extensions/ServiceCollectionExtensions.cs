@@ -1,11 +1,12 @@
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.Providers;
-using AzureOpsCrew.Infrastructure.Ai.Providers;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using AzureOpsCrew.Infrastructure.Db.Migrations;
 using FluentMigrator.Runner;
 using Serilog;
+using AzureOpsCrew.Domain.ProviderServices;
+using AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 
 namespace AzureOpsCrew.Api.Extensions;
 
@@ -78,24 +79,24 @@ public static class ServiceCollectionExtensions
 
     public static void AddProviderServices(this IServiceCollection services)
     {
-        services.AddTransient<IProviderServiceFactory, ProviderServiceFactory>();
-        services.AddHttpClient<AnthropicProviderService>(client =>
+        services.AddTransient<IProviderFacadeResolver, ProviderFacadeResolver>();
+        services.AddHttpClient<AnthropicProviderFacade>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         });
-        services.AddHttpClient<AzureFoundryProviderService>(client =>
+        services.AddHttpClient<AzureFoundryProviderFacade>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         });
-        services.AddHttpClient<OllamaProviderService>(client =>
+        services.AddHttpClient<OllamaProviderFacade>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         });
-        services.AddHttpClient<OpenAIProviderService>(client =>
+        services.AddHttpClient<OpenAIProviderFacade>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         });
-        services.AddHttpClient<OpenRouterProviderService>(client =>
+        services.AddHttpClient<OpenRouterProviderFacade>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         });
