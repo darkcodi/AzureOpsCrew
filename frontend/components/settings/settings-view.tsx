@@ -237,6 +237,7 @@ export function SettingsView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          providerId: current.backendId ?? null,
           providerType: current.providerType ?? current.name,
           name: current.name,
           apiKey: current.apiKey,

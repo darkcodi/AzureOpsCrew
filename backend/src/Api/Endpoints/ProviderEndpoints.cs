@@ -58,10 +58,10 @@ public static class ProviderEndpoints
             await context.AddAsync(config, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
-            return Results.Created($"/api/providers/{config.Id}", config);
+            return Results.Created($"/api/providers/{config.Id}", config.ToResponseDto());
         })
         .AddEndpointFilter<ValidationFilter<CreateProviderBodyDto>>()
-        .Produces<Provider>(StatusCodes.Status201Created)
+        .Produces<ProviderResponseDto>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest);
 
         // LIST (by client)
@@ -75,9 +75,9 @@ public static class ProviderEndpoints
                 .OrderBy(p => p.DateCreated)
                 .ToListAsync(cancellationToken);
 
-            return Results.Ok(configs);
+            return Results.Ok(configs.ToResponseDtoArray());
         })
-        .Produces<Provider[]>(StatusCodes.Status200OK);
+        .Produces<ProviderResponseDto[]>(StatusCodes.Status200OK);
 
         // GET by ID
         group.MapGet("/{id}", async (
@@ -88,9 +88,9 @@ public static class ProviderEndpoints
             var found = await context.Set<Provider>()
                 .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
-            return found is null ? Results.NotFound() : Results.Ok(found);
+            return found is null ? Results.NotFound() : Results.Ok(found.ToResponseDto());
         })
-        .Produces<Provider>(StatusCodes.Status200OK)
+        .Produces<ProviderResponseDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
         // UPDATE
@@ -107,7 +107,15 @@ public static class ProviderEndpoints
             if (found is null)
                 return Results.NotFound();
 
-            found.Update(body.Name, body.ApiKey, body.ApiEndpoint, body.DefaultModel, body.IsEnabled, body.SelectedModels);
+            // Only update API key if a non-empty value is provided
+            var updateApiKey = !string.IsNullOrEmpty(body.ApiKey);
+            found.Update(
+                body.Name,
+                updateApiKey ? body.ApiKey : found.ApiKey,
+                body.ApiEndpoint,
+                body.DefaultModel,
+                body.IsEnabled,
+                body.SelectedModels);
 
             // Test connection before saving
             var service = providerServiceFactory.GetService(found.ProviderType);
@@ -134,10 +142,10 @@ public static class ProviderEndpoints
 
             await context.SaveChangesAsync(cancellationToken);
 
-            return Results.Ok(found);
+            return Results.Ok(found.ToResponseDto());
         })
         .AddEndpointFilter<ValidationFilter<UpdateProviderBodyDto>>()
-        .Produces<Provider>(StatusCodes.Status200OK)
+        .Produces<ProviderResponseDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound)
         .Produces(StatusCodes.Status400BadRequest);
 
@@ -165,17 +173,48 @@ public static class ProviderEndpoints
         group.MapPost("/test", async (
             TestConnectionBodyDto body,
             IProviderFacadeResolver providerServiceFactory,
+            AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var config = new Provider(
-                Guid.Empty,
-                0,
-                body.Name ?? "Test",
-                body.ProviderType,
-                body.ApiKey,
-                body.ApiEndpoint,
-                body.DefaultModel,
-                true);
+            Provider config;
+
+            // If providerId is supplied, fetch from database
+            if (body.ProviderId.HasValue)
+            {
+                var existing = await context.Set<Provider>()
+                    .SingleOrDefaultAsync(p => p.Id == body.ProviderId.Value, cancellationToken);
+
+                if (existing is null)
+                    return Results.NotFound("Provider not found");
+
+                // Create test config with stored key (override with body values if provided)
+                var testKey = string.IsNullOrEmpty(body.ApiKey) ? existing.ApiKey : body.ApiKey;
+                var testEndpoint = string.IsNullOrEmpty(body.ApiEndpoint) ? existing.ApiEndpoint : body.ApiEndpoint;
+                var testDefaultModel = string.IsNullOrEmpty(body.DefaultModel) ? existing.DefaultModel : body.DefaultModel;
+
+                config = new Provider(
+                    existing.Id,
+                    existing.ClientId,
+                    body.Name ?? existing.Name,
+                    existing.ProviderType,
+                    testKey,
+                    testEndpoint,
+                    testDefaultModel,
+                    true);
+            }
+            else
+            {
+                config = new Provider(
+                    Guid.Empty,
+                    0,
+                    body.Name ?? "Test",
+                    body.ProviderType,
+                    body.ApiKey,
+                    body.ApiEndpoint,
+                    body.DefaultModel,
+                    true);
+            }
+
             var service = providerServiceFactory.GetService(config.ProviderType);
             var result = await service.TestConnectionAsync(config, cancellationToken);
 
