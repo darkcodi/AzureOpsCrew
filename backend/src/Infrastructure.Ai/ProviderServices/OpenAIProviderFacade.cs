@@ -4,21 +4,22 @@ using System.Diagnostics;
 using System.Text.Json;
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
+using AzureOpsCrew.Domain.ProviderServices;
 
-namespace AzureOpsCrew.Infrastructure.Ai.Providers;
+namespace AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 
-public sealed class OpenRouterProviderService : IProviderService
+public sealed class OpenAIProviderFacade : IProviderFacade
 {
-    private const string DefaultEndpoint = "https://openrouter.ai/api/v1";
     private readonly HttpClient _httpClient;
 
-    public OpenRouterProviderService(HttpClient httpClient)
+    public OpenAIProviderFacade(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }
 
     public async Task<TestConnectionResult> TestConnectionAsync(Provider config, CancellationToken cancellationToken)
     {
+        // Validate API key
         if (string.IsNullOrWhiteSpace(config.ApiKey))
         {
             return TestConnectionResult.ValidationFailed("API key is required");
@@ -29,8 +30,8 @@ public sealed class OpenRouterProviderService : IProviderService
         try
         {
             var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
-                ? DefaultEndpoint
-                : config.ApiEndpoint.TrimEnd('/');
+                ? "https://api.openai.com/v1"
+                : config.ApiEndpoint;
 
             using var request = new HttpRequestMessage(HttpMethod.Get, $"{endpoint}/models");
             request.Headers.Add("Authorization", $"Bearer {config.ApiKey}");
@@ -57,6 +58,7 @@ public sealed class OpenRouterProviderService : IProviderService
                     m.GetProperty("id").GetString()!))
                 .ToArray();
 
+            // Validate model if specified
             if (!string.IsNullOrWhiteSpace(config.DefaultModel))
             {
                 var modelExists = models.Any(m => string.Equals(
@@ -90,8 +92,8 @@ public sealed class OpenRouterProviderService : IProviderService
     public async Task<ProviderModelInfo[]> ListModelsAsync(Provider config, CancellationToken cancellationToken)
     {
         var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
-            ? DefaultEndpoint
-            : config.ApiEndpoint.TrimEnd('/');
+            ? "https://api.openai.com/v1"
+            : config.ApiEndpoint;
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"{endpoint}/models");
         request.Headers.Add("Authorization", $"Bearer {config.ApiKey}");

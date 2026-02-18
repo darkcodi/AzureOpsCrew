@@ -4,15 +4,16 @@ using System.Diagnostics;
 using System.Text.Json;
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
+using AzureOpsCrew.Domain.ProviderServices;
 
-namespace AzureOpsCrew.Infrastructure.Ai.Providers;
+namespace AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 
-public sealed class AzureFoundryProviderService : IProviderService
+public sealed class AzureFoundryProviderFacade : IProviderFacade
 {
     private const string DefaultApiVersion = "2024-04-01-preview";
     private readonly HttpClient _httpClient;
 
-    public AzureFoundryProviderService(HttpClient httpClient)
+    public AzureFoundryProviderFacade(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }

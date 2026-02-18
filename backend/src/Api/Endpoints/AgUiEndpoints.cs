@@ -1,7 +1,7 @@
 using System.Text.Json;
 using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
 using AzureOpsCrew.Api.Extensions;
-using AzureOpsCrew.Infrastructure.Ai.Providers;
+using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
@@ -23,7 +23,7 @@ public static class ChannelAgUiEndpoints
             "use them proactively to present information visually instead of plain text. " +
             "For example, show pipeline stages as a visual card, display work items in a list, or present metrics in a dashboard-style card.";
 
-        app.MapPost("/api/agents/{id}/agui", async ([FromRoute(Name = "id")] Guid agentId, [FromBody] RunAgentInput? input, IProviderServiceFactory providerFactory, AzureOpsCrewContext dbContext, HttpContext context, CancellationToken cancellationToken) =>
+        app.MapPost("/api/agents/{id}/agui", async ([FromRoute(Name = "id")] Guid agentId, [FromBody] RunAgentInput? input, IProviderFacadeResolver providerFactory, AzureOpsCrewContext dbContext, HttpContext context, CancellationToken cancellationToken) =>
         {
             if (input is null) return Results.BadRequest();
             Log.Information("Received AG-UI event for agent with id {AgentId} with threadId {ThreadId} and runId {RunId}", agentId, input.ThreadId, input.RunId);
@@ -99,7 +99,7 @@ public static class ChannelAgUiEndpoints
         app.MapPost("/api/channels/{id:guid}/agui", async (
             [FromRoute(Name = "id")] Guid channelId,
             [FromBody] RunAgentInput? input,
-            IProviderServiceFactory providerFactory,
+            IProviderFacadeResolver providerFactory,
             AzureOpsCrewContext dbContext,
             HttpContext http,
             CancellationToken cancellationToken) =>

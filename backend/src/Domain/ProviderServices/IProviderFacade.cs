@@ -1,9 +1,9 @@
 using AzureOpsCrew.Domain.Providers;
 using Microsoft.Extensions.AI;
 
-namespace AzureOpsCrew.Infrastructure.Ai.Providers;
+namespace AzureOpsCrew.Domain.ProviderServices;
 
-public interface IProviderService
+public interface IProviderFacade
 {
     Task<TestConnectionResult> TestConnectionAsync(Provider config, CancellationToken cancellationToken);
     Task<ProviderModelInfo[]> ListModelsAsync(Provider config, CancellationToken cancellationToken);

@@ -1,4 +1,4 @@
-namespace AzureOpsCrew.Domain.Providers;
+namespace AzureOpsCrew.Domain.ProviderServices;
 
 public sealed record TestConnectionResult(
     bool Success,

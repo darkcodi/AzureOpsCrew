@@ -2,14 +2,15 @@ using AzureOpsCrew.Domain.Providers;
 using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
+using AzureOpsCrew.Domain.ProviderServices;
 
-namespace AzureOpsCrew.Infrastructure.Ai.Providers;
+namespace AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 
-public sealed class AnthropicProviderService : IProviderService
+public sealed class AnthropicProviderFacade : IProviderFacade
 {
     private readonly HttpClient _httpClient;
 
-    public AnthropicProviderService(HttpClient httpClient)
+    public AnthropicProviderFacade(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }

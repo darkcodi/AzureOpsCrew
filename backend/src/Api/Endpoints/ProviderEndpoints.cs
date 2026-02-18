@@ -1,7 +1,7 @@
 using AzureOpsCrew.Api.Endpoints.Dtos.Providers;
 using AzureOpsCrew.Api.Endpoints.Filters;
 using AzureOpsCrew.Domain.Providers;
-using AzureOpsCrew.Infrastructure.Ai.Providers;
+using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,7 +18,7 @@ public static class ProviderEndpoints
         group.MapPost("/create", async (
             CreateProviderBodyDto body,
             AzureOpsCrewContext context,
-            IProviderServiceFactory providerServiceFactory,
+            IProviderFacadeResolver providerServiceFactory,
             CancellationToken cancellationToken) =>
         {
             var config = new Provider(
@@ -98,7 +98,7 @@ public static class ProviderEndpoints
             Guid id,
             UpdateProviderBodyDto body,
             AzureOpsCrewContext context,
-            IProviderServiceFactory providerServiceFactory,
+            IProviderFacadeResolver providerServiceFactory,
             CancellationToken cancellationToken) =>
         {
             var found = await context.Set<Provider>()
@@ -164,7 +164,7 @@ public static class ProviderEndpoints
         // TEST CONNECTION (by inline config, for drafts / not-yet-saved providers) — must be before /{id}/test
         group.MapPost("/test", async (
             TestConnectionBodyDto body,
-            IProviderServiceFactory providerServiceFactory,
+            IProviderFacadeResolver providerServiceFactory,
             CancellationToken cancellationToken) =>
         {
             var config = new Provider(
@@ -195,7 +195,7 @@ public static class ProviderEndpoints
         // TEST CONNECTION (by saved provider id)
         group.MapPost("/{id}/test", async (
             Guid id,
-            IProviderServiceFactory providerServiceFactory,
+            IProviderFacadeResolver providerServiceFactory,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
@@ -223,7 +223,7 @@ public static class ProviderEndpoints
         // LIST MODELS
         group.MapGet("/{id}/models", async (
             Guid id,
-            IProviderServiceFactory providerServiceFactory,
+            IProviderFacadeResolver providerServiceFactory,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
