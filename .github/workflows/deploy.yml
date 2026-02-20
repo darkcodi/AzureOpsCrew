@@ -8,6 +8,7 @@ on:
         type: choice
         options:
           - dev
+          - test1
           - prod
         default: dev
       deploy:
@@ -34,9 +35,19 @@ jobs:
       - name: Set environment
         id: env
         run: |
-          echo "name=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
-          echo "rg=AzureOpsCrew-${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
-          echo "🎯 Environment: ${{ github.event.inputs.environment }}"
+          ENV_NAME="${{ github.event.inputs.environment }}"
+          case "$ENV_NAME" in
+            test*)
+              RESOURCE_GROUP="AzureOpsCrew-dev"
+              ;;
+            *)
+              RESOURCE_GROUP="AzureOpsCrew-${ENV_NAME}"
+              ;;
+          esac
+          echo "name=${ENV_NAME}" >> $GITHUB_OUTPUT
+          echo "rg=${RESOURCE_GROUP}" >> $GITHUB_OUTPUT
+          echo "🎯 Environment: ${ENV_NAME}"
+          echo "🎯 Resource Group: ${RESOURCE_GROUP}"
           echo "🚀 Deploy enabled: ${{ github.event.inputs.deploy }}"
 
       - name: Azure Login
