@@ -7,7 +7,12 @@ import { ChannelSidebar } from "@/components/channel-sidebar"
 import { ChannelArea } from "@/components/channel-area"
 import { DirectMessagesView } from "@/components/direct-messages-view"
 import { SettingsView, getDisplayNameFromStorage } from "@/components/settings/settings-view"
-import type { HumanMember } from "@/lib/humans"
+import {
+  clearCachedHumans,
+  getCachedHumans,
+  setCachedHumans,
+  type HumanMember,
+} from "@/lib/humans"
 
 interface HomePageClientProps {
   initialHumans: HumanMember[]
@@ -19,7 +24,9 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
   const [isLoadingAgents, setIsLoadingAgents] = useState(true)
   const [channels, setChannels] = useState<Channel[]>([])
   const [isLoadingChannels, setIsLoadingChannels] = useState(true)
-  const [humans, setHumans] = useState<HumanMember[]>(initialHumans)
+  const [humans, setHumans] = useState<HumanMember[]>(() =>
+    initialHumans.length > 0 ? initialHumans : getCachedHumans()
+  )
   const [activeChannelId, setActiveChannelId] = useState<string>("")
   const [activeDMId, setActiveDMId] = useState<string | null>(null)
   const [pendingDMMessage, setPendingDMMessage] = useState<string | null>(null)
@@ -34,11 +41,18 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
   }, [viewMode])
 
   useEffect(() => {
+    if (humans.length > 0) {
+      setCachedHumans(humans)
+    }
+  }, [humans])
+
+  useEffect(() => {
     let isCancelled = false
 
     async function ensureAuthenticated() {
       const response = await fetch("/api/auth/me")
       if (!response.ok && !isCancelled) {
+        clearCachedHumans()
         await fetch("/api/auth/logout", { method: "POST" })
         window.location.href = "/login"
       }
@@ -106,6 +120,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
         const users: HumanMember[] = await response.json()
         if (!isCancelled) {
           setHumans(users)
+          setCachedHumans(users)
         }
       } catch (error) {
         console.error("Failed to load users from backend:", error)
@@ -229,6 +244,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
   }, [])
 
   const handleLogout = useCallback(async () => {
+    clearCachedHumans()
     await fetch("/api/auth/logout", { method: "POST" })
     window.location.href = "/login"
   }, [])
