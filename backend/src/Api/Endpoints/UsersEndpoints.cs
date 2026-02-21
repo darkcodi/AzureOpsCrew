@@ -44,7 +44,6 @@ public static class UsersEndpoints
                 .Select(u => new UserPresenceDto(
                     u.Id,
                     u.DisplayName,
-                    u.Email,
                     u.LastLoginAt.HasValue && now - u.LastLoginAt.Value <= OnlineWindow,
                     u.Id == currentUserId,
                     u.LastLoginAt))

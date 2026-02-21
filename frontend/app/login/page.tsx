@@ -4,6 +4,18 @@ import { FormEvent, Suspense, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 
+function toSafeNextPath(next: string | null): string {
+  if (!next) {
+    return "/"
+  }
+
+  if (!next.startsWith("/") || next.startsWith("//")) {
+    return "/"
+  }
+
+  return next
+}
+
 function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -30,7 +42,7 @@ function LoginPageContent() {
         return
       }
 
-      const nextPath = searchParams.get("next") || "/"
+      const nextPath = toSafeNextPath(searchParams.get("next"))
       router.replace(nextPath)
       router.refresh()
     } catch {

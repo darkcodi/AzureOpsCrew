@@ -15,8 +15,19 @@ public sealed class JwtTokenService
 
     public JwtTokenService(IOptions<JwtSettings> settings)
     {
+        ArgumentNullException.ThrowIfNull(settings);
+
         _settings = settings.Value;
+        if (string.IsNullOrWhiteSpace(_settings.SigningKey))
+        {
+            throw new ArgumentException("Jwt:SigningKey must be configured.", nameof(settings));
+        }
+
         _signingKey = Encoding.UTF8.GetBytes(_settings.SigningKey);
+        if (_signingKey.Length < 16)
+        {
+            throw new ArgumentException("Jwt:SigningKey must be at least 16 bytes.", nameof(settings));
+        }
     }
 
     public AuthTokenResult CreateToken(User user)

@@ -3,7 +3,7 @@ import { ACCESS_TOKEN_COOKIE_NAME } from "@/lib/server/auth"
 
 const PUBLIC_ROUTES = new Set(["/login", "/signup"])
 
-export function proxy(req: NextRequest) {
+export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   if (
@@ -36,7 +36,7 @@ export function proxy(req: NextRequest) {
 
   if (!hasToken) {
     const loginUrl = new URL("/login", req.url)
-    loginUrl.searchParams.set("next", pathname)
+    loginUrl.searchParams.set("next", pathname + req.nextUrl.search)
     return NextResponse.redirect(loginUrl)
   }
 

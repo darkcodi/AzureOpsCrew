@@ -57,11 +57,7 @@ export function DirectMessagesSidebar({
 
     if (!search.trim()) return sorted
     const q = search.toLowerCase()
-    return sorted.filter(
-      (h) =>
-        h.name.toLowerCase().includes(q) ||
-        h.email.toLowerCase().includes(q)
-    )
+    return sorted.filter((h) => h.name.toLowerCase().includes(q))
   }, [humans, search])
 
   return (

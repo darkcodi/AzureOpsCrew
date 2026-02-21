@@ -4,7 +4,6 @@ export interface HumanMember {
   id: string
   userId: number
   name: string
-  email: string
   status: HumanStatus
   isCurrentUser: boolean
 }
@@ -36,7 +35,6 @@ export function getCachedHumans(): HumanMember[] {
         typeof item.id === "string" &&
         typeof item.userId === "number" &&
         typeof item.name === "string" &&
-        typeof item.email === "string" &&
         (item.status === "Online" || item.status === "Offline") &&
         typeof item.isCurrentUser === "boolean"
     )

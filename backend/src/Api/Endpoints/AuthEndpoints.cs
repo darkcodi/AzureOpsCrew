@@ -254,19 +254,36 @@ public static class AuthEndpoints
                 return Results.Conflict(new { error = "Email is already registered." });
             }
 
-            var user = new User(
-                email: pendingRegistration.Email,
-                normalizedEmail: pendingRegistration.NormalizedEmail,
-                passwordHash: pendingRegistration.PasswordHash,
-                displayName: pendingRegistration.DisplayName);
-            user.MarkLogin();
+            try
+            {
+                var user = new User(
+                    email: pendingRegistration.Email,
+                    normalizedEmail: pendingRegistration.NormalizedEmail,
+                    passwordHash: pendingRegistration.PasswordHash,
+                    displayName: pendingRegistration.DisplayName);
+                user.MarkLogin();
 
-            context.Users.Add(user);
-            context.PendingRegistrations.Remove(pendingRegistration);
-            await context.SaveChangesAsync(cancellationToken);
+                context.Users.Add(user);
+                context.PendingRegistrations.Remove(pendingRegistration);
+                await context.SaveChangesAsync(cancellationToken);
 
-            var token = jwtTokenService.CreateToken(user);
-            return Results.Ok(ToAuthResponse(user, token));
+                var token = jwtTokenService.CreateToken(user);
+                return Results.Ok(ToAuthResponse(user, token));
+            }
+            catch (DbUpdateException)
+            {
+                // Save can race with another successful verification for the same email.
+                context.ChangeTracker.Clear();
+
+                var emailAlreadyExists = await context.Users
+                    .AsNoTracking()
+                    .AnyAsync(u => u.NormalizedEmail == normalizedEmail, cancellationToken);
+
+                if (emailAlreadyExists)
+                    return Results.Conflict(new { error = "Email is already registered." });
+
+                throw;
+            }
         })
         .AddEndpointFilter<ValidationFilter<VerifyRegistrationCodeRequestDto>>()
         .Produces<AuthResponseDto>(StatusCodes.Status200OK)
