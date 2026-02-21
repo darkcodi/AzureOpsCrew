@@ -13,6 +13,25 @@ interface BackendAuthResponse {
   }
 }
 
+function isValidBackendAuthResponse(value: unknown): value is BackendAuthResponse {
+  if (!value || typeof value !== "object") return false
+
+  const data = value as Record<string, unknown>
+  if (typeof data.accessToken !== "string" || data.accessToken.length === 0) return false
+  if (typeof data.expiresAtUtc !== "string" || Number.isNaN(Date.parse(data.expiresAtUtc))) return false
+
+  const user = data.user
+  if (!user || typeof user !== "object") return false
+
+  const typedUser = user as Record<string, unknown>
+  return (
+    typeof typedUser.id === "number" &&
+    typeof typedUser.email === "string" &&
+    typedUser.email.length > 0 &&
+    typeof typedUser.displayName === "string"
+  )
+}
+
 function extractErrorMessage(data: any, fallback: string) {
   if (typeof data?.error === "string") return data.error
   if (typeof data?.Error === "string") return data.Error
@@ -44,11 +63,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const authData = data as BackendAuthResponse
-    if (!authData.accessToken) {
-      return NextResponse.json({ error: "Missing access token" }, { status: 502 })
+    if (!isValidBackendAuthResponse(data)) {
+      return NextResponse.json({ error: "Invalid auth response from backend" }, { status: 502 })
     }
 
+    const authData = data
     const nextResponse = NextResponse.json({
       expiresAtUtc: authData.expiresAtUtc,
       user: authData.user,

@@ -77,8 +77,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (!channelId) {
+      return NextResponse.json(
+        { error: "Channel created but ID not returned by backend" },
+        { status: 502 }
+      )
+    }
+
     const fallbackChannel: Channel = {
-      id: channelId || crypto.randomUUID(),
+      id: channelId,
       name: name.trim(),
       agentIds: agentIds || [],
       dateCreated: new Date().toISOString(),

@@ -32,6 +32,15 @@ function mapProviderType(type: number | string): string {
   return type
 }
 
+function safeParseSelectedModels(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : []
+  } catch {
+    return []
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     if (!getAccessToken(req)) {
@@ -65,7 +74,7 @@ export async function GET(req: NextRequest) {
         hasApiKey: p.hasApiKey ?? false,
         baseUrl: p.apiEndpoint ?? "",
         defaultModel: p.defaultModel ?? "",
-        selectedModels: p.selectedModels ? (JSON.parse(p.selectedModels) as string[]) : [],
+        selectedModels: p.selectedModels ? safeParseSelectedModels(p.selectedModels) : [],
         timeout: 30,
         rateLimit: 60,
         availableModels: [] as string[],

@@ -35,6 +35,7 @@ export default function SignupPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isResending, setIsResending] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     if (resendCooldownSeconds <= 0) return
@@ -48,15 +49,27 @@ export default function SignupPage() {
     }
   }, [resendCooldownSeconds])
 
+  useEffect(() => {
+    if (!expiresAtUtc) return
+
+    const timer = window.setInterval(() => {
+      setNow(Date.now())
+    }, 1000)
+
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [expiresAtUtc])
+
   const expiresInLabel = useMemo(() => {
     if (!expiresAtUtc) return null
 
-    const diffMs = new Date(expiresAtUtc).getTime() - Date.now()
+    const diffMs = new Date(expiresAtUtc).getTime() - now
     if (diffMs <= 0) return "expired"
 
     const diffMinutes = Math.ceil(diffMs / 60000)
     return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"}`
-  }, [expiresAtUtc, resendCooldownSeconds])
+  }, [expiresAtUtc, now])
 
   async function handleRequestCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

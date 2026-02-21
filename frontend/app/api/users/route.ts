@@ -32,6 +32,10 @@ export async function GET(req: NextRequest) {
       )
     }
 
+    if (!Array.isArray(data)) {
+      return NextResponse.json({ error: "Invalid users response format" }, { status: 502 })
+    }
+
     const users = (data as BackendUserPresence[]).map(
       (user): HumanMember => ({
         id: toHumanCardId(user.id),

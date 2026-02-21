@@ -50,11 +50,19 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     let isCancelled = false
 
     async function ensureAuthenticated() {
-      const response = await fetch("/api/auth/me")
-      if (!response.ok && !isCancelled) {
-        clearCachedHumans()
-        await fetch("/api/auth/logout", { method: "POST" })
-        window.location.href = "/login"
+      try {
+        const response = await fetch("/api/auth/me")
+        if (!response.ok && !isCancelled) {
+          clearCachedHumans()
+          await fetch("/api/auth/logout", { method: "POST" })
+          window.location.href = "/login"
+        }
+      } catch {
+        if (!isCancelled) {
+          clearCachedHumans()
+          await fetch("/api/auth/logout", { method: "POST" }).catch(() => {})
+          window.location.href = "/login"
+        }
       }
     }
 
@@ -184,18 +192,17 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
       }
       setChannels((prev) => {
         const next = prev.filter((c) => c.id !== channelId)
+        setActiveChannelId((current) => {
+          if (current !== channelId) return current
+          return next[0]?.id ?? ""
+        })
         return next
-      })
-      setActiveChannelId((current) => {
-        if (current !== channelId) return current
-        const remaining = channels.filter((c) => c.id !== channelId)
-        return remaining[0]?.id ?? ""
       })
     } catch (error) {
       console.error("Failed to delete channel:", error)
       throw error
     }
-  }, [channels])
+  }, [])
 
   const handleAddAgent = useCallback(async (agent: Agent) => {
     // Reload agents from backend after creation to ensure consistency

@@ -93,7 +93,7 @@ public static class AuthEndpoints
                     expiresAtUtc,
                     cancellationToken);
             }
-            catch (InvalidOperationException)
+            catch (Exception) when (cancellationToken.IsCancellationRequested is false)
             {
                 return Results.Json(
                     new { error = "Unable to send verification email. Please try again." },
@@ -170,7 +170,7 @@ public static class AuthEndpoints
                     expiresAtUtc,
                     cancellationToken);
             }
-            catch (InvalidOperationException)
+            catch (Exception) when (cancellationToken.IsCancellationRequested is false)
             {
                 return Results.Json(
                     new { error = "Unable to send verification email. Please try again." },
