@@ -2,28 +2,13 @@
 
 import { User } from "lucide-react"
 import type { Agent } from "@/lib/agents"
-
-export const HUMAN_ID = "user"
-
-type Human = { id: string; name: string; status: "Online" | "Offline" }
-
-export const HUMANS: Human[] = [
-  { id: HUMAN_ID, name: "You", status: "Online" },
-  { id: "human:alex-c", name: "Alex C", status: "Offline" },
-  { id: "human:alex-k", name: "Alex K", status: "Offline" },
-  { id: "human:illya", name: "Illya", status: "Offline" },
-  { id: "human:ivan", name: "Ivan", status: "Offline" },
-]
-
-export function isHumanId(id: string): boolean {
-  return HUMANS.some((h) => h.id === id)
-}
+import type { HumanMember } from "@/lib/humans"
 
 interface DirectMessagesRightPaneProps {
-  /** Agent id or human id (e.g. "user", "human:alex-c"); null to show nothing. */
+  /** Agent id or human id (e.g. "human:1"). null to show nothing. */
   selectedCardId: string | null
   agents: Agent[]
-  displayName: string
+  humans: HumanMember[]
 }
 
 function AgentCard({ agent }: { agent: Agent }) {
@@ -193,7 +178,7 @@ function HumanCard({
 export function DirectMessagesRightPane({
   selectedCardId,
   agents,
-  displayName,
+  humans,
 }: DirectMessagesRightPaneProps) {
   if (!selectedCardId) {
     return (
@@ -209,7 +194,7 @@ export function DirectMessagesRightPane({
     )
   }
 
-  const selectedHuman = HUMANS.find((h) => h.id === selectedCardId)
+  const selectedHuman = humans.find((h) => h.id === selectedCardId)
   if (selectedHuman) {
     return (
       <div
@@ -217,10 +202,10 @@ export function DirectMessagesRightPane({
         style={{ backgroundColor: "hsl(228, 7%, 14%)" }}
       >
         <HumanCard
-          name={selectedHuman.id === HUMAN_ID ? displayName : selectedHuman.name}
+          name={selectedHuman.name}
           status={selectedHuman.status}
           description={
-            selectedHuman.id === HUMAN_ID
+            selectedHuman.isCurrentUser
               ? "Your profile and direct message threads."
               : "Profile and direct message threads."
           }

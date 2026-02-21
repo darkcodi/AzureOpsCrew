@@ -25,7 +25,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import { HUMANS, HUMAN_ID } from "@/components/direct-messages-right-pane"
+import type { HumanMember } from "@/lib/humans"
 import { Search, User, Plus, Loader2 } from "lucide-react"
 
 function MemberContextMenu({
@@ -80,6 +80,7 @@ function MemberContextMenu({
 
 interface MemberListProps {
   allAgents: Agent[]
+  humans: HumanMember[]
   activeAgentIds: string[]
   streamingAgentId?: string | null
   displayName: string
@@ -174,6 +175,7 @@ function AgentRow({
 
 export function MemberList({
   allAgents,
+  humans,
   activeAgentIds,
   streamingAgentId = null,
   displayName,
@@ -216,9 +218,9 @@ export function MemberList({
   const filteredWorking = workingAgents.filter(matchesSearch)
   const filteredAvailable = availableAgents.filter(matchesSearch)
   const currentUserName = displayName || "You"
-  const filteredHumans = HUMANS.filter((h) => {
+  const filteredHumans = humans.filter((h) => {
     if (!query) return true
-    const name = h.id === HUMAN_ID ? currentUserName : h.name
+    const name = h.isCurrentUser ? currentUserName : h.name
     return name.toLowerCase().includes(query)
   })
   const matchesHuman = filteredHumans.length > 0
@@ -337,7 +339,7 @@ export function MemberList({
               Humans
             </div>
             {filteredHumans.map((human) =>
-              human.id === HUMAN_ID ? (
+              human.isCurrentUser ? (
                 <MemberContextMenu
                   key={human.id}
                   userId={human.id}
@@ -506,9 +508,11 @@ export function MemberList({
                           className="inline-flex items-center gap-1.5 text-xs"
                           style={{ color: "hsl(214, 5%, 55%)" }}
                         >
-                          {human.status === "Online" && (
-                            <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
-                          )}
+                          <span
+                            className={`h-2 w-2 shrink-0 rounded-full ${
+                              human.status === "Online" ? "bg-green-500" : "bg-gray-500"
+                            }`}
+                          />
                           {human.status}
                         </span>
                       </div>
@@ -577,7 +581,11 @@ export function MemberList({
                               color: "hsl(210, 3%, 90%)",
                             }}
                           >
-                            <span className="h-2 w-2 rounded-full bg-gray-500" />
+                            <span
+                              className={`h-2 w-2 rounded-full ${
+                                human.status === "Online" ? "bg-green-500" : "bg-gray-500"
+                              }`}
+                            />
                             Human
                           </span>
                         </div>

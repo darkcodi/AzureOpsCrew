@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
+import { buildBackendHeaders, getAccessToken } from "@/lib/server/auth"
 
-// Backend API URL - configurable via BACKEND_API_URL env var
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
-// Backend DTO structure
 interface RemoveAgentBodyDto {
   agentId: string
 }
@@ -13,11 +12,14 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (!getAccessToken(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { id } = await params
     const body = await req.json()
     const { agentId } = body
 
-    // Validate required fields
     if (!agentId) {
       return NextResponse.json(
         { error: "Agent ID is required" },
@@ -29,13 +31,9 @@ export async function POST(
       agentId,
     }
 
-    const removeUrl = `${BACKEND_API_URL}/api/channels/${id}/remove-agent`
-
-    const response = await fetch(removeUrl, {
+    const response = await fetch(`${BACKEND_API_URL}/api/channels/${id}/remove-agent`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: buildBackendHeaders(req),
       body: JSON.stringify(backendBody),
     })
 

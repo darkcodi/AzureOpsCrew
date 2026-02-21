@@ -64,7 +64,7 @@ export function ManageAgentsDialog({
 
   // Fetch providers on mount
   useEffect(() => {
-    fetch("/api/providers?clientId=1")
+    fetch("/api/providers")
       .then((res) => res.json())
       .then((data: Provider[]) => {
         setProviders(data.filter((p) => p.status === "enabled"))

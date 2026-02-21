@@ -7,6 +7,7 @@ import { ChannelSidebar } from "@/components/channel-sidebar"
 import { ChannelArea } from "@/components/channel-area"
 import { DirectMessagesView } from "@/components/direct-messages-view"
 import { SettingsView, getDisplayNameFromStorage } from "@/components/settings/settings-view"
+import type { HumanMember } from "@/lib/humans"
 
 export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("channels")
@@ -14,6 +15,7 @@ export default function Home() {
   const [isLoadingAgents, setIsLoadingAgents] = useState(true)
   const [channels, setChannels] = useState<Channel[]>([])
   const [isLoadingChannels, setIsLoadingChannels] = useState(true)
+  const [humans, setHumans] = useState<HumanMember[]>([])
   const [activeChannelId, setActiveChannelId] = useState<string>("")
   const [activeDMId, setActiveDMId] = useState<string | null>(null)
   const [pendingDMMessage, setPendingDMMessage] = useState<string | null>(null)
@@ -27,12 +29,29 @@ export default function Home() {
     if (viewMode !== "settings") setDisplayName(getDisplayNameFromStorage())
   }, [viewMode])
 
+  useEffect(() => {
+    let isCancelled = false
+
+    async function ensureAuthenticated() {
+      const response = await fetch("/api/auth/me")
+      if (!response.ok && !isCancelled) {
+        await fetch("/api/auth/logout", { method: "POST" })
+        window.location.href = "/login"
+      }
+    }
+
+    void ensureAuthenticated()
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
   // Load agents from backend on mount
   useEffect(() => {
     async function loadAgents() {
       try {
         setIsLoadingAgents(true)
-        const response = await fetch("/api/agents?clientId=1")
+        const response = await fetch("/api/agents")
         if (response.ok) {
           const backendAgents: Agent[] = await response.json()
           if (backendAgents.length > 0) {
@@ -53,7 +72,7 @@ export default function Home() {
     async function loadChannels() {
       try {
         setIsLoadingChannels(true)
-        const response = await fetch("/api/channels?clientId=1")
+        const response = await fetch("/api/channels")
         if (response.ok) {
           const backendChannels: Channel[] = await response.json()
           if (backendChannels.length > 0) {
@@ -69,6 +88,35 @@ export default function Home() {
       }
     }
     loadChannels()
+  }, [])
+
+  // Load registered users and refresh presence periodically.
+  useEffect(() => {
+    let isCancelled = false
+
+    async function loadHumans() {
+      try {
+        const response = await fetch("/api/users")
+        if (!response.ok) return
+
+        const users: HumanMember[] = await response.json()
+        if (!isCancelled) {
+          setHumans(users)
+        }
+      } catch (error) {
+        console.error("Failed to load users from backend:", error)
+      }
+    }
+
+    void loadHumans()
+    const interval = window.setInterval(() => {
+      void loadHumans()
+    }, 30000)
+
+    return () => {
+      isCancelled = true
+      window.clearInterval(interval)
+    }
   }, [])
 
   const handleCreateChannel = useCallback(async (name: string) => {
@@ -133,7 +181,7 @@ export default function Home() {
   const handleAddAgent = useCallback(async (agent: Agent) => {
     // Reload agents from backend after creation to ensure consistency
     try {
-      const response = await fetch("/api/agents?clientId=1")
+      const response = await fetch("/api/agents")
       if (response.ok) {
         const backendAgents: Agent[] = await response.json()
         if (backendAgents.length > 0) {
@@ -176,11 +224,17 @@ export default function Home() {
     setPendingDMMessage(message ?? null)
   }, [])
 
+  const handleLogout = useCallback(async () => {
+    await fetch("/api/auth/logout", { method: "POST" })
+    window.location.href = "/login"
+  }, [])
+
   return (
     <main className="flex h-dvh w-full">
       <IconSidebar
         viewMode={viewMode}
         onViewChange={setViewMode}
+        onLogout={handleLogout}
       />
 
       {viewMode === "channels" && (
@@ -197,6 +251,7 @@ export default function Home() {
               key={activeChannel.id}
               channel={activeChannel}
               allAgents={agents}
+              humans={humans}
               displayName={displayName}
               onUpdateChannel={handleUpdateChannel}
               onAddAgent={handleAddAgent}
@@ -226,7 +281,7 @@ export default function Home() {
           activeDMId={activeDMId}
           setActiveDMId={setActiveDMId}
           agents={agents}
-          displayName={displayName}
+          humans={humans}
           pendingDMMessage={pendingDMMessage}
           onClearPendingDMMessage={() => setPendingDMMessage(null)}
         />

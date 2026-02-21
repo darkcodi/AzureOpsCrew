@@ -8,6 +8,8 @@ on:
         type: choice
         options:
           - dev
+          - test
+          - test1
           - prod
         default: dev
       deploy:
@@ -34,9 +36,25 @@ jobs:
       - name: Set environment
         id: env
         run: |
-          echo "name=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
-          echo "rg=AzureOpsCrew-${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
-          echo "🎯 Environment: ${{ github.event.inputs.environment }}"
+          INPUT_ENV="${{ github.event.inputs.environment }}"
+          if [ "$INPUT_ENV" = "test" ]; then
+            ENV_NAME="test1"
+          else
+            ENV_NAME="$INPUT_ENV"
+          fi
+
+          if [ "$ENV_NAME" = "test1" ]; then
+            RESOURCE_GROUP="AzureOpsCrew-dev"
+          else
+            RESOURCE_GROUP="AzureOpsCrew-$ENV_NAME"
+          fi
+
+          echo "name=$ENV_NAME" >> $GITHUB_OUTPUT
+          echo "rg=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
+
+          echo "🎯 Environment input: $INPUT_ENV"
+          echo "🎯 Effective environment: $ENV_NAME"
+          echo "🏷️ Resource Group: $RESOURCE_GROUP"
           echo "🚀 Deploy enabled: ${{ github.event.inputs.deploy }}"
 
       - name: Azure Login
@@ -96,7 +114,11 @@ jobs:
           az containerapp update \
             --name ca-azopscrew-backend-${{ needs.build.outputs.env_name }} \
             --resource-group ${{ needs.build.outputs.resource_group }} \
-            --image ${{ env.ACR_SERVER }}/backend:${{ needs.build.outputs.image_tag }}
+            --image ${{ env.ACR_SERVER }}/backend:${{ needs.build.outputs.image_tag }} \
+            --set-env-vars \
+              Jwt__Issuer=${{ secrets.JWT_ISSUER }} \
+              Jwt__Audience=${{ secrets.JWT_AUDIENCE }} \
+              Jwt__SigningKey=${{ secrets.JWT_SIGNING_KEY }}
           echo "✅ Backend deployed"
 
       - name: Deploy Frontend
