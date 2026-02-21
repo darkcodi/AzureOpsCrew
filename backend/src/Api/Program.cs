@@ -44,6 +44,7 @@ try
     builder.Services.AddDatabase(builder.Configuration);
     builder.Services.AddProviderFacades();
     builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
+    builder.Services.AddEmailVerification(builder.Configuration);
 
     // Configure AG-UI
     builder.Services.AddHttpClient();

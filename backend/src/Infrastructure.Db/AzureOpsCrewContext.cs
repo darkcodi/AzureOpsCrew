@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using AgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.AgentEntityTypeConfiguration;
 using ChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ChannelEntityTypeConfiguration;
 using AiProviderConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ProviderEntityTypeConfiguration;
+using PendingRegistrationConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.PendingRegistrationEntityTypeConfiguration;
 using UserConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.UserEntityTypeConfiguration;
 using AiProvider = AzureOpsCrew.Domain.Providers.Provider;
 
@@ -21,6 +22,7 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<Channel> Channels => Set<Channel>();
     public DbSet<AiProvider> Providers => Set<AiProvider>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<PendingRegistration> PendingRegistrations => Set<PendingRegistration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -28,5 +30,6 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new ChannelConfig());
         modelBuilder.ApplyConfiguration(new AiProviderConfig());
         modelBuilder.ApplyConfiguration(new UserConfig());
+        modelBuilder.ApplyConfiguration(new PendingRegistrationConfig());
     }
 }

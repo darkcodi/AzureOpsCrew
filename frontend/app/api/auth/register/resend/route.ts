@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
-interface BackendRegisterChallengeResponse {
-  message: string
-  expiresAtUtc: string
-  resendAvailableInSeconds: number
-}
-
 function extractErrorMessage(data: any, fallback: string) {
   if (typeof data?.error === "string") return data.error
   if (typeof data?.Error === "string") return data.Error
@@ -25,7 +19,7 @@ function extractErrorMessage(data: any, fallback: string) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const response = await fetch(`${BACKEND_API_URL}/api/auth/register`, {
+    const response = await fetch(`${BACKEND_API_URL}/api/auth/register/resend`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -34,19 +28,14 @@ export async function POST(req: NextRequest) {
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
       return NextResponse.json(
-        { error: extractErrorMessage(data, "Unable to start registration") },
+        { error: extractErrorMessage(data, "Unable to resend verification code") },
         { status: response.status }
       )
     }
 
-    const challenge = data as BackendRegisterChallengeResponse
-    if (!challenge.expiresAtUtc) {
-      return NextResponse.json({ error: "Invalid verification response" }, { status: 502 })
-    }
-
-    return NextResponse.json(challenge)
+    return NextResponse.json(data)
   } catch (error) {
-    console.error("Error registering:", error)
+    console.error("Error resending verification code:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
