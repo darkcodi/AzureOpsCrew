@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { buildBackendHeaders, getAccessToken } from "@/lib/server/auth"
 
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
@@ -28,6 +29,10 @@ interface FrontendProvider {
 
 export async function PUT(req: NextRequest) {
   try {
+    if (!getAccessToken(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const body = await req.json()
     const { providers } = body as { providers: FrontendProvider[] }
 
@@ -38,7 +43,6 @@ export async function PUT(req: NextRequest) {
       )
     }
 
-    const clientId = 1
     const results: { id: string; backendId: string }[] = []
 
     for (const p of providers) {
@@ -47,10 +51,9 @@ export async function PUT(req: NextRequest) {
       const isEnabled = p.status !== "disabled"
 
       if (p.backendId) {
-        const updateUrl = `${BACKEND_API_URL}/api/providers/${p.backendId}`
-        const res = await fetch(updateUrl, {
+        const res = await fetch(`${BACKEND_API_URL}/api/providers/${p.backendId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: buildBackendHeaders(req),
           body: JSON.stringify({
             name: p.name,
             apiKey: p.apiKey,
@@ -69,12 +72,10 @@ export async function PUT(req: NextRequest) {
         }
         results.push({ id: p.id, backendId: p.backendId })
       } else {
-        const createUrl = `${BACKEND_API_URL}/api/providers/create`
-        const res = await fetch(createUrl, {
+        const res = await fetch(`${BACKEND_API_URL}/api/providers/create`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: buildBackendHeaders(req),
           body: JSON.stringify({
-            clientId,
             name: p.name,
             providerType,
             apiKey: p.apiKey,

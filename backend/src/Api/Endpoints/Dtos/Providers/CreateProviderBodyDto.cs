@@ -5,10 +5,6 @@ namespace AzureOpsCrew.Api.Endpoints.Dtos.Providers;
 
 public record CreateProviderBodyDto
 {
-    [Required]
-    [Range(1, int.MaxValue, ErrorMessage = "ClientId is required.")]
-    public int ClientId { get; set; }
-
     [Required(ErrorMessage = "Name is required.")]
     [StringLength(200, MinimumLength = 1, ErrorMessage = "Name must be between 1 and 200 characters.")]
     public string Name { get; set; } = string.Empty;

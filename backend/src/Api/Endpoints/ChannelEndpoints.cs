@@ -1,3 +1,4 @@
+using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
@@ -11,25 +12,28 @@ public static class ChannelEndpoints
     public static void MapChannelEndpoints(this IEndpointRouteBuilder routeBuilder)
     {
         var group = routeBuilder.MapGroup("/api/channels")
-            .WithTags("Channels");
+            .WithTags("Channels")
+            .RequireAuthorization();
 
         group.MapPost("/create", async (
             CreateChannelBodyDto body,
+            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
             body.AgentIds = body.AgentIds.Distinct().ToArray();
 
             if (body.AgentIds.Length > 0)
             {
                 var agentsCount = await context.Set<Agent>()
-                    .CountAsync(a => body.AgentIds.Contains(a.Id) && a.ClientId == body.ClientId, cancellationToken);
+                    .CountAsync(a => body.AgentIds.Contains(a.Id) && a.ClientId == userId, cancellationToken);
 
                 if (agentsCount != body.AgentIds.Length)
-                    return Results.BadRequest("One or more AgentIds are invalid or do not belong to the client.");
+                    return Results.BadRequest("One or more AgentIds are invalid or do not belong to the current user.");
             }
 
-            var channel = new Channel(Guid.NewGuid(), body.ClientId, body.Name)
+            var channel = new Channel(Guid.NewGuid(), userId, body.Name)
             {
                 Description = body.Description,
                 AgentIds = body.AgentIds.Select(a => a.ToString("D")).ToArray()
@@ -38,7 +42,6 @@ public static class ChannelEndpoints
             await context.AddAsync(channel, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
-            // draft output: guid
             return Results.Created($"/api/channels/{channel.Id}", new { channelId = channel.Id });
         })
         .Produces(StatusCodes.Status201Created)
@@ -47,16 +50,27 @@ public static class ChannelEndpoints
         group.MapPost("/{id}/add-agent", async (
             Guid id,
             AddAgentBodyDto body,
+            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
+
             var channel = await context.Set<Channel>()
-                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+                .SingleOrDefaultAsync(c => c.Id == id && c.ClientId == userId, cancellationToken);
 
             if (channel is null)
                 return Results.BadRequest($"Unknown channel with id: {id}");
 
-            channel.AddAgent(body.AgentId.ToString("D"));
+            var agentExists = await context.Set<Agent>()
+                .AnyAsync(a => a.Id == body.AgentId && a.ClientId == userId, cancellationToken);
+
+            if (!agentExists)
+                return Results.BadRequest($"Unknown agent with id: {body.AgentId}");
+
+            var agentId = body.AgentId.ToString("D");
+            if (!channel.AgentIds.Contains(agentId))
+                channel.AddAgent(agentId);
 
             await context.SaveChangesAsync(cancellationToken);
 
@@ -67,12 +81,15 @@ public static class ChannelEndpoints
 
         group.MapPost("/{id}/remove-agent", async (
             Guid id,
-            AddAgentBodyDto body,
+            RemoveAgentBodyDto body,
+            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
+
             var channel = await context.Set<Channel>()
-                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+                .SingleOrDefaultAsync(c => c.Id == id && c.ClientId == userId, cancellationToken);
 
             if (channel is null)
                 return Results.BadRequest($"Unknown channel with id: {id}");
@@ -87,27 +104,31 @@ public static class ChannelEndpoints
         .Produces(StatusCodes.Status400BadRequest);
 
         group.MapGet("", async (
-            int clientId,
+            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
+
             var channels = await context.Set<Channel>()
-                .Where(c => c.ClientId == clientId)
+                .Where(c => c.ClientId == userId)
                 .OrderBy(c => c.DateCreated)
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(channels);
         })
-        .Produces<Channel[]>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status400BadRequest);
+        .Produces<Channel[]>(StatusCodes.Status200OK);
 
         group.MapGet("/{id}", async (
             Guid id,
+            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
+
             var channel = await context.Set<Channel>()
-                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+                .SingleOrDefaultAsync(c => c.Id == id && c.ClientId == userId, cancellationToken);
 
             return channel is null ? Results.NotFound() : Results.Ok(channel);
         })
@@ -116,11 +137,14 @@ public static class ChannelEndpoints
 
         group.MapDelete("/{id}", async (
             Guid id,
+            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
+
             var channel = await context.Set<Channel>()
-                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+                .SingleOrDefaultAsync(c => c.Id == id && c.ClientId == userId, cancellationToken);
 
             if (channel is null)
                 return Results.NotFound();

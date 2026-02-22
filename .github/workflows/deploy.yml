@@ -107,7 +107,19 @@ jobs:
           az containerapp update \
             --name ca-azopscrew-backend-${{ needs.build.outputs.env_name }} \
             --resource-group ${{ needs.build.outputs.resource_group }} \
-            --image ${{ env.ACR_SERVER }}/backend:${{ needs.build.outputs.image_tag }}
+            --image ${{ env.ACR_SERVER }}/backend:${{ needs.build.outputs.image_tag }} \
+            --set-env-vars \
+              Jwt__Issuer=${{ secrets.JWT_ISSUER }} \
+              Jwt__Audience=${{ secrets.JWT_AUDIENCE }} \
+              Jwt__SigningKey=${{ secrets.JWT_SIGNING_KEY }} \
+              EmailVerification__CodeLength=6 \
+              EmailVerification__CodeTtlMinutes=10 \
+              EmailVerification__ResendCooldownSeconds=30 \
+              EmailVerification__MaxVerificationAttempts=5 \
+              Brevo__ApiBaseUrl=https://api.brevo.com \
+              Brevo__ApiKey=${{ secrets.BREVO_API_KEY }} \
+              Brevo__SenderEmail=${{ secrets.BREVO_SENDER_EMAIL }} \
+              Brevo__SenderName="${{ secrets.BREVO_SENDER_NAME }}"
           echo "✅ Backend deployed"
 
       - name: Deploy Frontend

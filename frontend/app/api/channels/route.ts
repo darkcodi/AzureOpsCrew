@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import type { Channel } from "@/lib/agents"
+import { buildBackendHeaders, getAccessToken } from "@/lib/server/auth"
 
-// Backend API URL - configurable via BACKEND_API_URL env var
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
-// Backend response structure
 interface BackendChannel {
   id: string
   clientId: number
@@ -17,13 +16,13 @@ interface BackendChannel {
 
 export async function GET(req: NextRequest) {
   try {
-    const channelsUrl = `${BACKEND_API_URL}/api/channels?clientId=1`
+    if (!getAccessToken(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
-    const response = await fetch(channelsUrl, {
+    const response = await fetch(`${BACKEND_API_URL}/api/channels`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: buildBackendHeaders(req),
     })
 
     if (!response.ok) {
@@ -36,7 +35,6 @@ export async function GET(req: NextRequest) {
 
     const backendChannels: BackendChannel[] = await response.json()
 
-    // Transform backend channels to frontend Channel interface
     const frontendChannels: Channel[] = backendChannels.map((channel) => ({
       id: channel.id,
       name: channel.name,

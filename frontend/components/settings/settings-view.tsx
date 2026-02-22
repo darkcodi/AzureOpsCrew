@@ -72,7 +72,7 @@ export function SettingsView({
   useEffect(() => {
     const persisted = loadPersistedSettings()
 
-    fetch("/api/providers?clientId=1")
+    fetch("/api/providers")
       .then((res) => {
         if (!res.ok) return null
         return res.json()

@@ -2,12 +2,10 @@
 
 namespace AzureOpsCrew.Api.Endpoints.Dtos.Agents
 {
-    public record CreateAgentBodyDto(AgentInfo Info)
-    {
-        public int ClientId { get; set; }
-
+public record CreateAgentBodyDto(AgentInfo Info)
+{
         public Guid ProviderId { get; set; }
 
         public string Color { get; set; } = "#43b581";
-    }
+}
 }
