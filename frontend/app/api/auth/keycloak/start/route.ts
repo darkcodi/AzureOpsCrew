@@ -3,6 +3,7 @@ import {
   buildKeycloakCallbackUrl,
   createPkcePair,
   createRandomState,
+  getPublicRequestOrigin,
   getKeycloakWebConfig,
   getTransientAuthCookieOptions,
   KEYCLOAK_CODE_VERIFIER_COOKIE_NAME,
@@ -12,9 +13,10 @@ import {
 } from "@/lib/server/keycloak"
 
 export async function GET(req: NextRequest) {
+  const publicOrigin = getPublicRequestOrigin(req)
   const config = getKeycloakWebConfig()
   if (!config) {
-    return NextResponse.redirect(new URL("/login?error=Keycloak%20is%20not%20configured", req.url))
+    return NextResponse.redirect(new URL("/login?error=Keycloak%20is%20not%20configured", publicOrigin))
   }
 
   const mode = req.nextUrl.searchParams.get("mode")

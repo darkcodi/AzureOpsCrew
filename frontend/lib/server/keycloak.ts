@@ -11,6 +11,12 @@ export interface KeycloakWebConfig {
   clientSecret: string | null
 }
 
+function firstHeaderValue(value: string | null): string | null {
+  if (!value) return null
+  const first = value.split(",")[0]?.trim()
+  return first && first.length > 0 ? first : null
+}
+
 export function getKeycloakWebConfig(): KeycloakWebConfig | null {
   const authority = process.env.KEYCLOAK_AUTHORITY?.trim().replace(/\/+$/, "") ?? ""
   const clientId = process.env.KEYCLOAK_CLIENT_ID?.trim() ?? ""
@@ -31,8 +37,24 @@ export function buildKeycloakCallbackUrl(req: NextRequest): string {
   const configured = process.env.KEYCLOAK_CALLBACK_URL?.trim()
   if (configured) return configured
 
-  const url = new URL("/api/auth/keycloak/callback", req.url)
+  const url = new URL("/api/auth/keycloak/callback", getPublicRequestOrigin(req))
   return url.toString()
+}
+
+export function getPublicRequestOrigin(req: NextRequest): string {
+  const configured = process.env.PUBLIC_APP_URL?.trim().replace(/\/+$/, "")
+  if (configured) return configured
+
+  const forwardedProto = firstHeaderValue(req.headers.get("x-forwarded-proto"))
+  const forwardedHost =
+    firstHeaderValue(req.headers.get("x-forwarded-host")) ??
+    firstHeaderValue(req.headers.get("host"))
+
+  if (forwardedProto && forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`
+  }
+
+  return req.nextUrl.origin
 }
 
 export function toSafeNextPath(next: string | null): string {

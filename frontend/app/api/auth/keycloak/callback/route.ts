@@ -3,6 +3,7 @@ import { ACCESS_TOKEN_COOKIE_NAME, getAuthCookieOptions } from "@/lib/server/aut
 import {
   buildKeycloakCallbackUrl,
   clearTransientAuthCookieOptions,
+  getPublicRequestOrigin,
   getKeycloakWebConfig,
   KEYCLOAK_CODE_VERIFIER_COOKIE_NAME,
   KEYCLOAK_NEXT_COOKIE_NAME,
@@ -23,7 +24,7 @@ interface BackendAuthResponse {
 }
 
 function buildLoginRedirect(req: NextRequest, message: string) {
-  const loginUrl = new URL("/login", req.url)
+  const loginUrl = new URL("/login", getPublicRequestOrigin(req))
   loginUrl.searchParams.set("error", message)
   return loginUrl
 }
@@ -120,7 +121,7 @@ export async function GET(req: NextRequest) {
       return response
     }
 
-    const redirectUrl = new URL(nextPath, req.url)
+    const redirectUrl = new URL(nextPath, getPublicRequestOrigin(req))
     const response = NextResponse.redirect(redirectUrl)
     response.cookies.set(ACCESS_TOKEN_COOKIE_NAME, authData.accessToken, getAuthCookieOptions())
     response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, "", clearCookieOptions)
