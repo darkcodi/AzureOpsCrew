@@ -72,6 +72,10 @@ public sealed class KeycloakIdTokenValidator
         {
             return _tokenHandler.ValidateToken(idToken, validationParameters, out _);
         }
+        catch (ArgumentException ex)
+        {
+            throw new SecurityTokenException("Invalid ID token format.", ex);
+        }
         catch (SecurityTokenSignatureKeyNotFoundException)
         {
             _configurationManager!.RequestRefresh();

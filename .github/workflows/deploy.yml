@@ -29,6 +29,7 @@ jobs:
     outputs:
       env_name: ${{ steps.env.outputs.name }}
       resource_group: ${{ steps.env.outputs.rg }}
+      frontend_public_url: ${{ steps.env.outputs.frontend_public_url }}
       image_tag: ${{ github.sha }}
     
     steps:
@@ -46,10 +47,22 @@ jobs:
               RESOURCE_GROUP="AzureOpsCrew-${ENV_NAME}"
               ;;
           esac
+
+          case "$ENV_NAME" in
+            prod)
+              FRONTEND_PUBLIC_URL="https://aoc-app.com"
+              ;;
+            *)
+              FRONTEND_PUBLIC_URL="https://${ENV_NAME}.aoc-app.com"
+              ;;
+          esac
+
           echo "name=${ENV_NAME}" >> $GITHUB_OUTPUT
           echo "rg=${RESOURCE_GROUP}" >> $GITHUB_OUTPUT
+          echo "frontend_public_url=${FRONTEND_PUBLIC_URL}" >> $GITHUB_OUTPUT
           echo "🎯 Environment: ${ENV_NAME}"
           echo "🎯 Resource Group: ${RESOURCE_GROUP}"
+          echo "🎯 Frontend Public URL: ${FRONTEND_PUBLIC_URL}"
           echo "🚀 Deploy enabled: ${{ github.event.inputs.deploy }}"
 
       - name: Azure Login
@@ -88,6 +101,7 @@ jobs:
           echo "## 📦 Build Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ steps.env.outputs.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend Public URL:** ${{ steps.env.outputs.frontend_public_url }}" >> $GITHUB_STEP_SUMMARY
           echo "**Backend Image:** \`${{ env.ACR_SERVER }}/backend:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Frontend Image:** \`${{ env.ACR_SERVER }}/frontend:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
@@ -137,7 +151,9 @@ jobs:
             --image ${{ env.ACR_SERVER }}/frontend:${{ needs.build.outputs.image_tag }} \
             --set-env-vars \
               KEYCLOAK_AUTHORITY=${{ env.KEYCLOAK_AUTHORITY }} \
-              KEYCLOAK_CLIENT_ID=${{ env.KEYCLOAK_CLIENT_ID }}
+              KEYCLOAK_CLIENT_ID=${{ env.KEYCLOAK_CLIENT_ID }} \
+              PUBLIC_APP_URL=${{ needs.build.outputs.frontend_public_url }} \
+              KEYCLOAK_CALLBACK_URL=${{ needs.build.outputs.frontend_public_url }}/api/auth/keycloak/callback
           echo "✅ Frontend deployed"
 
       - name: Deploy Summary

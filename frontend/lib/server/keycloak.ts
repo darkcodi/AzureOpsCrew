@@ -45,6 +45,15 @@ export function getPublicRequestOrigin(req: NextRequest): string {
   const configured = process.env.PUBLIC_APP_URL?.trim().replace(/\/+$/, "")
   if (configured) return configured
 
+  const configuredCallbackUrl = process.env.KEYCLOAK_CALLBACK_URL?.trim()
+  if (configuredCallbackUrl) {
+    try {
+      return new URL(configuredCallbackUrl).origin
+    } catch {
+      // Ignore invalid override and continue with header-based detection.
+    }
+  }
+
   const forwardedProto = firstHeaderValue(req.headers.get("x-forwarded-proto"))
   const forwardedHost =
     firstHeaderValue(req.headers.get("x-forwarded-host")) ??
