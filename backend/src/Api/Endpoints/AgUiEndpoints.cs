@@ -255,8 +255,9 @@ public static class ChannelAgUiFactory
                     ["ag_ui_forwarded_properties"] = input.ForwardedProperties,
                     ["ag_ui_thread_id"] = input.ThreadId,
                     ["ag_ui_run_id"] = input.RunId
-                }
-            }
+                },
+            },
+            //AIContextProviderFactory =
         };
 
         return chatClient.AsAIAgent(options);
