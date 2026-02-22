@@ -19,7 +19,7 @@ on:
 env:
   ACR_NAME: azopscrewacr2dovm8
   ACR_SERVER: azopscrewacr2dovm8.azurecr.io
-  KEYCLOAK_AUTHORITY: https://aus.aoc-app.com/realms/azureopscrew
+  KEYCLOAK_AUTHORITY: https://auth.aoc-app.com/realms/azureopscrew
   KEYCLOAK_CLIENT_ID: azureopscrew-frontend
 
 jobs:
