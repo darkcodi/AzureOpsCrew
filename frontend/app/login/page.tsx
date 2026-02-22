@@ -1,8 +1,8 @@
 "use client"
 
-import { FormEvent, Suspense, useState } from "react"
+import { Suspense } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 
 function toSafeNextPath(next: string | null): string {
   if (!next) {
@@ -17,42 +17,10 @@ function toSafeNextPath(next: string | null): string {
 }
 
 function LoginPageContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const nextPath = toSafeNextPath(searchParams.get("next"))
   const keycloakError = searchParams.get("error")
   const keycloakLoginHref = `/api/auth/keycloak/start?mode=login&next=${encodeURIComponent(nextPath)}`
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError(null)
-    setIsSubmitting(true)
-
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      })
-
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        setError(data?.error ?? "Login failed")
-        return
-      }
-
-      router.replace(nextPath)
-      router.refresh()
-    } catch {
-      setError("Unable to login. Please try again.")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   return (
     <main className="flex h-dvh w-full items-center justify-center bg-slate-950 px-4">
@@ -72,55 +40,14 @@ function LoginPageContent() {
             href={keycloakLoginHref}
             className="block w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-center font-medium text-white transition hover:bg-slate-700"
           >
-            Continue with Secure Sign In
+            Continue with Sign In
           </Link>
           <p className="text-center text-xs text-slate-400">
-            Recommended for production. Uses Keycloak (OIDC + PKCE).
+            Sign in is handled securely by Keycloak (OIDC + PKCE).
           </p>
         </div>
 
-        <div className="mb-4 flex items-center gap-3">
-          <div className="h-px flex-1 bg-slate-800" />
-          <span className="text-xs uppercase tracking-wide text-slate-500">Legacy email login</span>
-          <div className="h-px flex-1 bg-slate-800" />
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="block">
-            <span className="mb-1 block text-sm text-slate-300">Email</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white outline-none focus:border-sky-500"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-sm text-slate-300">Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="current-password"
-              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white outline-none focus:border-sky-500"
-            />
-          </label>
-
-          {(error || keycloakError) && <p className="text-sm text-red-400">{error ?? keycloakError}</p>}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-md bg-sky-600 px-3 py-2 font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSubmitting ? "Signing in..." : "Sign in"}
-          </button>
-        </form>
+        {keycloakError && <p className="text-sm text-red-400">{keycloakError}</p>}
       </section>
     </main>
   )

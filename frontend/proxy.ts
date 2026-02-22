@@ -3,7 +3,7 @@ import { ACCESS_TOKEN_COOKIE_NAME } from "@/lib/server/auth"
 
 const PUBLIC_ROUTES = new Set(["/login", "/signup"])
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   if (

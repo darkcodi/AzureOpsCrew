@@ -18,6 +18,7 @@ public static class AuthEndpoints
 {
     public static void MapAuthEndpoints(this IEndpointRouteBuilder routeBuilder)
     {
+        var legacyPasswordAuthEnabled = false;
         var group = routeBuilder.MapGroup("/api/auth")
             .WithTags("Auth");
 
@@ -29,6 +30,9 @@ public static class AuthEndpoints
             IOptions<EmailVerificationSettings> emailVerificationOptions,
             CancellationToken cancellationToken) =>
         {
+            if (!legacyPasswordAuthEnabled)
+                return LegacyPasswordAuthDisabled();
+
             var settings = emailVerificationOptions.Value;
             var now = DateTime.UtcNow;
             var normalizedEmail = NormalizeEmail(body.Email);
@@ -124,6 +128,9 @@ public static class AuthEndpoints
             IOptions<EmailVerificationSettings> emailVerificationOptions,
             CancellationToken cancellationToken) =>
         {
+            if (!legacyPasswordAuthEnabled)
+                return LegacyPasswordAuthDisabled();
+
             var settings = emailVerificationOptions.Value;
             var now = DateTime.UtcNow;
             var normalizedEmail = NormalizeEmail(body.Email);
@@ -200,6 +207,9 @@ public static class AuthEndpoints
             IOptions<EmailVerificationSettings> emailVerificationOptions,
             CancellationToken cancellationToken) =>
         {
+            if (!legacyPasswordAuthEnabled)
+                return LegacyPasswordAuthDisabled();
+
             var settings = emailVerificationOptions.Value;
             var now = DateTime.UtcNow;
             var normalizedEmail = NormalizeEmail(body.Email);
@@ -300,6 +310,9 @@ public static class AuthEndpoints
             JwtTokenService jwtTokenService,
             CancellationToken cancellationToken) =>
         {
+            if (!legacyPasswordAuthEnabled)
+                return LegacyPasswordAuthDisabled();
+
             var normalizedEmail = NormalizeEmail(body.Email);
 
             var user = await context.Users
@@ -507,6 +520,11 @@ public static class AuthEndpoints
     }
 
     private static string NormalizeEmail(string email) => email.Trim().ToUpperInvariant();
+
+    private static IResult LegacyPasswordAuthDisabled() =>
+        Results.Json(
+            new { error = "Email/password authentication is disabled. Use Keycloak sign-in." },
+            statusCode: StatusCodes.Status410Gone);
 
     private static int GetRemainingCooldownSeconds(
         DateTime nowUtc,
