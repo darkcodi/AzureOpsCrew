@@ -337,6 +337,7 @@ public static class AuthEndpoints
             IOptions<KeycloakOidcSettings> keycloakOidcOptions,
             IPasswordHasher<User> passwordHasher,
             JwtTokenService jwtTokenService,
+            ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
         {
             if (!keycloakIdTokenValidator.IsEnabled)
@@ -354,6 +355,15 @@ public static class AuthEndpoints
             catch (SecurityTokenException)
             {
                 return Results.Unauthorized();
+            }
+            catch (Exception ex) when (cancellationToken.IsCancellationRequested is false)
+            {
+                loggerFactory.CreateLogger("Auth.KeycloakExchange")
+                    .LogError(ex, "Failed to validate Keycloak ID token.");
+
+                return Results.Json(
+                    new { error = "Unable to validate identity token. Please try again." },
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
             }
 
             var providerSubject = GetFirstClaimValue(

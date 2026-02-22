@@ -16,7 +16,9 @@ public class M009_AddUserExternalIdentityTable : Migration
             .WithColumn("DateCreated").AsDateTime().NotNullable()
             .WithColumn("DateModified").AsDateTime().Nullable();
 
-        Create.ForeignKey("FK_AppUserExternalIdentity_AppUser_UserId")
+        // FluentMigrator SQLite generator does not support standalone foreign key expressions.
+        // Skip FK creation for SQLite to keep local development migrations working.
+        IfDatabase("SqlServer").Create.ForeignKey("FK_AppUserExternalIdentity_AppUser_UserId")
             .FromTable("AppUserExternalIdentity").ForeignColumn("UserId")
             .ToTable("AppUser").PrimaryColumn("Id");
 
@@ -35,7 +37,7 @@ public class M009_AddUserExternalIdentityTable : Migration
     {
         Delete.Index("IX_AppUserExternalIdentity_UserId").OnTable("AppUserExternalIdentity");
         Delete.Index("IX_AppUserExternalIdentity_Provider_Subject").OnTable("AppUserExternalIdentity");
-        Delete.ForeignKey("FK_AppUserExternalIdentity_AppUser_UserId").OnTable("AppUserExternalIdentity");
+        IfDatabase("SqlServer").Delete.ForeignKey("FK_AppUserExternalIdentity_AppUser_UserId").OnTable("AppUserExternalIdentity");
         Delete.Table("AppUserExternalIdentity");
     }
 }
