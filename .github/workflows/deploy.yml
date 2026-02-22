@@ -19,7 +19,7 @@ on:
 env:
   ACR_NAME: azopscrewacr2dovm8
   ACR_SERVER: azopscrewacr2dovm8.azurecr.io
-  KEYCLOAK_AUTHORITY: https://auth.aoc-app.com/realms/azureopscrew
+  KEYCLOAK_BASE_URL: https://auth.aoc-app.com
   KEYCLOAK_CLIENT_ID: azureopscrew-frontend
 
 jobs:
@@ -30,6 +30,8 @@ jobs:
       env_name: ${{ steps.env.outputs.name }}
       resource_group: ${{ steps.env.outputs.rg }}
       frontend_public_url: ${{ steps.env.outputs.frontend_public_url }}
+      keycloak_realm: ${{ steps.env.outputs.keycloak_realm }}
+      keycloak_authority: ${{ steps.env.outputs.keycloak_authority }}
       image_tag: ${{ github.sha }}
     
     steps:
@@ -57,12 +59,33 @@ jobs:
               ;;
           esac
 
+          case "$ENV_NAME" in
+            dev)
+              KEYCLOAK_REALM="azureopscrew-dev"
+              ;;
+            test1)
+              KEYCLOAK_REALM="azureopscrew-test1"
+              ;;
+            prod)
+              KEYCLOAK_REALM="azureopscrew-prod"
+              ;;
+            *)
+              echo "Unsupported environment for Keycloak realm mapping: $ENV_NAME" >&2
+              exit 1
+              ;;
+          esac
+
+          KEYCLOAK_AUTHORITY="${{ env.KEYCLOAK_BASE_URL }}/realms/${KEYCLOAK_REALM}"
+
           echo "name=${ENV_NAME}" >> $GITHUB_OUTPUT
           echo "rg=${RESOURCE_GROUP}" >> $GITHUB_OUTPUT
           echo "frontend_public_url=${FRONTEND_PUBLIC_URL}" >> $GITHUB_OUTPUT
+          echo "keycloak_realm=${KEYCLOAK_REALM}" >> $GITHUB_OUTPUT
+          echo "keycloak_authority=${KEYCLOAK_AUTHORITY}" >> $GITHUB_OUTPUT
           echo "🎯 Environment: ${ENV_NAME}"
           echo "🎯 Resource Group: ${RESOURCE_GROUP}"
           echo "🎯 Frontend Public URL: ${FRONTEND_PUBLIC_URL}"
+          echo "🎯 Keycloak Realm: ${KEYCLOAK_REALM}"
           echo "🚀 Deploy enabled: ${{ github.event.inputs.deploy }}"
 
       - name: Azure Login
@@ -137,7 +160,7 @@ jobs:
               Brevo__SenderEmail=${{ secrets.BREVO_SENDER_EMAIL }} \
               Brevo__SenderName="${{ secrets.BREVO_SENDER_NAME }}" \
               KeycloakOidc__Enabled=true \
-              KeycloakOidc__Authority=${{ env.KEYCLOAK_AUTHORITY }} \
+              KeycloakOidc__Authority=${{ needs.build.outputs.keycloak_authority }} \
               KeycloakOidc__ClientId=${{ env.KEYCLOAK_CLIENT_ID }} \
               KeycloakOidc__RequireVerifiedEmail=true
           echo "✅ Backend deployed"
@@ -150,7 +173,7 @@ jobs:
             --resource-group ${{ needs.build.outputs.resource_group }} \
             --image ${{ env.ACR_SERVER }}/frontend:${{ needs.build.outputs.image_tag }} \
             --set-env-vars \
-              KEYCLOAK_AUTHORITY=${{ env.KEYCLOAK_AUTHORITY }} \
+              KEYCLOAK_AUTHORITY=${{ needs.build.outputs.keycloak_authority }} \
               KEYCLOAK_CLIENT_ID=${{ env.KEYCLOAK_CLIENT_ID }} \
               PUBLIC_APP_URL=${{ needs.build.outputs.frontend_public_url }} \
               KEYCLOAK_CALLBACK_URL=${{ needs.build.outputs.frontend_public_url }}/api/auth/keycloak/callback
