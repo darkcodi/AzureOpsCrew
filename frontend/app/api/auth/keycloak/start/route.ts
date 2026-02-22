@@ -42,8 +42,10 @@ function getUpstreamSetCookies(headers: Headers): string[] {
   return single ? [single] : []
 }
 
-function rewriteCookieDomainForAoc(cookie: string): string {
+function rewriteCookieDomainForAoc(cookie: string, publicOrigin: string): string {
   if (/;\s*domain=/i.test(cookie)) return cookie
+  const hostname = new URL(publicOrigin).hostname
+  if (!hostname.endsWith(".aoc-app.com")) return cookie
   return `${cookie}; Domain=.aoc-app.com`
 }
 
@@ -87,7 +89,7 @@ export async function GET(req: NextRequest) {
         if (registrationUrl) {
           redirectUrl = registrationUrl
           upstreamKeycloakCookies = getUpstreamSetCookies(preflight.headers)
-            .map(rewriteCookieDomainForAoc)
+            .map((cookie) => rewriteCookieDomainForAoc(cookie, publicOrigin))
         }
       }
     } catch {
