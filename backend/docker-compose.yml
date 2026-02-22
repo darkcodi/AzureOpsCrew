@@ -22,6 +22,10 @@ services:
       - Brevo__ApiKey=${BREVO_API_KEY:-}
       - Brevo__SenderEmail=${BREVO_SENDER_EMAIL:-azureopscrew@aoc-app.com}
       - Brevo__SenderName=${BREVO_SENDER_NAME:-Azure Ops Crew}
+      - KeycloakOidc__Enabled=${KEYCLOAK_OIDC_ENABLED:-false}
+      - KeycloakOidc__Authority=${KEYCLOAK_OIDC_AUTHORITY:-}
+      - KeycloakOidc__ClientId=${KEYCLOAK_OIDC_CLIENT_ID:-}
+      - KeycloakOidc__RequireVerifiedEmail=${KEYCLOAK_OIDC_REQUIRE_VERIFIED_EMAIL:-true}
       - Seeding__IsEnabled=${SEEDING_ENABLED:-false}
       - Seeding__AzureFoundrySeed__ApiEndpoint=${AZURE_OPENAI_API_ENDPOINT:-}
       - Seeding__AzureFoundrySeed__Key=${AZURE_OPENAI_API_KEY:-}

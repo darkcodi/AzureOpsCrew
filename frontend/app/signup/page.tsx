@@ -37,6 +37,7 @@ function formatCountdown(totalSeconds: number) {
 
 export default function SignupPage() {
   const router = useRouter()
+  const keycloakSignupHref = "/api/auth/keycloak/start?mode=signup"
   const [step, setStep] = useState<SignupStep>("details")
 
   const [displayName, setDisplayName] = useState("")
@@ -223,6 +224,29 @@ export default function SignupPage() {
             Sign in
           </Link>
         </div>
+
+        {step === "details" && (
+          <>
+            <div className="mb-4 space-y-3">
+              <Link
+                href={keycloakSignupHref}
+                className="block w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-center font-medium text-white transition hover:bg-slate-700"
+              >
+                Continue with Secure Sign Up
+              </Link>
+              <p className="text-center text-xs text-slate-400">
+                Recommended for production. Uses Keycloak (OIDC + PKCE).
+              </p>
+            </div>
+            <div className="mb-4 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-800" />
+              <span className="text-xs uppercase tracking-wide text-slate-500">
+                Legacy email code sign up
+              </span>
+              <div className="h-px flex-1 bg-slate-800" />
+            </div>
+          </>
+        )}
 
         {step === "details" ? (
           <form onSubmit={handleRequestCode} className="space-y-4">

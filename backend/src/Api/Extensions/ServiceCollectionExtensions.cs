@@ -208,4 +208,28 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IPasswordHasher<PendingRegistration>, PasswordHasher<PendingRegistration>>();
     }
+
+    public static void AddKeycloakOidcSupport(this IServiceCollection services, IConfiguration configuration)
+    {
+        var settings = configuration.GetSection("KeycloakOidc").Get<KeycloakOidcSettings>() ?? new KeycloakOidcSettings();
+
+        if (settings.Enabled)
+        {
+            if (string.IsNullOrWhiteSpace(settings.Authority))
+                throw new InvalidOperationException("KeycloakOidc__Authority is required when KeycloakOidc__Enabled=true.");
+
+            if (!Uri.TryCreate(settings.Authority, UriKind.Absolute, out var authorityUri))
+                throw new InvalidOperationException("KeycloakOidc__Authority must be an absolute URL.");
+
+            if (!string.Equals(authorityUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("KeycloakOidc__Authority must use HTTPS.");
+
+            if (string.IsNullOrWhiteSpace(settings.ClientId))
+                throw new InvalidOperationException("KeycloakOidc__ClientId is required when KeycloakOidc__Enabled=true.");
+        }
+
+        services.Configure<KeycloakOidcSettings>(configuration.GetSection("KeycloakOidc"));
+        services.AddOptions<KeycloakOidcSettings>();
+        services.AddSingleton<KeycloakIdTokenValidator>();
+    }
 }

@@ -8,7 +8,9 @@ using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -328,6 +330,145 @@ public static class AuthEndpoints
         .Produces(StatusCodes.Status401Unauthorized)
         .AllowAnonymous();
 
+        group.MapPost("/keycloak/exchange", async (
+            KeycloakExchangeRequestDto body,
+            AzureOpsCrewContext context,
+            KeycloakIdTokenValidator keycloakIdTokenValidator,
+            IOptions<KeycloakOidcSettings> keycloakOidcOptions,
+            IPasswordHasher<User> passwordHasher,
+            JwtTokenService jwtTokenService,
+            CancellationToken cancellationToken) =>
+        {
+            if (!keycloakIdTokenValidator.IsEnabled)
+            {
+                return Results.Json(
+                    new { error = "Keycloak sign-in is not enabled." },
+                    statusCode: StatusCodes.Status501NotImplemented);
+            }
+
+            System.Security.Claims.ClaimsPrincipal principal;
+            try
+            {
+                principal = await keycloakIdTokenValidator.ValidateIdTokenAsync(body.IdToken.Trim(), cancellationToken);
+            }
+            catch (SecurityTokenException)
+            {
+                return Results.Unauthorized();
+            }
+
+            var providerSubject = GetFirstClaimValue(
+                principal,
+                JwtRegisteredClaimNames.Sub,
+                System.Security.Claims.ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(providerSubject))
+            {
+                return Results.BadRequest(new { error = "Missing subject claim in identity token." });
+            }
+
+            var email = GetFirstClaimValue(
+                principal,
+                JwtRegisteredClaimNames.Email,
+                System.Security.Claims.ClaimTypes.Email)?.Trim();
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return Results.BadRequest(new { error = "Missing email claim in identity token." });
+            }
+
+            var emailVerified = false;
+            if (keycloakOidcOptions.Value.RequireVerifiedEmail && !TryGetBooleanClaim(principal, "email_verified", out emailVerified))
+            {
+                return Results.BadRequest(new { error = "Missing email verification claim in identity token." });
+            }
+
+            if (keycloakOidcOptions.Value.RequireVerifiedEmail && emailVerified is false)
+            {
+                return Results.Json(
+                    new { error = "Email address is not verified." },
+                    statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            const string provider = "keycloak";
+            var normalizedEmail = NormalizeEmail(email);
+            var displayName = ResolveDisplayName(principal, email);
+
+            var linkedIdentity = await context.UserExternalIdentities
+                .SingleOrDefaultAsync(
+                    x => x.Provider == provider && x.ProviderSubject == providerSubject,
+                    cancellationToken);
+
+            User? user = null;
+            if (linkedIdentity is not null)
+            {
+                user = await context.Users
+                    .SingleOrDefaultAsync(u => u.Id == linkedIdentity.UserId, cancellationToken);
+
+                if (user is null)
+                {
+                    context.UserExternalIdentities.Remove(linkedIdentity);
+                    await context.SaveChangesAsync(cancellationToken);
+                    linkedIdentity = null;
+                }
+            }
+
+            if (user is null)
+            {
+                user = await context.Users
+                    .SingleOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, cancellationToken);
+
+                if (user is null)
+                {
+                    user = new User(
+                        email: email,
+                        normalizedEmail: normalizedEmail,
+                        passwordHash: string.Empty,
+                        displayName: displayName);
+
+                    var externalOnlyPasswordHash = passwordHasher.HashPassword(user, Guid.NewGuid().ToString("N"));
+                    user.UpdatePasswordHash(externalOnlyPasswordHash);
+
+                    context.Users.Add(user);
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+            }
+
+            if (linkedIdentity is null)
+            {
+                linkedIdentity = new UserExternalIdentity(user.Id, provider, providerSubject, email);
+                context.UserExternalIdentities.Add(linkedIdentity);
+            }
+            else
+            {
+                linkedIdentity.UpdateEmail(email);
+            }
+
+            if (!string.IsNullOrWhiteSpace(displayName) && !string.Equals(user.DisplayName, displayName, StringComparison.Ordinal))
+            {
+                user.UpdateDisplayName(displayName);
+            }
+
+            if (!user.IsActive)
+            {
+                return Results.Json(
+                    new { error = "User is deactivated." },
+                    statusCode: StatusCodes.Status403Forbidden);
+            }
+
+            user.MarkLogin();
+            await context.SaveChangesAsync(cancellationToken);
+
+            var token = jwtTokenService.CreateToken(user);
+            return Results.Ok(ToAuthResponse(user, token));
+        })
+        .AddEndpointFilter<ValidationFilter<KeycloakExchangeRequestDto>>()
+        .Produces<AuthResponseDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status501NotImplemented)
+        .AllowAnonymous();
+
         group.MapGet("/me", async (
             HttpContext httpContext,
             AzureOpsCrewContext context,
@@ -379,5 +520,51 @@ public static class AuthEndpoints
             token.AccessToken,
             token.ExpiresAtUtc,
             new AuthUserDto(user.Id, user.Email, user.DisplayName));
+    }
+
+    private static string ResolveDisplayName(System.Security.Claims.ClaimsPrincipal principal, string email)
+    {
+        var fromClaims = GetFirstClaimValue(
+            principal,
+            "name",
+            System.Security.Claims.ClaimTypes.Name,
+            "preferred_username");
+
+        if (!string.IsNullOrWhiteSpace(fromClaims))
+            return fromClaims.Trim();
+
+        var atIndex = email.IndexOf('@');
+        return atIndex > 0 ? email[..atIndex] : email;
+    }
+
+    private static string? GetFirstClaimValue(System.Security.Claims.ClaimsPrincipal principal, params string[] claimTypes)
+    {
+        foreach (var claimType in claimTypes)
+        {
+            var value = principal.FindFirst(claimType)?.Value;
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+
+        return null;
+    }
+
+    private static bool TryGetBooleanClaim(System.Security.Claims.ClaimsPrincipal principal, string claimType, out bool value)
+    {
+        var raw = principal.FindFirst(claimType)?.Value;
+        if (string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase) || raw == "1")
+        {
+            value = true;
+            return true;
+        }
+
+        if (string.Equals(raw, "false", StringComparison.OrdinalIgnoreCase) || raw == "0")
+        {
+            value = false;
+            return true;
+        }
+
+        value = false;
+        return false;
     }
 }

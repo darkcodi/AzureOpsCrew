@@ -7,6 +7,7 @@ using ChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ChannelE
 using AiProviderConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ProviderEntityTypeConfiguration;
 using PendingRegistrationConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.PendingRegistrationEntityTypeConfiguration;
 using UserConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.UserEntityTypeConfiguration;
+using UserExternalIdentityConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.UserExternalIdentityEntityTypeConfiguration;
 using AiProvider = AzureOpsCrew.Domain.Providers.Provider;
 
 namespace AzureOpsCrew.Infrastructure.Db;
@@ -23,6 +24,7 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<AiProvider> Providers => Set<AiProvider>();
     public DbSet<User> Users => Set<User>();
     public DbSet<PendingRegistration> PendingRegistrations => Set<PendingRegistration>();
+    public DbSet<UserExternalIdentity> UserExternalIdentities => Set<UserExternalIdentity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,6 +32,7 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new ChannelConfig());
         modelBuilder.ApplyConfiguration(new AiProviderConfig());
         modelBuilder.ApplyConfiguration(new UserConfig());
+        modelBuilder.ApplyConfiguration(new UserExternalIdentityConfig());
         modelBuilder.ApplyConfiguration(new PendingRegistrationConfig());
     }
 }

@@ -23,6 +23,9 @@ function LoginPageContent() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const nextPath = toSafeNextPath(searchParams.get("next"))
+  const keycloakError = searchParams.get("error")
+  const keycloakLoginHref = `/api/auth/keycloak/start?mode=login&next=${encodeURIComponent(nextPath)}`
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -42,7 +45,6 @@ function LoginPageContent() {
         return
       }
 
-      const nextPath = toSafeNextPath(searchParams.get("next"))
       router.replace(nextPath)
       router.refresh()
     } catch {
@@ -63,6 +65,24 @@ function LoginPageContent() {
           >
             Sign up
           </Link>
+        </div>
+
+        <div className="mb-4 space-y-3">
+          <Link
+            href={keycloakLoginHref}
+            className="block w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-center font-medium text-white transition hover:bg-slate-700"
+          >
+            Continue with Secure Sign In
+          </Link>
+          <p className="text-center text-xs text-slate-400">
+            Recommended for production. Uses Keycloak (OIDC + PKCE).
+          </p>
+        </div>
+
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-800" />
+          <span className="text-xs uppercase tracking-wide text-slate-500">Legacy email login</span>
+          <div className="h-px flex-1 bg-slate-800" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -91,7 +111,7 @@ function LoginPageContent() {
             />
           </label>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {(error || keycloakError) && <p className="text-sm text-red-400">{error ?? keycloakError}</p>}
 
           <button
             type="submit"
