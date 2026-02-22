@@ -12,6 +12,23 @@ interface RegisterChallengeResponse {
   resendAvailableInSeconds: number
 }
 
+function parseRegisterChallengeResponse(data: unknown): RegisterChallengeResponse | null {
+  if (!data || typeof data !== "object") return null
+
+  const challenge = data as Record<string, unknown>
+  if (typeof challenge.message !== "string" || challenge.message.trim().length === 0) return null
+  if (typeof challenge.expiresAtUtc !== "string" || Number.isNaN(Date.parse(challenge.expiresAtUtc))) return null
+
+  const resendSeconds = Number(challenge.resendAvailableInSeconds)
+  if (!Number.isFinite(resendSeconds)) return null
+
+  return {
+    message: challenge.message,
+    expiresAtUtc: challenge.expiresAtUtc,
+    resendAvailableInSeconds: Math.max(0, resendSeconds),
+  }
+}
+
 function formatCountdown(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
@@ -98,10 +115,15 @@ export default function SignupPage() {
         return
       }
 
-      const challenge = data as RegisterChallengeResponse
+      const challenge = parseRegisterChallengeResponse(data)
+      if (!challenge) {
+        setError("Invalid response from server")
+        return
+      }
+
       setChallengeMessage(challenge.message)
       setExpiresAtUtc(challenge.expiresAtUtc)
-      setResendCooldownSeconds(Math.max(0, challenge.resendAvailableInSeconds ?? 0))
+      setResendCooldownSeconds(challenge.resendAvailableInSeconds)
       setVerificationCode("")
       setStep("verify")
     } catch {
@@ -164,10 +186,15 @@ export default function SignupPage() {
         return
       }
 
-      const challenge = data as RegisterChallengeResponse
+      const challenge = parseRegisterChallengeResponse(data)
+      if (!challenge) {
+        setError("Invalid response from server")
+        return
+      }
+
       setChallengeMessage(challenge.message)
       setExpiresAtUtc(challenge.expiresAtUtc)
-      setResendCooldownSeconds(Math.max(0, challenge.resendAvailableInSeconds ?? 0))
+      setResendCooldownSeconds(challenge.resendAvailableInSeconds)
     } catch {
       setError("Unable to resend verification code. Please try again.")
     } finally {
