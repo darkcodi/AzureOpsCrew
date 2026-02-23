@@ -8,6 +8,9 @@ namespace AzureOpsCrew.Domain.AgentServices
     //!!! DRAFT !!!
     public class AiAgentFactory : IAiAgentFactory
     {
+        private const string SystemPrompt =
+            "You are one of agents in group chat: agents + human.";
+
         private const string ToolHint =
             "When you have tools available (showPipelineStatus, showWorkItems, showResourceInfo, showDeployment, showMetrics), " +
             "use them proactively to present information visually instead of plain text. " +
@@ -30,12 +33,20 @@ namespace AzureOpsCrew.Domain.AgentServices
                 //Concat(CreateAiTools(agentMcps))
                 ;
 
+            var prompt = @$"
+                    {SystemPrompt}
+
+                    Your name is {agent.Info.Name}
+
+                    {ToolHint}
+                ";
+
             var options = new ChatClientAgentOptions
             {
                 Name = agent.Info.Name,
                 ChatOptions = new ChatOptions
                 {
-                    Instructions = agent.Info.Prompt + ToolHint,
+                    Instructions = prompt,
                     Tools = extraTools?.ToList(),
                     AdditionalProperties = additionalPropertiesDictionary
                 },
