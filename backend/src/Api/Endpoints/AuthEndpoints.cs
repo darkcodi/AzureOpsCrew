@@ -3,6 +3,7 @@ using AzureOpsCrew.Api.Email;
 using AzureOpsCrew.Api.Endpoints.Dtos.Auth;
 using AzureOpsCrew.Api.Endpoints.Filters;
 using AzureOpsCrew.Api.Settings;
+using AzureOpsCrew.Api.Setup.Seeds;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.AspNetCore.Identity;
@@ -348,6 +349,7 @@ public static class AuthEndpoints
             AzureOpsCrewContext context,
             KeycloakIdTokenValidator keycloakIdTokenValidator,
             IOptions<KeycloakOidcSettings> keycloakOidcOptions,
+            IOptions<SeederOptions> seederOptions,
             IPasswordHasher<User> passwordHasher,
             JwtTokenService jwtTokenService,
             ILoggerFactory loggerFactory,
@@ -480,6 +482,12 @@ public static class AuthEndpoints
 
             user.MarkLogin();
             await context.SaveChangesAsync(cancellationToken);
+
+            await UserWorkspaceDefaults.EnsureAsync(
+                context,
+                seederOptions.Value,
+                user.Id,
+                cancellationToken);
 
             var token = jwtTokenService.CreateToken(user);
             return Results.Ok(ToAuthResponse(user, token));

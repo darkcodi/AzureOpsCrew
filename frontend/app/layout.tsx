@@ -9,6 +9,9 @@ import "./globals.css"
 export const metadata: Metadata = {
   title: "AgentHub - AI Chat",
   description: "Chat with AI agents in a Discord-like interface",
+  icons: {
+    icon: "/placeholder-logo.svg",
+  },
 }
 
 export const viewport: Viewport = {

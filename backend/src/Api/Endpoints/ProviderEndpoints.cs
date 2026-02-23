@@ -1,10 +1,12 @@
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints.Dtos.Providers;
 using AzureOpsCrew.Api.Endpoints.Filters;
+using AzureOpsCrew.Api.Setup.Seeds;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -71,9 +73,16 @@ public static class ProviderEndpoints
         group.MapGet("", async (
             HttpContext httpContext,
             AzureOpsCrewContext context,
+            IOptions<SeederOptions> seederOptions,
             CancellationToken cancellationToken) =>
         {
             var userId = httpContext.User.GetRequiredUserId();
+
+            await UserWorkspaceDefaults.EnsureAsync(
+                context,
+                seederOptions.Value,
+                userId,
+                cancellationToken);
 
             var configs = await context.Set<Provider>()
                 .Where(p => p.ClientId == userId)

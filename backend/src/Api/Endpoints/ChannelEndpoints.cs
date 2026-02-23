@@ -1,9 +1,11 @@
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
+using AzureOpsCrew.Api.Setup.Seeds;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -106,9 +108,16 @@ public static class ChannelEndpoints
         group.MapGet("", async (
             HttpContext httpContext,
             AzureOpsCrewContext context,
+            IOptions<SeederOptions> seederOptions,
             CancellationToken cancellationToken) =>
         {
             var userId = httpContext.User.GetRequiredUserId();
+
+            await UserWorkspaceDefaults.EnsureAsync(
+                context,
+                seederOptions.Value,
+                userId,
+                cancellationToken);
 
             var channels = await context.Set<Channel>()
                 .Where(c => c.ClientId == userId)

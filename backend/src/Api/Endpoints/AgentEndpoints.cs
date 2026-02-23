@@ -1,9 +1,11 @@
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints.Dtos.Agents;
+using AzureOpsCrew.Api.Setup.Seeds;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace AzureOpsCrew.Api.Endpoints
 {
@@ -54,9 +56,16 @@ namespace AzureOpsCrew.Api.Endpoints
             group.MapGet("", async (
                 HttpContext httpContext,
                 AzureOpsCrewContext context,
+                IOptions<SeederOptions> seederOptions,
                 CancellationToken cancellationToken) =>
             {
                 var userId = httpContext.User.GetRequiredUserId();
+
+                await UserWorkspaceDefaults.EnsureAsync(
+                    context,
+                    seederOptions.Value,
+                    userId,
+                    cancellationToken);
 
                 var agents = await context.Set<Agent>()
                     .Where(a => a.ClientId == userId)
