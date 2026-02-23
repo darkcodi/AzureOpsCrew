@@ -102,6 +102,7 @@ try
     app.MapAgentEndpoints();
     app.MapChannelEndpoints();
     app.MapProviderEndpoints();
+    app.MapChatEndpoints();
 
     app.MapAllAgUi();
 
