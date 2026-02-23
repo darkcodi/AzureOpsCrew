@@ -8,10 +8,12 @@ import { MessageInput } from "@/components/message-input"
 import { MemberList } from "@/components/member-list"
 import type { AGUIEvent } from "@ag-ui/core"
 import { EventType } from "@ag-ui/core"
+import type { HumanMember } from "@/lib/humans"
 
 interface ChannelAreaProps {
   channel: Channel
   allAgents: Agent[]
+  humans: HumanMember[]
   displayName: string
   onUpdateChannel: (channel: Channel) => void
   onAddAgent: (agent: Agent) => void
@@ -23,6 +25,7 @@ interface ChannelAreaProps {
 export function ChannelArea({
   channel,
   allAgents,
+  humans,
   displayName,
   onUpdateChannel,
   onAddAgent,
@@ -257,6 +260,7 @@ export function ChannelArea({
       {showMembers && (
         <MemberList
           allAgents={allAgents}
+          humans={humans}
           activeAgentIds={channel.agentIds}
           streamingAgentId={streamingAgentId}
           displayName={displayName}

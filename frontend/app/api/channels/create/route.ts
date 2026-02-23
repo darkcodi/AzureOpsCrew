@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import type { Channel } from "@/lib/agents"
+import { buildBackendHeaders, getAccessToken } from "@/lib/server/auth"
 
-// Backend API URL - configurable via BACKEND_API_URL env var
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
-// Backend DTO structure
 interface CreateChannelBodyDto {
-  clientId: number
   name: string
   description?: string | null
   agentIds: string[]
 }
 
-// Backend response structure
 interface BackendChannel {
   id: string
   clientId: number
@@ -25,10 +22,13 @@ interface BackendChannel {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!getAccessToken(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const body = await req.json()
     const { name, agentIds } = body
 
-    // Validate required fields
     if (!name?.trim()) {
       return NextResponse.json(
         { error: "Channel name is required" },
@@ -37,19 +37,14 @@ export async function POST(req: NextRequest) {
     }
 
     const backendBody: CreateChannelBodyDto = {
-      clientId: 1,
       name: name.trim(),
       description: null,
       agentIds: agentIds || [],
     }
 
-    const createUrl = `${BACKEND_API_URL}/api/channels/create`
-
-    const response = await fetch(createUrl, {
+    const response = await fetch(`${BACKEND_API_URL}/api/channels/create`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: buildBackendHeaders(req),
       body: JSON.stringify(backendBody),
     })
 
@@ -62,37 +57,41 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await response.json()
-    // Backend returns { channelId: "guid" }
-
-    // Fetch the newly created channel to get the full data including dateCreated
     const channelId = result.channelId
-    let frontendChannel: Channel
 
     if (channelId) {
-      try {
-        const channelResponse = await fetch(`${BACKEND_API_URL}/api/channels?clientId=1`)
-        if (channelResponse.ok) {
-          const channels: Channel[] = await channelResponse.json()
-          const newChannel = channels.find((c) => c.id === channelId)
-          if (newChannel) {
-            frontendChannel = newChannel
-            return NextResponse.json(frontendChannel)
-          }
+      const channelResponse = await fetch(`${BACKEND_API_URL}/api/channels/${channelId}`, {
+        method: "GET",
+        headers: buildBackendHeaders(req),
+      })
+
+      if (channelResponse.ok) {
+        const channel: BackendChannel = await channelResponse.json()
+        const frontendChannel: Channel = {
+          id: channel.id,
+          name: channel.name,
+          agentIds: channel.agentIds || [],
+          dateCreated: channel.dateCreated,
         }
-      } catch {
-        // Fall through to creating a channel with current timestamp
+        return NextResponse.json(frontendChannel)
       }
     }
 
-    // Fallback: create channel with current timestamp
-    frontendChannel = {
-      id: channelId || crypto.randomUUID(),
+    if (!channelId) {
+      return NextResponse.json(
+        { error: "Channel created but ID not returned by backend" },
+        { status: 502 }
+      )
+    }
+
+    const fallbackChannel: Channel = {
+      id: channelId,
       name: name.trim(),
       agentIds: agentIds || [],
       dateCreated: new Date().toISOString(),
     }
 
-    return NextResponse.json(frontendChannel)
+    return NextResponse.json(fallbackChannel)
   } catch (error) {
     console.error("Error creating channel:", error)
     return NextResponse.json(

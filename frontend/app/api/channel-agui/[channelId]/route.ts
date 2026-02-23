@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server"
 import type { AGUIEvent } from "@ag-ui/core"
 import { EventType } from "@ag-ui/core"
+import { buildBackendHeaders, getAccessToken } from "@/lib/server/auth"
 
-// Backend API URL - configurable via BACKEND_API_URL env var
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
 export const maxDuration = 300
@@ -18,54 +18,42 @@ interface ChatRequest {
   customModel?: string
 }
 
-/**
- * POST /api/channel-agui/[channelId]
- *
- * Proxies requests to the backend AGUI endpoint at /api/channels/{channelId}/agui
- */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ channelId: string }> }
 ) {
-  const { channelId } = await params
+  if (!getAccessToken(req)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
 
-  // Parse request body
+  const { channelId } = await params
   const body: ChatRequest = await req.json()
 
-  // Map frontend chat messages to AGUI message format
   const aguiMessages = body.messages.map((msg) => ({
     id: crypto.randomUUID(),
     role: msg.role,
     content: msg.content,
   }))
 
-  // Prepare AGUI request payload (RunAgentInput format)
   const runAgentInput = {
     threadId: crypto.randomUUID(),
     runId: crypto.randomUUID(),
     messages: aguiMessages,
     state: null,
     context: [],
-    // tools could be passed from client in the future
     tools: undefined,
   }
 
-  // Build backend AGUI URL
   const backendUrl = `${BACKEND_API_URL}/api/channels/${channelId}/agui`
 
   try {
-    // Forward request to backend
     const response = await fetch(backendUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      // Forward authorization header if present
-        ...(req.headers.get("authorization")
-          ? { Authorization: req.headers.get("authorization")! }
-          : {}),
-      },
+      headers: buildBackendHeaders(req),
       body: JSON.stringify(runAgentInput),
-      // Forward abort signal for cancellation
       signal: req.signal,
     })
 
@@ -78,12 +66,10 @@ export async function POST(
       )
     }
 
-    // Check if response is SSE (text/event-stream)
     const contentType = response.headers.get("content-type")
     const isSSE = contentType?.includes("text/event-stream")
 
     if (!isSSE) {
-      // If not SSE, just return the response as-is
       return new Response(response.body, {
         headers: {
           "Content-Type": contentType ?? "application/json",
@@ -91,7 +77,6 @@ export async function POST(
       })
     }
 
-    // Stream SSE events and transform to frontend-compatible format
     const reader = response.body?.getReader()
     if (!reader) {
       return new Response(JSON.stringify({ error: "No response body" }), {
@@ -103,7 +88,6 @@ export async function POST(
     const encoder = new TextEncoder()
     const decoder = new TextDecoder()
 
-    // Create a readable stream for transformed events
     const stream = new ReadableStream({
       async start(controller) {
         let buffer = ""
@@ -126,29 +110,24 @@ export async function POST(
                 try {
                   const event: AGUIEvent = JSON.parse(data)
 
-                  // Forward TEXT_MESSAGE_START event (includes authorName for agent identification)
                   if (event.type === EventType.TEXT_MESSAGE_START) {
                     controller.enqueue(
                       encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
                     )
                   }
 
-                  // Forward TEXT_MESSAGE_CONTENT event as-is
                   if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
                     controller.enqueue(
                       encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
                     )
                   }
 
-                  // Forward TEXT_MESSAGE_END event
                   if (event.type === EventType.TEXT_MESSAGE_END) {
                     controller.enqueue(
                       encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
                     )
                   }
 
-                  // For now, also forward tool events and other events as-is
-                  // The frontend can be extended to handle these
                   if (
                     event.type === EventType.TOOL_CALL_START ||
                     event.type === EventType.TOOL_CALL_ARGS ||
@@ -160,7 +139,6 @@ export async function POST(
                     )
                   }
 
-                  // Forward run events for monitoring
                   if (
                     event.type === EventType.RUN_STARTED ||
                     event.type === EventType.RUN_FINISHED ||
@@ -190,7 +168,7 @@ export async function POST(
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache, no-store",
-        "Connection": "keep-alive",
+        Connection: "keep-alive",
       },
     })
   } catch (error) {

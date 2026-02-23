@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Domain.ProviderServices;
@@ -26,6 +27,7 @@ public static class ChannelAgUiEndpoints
         app.MapPost("/api/agents/{id}/agui", async ([FromRoute(Name = "id")] Guid agentId, [FromBody] RunAgentInput? input, IProviderFacadeResolver providerFactory, AzureOpsCrewContext dbContext, HttpContext context, CancellationToken cancellationToken) =>
         {
             if (input is null) return Results.BadRequest();
+            var userId = context.User.GetRequiredUserId();
             Log.Information("Received AG-UI event for agent with id {AgentId} with threadId {ThreadId} and runId {RunId}", agentId, input.ThreadId, input.RunId);
             Log.Information("Input: {Input}", JsonConvert.SerializeObject(input));
 
@@ -53,7 +55,7 @@ public static class ChannelAgUiEndpoints
             };
 
             // Find Agent
-            var agent = dbContext.Set<Domain.Agents.Agent>().SingleOrDefault(a => a.Id == agentId);
+            var agent = dbContext.Set<Domain.Agents.Agent>().SingleOrDefault(a => a.Id == agentId && a.ClientId == userId);
             if (agent is null)
             {
                 Log.Warning("Unknown agent with id: {AgentId}", agentId);
@@ -62,7 +64,7 @@ public static class ChannelAgUiEndpoints
             Log.Information("Found agent {AgentId}", agent.Id);
 
             // Find Provider
-            var provider = dbContext.Set<Domain.Providers.Provider>().SingleOrDefault(p => p.Id == agent.ProviderId);
+            var provider = dbContext.Set<Domain.Providers.Provider>().SingleOrDefault(p => p.Id == agent.ProviderId && p.ClientId == userId);
             if (provider is null)
             {
                 Log.Warning("Unknown provider with id: {ProviderId} for agent {AgentId}", agent.ProviderId, agent.Id);
@@ -94,7 +96,8 @@ public static class ChannelAgUiEndpoints
             var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
             return new AGUIServerSentEventsResult(events, sseLogger, jsonSerializerOptions);
         })
-        .WithTags("AG-UI");
+        .WithTags("AG-UI")
+        .RequireAuthorization();
 
         app.MapPost("/api/channels/{id:guid}/agui", async (
             [FromRoute(Name = "id")] Guid channelId,
@@ -105,6 +108,7 @@ public static class ChannelAgUiEndpoints
             CancellationToken cancellationToken) =>
         {
             if (input is null) return Results.BadRequest();
+            var userId = http.User.GetRequiredUserId();
             Log.Information("Received AG-UI event for channel with id {ChannelId} with threadId {ThreadId} and runId {RunId}", channelId, input.ThreadId, input.RunId);
             Log.Information("Input: {Input}", JsonConvert.SerializeObject(input));
 
@@ -115,7 +119,7 @@ public static class ChannelAgUiEndpoints
             var clientTools = input.Tools?.AsAITools().ToList();
 
             // 1) Load channel + participants
-            var channel = await dbContext.Channels.SingleOrDefaultAsync(c => c.Id == channelId, cancellationToken);
+            var channel = await dbContext.Channels.SingleOrDefaultAsync(c => c.Id == channelId && c.ClientId == userId, cancellationToken);
             if (channel is null)
                 return Results.BadRequest($"Unknown channel with id: {channelId}");
 
@@ -124,7 +128,7 @@ public static class ChannelAgUiEndpoints
                 return Results.BadRequest($"Channel with id {channelId} has no agents added");
 
             var agents = await dbContext.Agents
-                .Where(a => agendIds.Contains(a.Id))
+                .Where(a => agendIds.Contains(a.Id) && a.ClientId == userId)
                 .ToListAsync(cancellationToken);
 
             if (agents.Count != agendIds.Count)
@@ -132,7 +136,7 @@ public static class ChannelAgUiEndpoints
 
             var providerIds = agents.Select(a => a.ProviderId).Distinct().ToList();
             var providers = await dbContext.Providers
-                .Where(p => providerIds.Contains(p.Id))
+                .Where(p => providerIds.Contains(p.Id) && p.ClientId == userId)
                 .ToListAsync(cancellationToken);
             if (providers.Count != providerIds.Count)
                 return Results.BadRequest("Some providers was not found.");
@@ -200,7 +204,8 @@ public static class ChannelAgUiEndpoints
                 sseLogger,
                 jsonSerializerOptions);
         })
-        .WithTags("AG-UI");
+        .WithTags("AG-UI")
+        .RequireAuthorization();
     }
 }
 
