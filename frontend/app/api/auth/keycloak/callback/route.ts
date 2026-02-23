@@ -6,6 +6,7 @@ import {
   getPublicRequestOrigin,
   getKeycloakWebConfig,
   KEYCLOAK_CODE_VERIFIER_COOKIE_NAME,
+  KEYCLOAK_ID_TOKEN_COOKIE_NAME,
   KEYCLOAK_NEXT_COOKIE_NAME,
   KEYCLOAK_STATE_COOKIE_NAME,
   toSafeNextPath,
@@ -124,6 +125,7 @@ export async function GET(req: NextRequest) {
     const redirectUrl = new URL(nextPath, getPublicRequestOrigin(req))
     const response = NextResponse.redirect(redirectUrl)
     response.cookies.set(ACCESS_TOKEN_COOKIE_NAME, authData.accessToken, getAuthCookieOptions())
+    response.cookies.set(KEYCLOAK_ID_TOKEN_COOKIE_NAME, tokenData.id_token, getAuthCookieOptions())
     response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, "", clearCookieOptions)
     response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, "", clearCookieOptions)
     response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, "", clearCookieOptions)

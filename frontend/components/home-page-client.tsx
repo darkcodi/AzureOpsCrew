@@ -250,10 +250,9 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     setPendingDMMessage(message ?? null)
   }, [])
 
-  const handleLogout = useCallback(async () => {
+  const handleLogout = useCallback(() => {
     clearCachedHumans()
-    await fetch("/api/auth/logout", { method: "POST" })
-    window.location.href = "/login"
+    window.location.href = "/api/auth/logout"
   }, [])
 
   return (

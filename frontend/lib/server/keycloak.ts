@@ -4,6 +4,7 @@ import { NextRequest } from "next/server"
 export const KEYCLOAK_STATE_COOKIE_NAME = "aoc_kc_state"
 export const KEYCLOAK_CODE_VERIFIER_COOKIE_NAME = "aoc_kc_code_verifier"
 export const KEYCLOAK_NEXT_COOKIE_NAME = "aoc_kc_next"
+export const KEYCLOAK_ID_TOKEN_COOKIE_NAME = "aoc_kc_id_token"
 
 export interface KeycloakWebConfig {
   authority: string
