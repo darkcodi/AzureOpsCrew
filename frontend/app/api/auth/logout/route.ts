@@ -6,6 +6,7 @@ import {
   getPublicRequestOrigin,
   KEYCLOAK_CODE_VERIFIER_COOKIE_NAME,
   KEYCLOAK_ID_TOKEN_COOKIE_NAME,
+  KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME,
   KEYCLOAK_NEXT_COOKIE_NAME,
   KEYCLOAK_STATE_COOKIE_NAME,
 } from "@/lib/server/keycloak"
@@ -19,6 +20,7 @@ function clearAuthCookies(response: NextResponse) {
   response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, "", transientCookieOptions)
   response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, "", transientCookieOptions)
   response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, "", transientCookieOptions)
+  response.cookies.set(KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME, "", transientCookieOptions)
 }
 
 function buildKeycloakLogoutRedirect(req: NextRequest): URL | null {

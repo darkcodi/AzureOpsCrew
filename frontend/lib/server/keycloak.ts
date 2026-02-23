@@ -5,6 +5,7 @@ export const KEYCLOAK_STATE_COOKIE_NAME = "aoc_kc_state"
 export const KEYCLOAK_CODE_VERIFIER_COOKIE_NAME = "aoc_kc_code_verifier"
 export const KEYCLOAK_NEXT_COOKIE_NAME = "aoc_kc_next"
 export const KEYCLOAK_ID_TOKEN_COOKIE_NAME = "aoc_kc_id_token"
+export const KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME = "aoc_kc_login_attempts"
 
 export interface KeycloakWebConfig {
   authority: string
@@ -146,4 +147,11 @@ export function clearTransientAuthCookieOptions() {
     path: "/",
     maxAge: 0,
   }
+}
+
+export function parseLoginAttemptCount(value: string | null | undefined): number {
+  if (!value) return 0
+  const parsed = Number.parseInt(value, 10)
+  if (!Number.isFinite(parsed) || parsed < 0) return 0
+  return parsed
 }

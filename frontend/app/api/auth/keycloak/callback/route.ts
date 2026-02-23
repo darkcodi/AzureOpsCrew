@@ -7,6 +7,7 @@ import {
   getKeycloakWebConfig,
   KEYCLOAK_CODE_VERIFIER_COOKIE_NAME,
   KEYCLOAK_ID_TOKEN_COOKIE_NAME,
+  KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME,
   KEYCLOAK_NEXT_COOKIE_NAME,
   KEYCLOAK_STATE_COOKIE_NAME,
   toSafeNextPath,
@@ -30,8 +31,15 @@ function buildLoginRedirect(req: NextRequest, message: string) {
   return loginUrl
 }
 
-export async function GET(req: NextRequest) {
+function clearKeycloakTransientCookies(response: NextResponse) {
   const clearCookieOptions = clearTransientAuthCookieOptions()
+  response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, "", clearCookieOptions)
+  response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, "", clearCookieOptions)
+  response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, "", clearCookieOptions)
+  response.cookies.set(KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME, "", clearCookieOptions)
+}
+
+export async function GET(req: NextRequest) {
   const config = getKeycloakWebConfig()
   if (!config) {
     return NextResponse.redirect(buildLoginRedirect(req, "Keycloak is not configured"))
@@ -40,12 +48,15 @@ export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get("error")
   if (error) {
     const errorDescription = req.nextUrl.searchParams.get("error_description")
+    console.warn("Keycloak callback returned error", {
+      error,
+      errorDescription,
+      path: req.nextUrl.pathname,
+    })
     const response = NextResponse.redirect(
       buildLoginRedirect(req, errorDescription ?? error)
     )
-    response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, "", clearCookieOptions)
-    response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, "", clearCookieOptions)
-    response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, "", clearCookieOptions)
+    clearKeycloakTransientCookies(response)
     return response
   }
 
@@ -56,10 +67,16 @@ export async function GET(req: NextRequest) {
   const nextPath = toSafeNextPath(req.cookies.get(KEYCLOAK_NEXT_COOKIE_NAME)?.value ?? null)
 
   if (!code || !state || !expectedState || state !== expectedState || !codeVerifier) {
+    console.warn("Invalid Keycloak callback state", {
+      hasCode: Boolean(code),
+      hasState: Boolean(state),
+      hasExpectedState: Boolean(expectedState),
+      stateMatches: Boolean(state && expectedState && state === expectedState),
+      hasCodeVerifier: Boolean(codeVerifier),
+      userAgent: req.headers.get("user-agent"),
+    })
     const response = NextResponse.redirect(buildLoginRedirect(req, "Invalid sign-in callback"))
-    response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, "", clearCookieOptions)
-    response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, "", clearCookieOptions)
-    response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, "", clearCookieOptions)
+    clearKeycloakTransientCookies(response)
     return response
   }
 
@@ -88,10 +105,12 @@ export async function GET(req: NextRequest) {
 
     const tokenData = await tokenResponse.json().catch(() => ({}))
     if (!tokenResponse.ok || typeof tokenData?.id_token !== "string") {
+      console.warn("Keycloak token exchange failed", {
+        status: tokenResponse.status,
+        hasIdToken: typeof tokenData?.id_token === "string",
+      })
       const response = NextResponse.redirect(buildLoginRedirect(req, "Keycloak sign-in failed"))
-      response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, "", clearCookieOptions)
-      response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, "", clearCookieOptions)
-      response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, "", clearCookieOptions)
+      clearKeycloakTransientCookies(response)
       return response
     }
 
@@ -106,19 +125,19 @@ export async function GET(req: NextRequest) {
     if (!backendResponse.ok) {
       const errorMessage =
         typeof backendData?.error === "string" ? backendData.error : "Unable to complete sign-in"
+      console.warn("Backend Keycloak exchange failed", {
+        status: backendResponse.status,
+        errorMessage,
+      })
       const response = NextResponse.redirect(buildLoginRedirect(req, errorMessage))
-      response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, "", clearCookieOptions)
-      response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, "", clearCookieOptions)
-      response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, "", clearCookieOptions)
+      clearKeycloakTransientCookies(response)
       return response
     }
 
     const authData = backendData as BackendAuthResponse
     if (!authData.accessToken) {
       const response = NextResponse.redirect(buildLoginRedirect(req, "Invalid auth response"))
-      response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, "", clearCookieOptions)
-      response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, "", clearCookieOptions)
-      response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, "", clearCookieOptions)
+      clearKeycloakTransientCookies(response)
       return response
     }
 
@@ -126,16 +145,12 @@ export async function GET(req: NextRequest) {
     const response = NextResponse.redirect(redirectUrl)
     response.cookies.set(ACCESS_TOKEN_COOKIE_NAME, authData.accessToken, getAuthCookieOptions())
     response.cookies.set(KEYCLOAK_ID_TOKEN_COOKIE_NAME, tokenData.id_token, getAuthCookieOptions())
-    response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, "", clearCookieOptions)
-    response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, "", clearCookieOptions)
-    response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, "", clearCookieOptions)
+    clearKeycloakTransientCookies(response)
     return response
   } catch (error) {
     console.error("Keycloak callback error:", error)
     const response = NextResponse.redirect(buildLoginRedirect(req, "Unable to complete sign-in"))
-    response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, "", clearCookieOptions)
-    response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, "", clearCookieOptions)
-    response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, "", clearCookieOptions)
+    clearKeycloakTransientCookies(response)
     return response
   }
 }

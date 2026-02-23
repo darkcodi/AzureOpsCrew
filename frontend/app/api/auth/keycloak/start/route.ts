@@ -8,8 +8,10 @@ import {
   getKeycloakWebConfig,
   getTransientAuthCookieOptions,
   KEYCLOAK_CODE_VERIFIER_COOKIE_NAME,
+  KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME,
   KEYCLOAK_NEXT_COOKIE_NAME,
   KEYCLOAK_STATE_COOKIE_NAME,
+  parseLoginAttemptCount,
   toSafeNextPath,
 } from "@/lib/server/keycloak"
 
@@ -60,6 +62,26 @@ export async function GET(req: NextRequest) {
 
   const mode = req.nextUrl.searchParams.get("mode")
   const nextPath = toSafeNextPath(req.nextUrl.searchParams.get("next"))
+  const currentAttemptCount = parseLoginAttemptCount(
+    req.cookies.get(KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME)?.value
+  )
+
+  // Stop browser redirect loops (Safari/private mode or blocked cookies can trigger this)
+  // and surface an actionable error instead of infinite auth hops.
+  if (mode !== "signup" && currentAttemptCount >= 5) {
+    const loginUrl = new URL("/login", publicOrigin)
+    loginUrl.searchParams.set(
+      "error",
+      "Too many sign-in redirects. Clear site cookies and try again."
+    )
+
+    const response = NextResponse.redirect(loginUrl)
+    response.cookies.set(KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME, "0", {
+      ...getTransientAuthCookieOptions(),
+      maxAge: 0,
+    })
+    return response
+  }
 
   if (mode === "signup" && !features.localSignupEnabled) {
     return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent("Sign up is disabled")}`, publicOrigin))
@@ -118,6 +140,11 @@ export async function GET(req: NextRequest) {
   response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, state, cookieOptions)
   response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, verifier, cookieOptions)
   response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, nextPath, cookieOptions)
+  response.cookies.set(
+    KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME,
+    String(mode === "signup" ? 0 : currentAttemptCount + 1),
+    cookieOptions
+  )
 
   for (const setCookie of upstreamKeycloakCookies) {
     response.headers.append("set-cookie", setCookie)
