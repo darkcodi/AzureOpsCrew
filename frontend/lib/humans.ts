@@ -9,7 +9,7 @@ export interface HumanMember {
 }
 
 const HUMAN_ID_PREFIX = "human:"
-const HUMANS_CACHE_KEY = "aoc_humans_cache_v1"
+const HUMANS_CACHE_KEY = "aoc_humans_cache_v2"
 
 export function toHumanCardId(userId: number): string {
   return `${HUMAN_ID_PREFIX}${userId}`

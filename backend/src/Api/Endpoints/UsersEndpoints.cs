@@ -9,6 +9,7 @@ public static class UsersEndpoints
 {
     private static readonly TimeSpan OnlineWindow = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan PresenceWriteThrottle = TimeSpan.FromMinutes(1);
+    private const string ExternalIdentityProviderKeycloak = "keycloak";
 
     public static void MapUsersEndpoints(this IEndpointRouteBuilder routeBuilder)
     {
@@ -37,9 +38,13 @@ public static class UsersEndpoints
                 await context.SaveChangesAsync(cancellationToken);
             }
 
+            var keycloakLinkedUserIds = context.UserExternalIdentities
+                .Where(x => x.Provider == ExternalIdentityProviderKeycloak)
+                .Select(x => x.UserId);
+
             var users = await context.Users
                 .AsNoTracking()
-                .Where(u => u.IsActive)
+                .Where(u => u.IsActive && keycloakLinkedUserIds.Contains(u.Id))
                 .OrderBy(u => u.DisplayName)
                 .Select(u => new UserPresenceDto(
                     u.Id,
