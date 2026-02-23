@@ -1,7 +1,8 @@
-﻿using Microsoft.Agents.AI;
+﻿using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AzureOpsCrew.Infrastructure.Ai.AgentServices
+namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories
 {
     public class AgentAIContextProviderFactory
     {
@@ -18,18 +19,9 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices
         {
             return _type switch
             {
-                "InMemory" => _serviceProvider.GetRequiredService<InMemoryAIContextProvider>(),
+                "InMemory" => new InMemoryFactsContextProvider(agentId.ToString("D"), _serviceProvider.GetRequiredService<InMemoryFactsStore>()),
                 _ => throw new InvalidOperationException($"{nameof(AIContextProvider)} of type {_type} is not defined.")
             };
         }
-    }
-
-    public class InMemoryAIContextProvider : AIContextProvider
-    {
-        protected override ValueTask<AIContext> InvokingCoreAsync(InvokingContext context, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-        
     }
 }

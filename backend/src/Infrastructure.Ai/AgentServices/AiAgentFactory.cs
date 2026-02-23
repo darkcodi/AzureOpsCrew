@@ -1,12 +1,12 @@
 ﻿using AzureOpsCrew.Domain.Agents;
-using AzureOpsCrew.Infrastructure.Ai.AgentServices;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
 namespace AzureOpsCrew.Domain.AgentServices
 {
     //!!! DRAFT !!!
-    public class AiAgentFactory
+    public class AiAgentFactory : IAiAgentFactory
     {
         private const string ToolHint =
             "When you have tools available (showPipelineStatus, showWorkItems, showResourceInfo, showDeployment, showMetrics), " +
@@ -20,8 +20,10 @@ namespace AzureOpsCrew.Domain.AgentServices
             _agentAIContextProviderFactory = agentAIContextProviderFactory;
         }
 
-        public AIAgent Create(IChatClient chatClient, Agent agent, //+ agent mcp aggregate roots
-            IReadOnlyList<AITool> extraTools, AdditionalPropertiesDictionary additionalPropertiesDictionary)
+        public AIAgent Create(IChatClient chatClient, 
+            Agent agent, //+ agent mcp aggregate roots
+            IReadOnlyList<AITool> extraTools, 
+            AdditionalPropertiesDictionary additionalPropertiesDictionary)//change to dictionary, concat and create AdditionalPropertiesDictionary here
         {
             var aITools =
                 extraTools

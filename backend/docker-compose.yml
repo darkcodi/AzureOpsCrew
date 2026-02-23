@@ -11,7 +11,7 @@ services:
       - DatabaseProvider=Sqlite
       - Sqlite__DataSource=Data Source=azureopscrew.db
       - SqlServer__ConnectionString=Server=sqlserver;Database=AzureOpsCrew;User Id=sa;Password=YourStrong@Password;TrustServerCertificate=True;
-      - EnableSeeding=true
+      - Seeding__IsEnabled=true
       - Seeding__AzureFoundrySeed__Key=${AZURE_OPENAI_API_KEY}
     ports:
       - "42100:80"

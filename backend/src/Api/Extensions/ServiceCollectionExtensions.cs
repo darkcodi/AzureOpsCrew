@@ -1,12 +1,15 @@
 using AzureOpsCrew.Api.Settings;
+using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.Providers;
+using AzureOpsCrew.Domain.ProviderServices;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory;
+using AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
-using Microsoft.EntityFrameworkCore;
 using AzureOpsCrew.Infrastructure.Db.Migrations;
 using FluentMigrator.Runner;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
-using AzureOpsCrew.Domain.ProviderServices;
-using AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 
 namespace AzureOpsCrew.Api.Extensions;
 
@@ -100,5 +103,13 @@ public static class ServiceCollectionExtensions
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         });
+    }
+
+    public static void AddAgentFactory(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddScoped<IAiAgentFactory, AiAgentFactory>();
+
+        services.AddSingleton(p => new AgentAIContextProviderFactory(p, "InMemory"));
+        services.AddSingleton<InMemoryFactsStore>();
     }
 }

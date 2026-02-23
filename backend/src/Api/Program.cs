@@ -2,6 +2,7 @@ using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Api.Setup.Seeds;
+using AzureOpsCrew.Domain.AgentServices;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Newtonsoft.Json;
@@ -54,6 +55,7 @@ try
     // Configure settings and database
     builder.Services.AddDatabase(builder.Configuration);
     builder.Services.AddProviderFacades();
+    builder.Services.AddAgentFactory(builder.Configuration);
 
     // Configure AG-UI
     builder.Services.AddHttpClient();
