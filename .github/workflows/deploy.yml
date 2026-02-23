@@ -35,6 +35,7 @@ jobs:
       keycloak_local_login_enabled: ${{ steps.env.outputs.keycloak_local_login_enabled }}
       keycloak_local_signup_enabled: ${{ steps.env.outputs.keycloak_local_signup_enabled }}
       keycloak_entra_sso_enabled: ${{ steps.env.outputs.keycloak_entra_sso_enabled }}
+      jwt_access_token_minutes: ${{ steps.env.outputs.jwt_access_token_minutes }}
       image_tag: ${{ github.sha }}
     
     steps:
@@ -85,16 +86,19 @@ jobs:
               KEYCLOAK_LOCAL_LOGIN_ENABLED="false"
               KEYCLOAK_LOCAL_SIGNUP_ENABLED="false"
               KEYCLOAK_ENTRA_SSO_ENABLED="true"
+              JWT_ACCESS_TOKEN_MINUTES="15"
               ;;
             dev|prod)
               KEYCLOAK_LOCAL_LOGIN_ENABLED="true"
               KEYCLOAK_LOCAL_SIGNUP_ENABLED="true"
               KEYCLOAK_ENTRA_SSO_ENABLED="true"
+              JWT_ACCESS_TOKEN_MINUTES="480"
               ;;
             *)
               KEYCLOAK_LOCAL_LOGIN_ENABLED="true"
               KEYCLOAK_LOCAL_SIGNUP_ENABLED="true"
               KEYCLOAK_ENTRA_SSO_ENABLED="false"
+              JWT_ACCESS_TOKEN_MINUTES="480"
               ;;
           esac
 
@@ -106,6 +110,7 @@ jobs:
           echo "keycloak_local_login_enabled=${KEYCLOAK_LOCAL_LOGIN_ENABLED}" >> $GITHUB_OUTPUT
           echo "keycloak_local_signup_enabled=${KEYCLOAK_LOCAL_SIGNUP_ENABLED}" >> $GITHUB_OUTPUT
           echo "keycloak_entra_sso_enabled=${KEYCLOAK_ENTRA_SSO_ENABLED}" >> $GITHUB_OUTPUT
+          echo "jwt_access_token_minutes=${JWT_ACCESS_TOKEN_MINUTES}" >> $GITHUB_OUTPUT
           echo "🎯 Environment: ${ENV_NAME}"
           echo "🎯 Resource Group: ${RESOURCE_GROUP}"
           echo "🎯 Frontend Public URL: ${FRONTEND_PUBLIC_URL}"
@@ -175,6 +180,7 @@ jobs:
               Jwt__Issuer=${{ secrets.JWT_ISSUER }} \
               Jwt__Audience=${{ secrets.JWT_AUDIENCE }} \
               Jwt__SigningKey=${{ secrets.JWT_SIGNING_KEY }} \
+              Jwt__AccessTokenMinutes=${{ needs.build.outputs.jwt_access_token_minutes }} \
               EmailVerification__CodeLength=6 \
               EmailVerification__CodeTtlMinutes=10 \
               EmailVerification__ResendCooldownSeconds=30 \

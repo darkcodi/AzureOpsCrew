@@ -109,7 +109,11 @@ export async function GET(req: NextRequest) {
   authUrl.searchParams.set("code_challenge", challenge)
   authUrl.searchParams.set("code_challenge_method", "S256")
   if (mode !== "signup" && !features.localLoginEnabled && features.entraSsoEnabled) {
+    // In Entra-only mode, force a fresh brokered auth so Keycloak doesn't silently
+    // reuse an existing SSO session after group membership was changed in Entra.
     authUrl.searchParams.set("kc_idp_hint", features.entraIdpHint)
+    authUrl.searchParams.set("prompt", "login")
+    authUrl.searchParams.set("max_age", "0")
   }
 
   let redirectUrl = authUrl
