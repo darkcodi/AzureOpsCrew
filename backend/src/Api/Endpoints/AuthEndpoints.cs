@@ -560,6 +560,15 @@ public static class AuthEndpoints
 
     private static string ResolveDisplayName(System.Security.Claims.ClaimsPrincipal principal, string email)
     {
+        var givenName = GetFirstClaimValue(principal, "given_name")?.Trim();
+        var familyName = GetFirstClaimValue(principal, "family_name")?.Trim();
+        var combinedName = string.Join(
+            " ",
+            new[] { givenName, familyName }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+        if (!string.IsNullOrWhiteSpace(combinedName))
+            return combinedName;
+
         var fromClaims = GetFirstClaimValue(
             principal,
             "name",
@@ -567,7 +576,17 @@ public static class AuthEndpoints
             "preferred_username");
 
         if (!string.IsNullOrWhiteSpace(fromClaims))
-            return fromClaims.Trim();
+        {
+            var candidate = fromClaims.Trim();
+
+            // Keycloak first-login/broker flows can produce generic placeholders such as "User".
+            // Prefer the email local part over placeholders so the UI doesn't show a useless label.
+            if (!string.Equals(candidate, "User", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(candidate, "Human", StringComparison.OrdinalIgnoreCase))
+            {
+                return candidate;
+            }
+        }
 
         var atIndex = email.IndexOf('@');
         return atIndex > 0 ? email[..atIndex] : email;
