@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
+import { getKeycloakAuthFeatureConfig } from "@/lib/server/keycloak"
 
 function toSafeNextPath(next: string | string[] | undefined): string {
   const value = Array.isArray(next) ? next[0] : next
@@ -19,6 +20,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams
   const nextPath = toSafeNextPath(params.next)
   const error = Array.isArray(params.error) ? params.error[0] : params.error
+  const features = getKeycloakAuthFeatureConfig()
 
   if (!error) {
     redirect(`/api/auth/keycloak/start?mode=login&next=${encodeURIComponent(nextPath)}`)
@@ -36,12 +38,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           >
             Try again
           </Link>
-          <Link
-            href="/signup"
-            className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
-          >
-            Sign up
-          </Link>
+          {features.localSignupEnabled ? (
+            <Link
+              href="/signup"
+              className="rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+            >
+              Sign up
+            </Link>
+          ) : null}
         </div>
       </section>
     </main>

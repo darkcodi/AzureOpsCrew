@@ -3,6 +3,7 @@ import {
   buildKeycloakCallbackUrl,
   createPkcePair,
   createRandomState,
+  getKeycloakAuthFeatureConfig,
   getPublicRequestOrigin,
   getKeycloakWebConfig,
   getTransientAuthCookieOptions,
@@ -52,12 +53,24 @@ function rewriteCookieDomainForAoc(cookie: string, publicOrigin: string): string
 export async function GET(req: NextRequest) {
   const publicOrigin = getPublicRequestOrigin(req)
   const config = getKeycloakWebConfig()
+  const features = getKeycloakAuthFeatureConfig()
   if (!config) {
     return NextResponse.redirect(new URL("/login?error=Keycloak%20is%20not%20configured", publicOrigin))
   }
 
   const mode = req.nextUrl.searchParams.get("mode")
   const nextPath = toSafeNextPath(req.nextUrl.searchParams.get("next"))
+
+  if (mode === "signup" && !features.localSignupEnabled) {
+    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent("Sign up is disabled")}`, publicOrigin))
+  }
+
+  if (mode !== "signup" && !features.localLoginEnabled && !features.entraSsoEnabled) {
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent("All sign-in methods are disabled")}`, publicOrigin)
+    )
+  }
+
   const callbackUrl = buildKeycloakCallbackUrl(req)
 
   const state = createRandomState()
@@ -71,6 +84,9 @@ export async function GET(req: NextRequest) {
   authUrl.searchParams.set("state", state)
   authUrl.searchParams.set("code_challenge", challenge)
   authUrl.searchParams.set("code_challenge_method", "S256")
+  if (mode !== "signup" && !features.localLoginEnabled && features.entraSsoEnabled) {
+    authUrl.searchParams.set("kc_idp_hint", features.entraIdpHint)
+  }
 
   let redirectUrl = authUrl
   let upstreamKeycloakCookies: string[] = []

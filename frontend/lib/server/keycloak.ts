@@ -11,6 +11,13 @@ export interface KeycloakWebConfig {
   clientSecret: string | null
 }
 
+export interface KeycloakAuthFeatureConfig {
+  localLoginEnabled: boolean
+  localSignupEnabled: boolean
+  entraSsoEnabled: boolean
+  entraIdpHint: string
+}
+
 function firstHeaderValue(value: string | null): string | null {
   if (!value) return null
   const first = value.split(",")[0]?.trim()
@@ -30,6 +37,35 @@ export function getKeycloakWebConfig(): KeycloakWebConfig | null {
     authority,
     clientId,
     clientSecret: clientSecret && clientSecret.length > 0 ? clientSecret : null,
+  }
+}
+
+function parseBooleanEnv(name: string, fallback: boolean): boolean {
+  const raw = process.env[name]
+  if (!raw) return fallback
+
+  switch (raw.trim().toLowerCase()) {
+    case "1":
+    case "true":
+    case "yes":
+    case "on":
+      return true
+    case "0":
+    case "false":
+    case "no":
+    case "off":
+      return false
+    default:
+      return fallback
+  }
+}
+
+export function getKeycloakAuthFeatureConfig(): KeycloakAuthFeatureConfig {
+  return {
+    localLoginEnabled: parseBooleanEnv("KEYCLOAK_LOCAL_LOGIN_ENABLED", true),
+    localSignupEnabled: parseBooleanEnv("KEYCLOAK_LOCAL_SIGNUP_ENABLED", true),
+    entraSsoEnabled: parseBooleanEnv("KEYCLOAK_ENTRA_SSO_ENABLED", false),
+    entraIdpHint: process.env.KEYCLOAK_ENTRA_IDP_HINT?.trim() || "entra",
   }
 }
 

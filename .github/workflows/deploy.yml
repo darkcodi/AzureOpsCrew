@@ -32,6 +32,9 @@ jobs:
       frontend_public_url: ${{ steps.env.outputs.frontend_public_url }}
       keycloak_realm: ${{ steps.env.outputs.keycloak_realm }}
       keycloak_authority: ${{ steps.env.outputs.keycloak_authority }}
+      keycloak_local_login_enabled: ${{ steps.env.outputs.keycloak_local_login_enabled }}
+      keycloak_local_signup_enabled: ${{ steps.env.outputs.keycloak_local_signup_enabled }}
+      keycloak_entra_sso_enabled: ${{ steps.env.outputs.keycloak_entra_sso_enabled }}
       image_tag: ${{ github.sha }}
     
     steps:
@@ -77,11 +80,27 @@ jobs:
 
           KEYCLOAK_AUTHORITY="${{ env.KEYCLOAK_BASE_URL }}/realms/${KEYCLOAK_REALM}"
 
+          case "$ENV_NAME" in
+            dev|test1|prod)
+              KEYCLOAK_LOCAL_LOGIN_ENABLED="true"
+              KEYCLOAK_LOCAL_SIGNUP_ENABLED="true"
+              KEYCLOAK_ENTRA_SSO_ENABLED="true"
+              ;;
+            *)
+              KEYCLOAK_LOCAL_LOGIN_ENABLED="true"
+              KEYCLOAK_LOCAL_SIGNUP_ENABLED="true"
+              KEYCLOAK_ENTRA_SSO_ENABLED="false"
+              ;;
+          esac
+
           echo "name=${ENV_NAME}" >> $GITHUB_OUTPUT
           echo "rg=${RESOURCE_GROUP}" >> $GITHUB_OUTPUT
           echo "frontend_public_url=${FRONTEND_PUBLIC_URL}" >> $GITHUB_OUTPUT
           echo "keycloak_realm=${KEYCLOAK_REALM}" >> $GITHUB_OUTPUT
           echo "keycloak_authority=${KEYCLOAK_AUTHORITY}" >> $GITHUB_OUTPUT
+          echo "keycloak_local_login_enabled=${KEYCLOAK_LOCAL_LOGIN_ENABLED}" >> $GITHUB_OUTPUT
+          echo "keycloak_local_signup_enabled=${KEYCLOAK_LOCAL_SIGNUP_ENABLED}" >> $GITHUB_OUTPUT
+          echo "keycloak_entra_sso_enabled=${KEYCLOAK_ENTRA_SSO_ENABLED}" >> $GITHUB_OUTPUT
           echo "🎯 Environment: ${ENV_NAME}"
           echo "🎯 Resource Group: ${RESOURCE_GROUP}"
           echo "🎯 Frontend Public URL: ${FRONTEND_PUBLIC_URL}"
@@ -176,7 +195,11 @@ jobs:
               KEYCLOAK_AUTHORITY=${{ needs.build.outputs.keycloak_authority }} \
               KEYCLOAK_CLIENT_ID=${{ env.KEYCLOAK_CLIENT_ID }} \
               PUBLIC_APP_URL=${{ needs.build.outputs.frontend_public_url }} \
-              KEYCLOAK_CALLBACK_URL=${{ needs.build.outputs.frontend_public_url }}/api/auth/keycloak/callback
+              KEYCLOAK_CALLBACK_URL=${{ needs.build.outputs.frontend_public_url }}/api/auth/keycloak/callback \
+              KEYCLOAK_LOCAL_LOGIN_ENABLED=${{ needs.build.outputs.keycloak_local_login_enabled }} \
+              KEYCLOAK_LOCAL_SIGNUP_ENABLED=${{ needs.build.outputs.keycloak_local_signup_enabled }} \
+              KEYCLOAK_ENTRA_SSO_ENABLED=${{ needs.build.outputs.keycloak_entra_sso_enabled }} \
+              KEYCLOAK_ENTRA_IDP_HINT=entra
           echo "✅ Frontend deployed"
 
       - name: Deploy Summary
