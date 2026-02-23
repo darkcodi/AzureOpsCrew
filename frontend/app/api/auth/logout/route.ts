@@ -11,6 +11,8 @@ import {
   KEYCLOAK_STATE_COOKIE_NAME,
 } from "@/lib/server/keycloak"
 
+export const dynamic = "force-dynamic"
+
 function clearAuthCookies(response: NextResponse) {
   const authCookieOptions = { ...getAuthCookieOptions(), maxAge: 0 }
   const transientCookieOptions = clearTransientAuthCookieOptions()

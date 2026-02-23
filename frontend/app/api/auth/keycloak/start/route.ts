@@ -15,6 +15,8 @@ import {
   toSafeNextPath,
 } from "@/lib/server/keycloak"
 
+export const dynamic = "force-dynamic"
+
 function htmlDecode(value: string): string {
   return value
     .replace(/&amp;/g, "&")

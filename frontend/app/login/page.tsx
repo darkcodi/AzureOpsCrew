@@ -1,6 +1,9 @@
 import Link from "next/link"
+import { unstable_noStore as noStore } from "next/cache"
 import { AuthStartRedirect } from "@/components/auth-start-redirect"
 import { getKeycloakAuthFeatureConfig } from "@/lib/server/keycloak"
+
+export const dynamic = "force-dynamic"
 
 function toSafeNextPath(next: string | string[] | undefined): string {
   const value = Array.isArray(next) ? next[0] : next
@@ -18,6 +21,7 @@ type LoginPageProps = {
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
+  noStore()
   const params = await searchParams
   const nextPath = toSafeNextPath(params.next)
   const error = Array.isArray(params.error) ? params.error[0] : params.error

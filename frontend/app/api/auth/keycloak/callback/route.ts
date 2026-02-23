@@ -13,6 +13,8 @@ import {
   toSafeNextPath,
 } from "@/lib/server/keycloak"
 
+export const dynamic = "force-dynamic"
+
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
 interface BackendAuthResponse {
