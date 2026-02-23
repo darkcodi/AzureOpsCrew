@@ -37,5 +37,19 @@ export async function GET(
     endpoint: `/api/copilotkit/${agentId}`,
   })
 
-  return handleRequest(req)
+  const headers = new Headers(req.headers)
+  headers.set("content-type", "application/json")
+  headers.delete("content-length")
+
+  // CopilotKit single-route runtime expects POST envelopes like { method: "info" }.
+  const runtimeInfoRequest = new Request(
+    new URL(`/api/copilotkit/${agentId}`, req.url),
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ method: "info" }),
+    }
+  )
+
+  return handleRequest(runtimeInfoRequest as NextRequest)
 }
