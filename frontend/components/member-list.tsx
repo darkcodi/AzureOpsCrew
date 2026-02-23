@@ -217,7 +217,11 @@ export function MemberList({
     !query || agent.name.toLowerCase().includes(query)
   const filteredWorking = workingAgents.filter(matchesSearch)
   const filteredAvailable = availableAgents.filter(matchesSearch)
-  const currentUserName = displayName || "You"
+  const currentHuman = humans.find((h) => h.isCurrentUser)
+  const currentUserName =
+    currentHuman?.name?.trim() ||
+    displayName?.trim() ||
+    "You"
   const filteredHumans = humans.filter((h) => {
     if (!query) return true
     const name = h.isCurrentUser ? currentUserName : h.name

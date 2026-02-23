@@ -11,16 +11,20 @@ import { getAccessToken } from "@/lib/server/auth"
 // The /api/agents/{id}/agui endpoint is for single agent invocation
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
-export async function POST(
+function unauthorized() {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401,
+    headers: { "Content-Type": "application/json" },
+  })
+}
+
+async function handleCopilotRequest(
   req: NextRequest,
   { params }: { params: Promise<{ agentId: string }> }
 ) {
   const token = getAccessToken(req)
   if (!token) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    })
+    return unauthorized()
   }
 
   const { agentId } = await params
@@ -38,4 +42,18 @@ export async function POST(
     endpoint: `/api/copilotkit/${agentId}`,
   })
   return handleRequest(req)
+}
+
+export async function GET(
+  req: NextRequest,
+  context: { params: Promise<{ agentId: string }> }
+) {
+  return handleCopilotRequest(req, context)
+}
+
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ agentId: string }> }
+) {
+  return handleCopilotRequest(req, context)
 }
