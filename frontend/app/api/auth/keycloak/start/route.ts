@@ -136,14 +136,13 @@ export async function GET(req: NextRequest) {
   }
 
   const response = NextResponse.redirect(redirectUrl)
-  const cookieOptions = getTransientAuthCookieOptions()
-  response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, state, cookieOptions)
-  response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, verifier, cookieOptions)
-  response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, nextPath, cookieOptions)
+  response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, state, getTransientAuthCookieOptions())
+  response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, verifier, getTransientAuthCookieOptions())
+  response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, nextPath, getTransientAuthCookieOptions())
   response.cookies.set(
     KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME,
     String(mode === "signup" ? 0 : currentAttemptCount + 1),
-    cookieOptions
+    getTransientAuthCookieOptions()
   )
 
   for (const setCookie of upstreamKeycloakCookies) {
