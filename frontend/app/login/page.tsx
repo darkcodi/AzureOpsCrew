@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { redirect } from "next/navigation"
+import { AuthStartRedirect } from "@/components/auth-start-redirect"
 import { getKeycloakAuthFeatureConfig } from "@/lib/server/keycloak"
 
 function toSafeNextPath(next: string | string[] | undefined): string {
@@ -13,6 +13,7 @@ type LoginPageProps = {
   searchParams: Promise<{
     next?: string | string[]
     error?: string | string[]
+    loggedOut?: string | string[]
   }>
 }
 
@@ -20,24 +21,36 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams
   const nextPath = toSafeNextPath(params.next)
   const error = Array.isArray(params.error) ? params.error[0] : params.error
+  const loggedOut = Array.isArray(params.loggedOut) ? params.loggedOut[0] : params.loggedOut
   const features = getKeycloakAuthFeatureConfig()
+  const loginStartHref = `/api/auth/keycloak/start?mode=login&next=${encodeURIComponent(nextPath)}`
 
-  if (!error) {
-    redirect(`/api/auth/keycloak/start?mode=login&next=${encodeURIComponent(nextPath)}`)
+  if (!error && loggedOut !== "1") {
+    return (
+      <AuthStartRedirect
+        href={loginStartHref}
+        title="Redirecting to sign in"
+        description="Opening secure sign-in..."
+      />
+    )
   }
 
   return (
     <main className="flex h-dvh w-full items-center justify-center bg-slate-950 px-4">
       <section className="w-full max-w-md rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
-        <h1 className="mb-3 text-2xl font-semibold text-white">Sign in failed</h1>
-        <p className="mb-4 text-sm text-red-300">{error}</p>
+        <h1 className="mb-3 text-2xl font-semibold text-white">
+          {error ? "Sign in failed" : "Signed out"}
+        </h1>
+        <p className={`mb-4 text-sm ${error ? "text-red-300" : "text-slate-300"}`}>
+          {error ?? "You have been signed out."}
+        </p>
         <div className="flex gap-3">
-          <Link
-            href={`/api/auth/keycloak/start?mode=login&next=${encodeURIComponent(nextPath)}`}
+          <a
+            href={loginStartHref}
             className="rounded-md bg-sky-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-sky-500"
           >
-            Try again
-          </Link>
+            {error ? "Try again" : "Sign in"}
+          </a>
           {features.localSignupEnabled ? (
             <Link
               href="/signup"

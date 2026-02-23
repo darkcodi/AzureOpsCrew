@@ -29,6 +29,7 @@ function buildKeycloakLogoutRedirect(req: NextRequest): URL | null {
 
   const logoutUrl = new URL(`${config.authority}/protocol/openid-connect/logout`)
   const postLogoutRedirectUrl = new URL("/login", getPublicRequestOrigin(req))
+  postLogoutRedirectUrl.searchParams.set("loggedOut", "1")
   logoutUrl.searchParams.set("post_logout_redirect_uri", postLogoutRedirectUrl.toString())
   logoutUrl.searchParams.set("client_id", config.clientId)
 
@@ -42,14 +43,17 @@ function buildKeycloakLogoutRedirect(req: NextRequest): URL | null {
 
 export async function GET(req: NextRequest) {
   const fallbackLoginUrl = new URL("/login", getPublicRequestOrigin(req))
+  fallbackLoginUrl.searchParams.set("loggedOut", "1")
   const keycloakLogoutUrl = buildKeycloakLogoutRedirect(req)
   const response = NextResponse.redirect(keycloakLogoutUrl ?? fallbackLoginUrl)
+  response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate")
   clearAuthCookies(response)
   return response
 }
 
 export async function POST() {
   const response = NextResponse.json({ ok: true })
+  response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate")
   clearAuthCookies(response)
   return response
 }
