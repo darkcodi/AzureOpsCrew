@@ -1,6 +1,8 @@
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Users;
+using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using AgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.AgentEntityTypeConfiguration;
 using ChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ChannelEntityTypeConfiguration;
@@ -23,6 +25,8 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<AiProvider> Providers => Set<AiProvider>();
     public DbSet<User> Users => Set<User>();
     public DbSet<PendingRegistration> PendingRegistrations => Set<PendingRegistration>();
+    public DbSet<AocChat> Chats => Set<AocChat>();
+    public DbSet<AocMessage> Messages => Set<AocMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -31,5 +35,7 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new AiProviderConfig());
         modelBuilder.ApplyConfiguration(new UserConfig());
         modelBuilder.ApplyConfiguration(new PendingRegistrationConfig());
+        modelBuilder.ApplyConfiguration(new ChatEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new MessageEntityTypeConfiguration());
     }
 }

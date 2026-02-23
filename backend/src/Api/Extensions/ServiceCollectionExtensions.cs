@@ -2,6 +2,7 @@ using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Email;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.AgentServices;
+using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Domain.Users;
@@ -239,5 +240,10 @@ public static class ServiceCollectionExtensions
         {
             throw new InvalidOperationException($"Unknown LongTermMemory type '{memoryType}'. Supported providers: InMemory, Cypher");
         }
+    }
+
+    public static void AddMessageStore(this IServiceCollection services)
+    {
+        services.AddScoped<IMessageStore, EfContextMessageStore>();
     }
 }
