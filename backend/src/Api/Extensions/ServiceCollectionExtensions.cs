@@ -3,6 +3,7 @@ using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory;
 using AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
@@ -109,7 +110,21 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<IAiAgentFactory, AiAgentFactory>();
 
-        services.AddSingleton(p => new AgentAIContextProviderFactory(p, "InMemory"));
+        var memoryType = configuration["LongTermMemory:Type"] ?? "InMemory";
+
+        services.AddSingleton(p => new AgentAIContextProviderFactory(p, memoryType));
         services.AddSingleton<InMemoryFactsStore>();
+
+        if (string.Equals(memoryType, "Cypher", StringComparison.OrdinalIgnoreCase))
+        {
+            var uri = configuration["LongTermMemory:Neo4j:Uri"] ?? "bolt://localhost:7687";
+            var username = configuration["LongTermMemory:Neo4j:Username"] ?? "neo4j";
+            var password = configuration["LongTermMemory:Neo4j:Password"] ?? "password";
+
+            services.AddSingleton<Neo4j.Driver.IDriver>(_ =>
+                Neo4j.Driver.GraphDatabase.Driver(uri, Neo4j.Driver.AuthTokens.Basic(username, password)));
+
+            services.AddSingleton<CypherFactsStore>();
+        }
     }
 }

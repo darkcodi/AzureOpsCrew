@@ -13,9 +13,34 @@ services:
       - SqlServer__ConnectionString=Server=sqlserver;Database=AzureOpsCrew;User Id=sa;Password=YourStrong@Password;TrustServerCertificate=True;
       - Seeding__IsEnabled=true
       - Seeding__AzureFoundrySeed__Key=${AZURE_OPENAI_API_KEY}
+      - LongTermMemory__Type=Cypher
+      - LongTermMemory__Neo4j__Uri=bolt://neo4j:7687
+      - LongTermMemory__Neo4j__Username=neo4j
+      - LongTermMemory__Neo4j__Password=${NEO4J_PASSWORD:-azureopscrew}
     ports:
       - "42100:80"
     restart: on-failure
+    depends_on:
+      neo4j:
+        condition: service_healthy
+
+  neo4j:
+    image: neo4j:5
+    container_name: neo4j
+    environment:
+      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:-azureopscrew}
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: wget -qO - http://localhost:7474 || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
 
   # sqlserver:
   #   image: mcr.microsoft.com/mssql/server:2022-latest
@@ -26,3 +51,6 @@ services:
   #   ports:
   #     - "1433:1433"
   #   restart: unless-stopped
+
+volumes:
+  neo4j_data:

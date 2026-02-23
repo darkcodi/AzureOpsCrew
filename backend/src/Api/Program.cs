@@ -110,6 +110,7 @@ try
     app.MapAllAgUi();
 
     await app.Services.RunDbSetup();
+    await app.Services.RunLongTermMemorySetup();
     await app.Services.RunSeeding(builder.Configuration);
 
     app.Run();
