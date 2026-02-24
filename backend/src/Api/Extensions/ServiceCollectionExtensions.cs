@@ -171,45 +171,55 @@ public static class ServiceCollectionExtensions
         var emailVerificationSettings = configuration.GetSection("EmailVerification").Get<EmailVerificationSettings>()
             ?? new EmailVerificationSettings();
 
-        if (string.IsNullOrWhiteSpace(brevoSettings.ApiBaseUrl))
-            throw new InvalidOperationException("Brevo__ApiBaseUrl is required.");
-
-        if (string.IsNullOrWhiteSpace(brevoSettings.ApiKey))
-            throw new InvalidOperationException("Brevo__ApiKey is required.");
-
-        if (brevoSettings.ApiKey.Contains("CHANGEME", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("A real Brevo API key must be configured.");
-
-        if (string.IsNullOrWhiteSpace(brevoSettings.SenderEmail))
-            throw new InvalidOperationException("Brevo__SenderEmail is required.");
-
-        if (string.IsNullOrWhiteSpace(brevoSettings.SenderName))
-            throw new InvalidOperationException("Brevo__SenderName is required.");
-
-        if (emailVerificationSettings.CodeLength is < 4 or > 8)
-            throw new InvalidOperationException("EmailVerification__CodeLength must be between 4 and 8.");
-
-        if (emailVerificationSettings.CodeTtlMinutes <= 0)
-            throw new InvalidOperationException("EmailVerification__CodeTtlMinutes must be greater than zero.");
-
-        if (emailVerificationSettings.ResendCooldownSeconds < 0)
-            throw new InvalidOperationException("EmailVerification__ResendCooldownSeconds must be zero or greater.");
-
-        if (emailVerificationSettings.MaxVerificationAttempts <= 0)
-            throw new InvalidOperationException("EmailVerification__MaxVerificationAttempts must be greater than zero.");
-
-        services.Configure<BrevoSettings>(configuration.GetSection("Brevo"));
-        services.AddOptions<BrevoSettings>();
-
-        services.Configure<EmailVerificationSettings>(configuration.GetSection("EmailVerification"));
-        services.AddOptions<EmailVerificationSettings>();
-
-        services.AddHttpClient<IRegistrationEmailSender, BrevoRegistrationEmailSender>((sp, client) =>
+        if (emailVerificationSettings.IsEnabled)
         {
-            var settings = sp.GetRequiredService<IOptions<BrevoSettings>>().Value;
-            client.BaseAddress = new Uri(settings.ApiBaseUrl);
-            client.Timeout = TimeSpan.FromSeconds(15);
-        });
+            if (string.IsNullOrWhiteSpace(brevoSettings.ApiBaseUrl))
+                throw new InvalidOperationException("Brevo__ApiBaseUrl is required.");
+
+            if (string.IsNullOrWhiteSpace(brevoSettings.ApiKey))
+                throw new InvalidOperationException("Brevo__ApiKey is required.");
+
+            if (brevoSettings.ApiKey.Contains("CHANGEME", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("A real Brevo API key must be configured.");
+
+            if (string.IsNullOrWhiteSpace(brevoSettings.SenderEmail))
+                throw new InvalidOperationException("Brevo__SenderEmail is required.");
+
+            if (string.IsNullOrWhiteSpace(brevoSettings.SenderName))
+                throw new InvalidOperationException("Brevo__SenderName is required.");
+
+            if (emailVerificationSettings.CodeLength is < 4 or > 8)
+                throw new InvalidOperationException("EmailVerification__CodeLength must be between 4 and 8.");
+
+            if (emailVerificationSettings.CodeTtlMinutes <= 0)
+                throw new InvalidOperationException("EmailVerification__CodeTtlMinutes must be greater than zero.");
+
+            if (emailVerificationSettings.ResendCooldownSeconds < 0)
+                throw new InvalidOperationException("EmailVerification__ResendCooldownSeconds must be zero or greater.");
+
+            if (emailVerificationSettings.MaxVerificationAttempts <= 0)
+                throw new InvalidOperationException("EmailVerification__MaxVerificationAttempts must be greater than zero.");
+
+            services.Configure<BrevoSettings>(configuration.GetSection("Brevo"));
+            services.AddOptions<BrevoSettings>();
+
+            services.Configure<EmailVerificationSettings>(configuration.GetSection("EmailVerification"));
+            services.AddOptions<EmailVerificationSettings>();
+
+            services.AddHttpClient<IRegistrationEmailSender, BrevoRegistrationEmailSender>((sp, client) =>
+            {
+                var settings = sp.GetRequiredService<IOptions<BrevoSettings>>().Value;
+                client.BaseAddress = new Uri(settings.ApiBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(15);
+            });
+        }
+        else
+        {
+            services.Configure<EmailVerificationSettings>(configuration.GetSection("EmailVerification"));
+            services.AddOptions<EmailVerificationSettings>();
+
+            services.AddHttpClient<IRegistrationEmailSender, NoopEmailSender>();
+        }
 
         services.AddScoped<IPasswordHasher<PendingRegistration>, PasswordHasher<PendingRegistration>>();
     }
