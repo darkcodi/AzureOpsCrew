@@ -61,6 +61,7 @@ using var worker = new TemporalWorker(
     client,
     new TemporalWorkerOptions("aoc-agent-task-queue")
         .AddActivity(activities.LoadAgentAsync)
+        .AddActivity(activities.LoadProviderAsync)
         .AddActivity(activities.LoadSnapshotAsync)
         .AddActivity(activities.SaveSnapshotAsync)
         .AddActivity(activities.DecideNextAsync)
