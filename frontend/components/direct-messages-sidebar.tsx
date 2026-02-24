@@ -5,23 +5,23 @@ import { Search, Plus, User } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import type { Agent } from "@/lib/agents"
-import { HUMANS, HUMAN_ID } from "@/components/direct-messages-right-pane"
+import type { HumanMember } from "@/lib/humans"
 
 interface DirectMessagesSidebarProps {
   agents: Agent[]
+  humans: HumanMember[]
   /** Currently selected conversation (agent id) for chat. */
   activeId: string | null
-  /** Currently selected item for the right pane (agent id or HUMAN_ID). */
+  /** Currently selected item for the right pane (agent id or human id). */
   selectedCardId: string | null
-  displayName: string
   onSelect: (id: string) => void
 }
 
 export function DirectMessagesSidebar({
   agents,
+  humans,
   activeId,
   selectedCardId,
-  displayName,
   onSelect,
 }: DirectMessagesSidebarProps) {
   const [search, setSearch] = useState("")
@@ -49,11 +49,16 @@ export function DirectMessagesSidebar({
   }, [conversations, search])
 
   const filteredHumans = useMemo(() => {
-    const others = HUMANS.filter((h) => h.id !== HUMAN_ID)
-    if (!search.trim()) return others
+    const sorted = [...humans].sort((a, b) => {
+      if (a.isCurrentUser !== b.isCurrentUser) return a.isCurrentUser ? -1 : 1
+      if (a.status !== b.status) return a.status === "Online" ? -1 : 1
+      return a.name.localeCompare(b.name)
+    })
+
+    if (!search.trim()) return sorted
     const q = search.toLowerCase()
-    return others.filter((h) => h.name.toLowerCase().includes(q))
-  }, [search])
+    return sorted.filter((h) => h.name.toLowerCase().includes(q))
+  }, [humans, search])
 
   return (
     <div
@@ -202,15 +207,17 @@ export function DirectMessagesSidebar({
                   <User className="h-4 w-4" />
                 </div>
                 <span className="truncate">
-                  {human.id === HUMAN_ID ? displayName : human.name}
+                  {human.name}
                 </span>
                 <span
                   className="ml-auto inline-flex items-center gap-1.5 text-xs"
                   style={{ color: "hsl(214, 5%, 55%)" }}
                 >
-                  {human.status === "Online" && (
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
-                  )}
+                  <span
+                    className={`h-2 w-2 shrink-0 rounded-full ${
+                      human.status === "Online" ? "bg-green-500" : "bg-gray-500"
+                    }`}
+                  />
                   {human.status}
                 </span>
               </button>

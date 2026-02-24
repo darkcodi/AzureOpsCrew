@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import type { Agent } from "@/lib/agents"
+import { buildBackendHeaders, getAccessToken } from "@/lib/server/auth"
 
-// Backend API URL - configurable via BACKEND_API_URL env var
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
-// Backend response structure
 interface BackendAgent {
   id: string
   providerAgentId: string
@@ -23,13 +22,13 @@ interface BackendAgent {
 
 export async function GET(req: NextRequest) {
   try {
-    const agentsUrl = `${BACKEND_API_URL}/api/agents?clientId=1`
+    if (!getAccessToken(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
-    const response = await fetch(agentsUrl, {
+    const response = await fetch(`${BACKEND_API_URL}/api/agents`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: buildBackendHeaders(req),
     })
 
     if (!response.ok) {
@@ -42,7 +41,6 @@ export async function GET(req: NextRequest) {
 
     const backendAgents: BackendAgent[] = await response.json()
 
-    // Transform backend agents to frontend Agent interface
     const frontendAgents: Agent[] = backendAgents.map((backendAgent) => ({
       id: backendAgent.id,
       name: backendAgent.info.name,

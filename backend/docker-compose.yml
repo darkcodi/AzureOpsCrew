@@ -9,14 +9,29 @@ services:
       - ASPNETCORE_HTTP_PORTS=80
       - ASPNETCORE_URLS=http://*:80
       - DatabaseProvider=Sqlite
-      - Sqlite__DataSource=Data Source=azureopscrew.db
+      - Sqlite__DataSource=Data Source=/app/data/azureopscrew.db
       - SqlServer__ConnectionString=Server=sqlserver;Database=AzureOpsCrew;User Id=sa;Password=YourStrong@Password;TrustServerCertificate=True;
-      - Seeding__IsEnabled=true
-      - Seeding__AzureFoundrySeed__Key=${AZURE_OPENAI_API_KEY}
+
       - LongTermMemory__Type=Cypher
       - LongTermMemory__Neo4j__Uri=bolt://neo4j:7687
       - LongTermMemory__Neo4j__Username=neo4j
       - LongTermMemory__Neo4j__Password=${NEO4J_PASSWORD:-azureopscrew}
+      - Jwt__Issuer=${JWT_ISSUER:-AzureOpsCrew}
+      - Jwt__Audience=${JWT_AUDIENCE:-AzureOpsCrewFrontend}
+      - Jwt__SigningKey=${JWT_SIGNING_KEY:-ChangeThisDevelopmentOnlySigningKeyWithAtLeast32Chars!}
+      - EmailVerification__CodeLength=${EMAIL_VERIFICATION_CODE_LENGTH:-6}
+      - EmailVerification__CodeTtlMinutes=${EMAIL_VERIFICATION_CODE_TTL_MINUTES:-10}
+      - EmailVerification__ResendCooldownSeconds=${EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS:-30}
+      - EmailVerification__MaxVerificationAttempts=${EMAIL_VERIFICATION_MAX_ATTEMPTS:-5}
+      - Brevo__ApiBaseUrl=${BREVO_API_BASE_URL:-https://api.brevo.com}
+      - Brevo__ApiKey=${BREVO_API_KEY:-}
+      - Brevo__SenderEmail=${BREVO_SENDER_EMAIL:-azureopscrew@aoc-app.com}
+      - Brevo__SenderName=${BREVO_SENDER_NAME:-Azure Ops Crew}
+      - Seeding__IsEnabled=${SEEDING_ENABLED:-false}
+      - Seeding__AzureFoundrySeed__ApiEndpoint=${AZURE_OPENAI_API_ENDPOINT:-}
+      - Seeding__AzureFoundrySeed__Key=${AZURE_OPENAI_API_KEY:-}
+    volumes:
+      - ./data:/app/data
     ports:
       - "42100:80"
     restart: on-failure

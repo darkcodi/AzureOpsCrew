@@ -1,6 +1,6 @@
 "use client"
 
-import { Settings, MessageCircle, Hash } from "lucide-react"
+import { Settings, MessageCircle, Hash, LogOut } from "lucide-react"
 import {
   Tooltip,
   TooltipContent,
@@ -14,11 +14,13 @@ export type ViewMode = "channels" | "direct-messages" | "settings"
 interface IconSidebarProps {
   viewMode: ViewMode
   onViewChange: (view: ViewMode) => void
+  onLogout: () => void | Promise<void>
 }
 
 export function IconSidebar({
   viewMode,
   onViewChange,
+  onLogout,
 }: IconSidebarProps) {
   const topItems = [
     { icon: Hash, label: "Direct messages", onClick: () => onViewChange("direct-messages"), active: viewMode === "direct-messages" },
@@ -83,6 +85,23 @@ export function IconSidebar({
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">Settings</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => void onLogout()}
+                className="flex h-10 w-10 items-center justify-center rounded-2xl transition-all hover:rounded-xl"
+                style={{
+                  backgroundColor: "hsl(228, 6%, 22%)",
+                  color: "hsl(210, 3%, 80%)",
+                }}
+                aria-label="Logout"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Logout</TooltipContent>
           </Tooltip>
         </div>
       </div>

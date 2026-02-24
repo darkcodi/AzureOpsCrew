@@ -5,14 +5,16 @@ import { useCopilotContext } from "@copilotkit/react-core"
 import { useAgentRuntime } from "@/contexts/agent-runtime-context"
 import { DirectMessagesSidebar } from "@/components/direct-messages-sidebar"
 import { DirectMessagesArea } from "@/components/direct-messages-area"
-import { DirectMessagesRightPane, HUMAN_ID } from "@/components/direct-messages-right-pane"
+import { DirectMessagesRightPane } from "@/components/direct-messages-right-pane"
 import type { Agent } from "@/lib/agents"
+import type { HumanMember } from "@/lib/humans"
+import { isHumanCardId } from "@/lib/humans"
 
 interface DirectMessagesViewProps {
   activeDMId: string | null
   setActiveDMId: (id: string | null) => void
   agents: Agent[]
-  displayName: string
+  humans: HumanMember[]
   pendingDMMessage?: string | null
   onClearPendingDMMessage?: () => void
 }
@@ -21,7 +23,7 @@ export function DirectMessagesView({
   activeDMId,
   setActiveDMId,
   agents,
-  displayName,
+  humans,
   pendingDMMessage = null,
   onClearPendingDMMessage,
 }: DirectMessagesViewProps) {
@@ -39,7 +41,7 @@ export function DirectMessagesView({
   const handleSelectDM = useCallback(
     (id: string) => {
       setSelectedCardId(id)
-      if (id === HUMAN_ID) {
+      if (isHumanCardId(id)) {
         return
       }
       setThreadId(id)
@@ -53,9 +55,9 @@ export function DirectMessagesView({
   }, [effectiveId, setThreadId])
 
   useEffect(() => {
-    if (activeDMId && activeDMId !== HUMAN_ID) {
+    if (activeDMId) {
       setSelectedCardId((prev) =>
-        prev === HUMAN_ID ? prev : activeDMId
+        prev && isHumanCardId(prev) ? prev : activeDMId
       )
     }
   }, [activeDMId])
@@ -64,9 +66,9 @@ export function DirectMessagesView({
     <>
       <DirectMessagesSidebar
         agents={agents}
+        humans={humans}
         activeId={activeDMId}
         selectedCardId={selectedCardId}
-        displayName={displayName}
         onSelect={handleSelectDM}
       />
       <DirectMessagesArea
@@ -81,7 +83,7 @@ export function DirectMessagesView({
         <DirectMessagesRightPane
           selectedCardId={selectedCardId}
           agents={agents}
-          displayName={displayName}
+          humans={humans}
         />
       )}
     </>

@@ -4,7 +4,6 @@ using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Api.Setup.Seeds;
 using AzureOpsCrew.Domain.AgentServices;
 using Microsoft.Extensions.Options;
-using Microsoft.OpenApi;
 using Newtonsoft.Json;
 using Serilog;
 
@@ -40,21 +39,13 @@ try
 
     // Enable OpenAPI/Swagger
     builder.Services.AddOpenApi();
-    builder.Services.AddSwaggerGen(options =>
-    {
-        options.SwaggerDoc("v1", new OpenApiInfo
-        {
-            Title = "AzureOpsCrew HTTP Api",
-            Version = "v1"
-        });
-
-        // Sort operations alphabetically by tag and path
-        options.OrderActionsBy((apiDesc) => $"{apiDesc.RelativePath}");
-    });
+    builder.Services.AddSwaggerGen();
 
     // Configure settings and database
     builder.Services.AddDatabase(builder.Configuration);
     builder.Services.AddProviderFacades();
+    builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
+    builder.Services.AddEmailVerification(builder.Configuration);
     builder.Services.AddAgentFactory(builder.Configuration);
 
     // Configure AG-UI
@@ -100,8 +91,12 @@ try
     }
 
     app.UseHttpsRedirection();
+    app.UseAuthentication();
+    app.UseAuthorization();
 
     // Map endpoints
+    app.MapAuthEndpoints();
+    app.MapUsersEndpoints();
     app.MapTestEndpoints();
     app.MapAgentEndpoints();
     app.MapChannelEndpoints();

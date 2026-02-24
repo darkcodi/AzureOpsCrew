@@ -1,3 +1,4 @@
+using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints.Dtos.Providers;
 using AzureOpsCrew.Api.Endpoints.Filters;
 using AzureOpsCrew.Domain.Providers;
@@ -12,18 +13,22 @@ public static class ProviderEndpoints
     public static void MapProviderEndpoints(this IEndpointRouteBuilder routeBuilder)
     {
         var group = routeBuilder.MapGroup("/api/providers")
-            .WithTags("Providers");
+            .WithTags("Providers")
+            .RequireAuthorization();
 
         // CREATE
         group.MapPost("/create", async (
             CreateProviderBodyDto body,
+            HttpContext httpContext,
             AzureOpsCrewContext context,
             IProviderFacadeResolver providerServiceFactory,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
+
             var config = new Provider(
                 Guid.NewGuid(),
-                body.ClientId,
+                userId,
                 body.Name,
                 body.ProviderType,
                 body.ApiKey,
@@ -51,9 +56,7 @@ public static class ProviderEndpoints
 
             // Set models count from test result
             if (testResult.AvailableModels != null)
-            {
                 config.SetModelsCount(testResult.AvailableModels.Length);
-            }
 
             await context.AddAsync(config, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
@@ -64,14 +67,16 @@ public static class ProviderEndpoints
         .Produces<ProviderResponseDto>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest);
 
-        // LIST (by client)
+        // LIST (current user)
         group.MapGet("", async (
-            int clientId,
+            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
+
             var configs = await context.Set<Provider>()
-                .Where(p => p.ClientId == clientId)
+                .Where(p => p.ClientId == userId)
                 .OrderBy(p => p.DateCreated)
                 .ToListAsync(cancellationToken);
 
@@ -82,11 +87,14 @@ public static class ProviderEndpoints
         // GET by ID
         group.MapGet("/{id}", async (
             Guid id,
+            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
+
             var found = await context.Set<Provider>()
-                .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
+                .SingleOrDefaultAsync(p => p.Id == id && p.ClientId == userId, cancellationToken);
 
             return found is null ? Results.NotFound() : Results.Ok(found.ToResponseDto());
         })
@@ -97,12 +105,15 @@ public static class ProviderEndpoints
         group.MapPut("/{id}", async (
             Guid id,
             UpdateProviderBodyDto body,
+            HttpContext httpContext,
             AzureOpsCrewContext context,
             IProviderFacadeResolver providerServiceFactory,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
+
             var found = await context.Set<Provider>()
-                .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
+                .SingleOrDefaultAsync(p => p.Id == id && p.ClientId == userId, cancellationToken);
 
             if (found is null)
                 return Results.NotFound();
@@ -136,9 +147,7 @@ public static class ProviderEndpoints
 
             // Set models count from test result
             if (testResult.AvailableModels != null)
-            {
                 found.SetModelsCount(testResult.AvailableModels.Length);
-            }
 
             await context.SaveChangesAsync(cancellationToken);
 
@@ -152,11 +161,14 @@ public static class ProviderEndpoints
         // DELETE
         group.MapDelete("/{id}", async (
             Guid id,
+            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
+
             var found = await context.Set<Provider>()
-                .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
+                .SingleOrDefaultAsync(p => p.Id == id && p.ClientId == userId, cancellationToken);
 
             if (found is null)
                 return Results.NotFound();
@@ -172,17 +184,19 @@ public static class ProviderEndpoints
         // TEST CONNECTION (by inline config, for drafts / not-yet-saved providers) — must be before /{id}/test
         group.MapPost("/test", async (
             TestConnectionBodyDto body,
+            HttpContext httpContext,
             IProviderFacadeResolver providerServiceFactory,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
             Provider config;
 
             // If providerId is supplied, fetch from database
             if (body.ProviderId.HasValue)
             {
                 var existing = await context.Set<Provider>()
-                    .SingleOrDefaultAsync(p => p.Id == body.ProviderId.Value, cancellationToken);
+                    .SingleOrDefaultAsync(p => p.Id == body.ProviderId.Value && p.ClientId == userId, cancellationToken);
 
                 if (existing is null)
                     return Results.NotFound("Provider not found");
@@ -206,7 +220,7 @@ public static class ProviderEndpoints
             {
                 config = new Provider(
                     Guid.Empty,
-                    0,
+                    userId,
                     body.Name ?? "Test",
                     body.ProviderType,
                     body.ApiKey,
@@ -225,7 +239,8 @@ public static class ProviderEndpoints
                 result.LatencyMs,
                 result.CheckedAt,
                 result.Quota,
-                result.AvailableModels?.OrderBy(m => m.Id, StringComparer.OrdinalIgnoreCase).Select(m => new ModelInfoDto(m.Id, m.Name, m.ContextSize)).ToArray()));
+                result.AvailableModels?.OrderBy(m => m.Id, StringComparer.OrdinalIgnoreCase)
+                    .Select(m => new ModelInfoDto(m.Id, m.Name, m.ContextSize)).ToArray()));
         })
         .AddEndpointFilter<ValidationFilter<TestConnectionBodyDto>>()
         .Produces<TestConnectionResponseDto>(StatusCodes.Status200OK)
@@ -234,12 +249,15 @@ public static class ProviderEndpoints
         // TEST CONNECTION (by saved provider id)
         group.MapPost("/{id}/test", async (
             Guid id,
+            HttpContext httpContext,
             IProviderFacadeResolver providerServiceFactory,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
+
             var config = await context.Set<Provider>()
-                .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
+                .SingleOrDefaultAsync(p => p.Id == id && p.ClientId == userId, cancellationToken);
 
             if (config is null)
                 return Results.NotFound();
@@ -254,7 +272,8 @@ public static class ProviderEndpoints
                 result.LatencyMs,
                 result.CheckedAt,
                 result.Quota,
-                result.AvailableModels?.OrderBy(m => m.Id, StringComparer.OrdinalIgnoreCase).Select(m => new ModelInfoDto(m.Id, m.Name, m.ContextSize)).ToArray()));
+                result.AvailableModels?.OrderBy(m => m.Id, StringComparer.OrdinalIgnoreCase)
+                    .Select(m => new ModelInfoDto(m.Id, m.Name, m.ContextSize)).ToArray()));
         })
         .Produces<TestConnectionResponseDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
@@ -262,12 +281,15 @@ public static class ProviderEndpoints
         // LIST MODELS
         group.MapGet("/{id}/models", async (
             Guid id,
+            HttpContext httpContext,
             IProviderFacadeResolver providerServiceFactory,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
+
             var config = await context.Set<Provider>()
-                .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
+                .SingleOrDefaultAsync(p => p.Id == id && p.ClientId == userId, cancellationToken);
 
             if (config is null)
                 return Results.NotFound();

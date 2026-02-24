@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { buildBackendHeaders, getAccessToken } from "@/lib/server/auth"
 
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
@@ -15,7 +16,11 @@ const PROVIDER_TYPE_FROM_NAME: Record<string, number> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as {
+    if (!getAccessToken(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const body = (await req.json()) as {
       providerType?: string
       name?: string
       apiKey?: string
@@ -24,8 +29,8 @@ export async function POST(req: NextRequest) {
       defaultModel?: string
       providerId?: string
     }
-    const providerType =
-      PROVIDER_TYPE_FROM_NAME[body.providerType ?? ""] ?? 100
+
+    const providerType = PROVIDER_TYPE_FROM_NAME[body.providerType ?? ""] ?? 100
     const apiEndpoint = body.apiEndpoint ?? body.baseUrl ?? ""
     const backendBody = {
       providerType,
@@ -35,11 +40,13 @@ export async function POST(req: NextRequest) {
       defaultModel: body.defaultModel ?? null,
       name: body.name ?? null,
     }
+
     const response = await fetch(`${BACKEND_API_URL}/api/providers/test`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildBackendHeaders(req),
       body: JSON.stringify(backendBody),
     })
+
     const data = await response.json().catch(() => ({}))
     if (!response.ok) {
       return NextResponse.json(
@@ -47,6 +54,7 @@ export async function POST(req: NextRequest) {
         { status: response.status }
       )
     }
+
     return NextResponse.json(data)
   } catch (error) {
     console.error("Error testing provider connection:", error)
