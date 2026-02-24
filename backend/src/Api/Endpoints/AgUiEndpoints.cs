@@ -20,12 +20,14 @@ public static class ChannelAgUiEndpoints
 {
     public static void MapAllAgUi(this IEndpointRouteBuilder app)
     {
-        const string toolHint =
-            " When you have tools available (showPipelineStatus, showWorkItems, showResourceInfo, showDeployment, showMetrics), " +
-            "use them proactively to present information visually instead of plain text. " +
-            "For example, show pipeline stages as a visual card, display work items in a list, or present metrics in a dashboard-style card.";
-
-        app.MapPost("/api/agents/{id}/agui", async ([FromRoute(Name = "id")] Guid agentId, [FromBody] RunAgentInput? input, IProviderFacadeResolver providerFactory, AzureOpsCrewContext dbContext, HttpContext context, CancellationToken cancellationToken) =>
+        app.MapPost("/api/agents/{id}/agui", async (
+                [FromRoute(Name = "id")] Guid agentId,
+                [FromBody] RunAgentInput? input,
+                IProviderFacadeResolver providerFactory,
+                AzureOpsCrewContext dbContext,
+                IAiAgentFactory agentFactory,
+                HttpContext context,
+                CancellationToken cancellationToken) =>
         {
             if (input is null) return Results.BadRequest();
             var userId = context.User.GetRequiredUserId();
@@ -77,9 +79,7 @@ public static class ChannelAgUiEndpoints
             var providerService = providerFactory.GetService(provider.ProviderType);
             var chatClient = providerService.CreateChatClient(provider, agent.Info.Model, cancellationToken);
 
-            var aiAgent = chatClient.AsAIAgent(
-                name: agent.Info.Name,
-                instructions: agent.Info.Prompt + toolHint);
+            var aiAgent = ChannelAgUiFactory.CreateChannelAgent(agentFactory, chatClient, agent, clientTools, input);
 
             // Run the agent and convert to AG-UI events
             var events = aiAgent.RunStreamingAsync(
