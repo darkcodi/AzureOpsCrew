@@ -32,7 +32,8 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
                        .IsRequired();
 
             infoBuilder.Property(i => i.Prompt)
-                       .IsRequired();
+                       .IsRequired()
+                       .HasMaxLength(8000);
 
             infoBuilder.Property(i => i.Model)
                        .IsRequired();
