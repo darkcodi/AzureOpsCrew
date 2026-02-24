@@ -3,7 +3,7 @@ using FluentMigrator;
 namespace AzureOpsCrew.Infrastructure.Db.Migrations;
 
 [Migration(2026_02_23_10_00_00, "Add Chats and Messages tables")]
-public class M007_AddChatTables : Migration
+public class M009_AddChatTables : Migration
 {
     public override void Up()
     {
