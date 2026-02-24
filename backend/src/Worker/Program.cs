@@ -70,12 +70,12 @@ using var worker = new TemporalWorker(
 );
 
 // Run worker until cancelled
-Console.WriteLine("Running worker");
+Log.Information("Running worker. Press Ctrl+C to exit.");
 try
 {
     await worker.ExecuteAsync(cts.Token);
 }
 catch (OperationCanceledException)
 {
-    Console.WriteLine("Worker cancelled");
+    Log.Information("Worker cancellation requested. Shutting down...");
 }
