@@ -26,6 +26,7 @@ var configuration = new ConfigurationBuilder()
 var services = new ServiceCollection();
 services.AddSingleton(configuration);
 services.AddDatabase(configuration);
+services.AddProviderFacades();
 services.AddTransient<AgentActivities>();
 
 // Build the service provider

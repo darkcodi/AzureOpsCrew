@@ -1,3 +1,5 @@
+using AzureOpsCrew.Domain.ProviderServices;
+using AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
 using AzureOpsCrew.Infrastructure.Db.Migrations;
 using FluentMigrator.Runner;
@@ -76,5 +78,30 @@ public static class ServiceCollectionExtensions
         {
             throw new InvalidOperationException($"Unknown DB provider '{provider}'. Supported providers: Sqlite, SqlServer");
         }
+    }
+
+    public static void AddProviderFacades(this IServiceCollection services)
+    {
+        services.AddTransient<IProviderFacadeResolver, ProviderFacadeResolver>();
+        services.AddHttpClient<AnthropicProviderFacade>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddHttpClient<AzureFoundryProviderFacade>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddHttpClient<OllamaProviderFacade>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddHttpClient<OpenAIProviderFacade>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddHttpClient<OpenRouterProviderFacade>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
     }
 }
