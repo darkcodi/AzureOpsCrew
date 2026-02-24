@@ -1,7 +1,18 @@
-﻿using Temporalio.Client;
+﻿using AzureOpsCrew.Infrastructure.Db;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Temporalio.Client;
 using Temporalio.Worker;
 using Worker.Activities;
 using Worker.Workflows;
+
+// Setup DI container
+var services = new ServiceCollection();
+services.AddDbContext<AzureOpsCrewContext>(options =>
+    options.UseInMemoryDatabase("WorkerDb"));
+services.AddTransient<AgentActivities>();
+
+var serviceProvider = services.BuildServiceProvider();
 
 // Create a client to localhost on "default" namespace
 var client = await TemporalClient.ConnectAsync(new("localhost:7233"));
@@ -16,7 +27,7 @@ Console.CancelKeyPress += (_, eventArgs) =>
 
 // Create an activity instance since we have instance activities. If we had
 // all static activities, we could just reference those directly.
-var activities = new AgentActivities();
+var activities = serviceProvider.GetRequiredService<AgentActivities>();
 
 // Create worker with the activity and workflow registered
 using var worker = new TemporalWorker(

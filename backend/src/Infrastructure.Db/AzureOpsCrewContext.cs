@@ -21,6 +21,7 @@ public class AzureOpsCrewContext : DbContext
     }
 
     public DbSet<Agent> Agents => Set<Agent>();
+    public DbSet<PersistedAgentSnapshot> AgentSnapshots => Set<PersistedAgentSnapshot>();
     public DbSet<Channel> Channels => Set<Channel>();
     public DbSet<AiProvider> Providers => Set<AiProvider>();
     public DbSet<User> Users => Set<User>();
@@ -39,5 +40,6 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new ChatEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new MessageEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new DmEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new PersistedAgentSnapshotEntityTypeConfiguration());
     }
 }
