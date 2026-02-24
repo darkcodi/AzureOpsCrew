@@ -16,40 +16,40 @@ public class AgentActivities
     }
 
     [Activity]
-    public async Task<AgentSnapshot> LoadSnapshotAsync(Guid agentId)
+    public async Task<AgentSnapshotDto> LoadSnapshotAsync(Guid agentId)
     {
-        var persisted = await _context.AgentSnapshots
+        var snapshot = await _context.AgentSnapshots
             .FirstOrDefaultAsync(s => s.AgentId == agentId);
 
-        if (persisted is null)
-            return new AgentSnapshot(agentId, MemorySummary: "", RecentTranscript: new());
+        if (snapshot is null)
+            return new AgentSnapshotDto(agentId, MemorySummary: "", RecentTranscript: new());
 
-        var transcript = persisted.RecentTranscript
+        var transcript = snapshot.RecentTranscript
             .Select(t => (t.Role, t.Text))
             .ToList();
 
-        return new AgentSnapshot(persisted.AgentId, persisted.MemorySummary, transcript);
+        return new AgentSnapshotDto(snapshot.AgentId, snapshot.MemorySummary, transcript);
     }
 
     [Activity]
-    public async Task SaveSnapshotAsync(AgentSnapshot snapshot)
+    public async Task SaveSnapshotAsync(AgentSnapshotDto snapshotDto)
     {
-        var existing = await _context.AgentSnapshots
-            .FirstOrDefaultAsync(s => s.AgentId == snapshot.AgentId);
+        var existingSnapshot = await _context.AgentSnapshots
+            .FirstOrDefaultAsync(s => s.AgentId == snapshotDto.AgentId);
 
-        var transcriptEntries = snapshot.RecentTranscript
+        var transcriptEntries = snapshotDto.RecentTranscript
             .Select(t => new TranscriptEntry { Role = t.Role, Text = t.Text })
             .ToList();
 
-        if (existing is not null)
+        if (existingSnapshot is not null)
         {
-            existing.Update(snapshot.MemorySummary, transcriptEntries);
+            existingSnapshot.Update(snapshotDto.MemorySummary, transcriptEntries);
         }
         else
         {
-            var newSnapshot = new PersistedAgentSnapshot(
-                snapshot.AgentId,
-                snapshot.MemorySummary,
+            var newSnapshot = new AgentSnapshot(
+                snapshotDto.AgentId,
+                snapshotDto.MemorySummary,
                 transcriptEntries);
             _context.AgentSnapshots.Add(newSnapshot);
         }

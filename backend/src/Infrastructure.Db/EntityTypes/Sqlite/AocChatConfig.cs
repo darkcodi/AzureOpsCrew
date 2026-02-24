@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
 
-public sealed class ChatEntityTypeConfiguration : IEntityTypeConfiguration<AocChat>
+public sealed class AocChatConfig : IEntityTypeConfiguration<AocChat>
 {
     public void Configure(EntityTypeBuilder<AocChat> builder)
     {

@@ -1,12 +1,12 @@
 namespace AzureOpsCrew.Domain.Agents;
 
-public class PersistedAgentSnapshot
+public class AgentSnapshot
 {
-    private PersistedAgentSnapshot()
+    private AgentSnapshot()
     {
     }
 
-    public PersistedAgentSnapshot(Guid agentId, string memorySummary, List<TranscriptEntry> recentTranscript)
+    public AgentSnapshot(Guid agentId, string memorySummary, List<TranscriptEntry> recentTranscript)
     {
         AgentId = agentId;
         MemorySummary = memorySummary;

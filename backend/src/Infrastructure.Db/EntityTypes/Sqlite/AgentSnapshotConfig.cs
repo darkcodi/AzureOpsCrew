@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
 
-public sealed class PersistedAgentSnapshotEntityTypeConfiguration : IEntityTypeConfiguration<PersistedAgentSnapshot>
+public sealed class AgentSnapshotConfig : IEntityTypeConfiguration<AgentSnapshot>
 {
-    public void Configure(EntityTypeBuilder<PersistedAgentSnapshot> builder)
+    public void Configure(EntityTypeBuilder<AgentSnapshot> builder)
     {
         builder.ToTable("AgentSnapshots");
 
