@@ -25,6 +25,8 @@ public sealed class AgentSnapshotConfig : IEntityTypeConfiguration<AgentSnapshot
 
         builder.OwnsMany(s => s.RecentTranscript, transcriptBuilder =>
         {
+            transcriptBuilder.ToTable("AgentSnapshotTranscriptEntries");
+
             transcriptBuilder.Property(t => t.Role)
                            .IsRequired();
 
