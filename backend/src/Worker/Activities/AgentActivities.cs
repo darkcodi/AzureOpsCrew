@@ -1,6 +1,10 @@
+using System.Text.Json;
 using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Temporalio.Activities;
 using Worker.Models;
 
@@ -9,10 +13,12 @@ namespace Worker.Activities;
 public class AgentActivities
 {
     private readonly AzureOpsCrewContext _context;
+    private readonly IProviderFacadeResolver _providerFactory;
 
-    public AgentActivities(AzureOpsCrewContext context)
+    public AgentActivities(AzureOpsCrewContext context, IProviderFacadeResolver providerFactory)
     {
         _context = context;
+        _providerFactory = providerFactory;
     }
 
     [Activity]
@@ -58,34 +64,27 @@ public class AgentActivities
     }
 
     [Activity]
-    public Task<NextStepDecision> DecideNextAsync(string userText, string memorySummary, List<ToolResult> toolResults)
+    public async Task<NextStepDecision> DecideNextAsync(Guid agentId, string userText, string memorySummary, List<ToolResult> toolResults)
     {
-        userText ??= "";
+        var agent = await _context.Agents.FirstAsync(a => a.Id == agentId);
+        var provider = await _context.Providers.FirstAsync(p => p.Id == agent.ProviderId);
 
-        if (userText.Contains("clarify", StringComparison.OrdinalIgnoreCase))
-            return Task.FromResult(new NextStepDecision(
-                FinalAnswer: null,
-                NeedUserQuestion: "What exactly do you want me to clarify (scope + desired output)?",
-                ToolCalls: new()));
+        var providerService = _providerFactory.GetService(provider.ProviderType);
+        var chatClient = providerService.CreateChatClient(provider, agent.Info.Model, CancellationToken.None);
 
-        if (toolResults.Count == 0 && (userText.Contains("research", StringComparison.OrdinalIgnoreCase) ||
-                                       userText.Contains("find", StringComparison.OrdinalIgnoreCase)))
+        var fClient = new FunctionInvokingChatClient(chatClient);
+
+        var chatMessages = new[]{new ChatMessage(ChatRole.User, userText)};
+        // var chatOptions = new ChatOptions
+        // {
+        //     Tools = ...
+        // };
+        await foreach (var update in fClient.GetStreamingResponseAsync(chatMessages))
         {
-            return Task.FromResult(new NextStepDecision(
-                FinalAnswer: null,
-                NeedUserQuestion: null,
-                ToolCalls: new()
-                {
-                    new McpCall("mcp.search", "web_search", """{"query":"stub query"}"""),
-                    new McpCall("mcp.docs", "lookup", """{"id":"stub"}"""),
-                }));
+            ActivityExecutionContext.Current.Logger.LogInformation("Received chat update: {Update}", JsonSerializer.Serialize(update));
         }
 
-        var final = toolResults.Count > 0
-            ? $"I did {toolResults.Count} tool call(s). Summary: {string.Join(" | ", toolResults.Select(t => t.Summary))}"
-            : $"Got it. You said: {userText}";
-
-        return Task.FromResult(new NextStepDecision(final, null, new()));
+        return new NextStepDecision("Done", null, new());
     }
 
     [Activity]

@@ -8,7 +8,7 @@ namespace Worker.Workflows;
 [Workflow]
 public class AgentRunWorkflow
 {
-    private static readonly ActivityOptions Io = new()
+    private static readonly ActivityOptions Options = new()
     {
         StartToCloseTimeout = TimeSpan.FromMinutes(2),
         RetryPolicy = new() { MaximumAttempts = 3 }
@@ -17,10 +17,12 @@ public class AgentRunWorkflow
     [WorkflowRun]
     public async Task<RunOutcome> RunAsync(RunInput input)
     {
+        var agentId = input.AgentId;
+
         // Load snapshot
         var snapshot = await Workflow.ExecuteActivityAsync(
-            (AgentActivities a) => a.LoadSnapshotAsync(input.AgentId),
-            Io);
+            (AgentActivities a) => a.LoadSnapshotAsync(agentId),
+            Options);
 
         // If waiting on a question, ensure the answer matches
         if (input.PendingQuestionBefore is not null &&
@@ -38,8 +40,8 @@ public class AgentRunWorkflow
         for (int step = 0; step < maxSteps; step++)
         {
             var decision = await Workflow.ExecuteActivityAsync(
-                (AgentActivities a) => a.DecideNextAsync(userText, snapshot.MemorySummary, toolResults),
-                Io);
+                (AgentActivities a) => a.DecideNextAsync(agentId, userText, snapshot.MemorySummary, toolResults),
+                Options);
 
             if (decision.NeedUserQuestion is not null)
             {
@@ -57,7 +59,7 @@ public class AgentRunWorkflow
                 {
                     var res = await Workflow.ExecuteActivityAsync(
                         (AgentActivities a) => a.CallMcpAsync(call),
-                        Io);
+                        Options);
                     toolResults.Add(res);
                 }
                 continue;
@@ -81,7 +83,7 @@ public class AgentRunWorkflow
 
                 await Workflow.ExecuteActivityAsync(
                     (AgentActivities a) => a.SaveSnapshotAsync(updated),
-                    Io);
+                    Options);
 
                 return new RunOutcome(RunOutcomeKind.Completed, decision.FinalAnswer, null, updated.MemorySummary);
             }
