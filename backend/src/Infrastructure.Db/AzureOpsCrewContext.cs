@@ -27,6 +27,7 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<PendingRegistration> PendingRegistrations => Set<PendingRegistration>();
     public DbSet<AocChat> Chats => Set<AocChat>();
     public DbSet<AocMessage> Messages => Set<AocMessage>();
+    public DbSet<AocDm> Dms => Set<AocDm>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,5 +38,6 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new PendingRegistrationConfig());
         modelBuilder.ApplyConfiguration(new ChatEntityTypeConfiguration());
         modelBuilder.ApplyConfiguration(new MessageEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new DmEntityTypeConfiguration());
     }
 }
