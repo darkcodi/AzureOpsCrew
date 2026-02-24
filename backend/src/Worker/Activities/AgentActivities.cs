@@ -1,13 +1,12 @@
-using System.Text.Json;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.Logging;
 using Temporalio.Activities;
 using Worker.Models;
+using Worker.Models.Content;
 
 namespace Worker.Activities;
 
@@ -43,7 +42,7 @@ public class AgentActivities
     }
 
     [Activity]
-    public async Task<NextStepDecision> DecideNextAsync(
+    public async Task<NextStepDecision> AgentThinkAsync(
         Agent agent,
         Provider provider,
         string userText,
@@ -60,9 +59,19 @@ public class AgentActivities
         // {
         //     Tools = ...
         // };
-        await foreach (var update in fClient.GetStreamingResponseAsync(chatMessages))
+
+        var contentList = new List<AocAiContent>();
+        await foreach (ChatResponseUpdate update in fClient.GetStreamingResponseAsync(chatMessages))
         {
-            ActivityExecutionContext.Current.Logger.LogInformation("Received chat update: {Update}", JsonSerializer.Serialize(update));
+            var contents = update.Contents;
+            foreach (var content in contents)
+            {
+                var parsed = AocAiContent.Parse(content);
+                if (parsed != null)
+                {
+                    contentList.Add(parsed);
+                }
+            }
         }
 
         return new NextStepDecision("Done", null, new());

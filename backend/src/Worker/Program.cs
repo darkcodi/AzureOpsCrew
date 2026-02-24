@@ -62,7 +62,7 @@ using var worker = new TemporalWorker(
     new TemporalWorkerOptions("aoc-agent-task-queue")
         .AddActivity(activities.LoadAgentAsync)
         .AddActivity(activities.LoadProviderAsync)
-        .AddActivity(activities.DecideNextAsync)
+        .AddActivity(activities.AgentThinkAsync)
         .AddActivity(activities.CallMcpAsync)
         .AddActivity(activities.NotifyUserAsync)
         .AddWorkflow<AgentCoordinatorWorkflow>()

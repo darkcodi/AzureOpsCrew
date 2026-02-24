@@ -38,7 +38,7 @@ public class AgentRunWorkflow
         for (int step = 0; step < maxSteps; step++)
         {
             var decision = await Workflow.ExecuteActivityAsync(
-                (AgentActivities a) => a.DecideNextAsync(agent, provider, userText, "", toolResults),
+                (AgentActivities a) => a.AgentThinkAsync(agent, provider, userText, "", toolResults),
                 Options);
 
             if (decision.NeedUserQuestion is not null)
