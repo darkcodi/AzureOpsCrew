@@ -6,7 +6,6 @@ import {
   getKeycloakAuthFeatureConfig,
   getPublicRequestOrigin,
   getKeycloakWebConfig,
-  getTransientAuthCookieOptions,
   KEYCLOAK_CODE_VERIFIER_COOKIE_NAME,
   KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME,
   KEYCLOAK_NEXT_COOKIE_NAME,
@@ -16,6 +15,16 @@ import {
 } from "@/lib/server/keycloak"
 
 export const dynamic = "force-dynamic"
+
+function getOidcStartCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "none" as const,
+    path: "/",
+    maxAge: 60 * 30,
+  }
+}
 
 function htmlDecode(value: string): string {
   return value
@@ -79,7 +88,7 @@ export async function GET(req: NextRequest) {
 
     const response = NextResponse.redirect(loginUrl)
     response.cookies.set(KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME, "0", {
-      ...getTransientAuthCookieOptions(),
+      ...getOidcStartCookieOptions(),
       maxAge: 0,
     })
     return response
@@ -142,13 +151,14 @@ export async function GET(req: NextRequest) {
   }
 
   const response = NextResponse.redirect(redirectUrl)
-  response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, state, getTransientAuthCookieOptions())
-  response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, verifier, getTransientAuthCookieOptions())
-  response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, nextPath, getTransientAuthCookieOptions())
+  const startCookieOptions = getOidcStartCookieOptions()
+  response.cookies.set(KEYCLOAK_STATE_COOKIE_NAME, state, startCookieOptions)
+  response.cookies.set(KEYCLOAK_CODE_VERIFIER_COOKIE_NAME, verifier, startCookieOptions)
+  response.cookies.set(KEYCLOAK_NEXT_COOKIE_NAME, nextPath, startCookieOptions)
   response.cookies.set(
     KEYCLOAK_LOGIN_ATTEMPT_COOKIE_NAME,
     String(mode === "signup" ? 0 : currentAttemptCount + 1),
-    getTransientAuthCookieOptions()
+    startCookieOptions
   )
 
   for (const setCookie of upstreamKeycloakCookies) {
