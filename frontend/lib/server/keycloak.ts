@@ -133,9 +133,11 @@ export function getTransientAuthCookieOptions() {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
+    // OIDC broker flows (Keycloak -> Entra -> app callback) can lose Lax cookies in
+    // some browser/privacy/MFA redirect chains. None is safer for transient auth state.
+    sameSite: "none" as const,
     path: "/",
-    maxAge: 60 * 10,
+    maxAge: 60 * 30,
   }
 }
 
@@ -143,7 +145,7 @@ export function clearTransientAuthCookieOptions() {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
+    sameSite: "none" as const,
     path: "/",
     maxAge: 0,
   }

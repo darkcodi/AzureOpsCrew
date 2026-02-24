@@ -24,6 +24,8 @@ interface KeycloakTokenResponse {
   expires_in?: number
 }
 
+const MAX_ID_TOKEN_COOKIE_CHARS = 3000
+
 function buildLoginRedirect(req: NextRequest, message: string) {
   const loginUrl = new URL("/login", getPublicRequestOrigin(req))
   loginUrl.searchParams.set("error", message)
@@ -43,6 +45,7 @@ export async function GET(req: NextRequest) {
   if (!config) {
     return NextResponse.redirect(buildLoginRedirect(req, "Keycloak is not configured"))
   }
+  const existingAccessToken = req.cookies.get(ACCESS_TOKEN_COOKIE_NAME)?.value
 
   const error = req.nextUrl.searchParams.get("error")
   if (error) {
@@ -51,7 +54,15 @@ export async function GET(req: NextRequest) {
       error,
       errorDescription,
       path: req.nextUrl.pathname,
+      hasExistingAccessToken: Boolean(existingAccessToken),
     })
+
+    if (existingAccessToken) {
+      const response = NextResponse.redirect(new URL("/", getPublicRequestOrigin(req)))
+      clearKeycloakTransientCookies(response)
+      return response
+    }
+
     const response = NextResponse.redirect(
       buildLoginRedirect(req, errorDescription ?? error)
     )
@@ -72,8 +83,18 @@ export async function GET(req: NextRequest) {
       hasExpectedState: Boolean(expectedState),
       stateMatches: Boolean(state && expectedState && state === expectedState),
       hasCodeVerifier: Boolean(codeVerifier),
+      hasExistingAccessToken: Boolean(existingAccessToken),
       userAgent: req.headers.get("user-agent"),
     })
+
+    // Duplicate/stale callbacks can arrive after a successful sign-in (especially with
+    // federated IdP + MFA). If the session cookie already exists, avoid restarting login.
+    if (existingAccessToken) {
+      const response = NextResponse.redirect(new URL(nextPath, getPublicRequestOrigin(req)))
+      clearKeycloakTransientCookies(response)
+      return response
+    }
+
     const response = NextResponse.redirect(buildLoginRedirect(req, "Invalid sign-in callback"))
     clearKeycloakTransientCookies(response)
     return response
@@ -147,11 +168,17 @@ export async function GET(req: NextRequest) {
       getAuthCookieOptions(accessTokenTtlSeconds)
     )
     if (typeof tokenData.id_token === "string" && tokenData.id_token.length > 0) {
-      response.cookies.set(
-        KEYCLOAK_ID_TOKEN_COOKIE_NAME,
-        tokenData.id_token,
-        getAuthCookieOptions(accessTokenTtlSeconds)
-      )
+      if (tokenData.id_token.length <= MAX_ID_TOKEN_COOKIE_CHARS) {
+        response.cookies.set(
+          KEYCLOAK_ID_TOKEN_COOKIE_NAME,
+          tokenData.id_token,
+          getAuthCookieOptions(accessTokenTtlSeconds)
+        )
+      } else {
+        console.warn("Skipping Keycloak id_token cookie because payload is too large", {
+          idTokenLength: tokenData.id_token.length,
+        })
+      }
     }
     clearKeycloakTransientCookies(response)
     return response
