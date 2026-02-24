@@ -1,7 +1,7 @@
-using System.Text.Json;
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
 using AzureOpsCrew.Api.Extensions;
+using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.Agents.AI;
@@ -12,6 +12,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Serilog;
+using System.Text.Json;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -104,6 +105,7 @@ public static class ChannelAgUiEndpoints
             [FromBody] RunAgentInput? input,
             IProviderFacadeResolver providerFactory,
             AzureOpsCrewContext dbContext,
+            IAiAgentFactory agentFactory,
             HttpContext http,
             CancellationToken cancellationToken) =>
         {
@@ -149,7 +151,7 @@ public static class ChannelAgUiEndpoints
                     var provider = providers.Single(p => p.Id == a.ProviderId);
                     var providerService = providerFactory.GetService(provider.ProviderType);
                     var chatClient = providerService.CreateChatClient(provider, a.Info.Model, cancellationToken);
-                    return ChannelAgUiFactory.CreateChannelAgent(chatClient, a, clientTools, input);
+                    return ChannelAgUiFactory.CreateChannelAgent(agentFactory, chatClient, a, clientTools, input);
                 })
                 .ToList();
 
@@ -233,37 +235,23 @@ public static class ChannelAgUiFactory
     }
 
     public static AIAgent CreateChannelAgent(
+        IAiAgentFactory factory,
         IChatClient chatClient,
         Domain.Agents.Agent agentEntity,
         IReadOnlyList<AITool>? clientTools,
         RunAgentInput input)
     {
-        const string toolHint =
-            " When you have tools available (showPipelineStatus, showWorkItems, showResourceInfo, showDeployment, showMetrics), " +
-            "use them proactively to present information visually instead of plain text. " +
-            "For example, show pipeline stages as a visual card, display work items in a list, or present metrics in a dashboard-style card.";
-
-        // Key: set tools/properties here, not via RunOptions (because workflow.AsAgent may not propagate them)
-        var options = new ChatClientAgentOptions
+        var additionalPropertiesDictionary = new AdditionalPropertiesDictionary
         {
-            Name = agentEntity.Info.Name,
-            ChatOptions = new ChatOptions
-            {
-                Instructions = agentEntity.Info.Prompt + toolHint,
-                Tools = clientTools?.ToList(),
-                AdditionalProperties = new AdditionalPropertiesDictionary
-                {
-                    ["ag_ui_state"] = input.State,
-                    ["ag_ui_context"] = input.Context?
+            ["ag_ui_state"] = input.State,
+            ["ag_ui_context"] = input.Context?
                         .Select(c => new KeyValuePair<string, string>(c.Description, c.Value))
                         .ToArray(),
-                    ["ag_ui_forwarded_properties"] = input.ForwardedProperties,
-                    ["ag_ui_thread_id"] = input.ThreadId,
-                    ["ag_ui_run_id"] = input.RunId
-                }
-            }
+            ["ag_ui_forwarded_properties"] = input.ForwardedProperties,
+            ["ag_ui_thread_id"] = input.ThreadId,
+            ["ag_ui_run_id"] = input.RunId
         };
 
-        return chatClient.AsAIAgent(options);
+        return factory.Create(chatClient, agentEntity, clientTools?.ToList() ?? [], additionalPropertiesDictionary);
     }
 }

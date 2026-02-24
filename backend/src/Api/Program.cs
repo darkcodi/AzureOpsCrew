@@ -2,6 +2,7 @@ using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Api.Setup.Seeds;
+using AzureOpsCrew.Domain.AgentServices;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Serilog;
@@ -45,6 +46,7 @@ try
     builder.Services.AddProviderFacades();
     builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddEmailVerification(builder.Configuration);
+    builder.Services.AddAgentFactory(builder.Configuration);
 
     // Configure AG-UI
     builder.Services.AddHttpClient();
@@ -103,6 +105,7 @@ try
     app.MapAllAgUi();
 
     await app.Services.RunDbSetup();
+    await app.Services.RunLongTermMemorySetup();
     await app.Services.RunSeeding(builder.Configuration);
 
     app.Run();

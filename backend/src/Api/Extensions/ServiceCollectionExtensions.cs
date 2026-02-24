@@ -1,20 +1,24 @@
-using System.Text;
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Email;
 using AzureOpsCrew.Api.Settings;
+using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.Providers;
+using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Domain.Users;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory;
+using AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
-using Microsoft.EntityFrameworkCore;
 using AzureOpsCrew.Infrastructure.Db.Migrations;
 using FluentMigrator.Runner;
-using Serilog;
-using AzureOpsCrew.Domain.ProviderServices;
-using AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using System.Text;
 
 namespace AzureOpsCrew.Api.Extensions;
 
@@ -207,5 +211,33 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddScoped<IPasswordHasher<PendingRegistration>, PasswordHasher<PendingRegistration>>();
+    }
+
+    public static void AddAgentFactory(this IServiceCollection services, IConfiguration configuration)
+    {
+        //Add AiAgentFactory
+        services.AddScoped<IAiAgentFactory, AiAgentFactory>();
+
+        //Add LongTermMemory
+        var memoryType = configuration["LongTermMemory:Type"] ?? "InMemory";
+        services.AddSingleton(p => new AgentAIContextProviderFactory(p, memoryType));
+
+        if(string.Equals(memoryType, "InMemory", StringComparison.OrdinalIgnoreCase))
+            services.AddSingleton<InMemoryFactsStore>();
+        else if (string.Equals(memoryType, "Cypher", StringComparison.OrdinalIgnoreCase))
+        {
+            var uri = configuration["LongTermMemory:Neo4j:Uri"] ?? "bolt://localhost:7687";
+            var username = configuration["LongTermMemory:Neo4j:Username"] ?? "neo4j";
+            var password = configuration["LongTermMemory:Neo4j:Password"] ?? "password";
+
+            services.AddSingleton<Neo4j.Driver.IDriver>(_ =>
+                Neo4j.Driver.GraphDatabase.Driver(uri, Neo4j.Driver.AuthTokens.Basic(username, password)));
+
+            services.AddSingleton<CypherFactsStore>();
+        }
+        else
+        {
+            throw new InvalidOperationException($"Unknown LongTermMemory type '{memoryType}'. Supported providers: InMemory, Cypher");
+        }
     }
 }
