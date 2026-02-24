@@ -4,6 +4,7 @@
     <Project Path="src/Domain/Domain.csproj" />
     <Project Path="src/Infrastructure.Ai/Infrastructure.Ai.csproj" />
     <Project Path="src/Infrastructure.Db/Infrastructure.Db.csproj" />
+    <Project Path="src/Worker/Worker.csproj" />
   </Folder>
   <Project Path="docker-compose.dcproj">
     <Build />
