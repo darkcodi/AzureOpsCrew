@@ -14,11 +14,6 @@ public sealed class ChannelEntityTypeConfiguration : IEntityTypeConfiguration<Ch
         builder.Property(c => c.Id)
                .ValueGeneratedOnAdd();
 
-        builder.Property(c => c.ClientId)
-               .IsRequired();
-
-        builder.HasIndex(c => c.ClientId);
-
         builder.Property(c => c.Name)
                .IsRequired();
 

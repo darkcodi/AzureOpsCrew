@@ -8,10 +8,9 @@ namespace AzureOpsCrew.Domain.Agents
         {
         }
 
-        public Agent(Guid id, int clientId, AgentInfo info, Guid providerId, string providerAgentId, string color)
+        public Agent(Guid id, AgentInfo info, Guid providerId, string providerAgentId, string color)
         {
             Id = id;
-            ClientId = clientId;
             Info = info;
             ProviderId = providerId;
             ProviderAgentId = providerAgentId;
@@ -21,8 +20,6 @@ namespace AzureOpsCrew.Domain.Agents
         public Guid Id { get; private set; }
 
         public string ProviderAgentId { get; private set; }
-
-        public int ClientId { get; private set; }
 
         public AgentInfo Info { get; private set; }
 

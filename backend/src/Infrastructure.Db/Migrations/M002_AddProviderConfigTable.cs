@@ -9,7 +9,6 @@ public class M002_AddProviderConfigTable : Migration
     {
         Create.Table("ProviderConfig")
             .WithColumn("Id").AsString().NotNullable().PrimaryKey()
-            .WithColumn("ClientId").AsInt32().NotNullable()
             .WithColumn("Name").AsString(200).NotNullable()
             .WithColumn("ProviderType").AsString().NotNullable()
             .WithColumn("ApiKey").AsString(500).NotNullable()
@@ -17,8 +16,6 @@ public class M002_AddProviderConfigTable : Migration
             .WithColumn("DefaultModel").AsString(200).Nullable()
             .WithColumn("DateCreated").AsDateTime().NotNullable()
             .WithColumn("DateModified").AsDateTime().Nullable();
-
-        Create.Index("IX_ProviderConfig_ClientId").OnTable("ProviderConfig").OnColumn("ClientId");
     }
 
     public override void Down()

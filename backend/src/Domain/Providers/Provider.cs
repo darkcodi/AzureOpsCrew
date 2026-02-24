@@ -8,7 +8,6 @@ public sealed class Provider
 
     public Provider(
         Guid id,
-        int clientId,
         string name,
         ProviderType providerType,
         string? apiKey,
@@ -18,7 +17,6 @@ public sealed class Provider
         string? selectedModels = null)
     {
         Id = id;
-        ClientId = clientId;
         Name = name;
         ProviderType = providerType;
         ApiKey = apiKey;
@@ -29,7 +27,6 @@ public sealed class Provider
     }
 
     public Guid Id { get; private set; }
-    public int ClientId { get; private set; }
     public string Name { get; private set; }
     public ProviderType ProviderType { get; private set; }
     public string? ApiKey { get; private set; }

@@ -8,16 +8,13 @@ namespace AzureOpsCrew.Domain.Channels
         {
         }
 
-        public Channel(Guid id, int clientId, string name)
+        public Channel(Guid id, string name)
         {
             Id = id;
-            ClientId = clientId;
             Name = name;
         }
 
         public Guid Id { get; set; }
-
-        public int ClientId { get; set; }
 
         public string Name { get; set; }
 

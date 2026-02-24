@@ -19,10 +19,8 @@ namespace AzureOpsCrew.Api.Setup.Seeds
 
         public async Task Seed()
         {
-            const int clientId = 1;
-
             var providerId = Guid.Parse("5f4e3d10-0123-4000-9abc-def123456789");
-            var provider = new Provider(providerId, clientId,
+            var provider = new Provider(providerId,
                 name: "Azure OpenAI", ProviderType.AzureFoundry, apiKey: _seederOptions.AzureFoundrySeed.Key,
                 apiEndpoint: _seederOptions.AzureFoundrySeed.ApiEndpoint,
                 selectedModels: "[\"gpt-5-2-chat\"]", defaultModel: "gpt-5-2-chat");
@@ -35,7 +33,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
 
             var agents = new[]
             {
-                new Agent(managerId, clientId,
+                new Agent(managerId,
                     new AgentInfo("Manager",
                         "You are a Manager AI assistant. You help with planning, priorities, resource allocation, team coordination, and delivery. You think in terms of goals, milestones, risks, and stakeholder communication. Keep answers actionable and concise. When you have tools available (showPipelineStatus, showWorkItems, showResourceInfo, showDeployment, showMetrics), use them proactively to present information visually instead of plain text.",
                         "gpt-5-2-chat")
@@ -47,7 +45,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 ),
 
                 new Agent(
-                    azDevOpsId, clientId,
+                    azDevOpsId,
                     new AgentInfo(
                         "Azure DevOps",
                         "You are an Azure DevOps expert. You help with pipelines (YAML and classic), CI/CD, Azure Repos, Boards, Artifacts, Test Plans, and release management. You know branching strategies, approvals, variable groups, service connections, and Azure DevOps REST APIs. Give concrete, step-by-step guidance when asked. When you have tools available (showPipelineStatus, showWorkItems, showResourceInfo, showDeployment, showMetrics), use them proactively to present information visually instead of plain text.",
@@ -58,7 +56,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                         },
                     provider.Id, "azure-devops", "#0078d4"),
 
-                new Agent(azDevId, clientId,
+                new Agent(azDevId,
                     new AgentInfo(
                         "Azure Dev",
                         "You are an Azure development expert. You help with building and deploying apps on Azure: App Service, Functions, Container Apps, AKS, Azure SDKs, identity (Microsoft Entra ID), storage, messaging, and serverless. You focus on code, configuration, and best practices for Azure-native development. When you have tools available (showPipelineStatus, showWorkItems, showResourceInfo, showDeployment, showMetrics), use them proactively to present information visually instead of plain text.",
@@ -74,7 +72,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             foreach (var agent in agents)
                 await AddAgentIfNotExists(agent);
 
-            var channel = new Channel(generalChatId, clientId, "General")
+            var channel = new Channel(generalChatId, "General")
             {
                 Description = "General discussion and collaboration",
                 ConversationId = null,

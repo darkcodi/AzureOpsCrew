@@ -18,11 +18,6 @@ public sealed class ProviderEntityTypeConfiguration : IEntityTypeConfiguration<P
                    v => v.ToString("D"),
                    s => Guid.Parse(s));
 
-        builder.Property(p => p.ClientId)
-               .IsRequired();
-
-        builder.HasIndex(p => p.ClientId);
-
         builder.Property(p => p.Name)
                .IsRequired()
                .HasMaxLength(200);

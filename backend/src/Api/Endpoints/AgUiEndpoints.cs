@@ -35,7 +35,6 @@ public static class ChannelAgUiEndpoints
                 CancellationToken cancellationToken) =>
         {
             if (input is null) return Results.BadRequest();
-            var userId = context.User.GetRequiredUserId();
             Log.Information("Received AG-UI event for agent with id {AgentId} with threadId {ThreadId} and runId {RunId}", agentId, input.ThreadId, input.RunId);
             Log.Information("Input: {Input}", JsonConvert.SerializeObject(input));
 
@@ -64,7 +63,7 @@ public static class ChannelAgUiEndpoints
             };
 
             // Find Agent
-            var agent = dbContext.Set<Domain.Agents.Agent>().SingleOrDefault(a => a.Id == agentId && a.ClientId == userId);
+            var agent = dbContext.Set<Domain.Agents.Agent>().SingleOrDefault(a => a.Id == agentId);
             if (agent is null)
             {
                 Log.Warning("Unknown agent with id: {AgentId}", agentId);
@@ -88,7 +87,7 @@ public static class ChannelAgUiEndpoints
             var outcome = await handle.ExecuteUpdateAsync(wf => wf.AskAsync(trigger));
 
             // // Find Provider
-            // var provider = dbContext.Set<Domain.Providers.Provider>().SingleOrDefault(p => p.Id == agent.ProviderId && p.ClientId == userId);
+            // var provider = dbContext.Set<Domain.Providers.Provider>().SingleOrDefault(p => p.Id == agent.ProviderId);
             // if (provider is null)
             // {
             //     Log.Warning("Unknown provider with id: {ProviderId} for agent {AgentId}", agent.ProviderId, agent.Id);
@@ -132,7 +131,6 @@ public static class ChannelAgUiEndpoints
             CancellationToken cancellationToken) =>
         {
             if (input is null) return Results.BadRequest();
-            var userId = http.User.GetRequiredUserId();
             Log.Information("Received AG-UI event for channel with id {ChannelId} with threadId {ThreadId} and runId {RunId}", channelId, input.ThreadId, input.RunId);
             Log.Information("Input: {Input}", JsonConvert.SerializeObject(input));
 
@@ -143,7 +141,7 @@ public static class ChannelAgUiEndpoints
             var clientTools = input.Tools?.AsAITools().ToList();
 
             // 1) Load channel + participants
-            var channel = await dbContext.Channels.SingleOrDefaultAsync(c => c.Id == channelId && c.ClientId == userId, cancellationToken);
+            var channel = await dbContext.Channels.SingleOrDefaultAsync(c => c.Id == channelId, cancellationToken);
             if (channel is null)
                 return Results.BadRequest($"Unknown channel with id: {channelId}");
 
@@ -152,7 +150,7 @@ public static class ChannelAgUiEndpoints
                 return Results.BadRequest($"Channel with id {channelId} has no agents added");
 
             var agents = await dbContext.Agents
-                .Where(a => agendIds.Contains(a.Id) && a.ClientId == userId)
+                .Where(a => agendIds.Contains(a.Id))
                 .ToListAsync(cancellationToken);
 
             if (agents.Count != agendIds.Count)
@@ -160,7 +158,7 @@ public static class ChannelAgUiEndpoints
 
             var providerIds = agents.Select(a => a.ProviderId).Distinct().ToList();
             var providers = await dbContext.Providers
-                .Where(p => providerIds.Contains(p.Id) && p.ClientId == userId)
+                .Where(p => providerIds.Contains(p.Id))
                 .ToListAsync(cancellationToken);
             if (providers.Count != providerIds.Count)
                 return Results.BadRequest("Some providers was not found.");

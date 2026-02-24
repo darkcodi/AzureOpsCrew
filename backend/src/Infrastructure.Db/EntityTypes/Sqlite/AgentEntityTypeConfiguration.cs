@@ -17,11 +17,6 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
         builder.Property(a => a.ProviderAgentId)
                .IsRequired();
 
-        builder.Property(a => a.ClientId)
-               .IsRequired();
-
-        builder.HasIndex(a => a.ClientId);
-
         builder.OwnsOne(a => a.Info, infoBuilder =>
         {
             infoBuilder.Property(i => i.Name)

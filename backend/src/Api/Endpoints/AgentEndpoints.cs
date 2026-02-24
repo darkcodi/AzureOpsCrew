@@ -27,16 +27,15 @@ namespace AzureOpsCrew.Api.Endpoints
                     return Results.BadRequest("Info is required");
 
                 var providerExists = await context.Providers
-                    .AnyAsync(p => p.Id == body.ProviderId && p.ClientId == userId, cancellationToken);
+                    .AnyAsync(p => p.Id == body.ProviderId, cancellationToken);
 
                 if (!providerExists)
-                    return Results.BadRequest("Provider not found for current user.");
+                    return Results.BadRequest("Provider not found.");
 
                 var providerAgentId = Guid.NewGuid().ToString("D");
 
                 var agent = new Agent(
                     Guid.NewGuid(),
-                    userId,
                     body.Info!,
                     body.ProviderId,
                     providerAgentId,
@@ -56,10 +55,7 @@ namespace AzureOpsCrew.Api.Endpoints
                 AzureOpsCrewContext context,
                 CancellationToken cancellationToken) =>
             {
-                var userId = httpContext.User.GetRequiredUserId();
-
                 var agents = await context.Set<Agent>()
-                    .Where(a => a.ClientId == userId)
                     .OrderBy(a => a.DateCreated)
                     .ToListAsync(cancellationToken);
 
@@ -69,14 +65,11 @@ namespace AzureOpsCrew.Api.Endpoints
 
             group.MapGet("/{id}", async (
                 Guid id,
-                HttpContext httpContext,
                 AzureOpsCrewContext context,
                 CancellationToken cancellationToken) =>
             {
-                var userId = httpContext.User.GetRequiredUserId();
-
                 var found = await context.Set<Agent>()
-                    .SingleOrDefaultAsync(a => a.Id == id && a.ClientId == userId, cancellationToken);
+                    .SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
 
                 return found is null ? Results.NotFound() : Results.Ok(found);
             })
@@ -86,14 +79,11 @@ namespace AzureOpsCrew.Api.Endpoints
             group.MapPut("/{id}", async (
                 Guid id,
                 UpdateAgentBodyDto body,
-                HttpContext httpContext,
                 AzureOpsCrewContext context,
                 CancellationToken cancellationToken) =>
             {
-                var userId = httpContext.User.GetRequiredUserId();
-
                 var found = await context.Set<Agent>()
-                    .SingleOrDefaultAsync(a => a.Id == id && a.ClientId == userId, cancellationToken);
+                    .SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
 
                 if (found is null)
                     return Results.NotFound();
@@ -102,10 +92,10 @@ namespace AzureOpsCrew.Api.Endpoints
                     return Results.BadRequest("Info is required");
 
                 var providerExists = await context.Providers
-                    .AnyAsync(p => p.Id == body.ProviderId && p.ClientId == userId, cancellationToken);
+                    .AnyAsync(p => p.Id == body.ProviderId, cancellationToken);
 
                 if (!providerExists)
-                    return Results.BadRequest("Provider not found for current user.");
+                    return Results.BadRequest("Provider not found.");
 
                 found.Update(body.Info, body.ProviderId, body.Color);
                 await context.SaveChangesAsync(cancellationToken);
@@ -118,14 +108,11 @@ namespace AzureOpsCrew.Api.Endpoints
 
             group.MapDelete("/{id}", async (
                 Guid id,
-                HttpContext httpContext,
                 AzureOpsCrewContext context,
                 CancellationToken cancellationToken) =>
             {
-                var userId = httpContext.User.GetRequiredUserId();
-
                 var found = await context.Set<Agent>()
-                    .SingleOrDefaultAsync(a => a.Id == id && a.ClientId == userId, cancellationToken);
+                    .SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
 
                 if (found is null)
                     return Results.NotFound();
@@ -133,7 +120,6 @@ namespace AzureOpsCrew.Api.Endpoints
                 var agentIdString = found.Id.ToString();
 
                 var userChannels = await context.Set<Channel>()
-                    .Where(c => c.ClientId == userId)
                     .ToListAsync(cancellationToken);
 
                 var channelsWithAgent = userChannels
