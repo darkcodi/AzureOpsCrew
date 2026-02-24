@@ -1,11 +1,9 @@
-using System.Text;
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Email;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.AgentServices;
-using AzureOpsCrew.Domain.Providers;
-using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Domain.ProviderServices;
+using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory;
@@ -13,14 +11,13 @@ using AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
 using AzureOpsCrew.Infrastructure.Db.Migrations;
 using FluentMigrator.Runner;
-using Microsoft.EntityFrameworkCore;
-using Serilog;
-using AzureOpsCrew.Domain.ProviderServices;
-using AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using System.Text;
 
 namespace AzureOpsCrew.Api.Extensions;
 
