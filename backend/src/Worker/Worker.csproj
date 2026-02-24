@@ -16,9 +16,7 @@
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
       <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.3" />
       <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.3" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.3" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.3" />
-      <PackageReference Include="FluentMigrator.Runner.SQLite" Version="8.0.1" />
       <PackageReference Include="FluentMigrator.Runner.SqlServer" Version="8.0.1" />
       <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
       <PackageReference Include="Serilog" Version="4.2.0" />

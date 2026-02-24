@@ -14,7 +14,7 @@ public class EfContextMessageStore : IMessageStore
 
     public Task Init()
     {
-        // No initialization needed for EF Core with SQLite
+        // No initialization needed for EF Core with SqlServer
         return Task.CompletedTask;
     }
 

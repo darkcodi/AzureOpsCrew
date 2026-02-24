@@ -64,13 +64,7 @@ try
     if (app.Environment.IsDevelopment())
     {
         var provider = builder.Configuration["DatabaseProvider"];
-        if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-        {
-            var sqliteSettings = app.Services.GetRequiredService<IOptions<SQLiteSettings>>().Value;
-            Log.Information("Database Provider: Sqlite");
-            Log.Information("SQLite Settings: {SqliteSettings}", JsonConvert.SerializeObject(sqliteSettings));
-        }
-        else if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
         {
             var sqlServerSettings = app.Services.GetRequiredService<IOptions<SqlServerSettings>>().Value;
             Log.Information("Database Provider: SqlServer");
