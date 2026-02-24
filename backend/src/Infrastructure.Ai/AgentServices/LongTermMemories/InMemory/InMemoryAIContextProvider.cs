@@ -5,14 +5,6 @@ using System.Text.Json;
 
 namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory
 {
-    public class InMemoryAIContextProvider : AIContextProvider
-    {
-        protected override ValueTask<AIContext> InvokingCoreAsync(InvokingContext context, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
     public sealed class InMemoryFactsContextProvider : AIContextProvider
     {
         private readonly List<AITool> _tools;
