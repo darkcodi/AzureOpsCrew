@@ -22,17 +22,12 @@ public class AgentRunWorkflow
         var agent = await Workflow.ExecuteActivityAsync((AgentActivities a) => a.LoadAgentAsync(agentId), Options);
         var provider = await Workflow.ExecuteActivityAsync((AgentActivities a) => a.LoadProviderAsync(agent.ProviderId), Options);
 
-        // Load snapshot
-        var snapshot = await Workflow.ExecuteActivityAsync(
-            (AgentActivities a) => a.LoadSnapshotAsync(agentId),
-            Options);
-
         // If waiting on a question, ensure the answer matches
         if (input.PendingQuestionBefore is not null &&
             (input.Trigger.Source != TriggerSource.UserAnswer ||
              input.Trigger.AnswerToQuestionId != input.PendingQuestionBefore.QuestionId))
         {
-            return new RunOutcome(RunOutcomeKind.Noop, null, input.PendingQuestionBefore, snapshot.MemorySummary);
+            return new RunOutcome(RunOutcomeKind.Noop, null, input.PendingQuestionBefore);
         }
 
         var toolResults = new List<ToolResult>();
@@ -43,7 +38,7 @@ public class AgentRunWorkflow
         for (int step = 0; step < maxSteps; step++)
         {
             var decision = await Workflow.ExecuteActivityAsync(
-                (AgentActivities a) => a.DecideNextAsync(agent, provider, userText, snapshot.MemorySummary, toolResults),
+                (AgentActivities a) => a.DecideNextAsync(agent, provider, userText, "", toolResults),
                 Options);
 
             if (decision.NeedUserQuestion is not null)
@@ -53,7 +48,7 @@ public class AgentRunWorkflow
                     Text: decision.NeedUserQuestion,
                     AskedAt: Workflow.UtcNow);
 
-                return new RunOutcome(RunOutcomeKind.BlockedOnUser, null, q, snapshot.MemorySummary);
+                return new RunOutcome(RunOutcomeKind.BlockedOnUser, null, q);
             }
 
             if (decision.ToolCalls.Count > 0)
@@ -70,32 +65,13 @@ public class AgentRunWorkflow
 
             if (decision.FinalAnswer is not null)
             {
-                // Update snapshot (keep it small)
-                var transcript = snapshot.RecentTranscript;
-                transcript.Add(("user", userText));
-                transcript.Add(("agent", decision.FinalAnswer));
-                if (transcript.Count > 40) transcript.RemoveRange(0, transcript.Count - 40);
-
-                var updated = snapshot with
-                {
-                    RecentTranscript = transcript,
-                    MemorySummary = string.IsNullOrWhiteSpace(snapshot.MemorySummary)
-                        ? "Started."
-                        : snapshot.MemorySummary
-                };
-
-                await Workflow.ExecuteActivityAsync(
-                    (AgentActivities a) => a.SaveSnapshotAsync(updated),
-                    Options);
-
-                return new RunOutcome(RunOutcomeKind.Completed, decision.FinalAnswer, null, updated.MemorySummary);
+                return new RunOutcome(RunOutcomeKind.Completed, decision.FinalAnswer, null);
             }
         }
 
         return new RunOutcome(
             RunOutcomeKind.Completed,
             "I hit my step budget. Tell me what to focus on next.",
-            null,
-            snapshot.MemorySummary);
+            null);
     }
 }

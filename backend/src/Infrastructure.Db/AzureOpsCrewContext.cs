@@ -21,7 +21,6 @@ public class AzureOpsCrewContext : DbContext
     }
 
     public DbSet<Agent> Agents => Set<Agent>();
-    public DbSet<AgentSnapshot> AgentSnapshots => Set<AgentSnapshot>();
     public DbSet<Channel> Channels => Set<Channel>();
     public DbSet<AiProvider> Providers => Set<AiProvider>();
     public DbSet<User> Users => Set<User>();
@@ -40,6 +39,5 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new AocChatConfig());
         modelBuilder.ApplyConfiguration(new AocMessageConfig());
         modelBuilder.ApplyConfiguration(new AocDmConfig());
-        modelBuilder.ApplyConfiguration(new AgentSnapshotConfig());
     }
 }

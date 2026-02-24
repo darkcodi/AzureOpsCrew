@@ -43,48 +43,6 @@ public class AgentActivities
     }
 
     [Activity]
-    public async Task<AgentSnapshotDto> LoadSnapshotAsync(Guid agentId)
-    {
-        var snapshot = await _context.AgentSnapshots
-            .FirstOrDefaultAsync(s => s.AgentId == agentId);
-
-        if (snapshot is null)
-            return new AgentSnapshotDto(agentId, MemorySummary: "", RecentTranscript: new());
-
-        var transcript = snapshot.RecentTranscript
-            .Select(t => (t.Role, t.Text))
-            .ToList();
-
-        return new AgentSnapshotDto(snapshot.AgentId, snapshot.MemorySummary, transcript);
-    }
-
-    [Activity]
-    public async Task SaveSnapshotAsync(AgentSnapshotDto snapshotDto)
-    {
-        var existingSnapshot = await _context.AgentSnapshots
-            .FirstOrDefaultAsync(s => s.AgentId == snapshotDto.AgentId);
-
-        var transcriptEntries = snapshotDto.RecentTranscript
-            .Select(t => new TranscriptEntry { Role = t.Role, Text = t.Text })
-            .ToList();
-
-        if (existingSnapshot is not null)
-        {
-            existingSnapshot.Update(snapshotDto.MemorySummary, transcriptEntries);
-        }
-        else
-        {
-            var newSnapshot = new AgentSnapshot(
-                snapshotDto.AgentId,
-                snapshotDto.MemorySummary,
-                transcriptEntries);
-            _context.AgentSnapshots.Add(newSnapshot);
-        }
-
-        await _context.SaveChangesAsync();
-    }
-
-    [Activity]
     public async Task<NextStepDecision> DecideNextAsync(
         Agent agent,
         Provider provider,
