@@ -25,18 +25,10 @@ public class M011_AddAgentSnapshotsTable : Migration
         Create.Index("IX_AgentSnapshotTranscriptEntries_AgentSnapshotId")
             .OnTable("AgentSnapshotTranscriptEntries")
             .OnColumn("AgentSnapshotId");
-
-        Create.ForeignKey("FK_AgentSnapshotTranscriptEntries_AgentSnapshots_AgentSnapshotId")
-            .FromTable("AgentSnapshotTranscriptEntries")
-            .ForeignColumn("AgentSnapshotId")
-            .ToTable("AgentSnapshots")
-            .PrimaryColumn("Id")
-            .OnDelete(System.Data.Rule.Cascade);
     }
 
     public override void Down()
     {
-        Delete.ForeignKey("FK_AgentSnapshotTranscriptEntries_AgentSnapshots_AgentSnapshotId");
         Delete.Index("IX_AgentSnapshotTranscriptEntries_AgentSnapshotId").OnTable("AgentSnapshotTranscriptEntries");
         Delete.Table("AgentSnapshotTranscriptEntries");
         Delete.Table("AgentSnapshots");
