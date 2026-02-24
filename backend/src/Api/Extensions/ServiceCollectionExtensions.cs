@@ -1,4 +1,4 @@
-using System.Text;
+using System.IdentityModel.Tokens.Jwt;
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Email;
 using AzureOpsCrew.Api.Settings;
@@ -112,27 +112,16 @@ public static class ServiceCollectionExtensions
 
     public static void AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
-        var settings = configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
+        var keycloak = configuration.GetSection("KeycloakOidc").Get<KeycloakOidcSettings>() ?? new KeycloakOidcSettings();
 
-        if (string.IsNullOrWhiteSpace(settings.Issuer))
-            throw new InvalidOperationException("Jwt__Issuer is required.");
+        if (!keycloak.Enabled)
+            throw new InvalidOperationException("KeycloakOidc__Enabled=true is required. Backend now accepts only Keycloak-issued access tokens.");
 
-        if (string.IsNullOrWhiteSpace(settings.Audience))
-            throw new InvalidOperationException("Jwt__Audience is required.");
+        if (string.IsNullOrWhiteSpace(keycloak.Authority))
+            throw new InvalidOperationException("KeycloakOidc__Authority is required when KeycloakOidc__Enabled=true.");
 
-        if (string.IsNullOrWhiteSpace(settings.SigningKey) || settings.SigningKey.Length < 32)
-            throw new InvalidOperationException("Jwt__SigningKey must be at least 32 characters.");
-
-        if (settings.AccessTokenMinutes <= 0)
-            throw new InvalidOperationException("Jwt__AccessTokenMinutes must be greater than zero.");
-
-        if (settings.SigningKey.Contains("ChangeThisDevelopmentOnly", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("A real JWT signing key must be configured.");
-
-        var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.SigningKey));
-
-        services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
-        services.AddOptions<JwtSettings>();
+        if (string.IsNullOrWhiteSpace(keycloak.ClientId))
+            throw new InvalidOperationException("KeycloakOidc__ClientId is required when KeycloakOidc__Enabled=true.");
 
         services.AddAuthentication(options =>
         {
@@ -142,22 +131,46 @@ public static class ServiceCollectionExtensions
         .AddJwtBearer(options =>
         {
             options.RequireHttpsMetadata = !environment.IsDevelopment();
+            options.MapInboundClaims = false;
+            options.Authority = keycloak.Authority.TrimEnd('/');
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
-                ValidIssuer = settings.Issuer,
-                ValidateAudience = true,
-                ValidAudience = settings.Audience,
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = signingKey,
+                ValidIssuer = keycloak.Authority.TrimEnd('/'),
+                ValidateAudience = false,
                 ValidateLifetime = true,
-                ClockSkew = TimeSpan.FromSeconds(30)
+                ClockSkew = TimeSpan.FromSeconds(30),
+                NameClaimType = "name"
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = context =>
+                {
+                    var principal = context.Principal;
+                    var azp = principal?.FindFirst("azp")?.Value ?? principal?.FindFirst("client_id")?.Value;
+                    if (!string.Equals(azp, keycloak.ClientId, StringComparison.Ordinal))
+                    {
+                        context.Fail("Token was not issued to the expected client.");
+                        return Task.CompletedTask;
+                    }
+
+                    var jwt = context.SecurityToken as JwtSecurityToken;
+                    var tokenType = jwt?.Header.Typ ?? principal?.FindFirst("typ")?.Value;
+                    if (string.Equals(tokenType, "ID", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Fail("ID tokens are not accepted for API authorization.");
+                        return Task.CompletedTask;
+                    }
+
+                    return Task.CompletedTask;
+                }
             };
         });
 
         services.AddAuthorization();
-        services.AddSingleton<JwtTokenService>();
         services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+        services.AddScoped<KeycloakAppUserSyncService>();
     }
 
     public static void AddEmailVerification(this IServiceCollection services, IConfiguration configuration)
@@ -230,6 +243,5 @@ public static class ServiceCollectionExtensions
 
         services.Configure<KeycloakOidcSettings>(configuration.GetSection("KeycloakOidc"));
         services.AddOptions<KeycloakOidcSettings>();
-        services.AddSingleton<KeycloakIdTokenValidator>();
     }
 }

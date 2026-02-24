@@ -1,3 +1,4 @@
+using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
@@ -44,7 +45,6 @@ try
     builder.Services.AddDatabase(builder.Configuration);
     builder.Services.AddProviderFacades();
     builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
-    builder.Services.AddEmailVerification(builder.Configuration);
     builder.Services.AddKeycloakOidcSupport(builder.Configuration);
 
     // Configure AG-UI
@@ -91,6 +91,7 @@ try
 
     app.UseHttpsRedirection();
     app.UseAuthentication();
+    app.UseMiddleware<KeycloakAppUserSyncMiddleware>();
     app.UseAuthorization();
 
     // Map endpoints

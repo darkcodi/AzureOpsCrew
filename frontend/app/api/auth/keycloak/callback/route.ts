@@ -17,14 +17,11 @@ export const dynamic = "force-dynamic"
 
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
-interface BackendAuthResponse {
-  accessToken: string
-  expiresAtUtc: string
-  user: {
-    id: number
-    email: string
-    displayName: string
-  }
+interface KeycloakTokenResponse {
+  access_token: string
+  id_token?: string
+  token_type?: string
+  expires_in?: number
 }
 
 function buildLoginRedirect(req: NextRequest, message: string) {
@@ -105,21 +102,22 @@ export async function GET(req: NextRequest) {
       cache: "no-store",
     })
 
-    const tokenData = await tokenResponse.json().catch(() => ({}))
-    if (!tokenResponse.ok || typeof tokenData?.id_token !== "string") {
+    const tokenData = (await tokenResponse.json().catch(() => ({}))) as Partial<KeycloakTokenResponse>
+    if (!tokenResponse.ok || typeof tokenData?.access_token !== "string") {
       console.warn("Keycloak token exchange failed", {
         status: tokenResponse.status,
-        hasIdToken: typeof tokenData?.id_token === "string",
+        hasAccessToken: typeof tokenData?.access_token === "string",
       })
       const response = NextResponse.redirect(buildLoginRedirect(req, "Keycloak sign-in failed"))
       clearKeycloakTransientCookies(response)
       return response
     }
 
-    const backendResponse = await fetch(`${BACKEND_API_URL}/api/auth/keycloak/exchange`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idToken: tokenData.id_token }),
+    // Validate/provision the local app user before redirecting to the app UI.
+    // Backend now accepts Keycloak-issued access tokens directly.
+    const backendResponse = await fetch(`${BACKEND_API_URL}/api/auth/me`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
       cache: "no-store",
     })
 
@@ -136,17 +134,25 @@ export async function GET(req: NextRequest) {
       return response
     }
 
-    const authData = backendData as BackendAuthResponse
-    if (!authData.accessToken) {
-      const response = NextResponse.redirect(buildLoginRedirect(req, "Invalid auth response"))
-      clearKeycloakTransientCookies(response)
-      return response
-    }
+    const accessTokenTtlSeconds =
+      Number.isFinite(Number(tokenData.expires_in)) && Number(tokenData.expires_in) > 0
+        ? Math.floor(Number(tokenData.expires_in))
+        : undefined
 
     const redirectUrl = new URL(nextPath, getPublicRequestOrigin(req))
     const response = NextResponse.redirect(redirectUrl)
-    response.cookies.set(ACCESS_TOKEN_COOKIE_NAME, authData.accessToken, getAuthCookieOptions())
-    response.cookies.set(KEYCLOAK_ID_TOKEN_COOKIE_NAME, tokenData.id_token, getAuthCookieOptions())
+    response.cookies.set(
+      ACCESS_TOKEN_COOKIE_NAME,
+      tokenData.access_token,
+      getAuthCookieOptions(accessTokenTtlSeconds)
+    )
+    if (typeof tokenData.id_token === "string" && tokenData.id_token.length > 0) {
+      response.cookies.set(
+        KEYCLOAK_ID_TOKEN_COOKIE_NAME,
+        tokenData.id_token,
+        getAuthCookieOptions(accessTokenTtlSeconds)
+      )
+    }
     clearKeycloakTransientCookies(response)
     return response
   } catch (error) {

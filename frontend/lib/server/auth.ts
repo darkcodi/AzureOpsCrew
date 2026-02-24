@@ -27,12 +27,12 @@ export function buildBackendHeaders(
   return headers
 }
 
-export function getAuthCookieOptions() {
+export function getAuthCookieOptions(maxAgeSeconds: number = ACCESS_TOKEN_TTL_SECONDS) {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict" as const,
     path: "/",
-    maxAge: ACCESS_TOKEN_TTL_SECONDS,
+    maxAge: maxAgeSeconds,
   }
 }

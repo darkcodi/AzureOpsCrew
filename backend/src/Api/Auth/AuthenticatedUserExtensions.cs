@@ -5,9 +5,13 @@ namespace AzureOpsCrew.Api.Auth;
 
 public static class AuthenticatedUserExtensions
 {
+    public const string AppUserIdClaimType = "aoc_user_id";
+    public const string AppUserDisplayNameClaimType = "aoc_display_name";
+
     public static int GetRequiredUserId(this ClaimsPrincipal user)
     {
-        var id = user.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+        var id = user.FindFirst(AppUserIdClaimType)?.Value
+            ?? user.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
             ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrWhiteSpace(id) || !int.TryParse(id, out var userId))
