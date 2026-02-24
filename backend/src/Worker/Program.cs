@@ -60,6 +60,7 @@ var activities = serviceProvider.GetRequiredService<AgentActivities>();
 using var worker = new TemporalWorker(
     client,
     new TemporalWorkerOptions("aoc-agent-task-queue")
+        .AddActivity(activities.LoadAgentAsync)
         .AddActivity(activities.LoadSnapshotAsync)
         .AddActivity(activities.SaveSnapshotAsync)
         .AddActivity(activities.DecideNextAsync)

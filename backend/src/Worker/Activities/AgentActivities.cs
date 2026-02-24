@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,26 @@ public class AgentActivities
     {
         _context = context;
         _providerFactory = providerFactory;
+    }
+
+    [Activity]
+    public async Task<Agent> LoadAgentAsync(Guid agentId)
+    {
+        var agent = await _context.Agents.FirstOrDefaultAsync(a => a.Id == agentId);
+        if (agent is null)
+            throw new Exception($"Agent not found: {agentId}");
+
+        return agent;
+    }
+
+    [Activity]
+    public async Task<Provider> LoadProviderAsync(Guid providerId)
+    {
+        var provider = await _context.Providers.FirstOrDefaultAsync(p => p.Id == providerId);
+        if (provider is null)
+            throw new Exception($"Provider not found: {providerId}");
+
+        return provider;
     }
 
     [Activity]
@@ -64,11 +85,13 @@ public class AgentActivities
     }
 
     [Activity]
-    public async Task<NextStepDecision> DecideNextAsync(Guid agentId, string userText, string memorySummary, List<ToolResult> toolResults)
+    public async Task<NextStepDecision> DecideNextAsync(
+        Agent agent,
+        Provider provider,
+        string userText,
+        string memorySummary,
+        List<ToolResult> toolResults)
     {
-        var agent = await _context.Agents.FirstAsync(a => a.Id == agentId);
-        var provider = await _context.Providers.FirstAsync(p => p.Id == agent.ProviderId);
-
         var providerService = _providerFactory.GetService(provider.ProviderType);
         var chatClient = providerService.CreateChatClient(provider, agent.Info.Model, CancellationToken.None);
 

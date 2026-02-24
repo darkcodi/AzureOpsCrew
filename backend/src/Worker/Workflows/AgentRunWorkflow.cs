@@ -19,6 +19,9 @@ public class AgentRunWorkflow
     {
         var agentId = input.AgentId;
 
+        var agent = await Workflow.ExecuteActivityAsync((AgentActivities a) => a.LoadAgentAsync(agentId), Options);
+        var provider = await Workflow.ExecuteActivityAsync((AgentActivities a) => a.LoadProviderAsync(agent.ProviderId), Options);
+
         // Load snapshot
         var snapshot = await Workflow.ExecuteActivityAsync(
             (AgentActivities a) => a.LoadSnapshotAsync(agentId),
@@ -40,7 +43,7 @@ public class AgentRunWorkflow
         for (int step = 0; step < maxSteps; step++)
         {
             var decision = await Workflow.ExecuteActivityAsync(
-                (AgentActivities a) => a.DecideNextAsync(agentId, userText, snapshot.MemorySummary, toolResults),
+                (AgentActivities a) => a.DecideNextAsync(agent, provider, userText, snapshot.MemorySummary, toolResults),
                 Options);
 
             if (decision.NeedUserQuestion is not null)
