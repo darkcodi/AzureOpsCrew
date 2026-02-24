@@ -7,10 +7,10 @@ using Worker.Workflows;
 var client = await TemporalClient.ConnectAsync(new("localhost:7233"));
 
 // Cancellation token to shutdown worker on ctrl+c
-using var tokenSource = new CancellationTokenSource();
+using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, eventArgs) =>
 {
-    tokenSource.Cancel();
+    cts.Cancel();
     eventArgs.Cancel = true;
 };
 
@@ -22,17 +22,21 @@ var activities = new AgentActivities();
 using var worker = new TemporalWorker(
     client,
     new TemporalWorkerOptions("aoc-agent-task-queue")
+        .AddActivity(activities.LoadSnapshotAsync)
+        .AddActivity(activities.SaveSnapshotAsync)
         .AddActivity(activities.DecideNextAsync)
-        .AddActivity(activities.CallMcpToolAsync)
-        .AddActivity(activities.SynthesizeTimeoutAnswerAsync)
-        .AddWorkflow<AgentConversationWorkflow>()
+        .AddActivity(activities.CallMcpAsync)
+        .AddActivity(activities.NotifyUserAsync)
+        .AddWorkflow<AgentCoordinatorWorkflow>()
+        .AddWorkflow<AgentRunWorkflow>()
+        .AddWorkflow<CronTriggerWorkflow>()
 );
 
 // Run worker until cancelled
 Console.WriteLine("Running worker");
 try
 {
-    await worker.ExecuteAsync(tokenSource.Token);
+    await worker.ExecuteAsync(cts.Token);
 }
 catch (OperationCanceledException)
 {

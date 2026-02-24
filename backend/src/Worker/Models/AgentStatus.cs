@@ -1,6 +1,9 @@
 namespace Worker.Models;
 
-public record AgentStatus(
-    string? CurrentTurnId,
-    string Phase,
-    int TurnsSoFar);
+public enum AgentStatus
+{
+    Idle,
+    Running,
+    WaitingForUser,
+    Paused,
+}

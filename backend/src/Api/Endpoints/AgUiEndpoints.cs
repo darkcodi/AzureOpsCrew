@@ -14,6 +14,8 @@ using Newtonsoft.Json;
 using Serilog;
 using System.Text.Json;
 using Temporalio.Client;
+using Temporalio.Client.Schedules;
+using Temporalio.Exceptions;
 using Worker.Models;
 using Worker.Workflows;
 
@@ -41,6 +43,7 @@ public static class ChannelAgUiEndpoints
             var jsonSerializerOptions = jsonOptions.Value.SerializerOptions;
 
             var messages = input.Messages.AsChatMessages(jsonSerializerOptions);
+            var lastMessage = messages.LastOrDefault();
             var clientTools = input.Tools?.AsAITools().ToList();
 
             // Create run options with AG-UI context in AdditionalProperties
@@ -71,17 +74,18 @@ public static class ChannelAgUiEndpoints
 
             var client = await TemporalClient.ConnectAsync(new("localhost:7233"));
 
-            // Run workflow
-            var conversationInit = new ConversationInit
-            {
-                ThreadId = input.ThreadId,
-                RunId = input.RunId,
-                AgentId = agentId,
-            };
-            await client.ExecuteWorkflowAsync(
-                (AgentConversationWorkflow wf) => wf.RunAsync(conversationInit),
-                new(id: $"dm-agent-{agentId}-run-{Guid.NewGuid()}", taskQueue: "aoc-agent-task-queue")
-            );
+            await EnsureCoordinatorStartedAsync(client, agentId);
+            // await EnsureCronScheduleAsync(client, agentId);
+
+            var trigger = new TriggerEvent(
+                TriggerId: $"agui-dm-{Guid.NewGuid()}",
+                Source: TriggerSource.UserMessage,
+                AgentId: agentId,
+                Text: lastMessage?.Text);
+
+            var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(CoordinatorWorkflowId(agentId));
+
+            var outcome = await handle.ExecuteUpdateAsync(wf => wf.AskAsync(trigger));
 
             // // Find Provider
             // var provider = dbContext.Set<Domain.Providers.Provider>().SingleOrDefault(p => p.Id == agent.ProviderId && p.ClientId == userId);
@@ -226,6 +230,49 @@ public static class ChannelAgUiEndpoints
         })
         .WithTags("AG-UI")
         .RequireAuthorization();
+    }
+
+    static string CoordinatorWorkflowId(Guid agentId) => $"agent:{agentId}";
+    static string CronWorkflowId(Guid agentId) => $"agent:{agentId}:cron";
+
+    static async Task EnsureCoordinatorStartedAsync(TemporalClient client, Guid agentId)
+    {
+        var coordinationWorkflowId = CoordinatorWorkflowId(agentId);
+
+        try
+        {
+            await client.StartWorkflowAsync(
+                (AgentCoordinatorWorkflow wf) => wf.RunAsync(new CoordinatorInit(agentId)),
+                new(id: coordinationWorkflowId, taskQueue: "aoc-agent-task-queue"));
+        }
+        catch (WorkflowAlreadyStartedException)
+        {
+            // fine (desired) outcome - workflow is already running
+        }
+    }
+
+    static async Task EnsureCronScheduleAsync(TemporalClient client, Guid agentId)
+    {
+        var cronWorkflowId = CronWorkflowId(agentId);
+
+        try
+        {
+            // Fires every 5 minutes (use Cron expressions if you prefer; intervals are simplest)
+            await client.CreateScheduleAsync(
+                cronWorkflowId,
+                new Schedule(
+                    Action: ScheduleActionStartWorkflow.Create(
+                        (CronTriggerWorkflow wf) => wf.RunAsync(new CronTriggerInput(agentId)),
+                        new(id: $"cron-trigger:{agentId}", taskQueue: "aoc-agent-task-queue")),
+                    Spec: new()
+                    {
+                        Intervals = new List<ScheduleIntervalSpec> { new(Every: TimeSpan.FromMinutes(5)) }
+                    }));
+        }
+        catch (ScheduleAlreadyRunningException)
+        {
+            // schedule already exists
+        }
     }
 }
 
