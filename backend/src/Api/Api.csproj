@@ -34,11 +34,13 @@
     <PackageReference Include="Azure.Identity" Version="1.14.2" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Temporalio" Version="1.11.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Infrastructure.Ai\Infrastructure.Ai.csproj" />
     <ProjectReference Include="..\Infrastructure.Db\Infrastructure.Db.csproj" />
+    <ProjectReference Include="..\Worker\Worker.csproj" />
   </ItemGroup>
 
 </Project>

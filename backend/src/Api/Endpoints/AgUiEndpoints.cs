@@ -13,6 +13,9 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Serilog;
 using System.Text.Json;
+using Temporalio.Client;
+using Worker.Models;
+using Worker.Workflows;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -66,36 +69,51 @@ public static class ChannelAgUiEndpoints
             }
             Log.Information("Found agent {AgentId}", agent.Id);
 
-            // Find Provider
-            var provider = dbContext.Set<Domain.Providers.Provider>().SingleOrDefault(p => p.Id == agent.ProviderId && p.ClientId == userId);
-            if (provider is null)
+            var client = await TemporalClient.ConnectAsync(new("localhost:7233"));
+
+            // Run workflow
+            var conversationInit = new ConversationInit
             {
-                Log.Warning("Unknown provider with id: {ProviderId} for agent {AgentId}", agent.ProviderId, agent.Id);
-                return Results.BadRequest($"Unknown provider with id: {agent.ProviderId}");
-            }
-            Log.Information("Found provider {ProviderId} for agent {AgentId}", provider.Id, agent.Id);
+                ThreadId = input.ThreadId,
+                RunId = input.RunId,
+                AgentId = agentId,
+            };
+            await client.ExecuteWorkflowAsync(
+                (AgentConversationWorkflow wf) => wf.RunAsync(conversationInit),
+                new(id: $"dm-agent-{agentId}-run-{Guid.NewGuid()}", taskQueue: "aoc-agent-task-queue")
+            );
 
-            // Create Ai Agent
-            var providerService = providerFactory.GetService(provider.ProviderType);
-            var chatClient = providerService.CreateChatClient(provider, agent.Info.Model, cancellationToken);
-
-            var aiAgent = ChannelAgUiFactory.CreateChannelAgent(agentFactory, chatClient, agent, clientTools, input);
-
-            // Run the agent and convert to AG-UI events
-            var events = aiAgent.RunStreamingAsync(
-                messages,
-                options: runOptions,
-                cancellationToken: cancellationToken)
-                .AsChatResponseUpdatesAsync()
-                .FilterServerToolsFromMixedToolInvocationsAsync(clientTools, cancellationToken)
-                .AsAGUIEventStreamAsync(
-                    input.ThreadId,
-                    input.RunId,
-                    jsonSerializerOptions,
-                    cancellationToken);
-
+            // // Find Provider
+            // var provider = dbContext.Set<Domain.Providers.Provider>().SingleOrDefault(p => p.Id == agent.ProviderId && p.ClientId == userId);
+            // if (provider is null)
+            // {
+            //     Log.Warning("Unknown provider with id: {ProviderId} for agent {AgentId}", agent.ProviderId, agent.Id);
+            //     return Results.BadRequest($"Unknown provider with id: {agent.ProviderId}");
+            // }
+            // Log.Information("Found provider {ProviderId} for agent {AgentId}", provider.Id, agent.Id);
+            //
+            // // Create Ai Agent
+            // var providerService = providerFactory.GetService(provider.ProviderType);
+            // var chatClient = providerService.CreateChatClient(provider, agent.Info.Model, cancellationToken);
+            //
+            // var aiAgent = ChannelAgUiFactory.CreateChannelAgent(agentFactory, chatClient, agent, clientTools, input);
+            //
+            // // Run the agent and convert to AG-UI events
+            // var events = aiAgent.RunStreamingAsync(
+            //     messages,
+            //     options: runOptions,
+            //     cancellationToken: cancellationToken)
+            //     .AsChatResponseUpdatesAsync()
+            //     .FilterServerToolsFromMixedToolInvocationsAsync(clientTools, cancellationToken)
+            //     .AsAGUIEventStreamAsync(
+            //         input.ThreadId,
+            //         input.RunId,
+            //         jsonSerializerOptions,
+            //         cancellationToken);
+            //
             var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
-            return new AGUIServerSentEventsResult(events, sseLogger, jsonSerializerOptions);
+            return new AGUIServerSentEventsResult(AsyncEnumerable.Empty<BaseEvent>(), sseLogger, jsonSerializerOptions);
+            // return new AGUIServerSentEventsResult(events, sseLogger, jsonSerializerOptions);
         })
         .WithTags("AG-UI")
         .RequireAuthorization();
