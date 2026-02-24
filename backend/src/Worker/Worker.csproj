@@ -11,4 +11,10 @@
       <PackageReference Include="Temporalio" Version="1.11.1" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Domain\Domain.csproj" />
+      <ProjectReference Include="..\Infrastructure.Ai\Infrastructure.Ai.csproj" />
+      <ProjectReference Include="..\Infrastructure.Db\Infrastructure.Db.csproj" />
+    </ItemGroup>
+
 </Project>
