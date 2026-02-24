@@ -34,9 +34,6 @@ public sealed class AocDmConfig : IEntityTypeConfiguration<AocDm>
         builder.HasIndex(d => d.Agent1Id);
         builder.HasIndex(d => d.Agent2Id);
 
-        builder.HasMany(d => d.Messages)
-               .WithOne()
-               .HasForeignKey(m => m.DmId)
-               .OnDelete(DeleteBehavior.Cascade);
+        // No FK constraint - relationship is query-only, not enforced by database
     }
 }

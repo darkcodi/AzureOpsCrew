@@ -17,9 +17,9 @@ public sealed class AocChatConfig : IEntityTypeConfiguration<AocChat>
         builder.Property(c => c.CreatedAt)
                .IsRequired();
 
+        // No FK constraint - relationship is query-only, not enforced by database
         builder.HasMany(c => c.Messages)
                .WithOne(m => m.Chat)
-               .HasForeignKey(m => m.ChatId)
-               .OnDelete(DeleteBehavior.Cascade);
+               .HasPrincipalKey(c => c.Id);
     }
 }
