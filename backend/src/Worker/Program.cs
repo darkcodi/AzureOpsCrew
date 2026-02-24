@@ -1,18 +1,44 @@
-﻿using AzureOpsCrew.Infrastructure.Db;
-using Microsoft.EntityFrameworkCore;
+﻿using FluentMigrator.Runner;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 using Temporalio.Client;
 using Temporalio.Worker;
 using Worker.Activities;
+using Worker.Extensions;
 using Worker.Workflows;
+
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateLogger();
+
+// Build configuration
+var configuration = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json",
+        optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables()
+    .Build();
 
 // Setup DI container
 var services = new ServiceCollection();
-services.AddDbContext<AzureOpsCrewContext>(options =>
-    options.UseInMemoryDatabase("WorkerDb"));
+services.AddSingleton(configuration);
+services.AddDatabase(configuration);
 services.AddTransient<AgentActivities>();
 
+// Build the service provider
 var serviceProvider = services.BuildServiceProvider();
+
+// Run migrations
+using (var scope = serviceProvider.CreateScope())
+{
+    var migrator = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+    Log.Information("Running database migrations...");
+    migrator.MigrateUp();
+    Log.Information("Database migrations completed.");
+}
 
 // Create a client to localhost on "default" namespace
 var client = await TemporalClient.ConnectAsync(new("localhost:7233"));
