@@ -2,6 +2,7 @@ using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Email;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.AgentServices;
+using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
@@ -214,14 +215,16 @@ public static class ServiceCollectionExtensions
 
     public static void AddAgentFactory(this IServiceCollection services, IConfiguration configuration)
     {
+        //Add AiAgentFactory
         services.AddScoped<IAiAgentFactory, AiAgentFactory>();
 
+        //Add LongTermMemory
         var memoryType = configuration["LongTermMemory:Type"] ?? "InMemory";
-
         services.AddSingleton(p => new AgentAIContextProviderFactory(p, memoryType));
-        services.AddSingleton<InMemoryFactsStore>();
 
-        if (string.Equals(memoryType, "Cypher", StringComparison.OrdinalIgnoreCase))
+        if(string.Equals(memoryType, "InMemory", StringComparison.OrdinalIgnoreCase))
+            services.AddSingleton<InMemoryFactsStore>();
+        else if (string.Equals(memoryType, "Cypher", StringComparison.OrdinalIgnoreCase))
         {
             var uri = configuration["LongTermMemory:Neo4j:Uri"] ?? "bolt://localhost:7687";
             var username = configuration["LongTermMemory:Neo4j:Username"] ?? "neo4j";
@@ -231,6 +234,10 @@ public static class ServiceCollectionExtensions
                 Neo4j.Driver.GraphDatabase.Driver(uri, Neo4j.Driver.AuthTokens.Basic(username, password)));
 
             services.AddSingleton<CypherFactsStore>();
+        }
+        else
+        {
+            throw new InvalidOperationException($"Unknown LongTermMemory type '{memoryType}'. Supported providers: InMemory, Cypher");
         }
     }
 }
