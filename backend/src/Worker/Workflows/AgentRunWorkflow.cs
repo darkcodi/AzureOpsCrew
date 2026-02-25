@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.Utils;
 using Microsoft.Extensions.AI;
 using Temporalio.Workflows;
 using Worker.Activities;
@@ -22,41 +23,28 @@ public class AgentRunWorkflow
     {
         var agentId = input.AgentId;
 
+        var triggerMessage = new LlmChatMessage
+        {
+            Id = HashUtils.HashStringToGuid($"trigger-message-{input.Trigger.TriggerId}"),
+            AgentId = agentId,
+            RunId = input.RunId,
+            IsHidden = false,
+            Role = input.Trigger.Source == TriggerSource.Cron ? ChatRole.System : ChatRole.User,
+            AuthorName = input.Trigger.Source == TriggerSource.Cron ? "SYSTEM" : "User",
+            CreatedAt = input.Trigger.CreatedAt,
+            ContentJson = JsonSerializer.Serialize(new AocTextContent { Text = input.Trigger.Text ?? "" }),
+        };
+        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.BulkSaveLlmChatMessages(new List<LlmChatMessage> { triggerMessage }), Options);
+
         var agent = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadAgent(agentId), Options);
         var provider = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadProvider(agent.ProviderId), Options);
-        var previousDomainMessages = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadChatHistory(agentId), Options);
+
+        var domainMessages = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadChatHistory(agentId), Options);
+        domainMessages = domainMessages.Where(m => !m.IsHidden).ToList();
+        var messages = domainMessages.Select(AocLlmChatMessage.FromDomain).ToList();
 
         // ToDo: Load tools based on agent configuration. For now we just return a hardcoded tool list for testing.
         var tools = await GetTools();
-
-        var messages = previousDomainMessages.Select(AocLlmChatMessage.FromDomain).ToList();
-        var triggerMessage = input.Trigger.Source == TriggerSource.Cron
-            ? new AocLlmChatMessage
-            {
-                Id = input.Trigger.TriggerId,
-                Role = ChatRole.System,
-                AuthorName = "SYSTEM",
-                CreatedAt = input.Trigger.CreatedAt,
-                Content = new AocTextContent
-                {
-                    Text = input.Trigger.Text ?? "",
-                },
-            }
-            : new AocLlmChatMessage
-            {
-                Id = input.Trigger.TriggerId,
-                Role = ChatRole.User,
-                AuthorName = "User",
-                CreatedAt = input.Trigger.CreatedAt,
-                Content = new AocTextContent
-                {
-                    Text = input.Trigger.Text ?? "",
-                },
-            };
-        messages.Add(triggerMessage);
-
-        var domainTriggerMessage = triggerMessage.ToDomain(agentId, input.RunId);
-        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.BulkSaveLlmChatMessages(new List<LlmChatMessage> { domainTriggerMessage }), Options);
 
         // ToDo: Define a better stopping criteria. For example, we can let the agent decide when to stop by itself, or stop when reaching max context.
         const int maxSteps = 6;
@@ -68,8 +56,8 @@ public class AgentRunWorkflow
                 Options);
             messages.AddRange(newChatMessages);
 
-            var domainMessages = newChatMessages.Select(m => m.ToDomain(agentId, input.RunId)).ToList();
-            await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.BulkSaveLlmChatMessages(domainMessages), Options);
+            var newDomainMessages = newChatMessages.Select(m => m.ToDomain(agentId, input.RunId)).ToList();
+            await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.BulkSaveLlmChatMessages(newDomainMessages), Options);
 
             var toolCalls = newChatMessages
                 .Where(m => m.Content is AocFunctionCallContent)
@@ -101,7 +89,7 @@ public class AgentRunWorkflow
             }
             else
             {
-                return new RunOutcome(RunOutcomeKind.Completed, null);
+                break;
             }
 
         }

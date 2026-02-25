@@ -80,8 +80,7 @@ public static class ChannelAgUiEndpoints
                 Text: lastMessage?.Text);
 
             var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.CoordinatorWorkflowId(agentId));
-
-            var outcome = await handle.ExecuteUpdateAsync(wf => wf.ExecuteAsync(trigger));
+            await handle.ExecuteUpdateAsync(wf => wf.EnqueueAsync(trigger));
 
             // // Find Provider
             // var provider = dbContext.Set<Domain.Providers.Provider>().SingleOrDefault(p => p.Id == agent.ProviderId);

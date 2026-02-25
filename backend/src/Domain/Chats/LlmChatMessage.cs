@@ -7,6 +7,7 @@ public class LlmChatMessage
     public Guid Id { get; set; }
     public Guid AgentId { get; set; }
     public string RunId { get; set; } = string.Empty;
+    public bool IsHidden { get; set; }
     public ChatRole Role { get; set; }
     public string? AuthorName { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

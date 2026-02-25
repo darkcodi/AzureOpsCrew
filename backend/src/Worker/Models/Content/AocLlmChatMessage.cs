@@ -45,6 +45,7 @@ public class AocLlmChatMessage
             Id = Id,
             AgentId = agentId,
             RunId = runId,
+            IsHidden = false,
             Role = Role,
             AuthorName = AuthorName,
             CreatedAt = CreatedAt,
