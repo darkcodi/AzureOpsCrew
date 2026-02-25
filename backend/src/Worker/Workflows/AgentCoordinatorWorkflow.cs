@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Temporalio.Activities;
+using Temporalio.Client;
 using Temporalio.Exceptions;
 using Temporalio.Workflows;
 using Worker.Activities;
@@ -136,6 +137,24 @@ public class AgentCoordinatorWorkflow
     [WorkflowQuery]
     public AgentStatusDto GetStatus() =>
         new(_status, _currentRunId, _triggersQueue.Count, _runNumber);
+
+    public static string CoordinatorWorkflowId(Guid agentId) => $"agent:{agentId}";
+
+    public static async Task EnsureCoordinatorStartedAsync(TemporalClient client, Guid agentId)
+    {
+        var coordinationWorkflowId = CoordinatorWorkflowId(agentId);
+
+        try
+        {
+            await client.StartWorkflowAsync(
+                (AgentCoordinatorWorkflow wf) => wf.RunAsync(new CoordinatorInit(agentId)),
+                new(id: coordinationWorkflowId, taskQueue: "aoc-agent-task-queue"));
+        }
+        catch (WorkflowAlreadyStartedException)
+        {
+            // fine (desired) outcome - workflow is already running
+        }
+    }
 
     private void EnqueueInternal(TriggerEvent trigger)
     {
