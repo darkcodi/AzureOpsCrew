@@ -32,7 +32,7 @@ public sealed class LlmChatMessageEntityTypeConfiguration : IEntityTypeConfigura
                .IsRequired()
                .HasConversion(
                    v => v.ToString(),
-                   v => (ChatRole)Enum.Parse(typeof(ChatRole), v));
+                   v => new ChatRole(v));
 
         builder.Property(m => m.AuthorName)
                .IsRequired(false)
