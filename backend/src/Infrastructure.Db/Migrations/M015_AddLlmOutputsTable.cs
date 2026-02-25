@@ -10,8 +10,8 @@ public class M015_AddLlmOutputsTable : Migration
         Create.Table("LlmOutputs")
             .WithColumn("Id").AsGuid().NotNullable().PrimaryKey()
             .WithColumn("RunId").AsString().NotNullable()
-            .WithColumn("Text").AsString().Nullable()
-            .WithColumn("ToolCall").AsString().Nullable()
+            .WithColumn("Text").AsString(int.MaxValue).Nullable()
+            .WithColumn("ToolCall").AsString(int.MaxValue).Nullable()
             .WithColumn("InputTokens").AsInt64().Nullable()
             .WithColumn("OutputTokens").AsInt64().Nullable()
             .WithColumn("CreatedAt").AsDateTime().NotNullable();
