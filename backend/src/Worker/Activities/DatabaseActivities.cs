@@ -53,7 +53,20 @@ public class DatabaseActivities
         {
             throw new Exception("ContentType cannot be None");
         }
+
+        // Check if the entity is already being tracked and detach it
+        var trackedEntry = _context.ChangeTracker.Entries<LlmChatMessage>()
+            .FirstOrDefault(e => e.Entity.Id == chatMessage.Id);
+
+        if (trackedEntry != null)
+        {
+            // Detach the tracked entry so we can handle the upsert cleanly
+            trackedEntry.State = EntityState.Detached;
+        }
+
+        // Query database to determine if entity exists
         var existingMessage = await _context.LlmChatMessages
+            .AsNoTracking()
             .FirstOrDefaultAsync(m => m.Id == chatMessage.Id);
 
         if (existingMessage is null)
@@ -62,16 +75,7 @@ public class DatabaseActivities
         }
         else
         {
-            existingMessage.AgentId = chatMessage.AgentId;
-            existingMessage.RunId = chatMessage.RunId;
-            existingMessage.Role = chatMessage.Role;
-            existingMessage.AuthorName = chatMessage.AuthorName;
-            existingMessage.ContentType = chatMessage.ContentType;
-            existingMessage.ContentJson = chatMessage.ContentJson;
-            existingMessage.IsHidden = chatMessage.IsHidden;
-            existingMessage.CreatedAt = chatMessage.CreatedAt;
-
-            _context.LlmChatMessages.Update(existingMessage);
+            _context.LlmChatMessages.Update(chatMessage);
         }
 
         await _context.SaveChangesAsync();
