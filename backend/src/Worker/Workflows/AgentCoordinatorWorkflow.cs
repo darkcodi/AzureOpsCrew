@@ -84,7 +84,7 @@ public class AgentCoordinatorWorkflow
                 _status = AgentStatus.Idle;
 
                 await Workflow.ExecuteActivityAsync(
-                    (AgentActivities a) => a.NotifyUserAsync(init.AgentId, outcome.AgentReply),
+                    (AgentActivities a) => a.NotifyUserAsync(init.AgentId, outcome.AgentReply.Text),
                     NotifyOpts);
             }
             else

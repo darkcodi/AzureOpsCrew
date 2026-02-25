@@ -2,5 +2,5 @@ namespace Worker.Models;
 
 public record RunOutcome(
     RunOutcomeKind Kind,
-    string? AgentReply,
+    FinalAnswer? AgentReply,
     PendingQuestion? NewPendingQuestion);

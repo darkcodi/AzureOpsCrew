@@ -4,6 +4,7 @@ using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using Serilog;
 using Temporalio.Activities;
 using Worker.Models;
 using Worker.Models.Content;
@@ -74,7 +75,29 @@ public class AgentActivities
             }
         }
 
-        return new NextStepDecision("Done", null, new());
+        if (contentList.FirstOrDefault() is AocTextContent)
+        {
+            // For simplicity, if the first content is text, treat it as final answer. In real scenario, should have a more robust way to determine this.
+            var textResponse = string.Join(string.Empty, contentList.OfType<AocTextContent>().Select(c => c.Text));
+            var finalAnswer = new FinalAnswer
+            {
+                Text = textResponse,
+            };
+            var stats = contentList.OfType<AocUsageContent>().FirstOrDefault();
+            if (stats != null)
+            {
+                finalAnswer.InputTokenCount = stats.InputTokenCount;
+                finalAnswer.OutputTokenCount = stats.OutputTokenCount;
+                finalAnswer.TotalTokenCount = stats.TotalTokenCount;
+                finalAnswer.CachedInputTokenCount = stats.CachedInputTokenCount;
+                finalAnswer.ReasoningTokenCount = stats.ReasoningTokenCount;
+            }
+            return new NextStepDecision(finalAnswer, null, new());
+        }
+        else
+        {
+            return new NextStepDecision(new FinalAnswer { Text = "TODO#47" }, null, new());
+        }
     }
 
     [Activity]
@@ -87,7 +110,7 @@ public class AgentActivities
     [Activity]
     public Task NotifyUserAsync(Guid agentId, string message)
     {
-        Console.WriteLine($"[NotifyUser] agent={agentId} message={message}");
+        Log.Information($"[NotifyUser] agent={agentId} message={message}");
         return Task.CompletedTask;
     }
 }

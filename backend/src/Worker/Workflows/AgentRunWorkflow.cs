@@ -71,7 +71,7 @@ public class AgentRunWorkflow
 
         return new RunOutcome(
             RunOutcomeKind.Completed,
-            "I hit my step budget. Tell me what to focus on next.",
+            new FinalAnswer { Text = "I hit my step budget. Tell me what to focus on next." },
             null);
     }
 }

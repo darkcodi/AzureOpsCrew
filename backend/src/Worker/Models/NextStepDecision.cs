@@ -1,6 +1,6 @@
 namespace Worker.Models;
 
 public record NextStepDecision(
-    string? FinalAnswer,
+    FinalAnswer? FinalAnswer,
     string? NeedUserQuestion,
     List<McpCall> ToolCalls);
