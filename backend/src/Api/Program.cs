@@ -1,9 +1,9 @@
+using System.Text.Json;
 using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Api.Setup.Seeds;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using Serilog;
 
 #pragma warning disable ASP0013
@@ -66,7 +66,7 @@ try
         {
             var sqlServerSettings = app.Services.GetRequiredService<IOptions<SqlServerSettings>>().Value;
             Log.Information("Database Provider: SqlServer");
-            Log.Information("SQL Server Settings: {SqlServerSettings}", JsonConvert.SerializeObject(sqlServerSettings));
+            Log.Information("SQL Server Settings: {SqlServerSettings}", JsonSerializer.Serialize(sqlServerSettings));
         }
         else
         {

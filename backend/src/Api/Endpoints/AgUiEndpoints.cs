@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using Serilog;
 using System.Text.Json;
 using AzureOpsCrew.Domain.Chats;
@@ -34,7 +33,7 @@ public static class ChannelAgUiEndpoints
         {
             if (input is null) return Results.BadRequest();
             Log.Information("Received AG-UI event for agent with id {AgentId} with threadId {ThreadId} and runId {RunId}", agentId, input.ThreadId, input.RunId);
-            Log.Information("Input: {Input}", JsonConvert.SerializeObject(input));
+            Log.Information("Input: {Input}", JsonSerializer.Serialize(input));
 
             var jsonOptions = context.RequestServices.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>();
             var jsonSerializerOptions = jsonOptions.Value.SerializerOptions;
@@ -91,7 +90,7 @@ public static class ChannelAgUiEndpoints
         {
             if (input is null) return Results.BadRequest();
             Log.Information("Received AG-UI event for channel with id {ChannelId} with threadId {ThreadId} and runId {RunId}", channelId, input.ThreadId, input.RunId);
-            Log.Information("Input: {Input}", JsonConvert.SerializeObject(input));
+            Log.Information("Input: {Input}", JsonSerializer.Serialize(input));
 
             var jsonOptions = http.RequestServices.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>();
             var jsonSerializerOptions = jsonOptions.Value.SerializerOptions;
@@ -223,7 +222,7 @@ public static class ChannelAgUiEndpoints
 
     private static BaseEvent? MapToBaseEvent(LlmChatMessage message)
     {
-        var aiContent = JsonConvert.DeserializeObject<AocAiContent>(message.ContentJson);
+        var aiContent = JsonSerializer.Deserialize<AocAiContent>(message.ContentJson);
         switch (aiContent)
         {
             case AocRunStart runStart:
