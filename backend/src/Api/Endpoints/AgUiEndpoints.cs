@@ -76,7 +76,6 @@ public static class ChannelAgUiEndpoints
             var trigger = new TriggerEvent(
                 TriggerId: Guid.NewGuid(),
                 Source: TriggerSource.Dm,
-                AgentId: agentId,
                 Text: lastMessage?.Text);
 
             var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.CoordinatorWorkflowId(agentId));
