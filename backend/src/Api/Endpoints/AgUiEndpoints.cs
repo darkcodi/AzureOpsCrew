@@ -216,6 +216,9 @@ public static class ChannelAgUiEndpoints
                 .ToListAsync(ct);
             foreach (var newMessage in newMessages)
             {
+                if (newMessage.CreatedAt <= maxDateLocal)
+                    continue;
+
                 if (newMessage.CreatedAt > maxDateLocal)
                     maxDateLocal = newMessage.CreatedAt;
 
@@ -223,6 +226,10 @@ public static class ChannelAgUiEndpoints
                 if (baseEvent != null)
                 {
                     yield return baseEvent;
+                    if (baseEvent is RunFinishedEvent)
+                    {
+                        yield break;
+                    }
                 }
             }
 
