@@ -1,6 +1,5 @@
 using Temporalio.Workflows;
 using Worker.Activities;
-using Worker.Extensions;
 using Worker.Models;
 
 namespace Worker.Workflows;
@@ -22,14 +21,6 @@ public class AgentRunWorkflow
         var agent = await Workflow.ExecuteActivityAsync((AgentActivities a) => a.LoadAgentAsync(agentId), Options);
         var provider = await Workflow.ExecuteActivityAsync((AgentActivities a) => a.LoadProviderAsync(agent.ProviderId), Options);
 
-        // If waiting on a question, ensure the answer matches
-        if (input.PendingQuestionBefore is not null &&
-            (input.Trigger.Source != TriggerSource.UserAnswer ||
-             input.Trigger.AnswerToQuestionId != input.PendingQuestionBefore.QuestionId))
-        {
-            return new RunOutcome(RunOutcomeKind.Noop, null, input.PendingQuestionBefore);
-        }
-
         var toolResults = new List<ToolResult>();
         var userText = input.Trigger.Text ?? "";
 
@@ -40,16 +31,6 @@ public class AgentRunWorkflow
             var decision = await Workflow.ExecuteActivityAsync(
                 (AgentActivities a) => a.AgentThinkAsync(agent, provider, userText, "", toolResults),
                 Options);
-
-            if (decision.NeedUserQuestion is not null)
-            {
-                var q = new PendingQuestion(
-                    QuestionId: $"q-{Workflow.UtcNow.ToUnixTimeMilliseconds()}",
-                    Text: decision.NeedUserQuestion,
-                    AskedAt: Workflow.UtcNow);
-
-                return new RunOutcome(RunOutcomeKind.BlockedOnUser, null, q);
-            }
 
             if (decision.ToolCalls.Count > 0)
             {
@@ -65,13 +46,12 @@ public class AgentRunWorkflow
 
             if (decision.FinalAnswer is not null)
             {
-                return new RunOutcome(RunOutcomeKind.Completed, decision.FinalAnswer, null);
+                return new RunOutcome(RunOutcomeKind.Completed, decision.FinalAnswer);
             }
         }
 
         return new RunOutcome(
             RunOutcomeKind.Completed,
-            new FinalAnswer { Text = "I hit my step budget. Tell me what to focus on next." },
-            null);
+            new FinalAnswer("I hit my step budget. Tell me what to focus on next.", null));
     }
 }

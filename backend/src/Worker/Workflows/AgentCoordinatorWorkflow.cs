@@ -12,7 +12,6 @@ public class AgentCoordinatorWorkflow
     private readonly HashSet<string> _triggerIds = new();
 
     private AgentStatus _status = AgentStatus.Idle;
-    private PendingQuestion? _pendingQuestion;
     private string? _currentRunId;
     private int _runNumber;
 
@@ -39,24 +38,10 @@ public class AgentCoordinatorWorkflow
 
             var trigger = _triggersQueue.Dequeue();
 
-            // If we are waiting for user, ignore unrelated triggers (except matching answer)
-            if (_pendingQuestion is not null)
-            {
-                if (trigger.Source != TriggerSource.UserAnswer ||
-                    trigger.AnswerToQuestionId != _pendingQuestion.QuestionId)
-                {
-                    // Put it back at end (or drop?)
-                    _triggersQueue.Enqueue(trigger);
-                    await Workflow.WaitConditionAsync(() => _triggersQueue.Any(t =>
-                        t.Source == TriggerSource.UserAnswer && t.AnswerToQuestionId == _pendingQuestion.QuestionId));
-                    continue;
-                }
-            }
-
             _status = AgentStatus.Running;
             _runNumber++;
 
-            var runInput = new RunInput(init.AgentId, trigger, _pendingQuestion);
+            var runInput = new RunInput(init.AgentId, trigger);
 
             _currentRunId = $"run-{Workflow.UtcNow.ToUnixTimeMilliseconds()}";
 
@@ -69,18 +54,8 @@ public class AgentCoordinatorWorkflow
 
             _outcomes[trigger.TriggerId] = outcome;
 
-            if (outcome.Kind == RunOutcomeKind.BlockedOnUser && outcome.NewPendingQuestion is not null)
+            if (outcome.Kind == RunOutcomeKind.Completed && outcome.AgentReply is not null)
             {
-                _pendingQuestion = outcome.NewPendingQuestion;
-                _status = AgentStatus.WaitingForUser;
-
-                await Workflow.ExecuteActivityAsync(
-                    (AgentActivities a) => a.NotifyUserAsync(init.AgentId, $"Question: {_pendingQuestion.Text}"),
-                    NotifyOpts);
-            }
-            else if (outcome.Kind == RunOutcomeKind.Completed && outcome.AgentReply is not null)
-            {
-                _pendingQuestion = null;
                 _status = AgentStatus.Idle;
 
                 await Workflow.ExecuteActivityAsync(
@@ -89,7 +64,7 @@ public class AgentCoordinatorWorkflow
             }
             else
             {
-                _status = _pendingQuestion is null ? AgentStatus.Idle : AgentStatus.WaitingForUser;
+                _status = AgentStatus.Idle;
             }
 
             _currentRunId = null;
@@ -132,16 +107,13 @@ public class AgentCoordinatorWorkflow
     public Task ResumeAsync()
     {
         if (_status == AgentStatus.Paused)
-            _status = _pendingQuestion is null ? AgentStatus.Idle : AgentStatus.WaitingForUser;
+            _status = AgentStatus.Idle;
         return Task.CompletedTask;
     }
 
     [WorkflowQuery]
     public AgentStatusDto GetStatus() =>
-        new(_status, _currentRunId, _pendingQuestion, _triggersQueue.Count, _runNumber);
-
-    [WorkflowQuery]
-    public PendingQuestion? GetPendingQuestion() => _pendingQuestion;
+        new(_status, _currentRunId, _triggersQueue.Count, _runNumber);
 
     private void EnqueueInternal(TriggerEvent trigger)
     {

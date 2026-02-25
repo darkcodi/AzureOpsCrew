@@ -105,26 +105,19 @@ public class AgentActivities
         var toolCalls = contentList.OfType<AocFunctionCallContent>().ToList();
         if (toolCalls.Any())
         {
-            return new NextStepDecision(null, null, toolCalls);
+            return new NextStepDecision(null, toolCalls);
         }
 
         if (contentList.FirstOrDefault() is AocTextContent)
         {
             // For simplicity, if the first content is text, treat it as final answer. In real scenario, should have a more robust way to determine this.
             var textResponse = string.Join(string.Empty, contentList.OfType<AocTextContent>().Select(c => c.Text));
-            var finalAnswer = new FinalAnswer
-            {
-                Text = textResponse,
-            };
-            if (lastUsageContent != null)
-            {
-                finalAnswer.Usage = lastUsageContent;
-            }
-            return new NextStepDecision(finalAnswer, null, new());
+            var finalAnswer = new FinalAnswer(textResponse, lastUsageContent);
+            return new NextStepDecision(finalAnswer, new());
         }
         else
         {
-            return new NextStepDecision(new FinalAnswer { Text = "TODO#47" }, null, new());
+            return new NextStepDecision(new FinalAnswer("TODO#47", null), new());
         }
     }
 
