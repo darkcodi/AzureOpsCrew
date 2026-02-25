@@ -2,7 +2,6 @@ using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Api.Setup.Seeds;
-using AzureOpsCrew.Domain.AgentServices;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Serilog;
@@ -47,7 +46,6 @@ try
     builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddEmailVerification(builder.Configuration);
     builder.Services.AddAgentFactory(builder.Configuration);
-    builder.Services.AddMessageStore();
 
     // Configure AG-UI
     builder.Services.AddHttpClient();
@@ -96,7 +94,6 @@ try
     app.MapAgentEndpoints();
     app.MapChannelEndpoints();
     app.MapProviderEndpoints();
-    app.MapChatEndpoints();
 
     app.MapAllAgUi();
 

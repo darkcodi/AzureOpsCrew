@@ -15,6 +15,4 @@ public class AocMessage
     // Destination: exactly one of ChannelId or DmId should be set
     public Guid? ChannelId { get; set; }
     public Guid? DmId { get; set; }
-
-    public AocChat Chat { get; set; } = null!;
 }

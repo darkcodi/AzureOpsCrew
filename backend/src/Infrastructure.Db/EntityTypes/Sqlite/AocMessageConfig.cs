@@ -47,10 +47,5 @@ public sealed class AocMessageConfig : IEntityTypeConfiguration<AocMessage>
         builder.HasIndex(m => m.UserId);
         builder.HasIndex(m => m.ChannelId);
         builder.HasIndex(m => m.DmId);
-
-        // No FK constraint - navigation property exists but not enforced by database
-        builder.HasOne(m => m.Chat)
-               .WithMany(c => c.Messages)
-               .HasPrincipalKey(c => c.Id);
     }
 }

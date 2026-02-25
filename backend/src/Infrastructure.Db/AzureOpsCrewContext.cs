@@ -25,7 +25,6 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<AiProvider> Providers => Set<AiProvider>();
     public DbSet<User> Users => Set<User>();
     public DbSet<PendingRegistration> PendingRegistrations => Set<PendingRegistration>();
-    public DbSet<AocChat> Chats => Set<AocChat>();
     public DbSet<AocMessage> Messages => Set<AocMessage>();
     public DbSet<AocDm> Dms => Set<AocDm>();
 
@@ -36,7 +35,6 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new AiProviderConfig());
         modelBuilder.ApplyConfiguration(new UserConfig());
         modelBuilder.ApplyConfiguration(new PendingRegistrationConfig());
-        modelBuilder.ApplyConfiguration(new AocChatConfig());
         modelBuilder.ApplyConfiguration(new AocMessageConfig());
         modelBuilder.ApplyConfiguration(new AocDmConfig());
     }

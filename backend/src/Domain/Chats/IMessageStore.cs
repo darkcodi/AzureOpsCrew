@@ -3,8 +3,6 @@ namespace AzureOpsCrew.Domain.Chats;
 public interface IMessageStore
 {
     Task Init();
-    Task<AocChat> CreateChat();
-    Task DeleteChat(Guid chatId);
     Task PostMessage(Guid chatId, AocMessage message);
     Task DeleteMessage(Guid chatId, Guid messageId);
     Task<int> GetMessageCount(Guid chatId);
