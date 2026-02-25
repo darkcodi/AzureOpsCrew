@@ -10,6 +10,7 @@ using PendingRegistrationConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sql
 using UserConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.UserEntityTypeConfiguration;
 using AocMessageConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.AocMessageEntityTypeConfiguration;
 using AocDmConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.AocDmEntityTypeConfiguration;
+using LlmChatMessageConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.LlmChatMessageEntityTypeConfiguration;
 using AiProvider = AzureOpsCrew.Domain.Providers.Provider;
 
 namespace AzureOpsCrew.Infrastructure.Db;
@@ -28,6 +29,7 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<PendingRegistration> PendingRegistrations => Set<PendingRegistration>();
     public DbSet<AocMessage> Messages => Set<AocMessage>();
     public DbSet<AocDm> Dms => Set<AocDm>();
+    public DbSet<LlmChatMessage> LlmChatMessages => Set<LlmChatMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,5 +40,6 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new PendingRegistrationConfig());
         modelBuilder.ApplyConfiguration(new AocMessageConfig());
         modelBuilder.ApplyConfiguration(new AocDmConfig());
+        modelBuilder.ApplyConfiguration(new LlmChatMessageConfig());
     }
 }
