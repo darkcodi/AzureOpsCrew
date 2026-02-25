@@ -212,7 +212,7 @@ public static class ChannelAgUiEndpoints
         {
             var newMessages = await context.LlmChatMessages
                 .Where(m => m.AgentId == agentId && m.CreatedAt > maxDateLocal)
-                .OrderByDescending(m => m.CreatedAt)
+                .OrderBy(m => m.CreatedAt)
                 .ToListAsync(ct);
             foreach (var newMessage in newMessages)
             {
