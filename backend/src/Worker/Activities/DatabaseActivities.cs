@@ -49,9 +49,9 @@ public class DatabaseActivities
     [Activity]
     public async Task UpsertLlmChatMessage(LlmChatMessage chatMessage)
     {
-        if (chatMessage.ContentType == LlmMessageContentType.None)
+        if (chatMessage.RunId is null)
         {
-            throw new Exception("ContentType cannot be None");
+            throw new Exception("RunId cannot be null");
         }
 
         // Check if the entity is already being tracked and detach it

@@ -52,8 +52,10 @@ public class AgentCoordinatorWorkflow
 
             _status = AgentStatus.Running;
             _runNumber++;
-            _currentRunId = $"run-{_currentTrigger.Source.ToString().ToLowerInvariant()}-{_currentTrigger.TriggerId:N}-num-{_runNumber}";
             _error = null;
+
+            _currentRunId = $"run-{_currentTrigger.Source.ToString().ToLowerInvariant()}-{_currentTrigger.TriggerId:N}-num-{_runNumber}";
+
             await InsertRunStartMessage();
             await InsertRunTriggerMessage();
 
@@ -81,10 +83,11 @@ public class AgentCoordinatorWorkflow
             }
 
             _outcomes[_currentTrigger.TriggerId] = outcome;
-            _currentRunId = null;
             _status = outcome.Kind == RunOutcomeKind.Failed ? AgentStatus.Failed : AgentStatus.Idle;
             _error = outcome.Error;
             await InsertRunFinishedMessage(outcome);
+
+            _currentRunId = null;
 
             // Keep history bounded
             if (Workflow.AllHandlersFinished &&
@@ -102,7 +105,7 @@ public class AgentCoordinatorWorkflow
         {
             Id = HashUtils.HashStringToGuid($"run-start-{_currentRunId}"),
             AgentId = _agentId,
-            RunId = _currentRunId!,
+            RunId = _currentRunId ?? throw new InvalidOperationException("CurrentRunId cannot be null when inserting run start message."),
             IsHidden = true,
             Role = ChatRole.System,
             CreatedAt = Workflow.UtcNow,
@@ -118,7 +121,7 @@ public class AgentCoordinatorWorkflow
         {
             Id = HashUtils.HashStringToGuid($"trigger-message-{_currentRunId!}-{_currentTrigger!.TriggerId}"),
             AgentId = _agentId,
-            RunId = _currentRunId!,
+            RunId = _currentRunId ?? throw new InvalidOperationException("CurrentRunId cannot be null when inserting run start message."),
             IsHidden = false,
             Role = _currentTrigger.Source == TriggerSource.Cron ? ChatRole.System : ChatRole.User,
             AuthorName = _currentTrigger.Source == TriggerSource.Cron ? "SYSTEM" : "User",
@@ -135,7 +138,7 @@ public class AgentCoordinatorWorkflow
         {
             Id = HashUtils.HashStringToGuid($"run-finished-{_currentRunId}"),
             AgentId = _agentId,
-            RunId = _currentRunId!,
+            RunId = _currentRunId ?? throw new InvalidOperationException("CurrentRunId cannot be null when inserting run start message."),
             IsHidden = true,
             Role = ChatRole.System,
             CreatedAt = Workflow.UtcNow,
@@ -151,7 +154,7 @@ public class AgentCoordinatorWorkflow
         {
             Id = HashUtils.HashStringToGuid($"run-error-{_currentRunId}"),
             AgentId = _agentId,
-            RunId = _currentRunId!,
+            RunId = _currentRunId ?? throw new InvalidOperationException("CurrentRunId cannot be null when inserting run start message."),
             IsHidden = true,
             Role = ChatRole.System,
             CreatedAt = Workflow.UtcNow,
