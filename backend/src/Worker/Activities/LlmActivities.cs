@@ -3,7 +3,7 @@ using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using Microsoft.Extensions.AI;
-using Serilog;
+using Microsoft.Extensions.Logging;
 using Temporalio.Activities;
 using Worker.Models;
 using Worker.Models.Content;
@@ -20,7 +20,7 @@ public class LlmActivities
     }
 
     [Activity]
-    public async Task<NextStepDecision> LlmThinkAsync(
+    public async Task<LlmOutput> LlmThinkAsync(
         Agent agent,
         Provider provider,
         string userText,
@@ -74,27 +74,35 @@ public class LlmActivities
             }
         }
 
+        return ToLlmOutput(contentList);
+    }
+
+    private static LlmOutput ToLlmOutput(List<AocAiContent> contentList)
+    {
+        // extract usage stats
         var usageContents = contentList.OfType<AocUsageContent>().ToArray();
         contentList.RemoveAll(x => x is AocUsageContent);
         var lastUsageContent = usageContents.LastOrDefault();
 
+        // extract text response
+        var textResponse = string.Join(string.Empty, contentList.OfType<AocTextContent>().Select(c => c.Text));
+        contentList.RemoveAll(x => x is AocTextContent);
+
+        // extract tool calls
         var toolCalls = contentList.OfType<AocFunctionCallContent>().ToList();
-        if (toolCalls.Any())
+        contentList.RemoveAll(x => x is AocFunctionCallContent);
+
+        if (contentList.Any())
         {
-            return new NextStepDecision(null, toolCalls);
+            ActivityExecutionContext.Current.Logger.LogWarning("There are unprocessed content after parsing: {ContentTypes}", string.Join(",", contentList.Select(c => c.GetType().Name)));
         }
 
-        if (contentList.FirstOrDefault() is AocTextContent)
+        if (toolCalls.Any())
         {
-            // For simplicity, if the first content is text, treat it as final answer. In real scenario, should have a more robust way to determine this.
-            var textResponse = string.Join(string.Empty, contentList.OfType<AocTextContent>().Select(c => c.Text));
-            var finalAnswer = new FinalAnswer(textResponse, lastUsageContent);
-            return new NextStepDecision(finalAnswer, new());
+            return new LlmOutput(null, toolCalls);
         }
-        else
-        {
-            return new NextStepDecision(new FinalAnswer("TODO#47", null), new());
-        }
+
+        return new LlmOutput(new FinalAnswer(textResponse, lastUsageContent), new());
     }
 
     static JsonElement Schema(string json)

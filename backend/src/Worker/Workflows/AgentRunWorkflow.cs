@@ -28,13 +28,13 @@ public class AgentRunWorkflow
 
         for (int step = 0; step < maxSteps; step++)
         {
-            var decision = await Workflow.ExecuteActivityAsync(
+            var output = await Workflow.ExecuteActivityAsync(
                 (LlmActivities a) => a.LlmThinkAsync(agent, provider, userText, "", toolResults),
                 Options);
 
-            if (decision.ToolCalls.Count > 0)
+            if (output.ToolCalls.Count > 0)
             {
-                foreach (var call in decision.ToolCalls)
+                foreach (var call in output.ToolCalls)
                 {
                     var res = await Workflow.ExecuteActivityAsync(
                         (McpActivities a) => a.CallMcpAsync(call),
@@ -44,9 +44,9 @@ public class AgentRunWorkflow
                 continue;
             }
 
-            if (decision.FinalAnswer is not null)
+            if (output.FinalAnswer is not null)
             {
-                return new RunOutcome(RunOutcomeKind.Completed, decision.FinalAnswer, null);
+                return new RunOutcome(RunOutcomeKind.Completed, output.FinalAnswer, null);
             }
         }
 
