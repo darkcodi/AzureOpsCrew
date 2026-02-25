@@ -47,9 +47,28 @@ public class DatabaseActivities
     }
 
     [Activity]
-    public async Task BulkSaveLlmChatMessages(List<LlmChatMessage> chatMessages)
+    public async Task UpsertLlmChatMessage(LlmChatMessage chatMessage)
     {
-        await _context.LlmChatMessages.AddRangeAsync(chatMessages);
+        var existingMessage = await _context.LlmChatMessages
+            .FirstOrDefaultAsync(m => m.Id == chatMessage.Id);
+
+        if (existingMessage is null)
+        {
+            await _context.LlmChatMessages.AddAsync(chatMessage);
+        }
+        else
+        {
+            existingMessage.AgentId = chatMessage.AgentId;
+            existingMessage.RunId = chatMessage.RunId;
+            existingMessage.Role = chatMessage.Role;
+            existingMessage.AuthorName = chatMessage.AuthorName;
+            existingMessage.ContentJson = chatMessage.ContentJson;
+            existingMessage.IsHidden = chatMessage.IsHidden;
+            existingMessage.CreatedAt = chatMessage.CreatedAt;
+
+            _context.LlmChatMessages.Update(existingMessage);
+        }
+
         await _context.SaveChangesAsync();
     }
 }

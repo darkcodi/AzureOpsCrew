@@ -1,3 +1,7 @@
+using System.Text.Json;
+using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.Utils;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Temporalio.Activities;
 using Temporalio.Client;
@@ -5,6 +9,7 @@ using Temporalio.Exceptions;
 using Temporalio.Workflows;
 using Worker.Activities;
 using Worker.Models;
+using Worker.Models.Content;
 
 namespace Worker.Workflows;
 
@@ -13,17 +18,24 @@ public class AgentCoordinatorWorkflow
 {
     private readonly Queue<TriggerEvent> _triggersQueue = new();
     private readonly HashSet<Guid> _triggerIds = new();
-
     private AgentStatus _status = AgentStatus.Idle;
+    private Guid _agentId = Guid.Empty;
     private string? _currentRunId;
     private long _runNumber;
     private string? _error;
-
     private readonly Dictionary<Guid, RunOutcome> _outcomes = new();
+
+    private static readonly ActivityOptions Options = new()
+    {
+        StartToCloseTimeout = TimeSpan.FromMinutes(2),
+        RetryPolicy = new() { MaximumAttempts = 3 }
+    };
 
     [WorkflowRun]
     public async Task RunAsync(CoordinatorInit init)
     {
+        _agentId = init.AgentId;
+
         while (true)
         {
             // Sleep until there is something to do (durable wait)
@@ -39,9 +51,11 @@ public class AgentCoordinatorWorkflow
 
             _status = AgentStatus.Running;
             _runNumber++;
-
             _currentRunId = $"run-{trigger.Source.ToString().ToLowerInvariant()}-{trigger.TriggerId:N}-num-{_runNumber}";
-            var runInput = new RunInput(_currentRunId, init.AgentId, trigger);
+            _error = null;
+            await InsertRunStartMessage();
+
+            var runInput = new RunInput(_currentRunId, _agentId, trigger);
 
             RunOutcome? outcome;
             try
@@ -59,15 +73,16 @@ public class AgentCoordinatorWorkflow
                 ActivityExecutionContext.Current.Logger.LogError("Run failed for trigger {TriggerId} with error: {Error}", trigger.TriggerId, e.ToString());
                 var isCanceledException = TemporalException.IsCanceledException(e);
                 outcome = isCanceledException
-                    ? new RunOutcome(RunOutcomeKind.Canceled, e.Message)
-                    : new RunOutcome(RunOutcomeKind.Failed, e.Message);
+                    ? new RunOutcome(RunOutcomeKind.Canceled, e.Message ?? "Run was canceled.")
+                    : new RunOutcome(RunOutcomeKind.Failed, e.Message ?? "An error occurred during agent execution.");
+                await InsertRunErrorMessage(outcome.Error!);
             }
 
             _outcomes[trigger.TriggerId] = outcome;
             _currentRunId = null;
-
             _status = outcome.Kind == RunOutcomeKind.Failed ? AgentStatus.Failed : AgentStatus.Idle;
-            _error = outcome.Kind == RunOutcomeKind.Failed ? (outcome.Error ?? "An error occurred during agent execution.") : null;
+            _error = outcome.Error;
+            await InsertRunFinishedMessage(outcome);
 
             // Keep history bounded
             if (Workflow.AllHandlersFinished &&
@@ -77,6 +92,54 @@ public class AgentCoordinatorWorkflow
                     (AgentCoordinatorWorkflow wf) => wf.RunAsync(init));
             }
         }
+    }
+
+    private async Task InsertRunStartMessage()
+    {
+        var startTaskMessage = new LlmChatMessage
+        {
+            Id = HashUtils.HashStringToGuid($"run-start-{_currentRunId}"),
+            AgentId = _agentId,
+            RunId = _currentRunId!,
+            IsHidden = true,
+            Role = ChatRole.System,
+            CreatedAt = Workflow.UtcNow,
+            ContentJson = JsonSerializer.Serialize(new AocRunStart { RunId = _currentRunId!, ThreadId = _agentId.ToString() }),
+        };
+        // ToDo: Do not silently swallow the exception here
+        await ResultWrapper.Wrap(() => Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(startTaskMessage), Options));
+    }
+
+    private async Task InsertRunFinishedMessage(RunOutcome outcome)
+    {
+        var endTaskMessage = new LlmChatMessage
+        {
+            Id = HashUtils.HashStringToGuid($"run-finished-{_currentRunId}"),
+            AgentId = _agentId,
+            RunId = _currentRunId!,
+            IsHidden = true,
+            Role = ChatRole.System,
+            CreatedAt = Workflow.UtcNow,
+            ContentJson = JsonSerializer.Serialize(new AocRunFinished { RunId = _currentRunId!, ThreadId = _agentId.ToString(), Result = JsonElement.Parse(JsonSerializer.Serialize(outcome)) }),
+        };
+        // ToDo: Do not silently swallow the exception here
+        await ResultWrapper.Wrap(() => Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(endTaskMessage), Options));
+    }
+
+    private async Task InsertRunErrorMessage(string error)
+    {
+        var errorTaskMessage = new LlmChatMessage
+        {
+            Id = HashUtils.HashStringToGuid($"run-error-{_currentRunId}"),
+            AgentId = _agentId,
+            RunId = _currentRunId!,
+            IsHidden = true,
+            Role = ChatRole.System,
+            CreatedAt = Workflow.UtcNow,
+            ContentJson = JsonSerializer.Serialize(new AocRunError { Message = error }),
+        };
+        // ToDo: Do not silently swallow the exception here
+        await ResultWrapper.Wrap(() => Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(errorTaskMessage), Options));
     }
 
     // Fire-and-forget enqueue (cron trigger will use this)

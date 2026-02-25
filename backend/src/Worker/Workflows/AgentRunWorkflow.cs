@@ -34,7 +34,7 @@ public class AgentRunWorkflow
             CreatedAt = input.Trigger.CreatedAt,
             ContentJson = JsonSerializer.Serialize(new AocTextContent { Text = input.Trigger.Text ?? "" }),
         };
-        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.BulkSaveLlmChatMessages(new List<LlmChatMessage> { triggerMessage }), Options);
+        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(triggerMessage), Options);
 
         var agent = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadAgent(agentId), Options);
         var provider = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadProvider(agent.ProviderId), Options);
@@ -57,7 +57,10 @@ public class AgentRunWorkflow
             messages.AddRange(newChatMessages);
 
             var newDomainMessages = newChatMessages.Select(m => m.ToDomain(agentId, input.RunId)).ToList();
-            await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.BulkSaveLlmChatMessages(newDomainMessages), Options);
+            foreach (var newDomainMessage in newDomainMessages)
+            {
+                await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(newDomainMessage), Options);
+            }
 
             var toolCalls = newChatMessages
                 .Where(m => m.Content is AocFunctionCallContent)
