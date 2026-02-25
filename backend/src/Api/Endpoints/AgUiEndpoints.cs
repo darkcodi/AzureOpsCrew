@@ -225,7 +225,7 @@ public static class ChannelAgUiEndpoints
         var aiContentDto = new AocAiContentDto
         {
             Content = message.ContentJson,
-            ContentType = Enum.Parse<AocAiContentType>(message.ContentType, ignoreCase: true),
+            ContentType = Enum.Parse<LlmMessageContentType>(message.ContentType.ToString(), ignoreCase: true),
         };
         var aiContent = aiContentDto?.ToAocAiContent();
         switch (aiContent)

@@ -104,6 +104,7 @@ public class AgentCoordinatorWorkflow
             IsHidden = true,
             Role = ChatRole.System,
             CreatedAt = Workflow.UtcNow,
+            ContentType = LlmMessageContentType.RunStart,
             ContentJson = JsonSerializer.Serialize(new AocRunStart { RunId = _currentRunId!, ThreadId = _agentId.ToString() }),
         };
         // ToDo: Do not silently swallow the exception here
@@ -120,6 +121,7 @@ public class AgentCoordinatorWorkflow
             IsHidden = true,
             Role = ChatRole.System,
             CreatedAt = Workflow.UtcNow,
+            ContentType = LlmMessageContentType.RunFinished,
             ContentJson = JsonSerializer.Serialize(new AocRunFinished { RunId = _currentRunId!, ThreadId = _agentId.ToString(), Result = JsonElement.Parse(JsonSerializer.Serialize(outcome)) }),
         };
         // ToDo: Do not silently swallow the exception here
@@ -136,6 +138,7 @@ public class AgentCoordinatorWorkflow
             IsHidden = true,
             Role = ChatRole.System,
             CreatedAt = Workflow.UtcNow,
+            ContentType = LlmMessageContentType.RunError,
             ContentJson = JsonSerializer.Serialize(new AocRunError { Message = error }),
         };
         // ToDo: Do not silently swallow the exception here

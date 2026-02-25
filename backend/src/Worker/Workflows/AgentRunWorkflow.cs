@@ -32,6 +32,7 @@ public class AgentRunWorkflow
             Role = input.Trigger.Source == TriggerSource.Cron ? ChatRole.System : ChatRole.User,
             AuthorName = input.Trigger.Source == TriggerSource.Cron ? "SYSTEM" : "User",
             CreatedAt = input.Trigger.CreatedAt,
+            ContentType = LlmMessageContentType.TextContent,
             ContentJson = JsonSerializer.Serialize(new AocTextContent { Text = input.Trigger.Text ?? "" }),
         };
         await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(triggerMessage), Options);

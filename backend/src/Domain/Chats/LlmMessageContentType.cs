@@ -1,6 +1,6 @@
-namespace Worker.Models.Content;
+namespace AzureOpsCrew.Domain.Chats;
 
-public enum AocAiContentType
+public enum LlmMessageContentType
 {
     None = 0,
 

@@ -49,6 +49,10 @@ public class DatabaseActivities
     [Activity]
     public async Task UpsertLlmChatMessage(LlmChatMessage chatMessage)
     {
+        if (chatMessage.ContentType == LlmMessageContentType.None)
+        {
+            throw new Exception("ContentType cannot be None");
+        }
         var existingMessage = await _context.LlmChatMessages
             .FirstOrDefaultAsync(m => m.Id == chatMessage.Id);
 
@@ -62,6 +66,7 @@ public class DatabaseActivities
             existingMessage.RunId = chatMessage.RunId;
             existingMessage.Role = chatMessage.Role;
             existingMessage.AuthorName = chatMessage.AuthorName;
+            existingMessage.ContentType = chatMessage.ContentType;
             existingMessage.ContentJson = chatMessage.ContentJson;
             existingMessage.IsHidden = chatMessage.IsHidden;
             existingMessage.CreatedAt = chatMessage.CreatedAt;

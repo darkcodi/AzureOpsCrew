@@ -50,7 +50,7 @@ public class AocLlmChatMessage
             Role = Role,
             AuthorName = AuthorName,
             CreatedAt = CreatedAt,
-            ContentType = ContentDto.ContentType.ToString(),
+            ContentType = Enum.Parse<LlmMessageContentType>(ContentDto.ContentType.ToString()),
             ContentJson = ContentDto.Content,
         };
     }
@@ -60,7 +60,7 @@ public class AocLlmChatMessage
         var contentDto = new AocAiContentDto
         {
             Content = domainMessage.ContentJson,
-            ContentType = Enum.Parse<AocAiContentType>(domainMessage.ContentType),
+            ContentType = Enum.Parse<LlmMessageContentType>(domainMessage.ContentType.ToString()),
         };
         return new AocLlmChatMessage
         {

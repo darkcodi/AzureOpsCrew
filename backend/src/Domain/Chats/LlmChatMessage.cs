@@ -11,6 +11,6 @@ public class LlmChatMessage
     public ChatRole Role { get; set; }
     public string? AuthorName { get; set; }
     public DateTime CreatedAt { get; set; }
-    public string ContentType { get; set; } = string.Empty;
+    public LlmMessageContentType ContentType { get; set; } = LlmMessageContentType.None;
     public string ContentJson { get; set; } = string.Empty;
 }
