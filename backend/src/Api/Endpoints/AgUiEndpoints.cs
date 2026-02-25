@@ -71,7 +71,7 @@ public static class ChannelAgUiEndpoints
                 Text: userInput);
 
             var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.CoordinatorWorkflowId(agentId));
-            await handle.ExecuteUpdateAsync(wf => wf.EnqueueAsync(trigger));
+            await handle.SignalAsync(wf => wf.EnqueueAsync(trigger));
 
             var runEvents = GetDmEventsAsync(agentId, dbContext, cancellationToken);
             var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
