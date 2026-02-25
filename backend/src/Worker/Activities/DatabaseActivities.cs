@@ -37,6 +37,16 @@ public class DatabaseActivities
     }
 
     [Activity]
+    public async Task<List<LlmChatMessage>> LoadChatHistory(Guid agentId)
+    {
+        var messages = await _context.LlmChatMessages
+            .Where(m => m.AgentId == agentId)
+            .OrderBy(m => m.CreatedAt)
+            .ToListAsync();
+        return messages;
+    }
+
+    [Activity]
     public async Task BulkSaveLlmChatMessages(List<LlmChatMessage> chatMessages)
     {
         await _context.LlmChatMessages.AddRangeAsync(chatMessages);
