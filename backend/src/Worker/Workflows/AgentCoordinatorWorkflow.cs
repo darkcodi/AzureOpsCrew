@@ -65,8 +65,8 @@ public class AgentCoordinatorWorkflow
                 ActivityExecutionContext.Current.Logger.LogError("Run failed for trigger {TriggerId} with error: {Error}", trigger.TriggerId, e.ToString());
                 var isCanceledException = TemporalException.IsCanceledException(e);
                 outcome = isCanceledException
-                    ? new RunOutcome(RunOutcomeKind.Canceled, null, e.Message)
-                    : new RunOutcome(RunOutcomeKind.Failed, null, e.Message);
+                    ? new RunOutcome(RunOutcomeKind.Canceled, e.Message)
+                    : new RunOutcome(RunOutcomeKind.Failed, e.Message);
             }
 
             _outcomes[trigger.TriggerId] = outcome;
@@ -74,28 +74,6 @@ public class AgentCoordinatorWorkflow
 
             _status = outcome.Kind == RunOutcomeKind.Failed ? AgentStatus.Failed : AgentStatus.Idle;
             _error = outcome.Kind == RunOutcomeKind.Failed ? (outcome.Error ?? "An error occurred during agent execution.") : null;
-
-            var notificationMessage = outcome.Kind switch
-            {
-                RunOutcomeKind.Completed => outcome.AgentReply?.Text,
-                RunOutcomeKind.Failed => _error ?? "An error occurred during agent execution.",
-                RunOutcomeKind.Canceled => "Run was canceled.",
-                _ => null,
-            };
-            if (notificationMessage is not null)
-            {
-                try
-                {
-                    await Workflow.ExecuteActivityAsync(
-                        (McpActivities a) => a.NotifyUserAsync(init.AgentId, notificationMessage),
-                        NotifyOpts);
-                }
-                catch
-                {
-                    // Don't fail the workflow if notification fails, just log it
-                    ActivityExecutionContext.Current.Logger.LogError("Failed to notify user for trigger {TriggerId}", trigger.TriggerId);
-                }
-            }
 
             // Keep history bounded
             if (Workflow.AllHandlersFinished &&

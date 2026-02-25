@@ -3,6 +3,7 @@ using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using Microsoft.Extensions.AI;
 using Temporalio.Activities;
+using Worker.Models;
 using Worker.Models.Content;
 
 namespace Worker.Activities;
@@ -21,7 +22,7 @@ public class LlmActivities
         Agent agent,
         Provider provider,
         List<AocLlmChatMessage> messages,
-        List<AIFunctionDeclaration> tools)
+        List<ToolDeclaration> tools)
     {
         var providerService = _providerFactory.GetService(provider.ProviderType);
         var chatClient = providerService.CreateChatClient(provider, agent.Info.Model, CancellationToken.None);
@@ -30,7 +31,7 @@ public class LlmActivities
         var chatMessages = messages.Select(x => x.ToChatMessage()).ToList();
         var chatOptions = new ChatOptions
         {
-            Tools = tools.Select(x => (AITool)x).ToArray(),
+            Tools = tools.Select(x => (AITool)x.ToAiFunctionDeclaration()).ToArray(),
         };
 
         var contentList = new List<AocAiContent>();

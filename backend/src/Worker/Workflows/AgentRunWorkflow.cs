@@ -50,30 +50,50 @@ public class AgentRunWorkflow
             var newChatMessages = await Workflow.ExecuteActivityAsync(
                 (LlmActivities a) => a.LlmThinkAsync(agent, provider, messages, tools),
                 Options);
+            messages.AddRange(newChatMessages);
 
-            // var llmOutputs = ToLllmOutputs(input, newChatMessages);
-            // await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.SaveLlmOutputBulk(llmOutputs), Options);
+            var domainMessages = newChatMessages.Select(m => m.ToDomain(agentId)).ToList();
+            await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.BulkSaveLlmChatMessages(domainMessages), Options);
 
-            // foreach (var llmOutput in newChatMessages)
-            // {
-            //     var res = await Workflow.ExecuteActivityAsync(
-            //         (McpActivities a) => a.CallMcpAsync(call),
-            //         Options);
-            //     toolResults.Add(res);
-            // }
-            //
-            // if (decision.FinalAnswer is not null)
-            // {
-            //     return new RunOutcome(RunOutcomeKind.Completed, decision.FinalAnswer, null);
-            // }
+            var toolCalls = newChatMessages
+                .Where(m => m.Content is AocFunctionCallContent)
+                .Select(m => m.Content as AocFunctionCallContent)
+                .Where(c => c != null)
+                .Select(c => c!)
+                .ToList();
+
+            if (toolCalls.Any())
+            {
+                // ToDo: Add support for parallel tool calls if needed. For now we execute them sequentially for simplicity.
+                foreach (var toolCall in toolCalls)
+                {
+                    var toolCallResult = await Workflow.ExecuteActivityAsync(
+                        (McpActivities a) => a.CallMcpAsync(toolCall),
+                        Options);
+                    var toolCallResultMessage = new AocLlmChatMessage
+                    {
+                        Role = ChatRole.Tool,
+                        CreatedAt = DateTime.UtcNow,
+                        Content = new AocFunctionResultContent
+                        {
+                            CallId = toolCall.CallId,
+                            Result = toolCallResult,
+                        },
+                    };
+                    messages.Add(toolCallResultMessage);
+                }
+            }
+            else
+            {
+                return new RunOutcome(RunOutcomeKind.Completed, null);
+            }
+
         }
 
-        return new RunOutcome(
-            RunOutcomeKind.Completed,
-            new FinalAnswer("I hit my step budget. Tell me what to focus on next.", null), null);
+        return new RunOutcome(RunOutcomeKind.Completed, null);
     }
 
-    private async Task<List<AIFunctionDeclaration>> GetTools()
+    private async Task<List<ToolDeclaration>> GetTools()
     {
         JsonElement argsSchema = Schema("""
                                         {
@@ -85,14 +105,15 @@ public class AgentRunWorkflow
 
         JsonElement returnSchema = Schema("""{ "type": "string" }""");
 
-        AIFunctionDeclaration getStatus =
-            AIFunctionFactory.CreateDeclaration(
-                name: "get_info_about_me",
-                description: "Get info about the agent itself, such as its capabilities, tools, etc. This can help the agent to better utilize itself.",
-                jsonSchema: argsSchema,
-                returnJsonSchema: returnSchema);
+        var pingTool = new ToolDeclaration
+        {
+            Name = "ping_something",
+            Description = "This is a tool to ping something. It is used for testing purposes.",
+            JsonSchema = argsSchema.ToString(),
+            ReturnJsonSchema = returnSchema.ToString(),
+        };
 
-        return new List<AIFunctionDeclaration> { getStatus };
+        return new List<ToolDeclaration> { pingTool };
     }
 
     private static JsonElement Schema(string json)

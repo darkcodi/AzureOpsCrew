@@ -1,0 +1,21 @@
+using System.Text.Json;
+using Microsoft.Extensions.AI;
+
+namespace Worker.Models;
+
+public class ToolDeclaration
+{
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string JsonSchema { get; set; } = "{}";
+    public string ReturnJsonSchema { get; set; } = "{}";
+
+    public AIFunctionDeclaration ToAiFunctionDeclaration()
+    {
+        return AIFunctionFactory.CreateDeclaration(
+            name: Name,
+            description: Description,
+            jsonSchema: JsonElement.Parse(JsonSchema),
+            returnJsonSchema: JsonElement.Parse(ReturnJsonSchema));
+    }
+}

@@ -1,4 +1,5 @@
 using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
@@ -33,5 +34,12 @@ public class DatabaseActivities
             throw new Exception($"Provider not found: {providerId}");
 
         return provider;
+    }
+
+    [Activity]
+    public async Task BulkSaveLlmChatMessages(List<LlmChatMessage> chatMessages)
+    {
+        await _context.LlmChatMessages.AddRangeAsync(chatMessages);
+        await _context.SaveChangesAsync();
     }
 }
