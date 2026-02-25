@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Domain.AgentServices;
@@ -37,6 +38,7 @@ public static class ChannelAgUiEndpoints
 
             var jsonOptions = context.RequestServices.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>();
             var jsonSerializerOptions = jsonOptions.Value.SerializerOptions;
+            var maxDate = await GetLastMessageTimestampAsync(agentId, dbContext, cancellationToken);
 
             var userInput = input.Messages.AsChatMessages(jsonSerializerOptions).LastOrDefault()?.Text;
 
@@ -72,7 +74,7 @@ public static class ChannelAgUiEndpoints
             var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.CoordinatorWorkflowId(agentId));
             await handle.SignalAsync(wf => wf.EnqueueAsync(trigger));
 
-            var runEvents = GetDmEventsAsync(agentId, dbContext, cancellationToken);
+            var runEvents = GetDmEventsAsync(agentId, dbContext, maxDate, cancellationToken);
             var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
             return new AGUIServerSentEventsResult(runEvents, sseLogger, jsonSerializerOptions);
         })
@@ -199,16 +201,24 @@ public static class ChannelAgUiEndpoints
 
     // Periodically (once in 1sec) pulls new events from DB related to the agent and yields them.
     // ToDo: Replace with more efficient pub/sub mechanism
-    private static async IAsyncEnumerable<BaseEvent> GetDmEventsAsync(Guid agentId, AzureOpsCrewContext context, CancellationToken ct)
+    private static async IAsyncEnumerable<BaseEvent> GetDmEventsAsync(
+        Guid agentId,
+        AzureOpsCrewContext context,
+        DateTime maxDate,
+        [EnumeratorCancellation] CancellationToken ct)
     {
+        var maxDateLocal = maxDate;
         while (!ct.IsCancellationRequested)
         {
             var newMessages = await context.LlmChatMessages
-                .Where(m => m.AgentId == agentId)
+                .Where(m => m.AgentId == agentId && m.CreatedAt > maxDateLocal)
                 .OrderByDescending(m => m.CreatedAt)
                 .ToListAsync(ct);
             foreach (var newMessage in newMessages)
             {
+                if (newMessage.CreatedAt > maxDateLocal)
+                    maxDateLocal = newMessage.CreatedAt;
+
                 var baseEvent = MapToBaseEvent(newMessage);
                 if (baseEvent != null)
                 {
