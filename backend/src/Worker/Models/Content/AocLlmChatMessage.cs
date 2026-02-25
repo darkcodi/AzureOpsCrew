@@ -9,7 +9,7 @@ public class AocLlmChatMessage
     public Guid Id { get; set; }
     public ChatRole Role { get; set; }
     public string? AuthorName { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
     public AocAiContent Content { get; set; } = new AocTextContent();
 
     public ChatMessage ToChatMessage()

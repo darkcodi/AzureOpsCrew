@@ -195,7 +195,7 @@ public static class ChannelAgUiEndpoints
             .Where(m => m.AgentId == agentId)
             .OrderByDescending(m => m.CreatedAt)
             .FirstOrDefaultAsync(ct);
-        return lastMessage?.CreatedAt.DateTime ?? DateTime.MinValue;
+        return lastMessage?.CreatedAt ?? DateTime.MinValue;
     }
 
     // Periodically (once in 1sec) pulls new events from DB related to the agent and yields them.
