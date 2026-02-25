@@ -21,12 +21,6 @@ public class AgentCoordinatorWorkflow
 
     private readonly Dictionary<Guid, RunOutcome> _outcomes = new();
 
-    private static readonly ActivityOptions NotifyOpts = new()
-    {
-        StartToCloseTimeout = TimeSpan.FromMinutes(5),
-        RetryPolicy = new() { MaximumAttempts = 3 },
-    };
-
     [WorkflowRun]
     public async Task RunAsync(CoordinatorInit init)
     {
@@ -93,9 +87,9 @@ public class AgentCoordinatorWorkflow
         return Task.CompletedTask;
     }
 
-    // Update: enqueue and wait for a result (simple UX)
+    // Update: enqueue and wait for a result
     [WorkflowUpdate]
-    public async Task<RunOutcome> AskAsync(TriggerEvent trigger)
+    public async Task<RunOutcome> ExecuteAsync(TriggerEvent trigger)
     {
         EnqueueInternal(trigger);
         await Workflow.WaitConditionAsync(() => _outcomes.ContainsKey(trigger.TriggerId));
@@ -119,7 +113,7 @@ public class AgentCoordinatorWorkflow
 
     [WorkflowQuery]
     public AgentStatusDto GetStatus() =>
-        new(_status, _currentRunId, _triggersQueue.Count, _runNumber);
+        new(_status, _currentRunId, _triggersQueue.Count, _runNumber, _error);
 
     public static string CoordinatorWorkflowId(Guid agentId) => $"agent:{agentId}";
 

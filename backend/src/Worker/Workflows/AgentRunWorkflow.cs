@@ -55,7 +55,7 @@ public class AgentRunWorkflow
             };
         messages.Add(triggerMessage);
 
-        var domainTriggerMessage = triggerMessage.ToDomain(agentId);
+        var domainTriggerMessage = triggerMessage.ToDomain(agentId, input.RunId);
         await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.BulkSaveLlmChatMessages(new List<LlmChatMessage> { domainTriggerMessage }), Options);
 
         // ToDo: Define a better stopping criteria. For example, we can let the agent decide when to stop by itself, or stop when reaching max context.
@@ -68,7 +68,7 @@ public class AgentRunWorkflow
                 Options);
             messages.AddRange(newChatMessages);
 
-            var domainMessages = newChatMessages.Select(m => m.ToDomain(agentId)).ToList();
+            var domainMessages = newChatMessages.Select(m => m.ToDomain(agentId, input.RunId)).ToList();
             await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.BulkSaveLlmChatMessages(domainMessages), Options);
 
             var toolCalls = newChatMessages

@@ -4,4 +4,5 @@ public record AgentStatusDto(
     AgentStatus Status,
     string? CurrentRunId,
     int QueueDepth,
-    long RunNumber);
+    long RunNumber,
+    string? Error);

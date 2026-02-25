@@ -38,12 +38,13 @@ public class AocLlmChatMessage
         };
     }
 
-    public LlmChatMessage ToDomain(Guid agentId)
+    public LlmChatMessage ToDomain(Guid agentId, string runId)
     {
         return new LlmChatMessage
         {
             Id = Id,
             AgentId = agentId,
+            RunId = runId,
             Role = Role,
             AuthorName = AuthorName,
             CreatedAt = CreatedAt,
