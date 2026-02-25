@@ -32,7 +32,7 @@ public class AgentRunWorkflow
             Role = input.Trigger.Source == TriggerSource.Cron ? ChatRole.System : ChatRole.User,
             AuthorName = input.Trigger.Source == TriggerSource.Cron ? "SYSTEM" : "User",
             CreatedAt = input.Trigger.CreatedAt,
-            ContentJson = JsonSerializer.Serialize(new AocTextContent { Text = input.Trigger.Text ?? "" }),
+            ContentJson = JsonSerializer.Serialize(AocAiContentDto.FromAocAiContent(new AocTextContent { Text = input.Trigger.Text ?? "" })),
         };
         await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(triggerMessage), Options);
 
@@ -63,10 +63,8 @@ public class AgentRunWorkflow
             }
 
             var toolCalls = newChatMessages
-                .Where(m => m.Content is AocFunctionCallContent)
-                .Select(m => m.Content as AocFunctionCallContent)
-                .Where(c => c != null)
-                .Select(c => c!)
+                .Select(m => m.ContentDto.ToAocAiContent())
+                .OfType<AocFunctionCallContent>()
                 .ToList();
 
             if (toolCalls.Any())
@@ -81,11 +79,11 @@ public class AgentRunWorkflow
                     {
                         Role = ChatRole.Tool,
                         CreatedAt = DateTime.UtcNow,
-                        Content = new AocFunctionResultContent
+                        ContentDto = AocAiContentDto.FromAocAiContent(new AocFunctionResultContent
                         {
                             CallId = toolCall.CallId,
                             Result = toolCallResult,
-                        },
+                        }),
                     };
                     messages.Add(toolCallResultMessage);
                 }

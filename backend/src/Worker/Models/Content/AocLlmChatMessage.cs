@@ -10,11 +10,12 @@ public class AocLlmChatMessage
     public ChatRole Role { get; set; }
     public string? AuthorName { get; set; }
     public DateTime CreatedAt { get; set; }
-    public AocAiContent Content { get; set; } = new AocTextContent();
+    public AocAiContentDto ContentDto { get; set; } = new AocAiContentDto();
 
     public ChatMessage ToChatMessage()
     {
-        var aiContent = Content?.ToAiContent();
+        var aocAiContent = ContentDto?.ToAocAiContent();
+        var aiContent = aocAiContent?.ToAiContent();
         var aiContentList = aiContent == null
             ? new List<AIContent>()
             : new List<AIContent> { aiContent };
@@ -28,13 +29,14 @@ public class AocLlmChatMessage
 
     public static AocLlmChatMessage FromContent(AocAiContent content, ChatRole role, string? authorName = null)
     {
+        var contentDto = AocAiContentDto.FromAocAiContent(content);
         return new AocLlmChatMessage
         {
             Id = Guid.NewGuid(),
             Role = role,
             AuthorName = authorName,
             CreatedAt = DateTime.UtcNow,
-            Content = content,
+            ContentDto = contentDto,
         };
     }
 
@@ -49,20 +51,20 @@ public class AocLlmChatMessage
             Role = Role,
             AuthorName = AuthorName,
             CreatedAt = CreatedAt,
-            ContentJson = JsonSerializer.Serialize(Content),
+            ContentJson = JsonSerializer.Serialize(ContentDto),
         };
     }
 
     public static AocLlmChatMessage FromDomain(LlmChatMessage domainMessage)
     {
-        var content = JsonSerializer.Deserialize<AocAiContent>(domainMessage.ContentJson) ?? new AocTextContent();
+        var content = JsonSerializer.Deserialize<AocAiContentDto>(domainMessage.ContentJson) ?? new AocAiContentDto();
         return new AocLlmChatMessage
         {
             Id = domainMessage.Id,
             Role = domainMessage.Role,
             AuthorName = domainMessage.AuthorName,
             CreatedAt = domainMessage.CreatedAt,
-            Content = content,
+            ContentDto = content,
         };
     }
 }

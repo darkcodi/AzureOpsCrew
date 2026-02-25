@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using Microsoft.Extensions.AI;
 using Serilog;
 
@@ -6,32 +5,6 @@ namespace Worker.Models.Content;
 
 #pragma warning disable MEAI001
 
-[JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
-// mapped from MAF types
-[JsonDerivedType(typeof(AocCodeInterpreterToolCallContent), nameof(AocCodeInterpreterToolCallContent))]
-[JsonDerivedType(typeof(AocCodeInterpreterToolResultContent), nameof(AocCodeInterpreterToolResultContent))]
-[JsonDerivedType(typeof(AocDataContent), nameof(AocDataContent))]
-[JsonDerivedType(typeof(AocErrorContent), nameof(AocErrorContent))]
-[JsonDerivedType(typeof(AocFunctionApprovalRequestContent), nameof(AocFunctionApprovalRequestContent))]
-[JsonDerivedType(typeof(AocFunctionApprovalResponseContent), nameof(AocFunctionApprovalResponseContent))]
-[JsonDerivedType(typeof(AocFunctionCallContent), nameof(AocFunctionCallContent))]
-[JsonDerivedType(typeof(AocFunctionResultContent), nameof(AocFunctionResultContent))]
-[JsonDerivedType(typeof(AocHostedFileContent), nameof(AocHostedFileContent))]
-[JsonDerivedType(typeof(AocHostedVectorStoreContent), nameof(AocHostedVectorStoreContent))]
-[JsonDerivedType(typeof(AocImageGenerationToolCallContent), nameof(AocImageGenerationToolCallContent))]
-[JsonDerivedType(typeof(AocImageGenerationToolResultContent), nameof(AocImageGenerationToolResultContent))]
-[JsonDerivedType(typeof(AocMcpServerToolApprovalRequestContent), nameof(AocMcpServerToolApprovalRequestContent))]
-[JsonDerivedType(typeof(AocMcpServerToolApprovalResponseContent), nameof(AocMcpServerToolApprovalResponseContent))]
-[JsonDerivedType(typeof(AocMcpServerToolCallContent), nameof(AocMcpServerToolCallContent))]
-[JsonDerivedType(typeof(AocMcpServerToolResultContent), nameof(AocMcpServerToolResultContent))]
-[JsonDerivedType(typeof(AocTextContent), nameof(AocTextContent))]
-[JsonDerivedType(typeof(AocTextReasoningContent), nameof(AocTextReasoningContent))]
-[JsonDerivedType(typeof(AocUriContent), nameof(AocUriContent))]
-[JsonDerivedType(typeof(AocUsageContent), nameof(AocUsageContent))]
-// our custom system content types
-[JsonDerivedType(typeof(AocRunStart), nameof(AocRunStart))]
-[JsonDerivedType(typeof(AocRunFinished), nameof(AocRunFinished))]
-[JsonDerivedType(typeof(AocRunError), nameof(AocRunError))]
 public abstract class AocAiContent
 {
     public static AocAiContent? FromAiContent(AIContent content)
