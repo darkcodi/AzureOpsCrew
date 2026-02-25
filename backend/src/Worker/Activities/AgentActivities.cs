@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
@@ -56,13 +57,35 @@ public class AgentActivities
         var fClient = new FunctionInvokingChatClient(chatClient);
 
         var chatMessages = new[]{new ChatMessage(ChatRole.User, userText)};
-        // var chatOptions = new ChatOptions
-        // {
-        //     Tools = ...
-        // };
+
+        // No args: empty object, no extra properties allowed.
+        JsonElement argsSchema = Schema("""
+        {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+        """);
+
+        JsonElement returnSchema = Schema("""{ "type": "string" }""");
+
+        AIFunctionDeclaration getStatus =
+            AIFunctionFactory.CreateDeclaration(
+                name: "get_info_about_me",
+                description: "Get info about the agent itself, such as its capabilities, tools, etc. This can help the agent to better utilize itself.",
+                jsonSchema: argsSchema,
+                returnJsonSchema: returnSchema);
+
+        var chatOptions = new ChatOptions
+        {
+            Tools = new List<AITool>()
+            {
+                getStatus,
+            },
+        };
 
         var contentList = new List<AocAiContent>();
-        await foreach (ChatResponseUpdate update in fClient.GetStreamingResponseAsync(chatMessages))
+        await foreach (ChatResponseUpdate update in fClient.GetStreamingResponseAsync(chatMessages, chatOptions))
         {
             var contents = update.Contents;
             foreach (var content in contents)
@@ -75,6 +98,16 @@ public class AgentActivities
             }
         }
 
+        var usageContents = contentList.OfType<AocUsageContent>().ToArray();
+        contentList.RemoveAll(x => x is AocUsageContent);
+        var lastUsageContent = usageContents.LastOrDefault();
+
+        var toolCalls = contentList.OfType<AocFunctionCallContent>().ToList();
+        if (toolCalls.Any())
+        {
+            return new NextStepDecision(null, null, toolCalls);
+        }
+
         if (contentList.FirstOrDefault() is AocTextContent)
         {
             // For simplicity, if the first content is text, treat it as final answer. In real scenario, should have a more robust way to determine this.
@@ -83,14 +116,9 @@ public class AgentActivities
             {
                 Text = textResponse,
             };
-            var stats = contentList.OfType<AocUsageContent>().FirstOrDefault();
-            if (stats != null)
+            if (lastUsageContent != null)
             {
-                finalAnswer.InputTokenCount = stats.InputTokenCount;
-                finalAnswer.OutputTokenCount = stats.OutputTokenCount;
-                finalAnswer.TotalTokenCount = stats.TotalTokenCount;
-                finalAnswer.CachedInputTokenCount = stats.CachedInputTokenCount;
-                finalAnswer.ReasoningTokenCount = stats.ReasoningTokenCount;
+                finalAnswer.Usage = lastUsageContent;
             }
             return new NextStepDecision(finalAnswer, null, new());
         }
@@ -101,10 +129,9 @@ public class AgentActivities
     }
 
     [Activity]
-    public Task<ToolResult> CallMcpAsync(McpCall call)
+    public Task<ToolResult> CallMcpAsync(AocFunctionCallContent call)
     {
-        var summary = $"[{call.Server}.{call.Tool}] args={call.JsonArgs}";
-        return Task.FromResult(new ToolResult(summary, IsError: false));
+        return Task.FromResult(new ToolResult("DONE", IsError: false));
     }
 
     [Activity]
@@ -113,4 +140,7 @@ public class AgentActivities
         Log.Information($"[NotifyUser] agent={agentId} message={message}");
         return Task.CompletedTask;
     }
+
+    static JsonElement Schema(string json)
+        => JsonDocument.Parse(json).RootElement.Clone();
 }
