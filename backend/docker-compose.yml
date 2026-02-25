@@ -13,7 +13,7 @@ services:
       - SqlServer__ConnectionString=Server=sqlserver;Database=AzureOpsCrew;User Id=sa;Password=YourStrong@Password;TrustServerCertificate=True;
       - Jwt__Issuer=${JWT_ISSUER:-AzureOpsCrew}
       - Jwt__Audience=${JWT_AUDIENCE:-AzureOpsCrewFrontend}
-      - Jwt__SigningKey=${JWT_SIGNING_KEY:-ChangeThisDevelopmentOnlySigningKeyWithAtLeast32Chars!}
+      - Jwt__SigningKey=${JWT_SIGNING_KEY:?JWT_SIGNING_KEY must be set}
       - EmailVerification__CodeLength=${EMAIL_VERIFICATION_CODE_LENGTH:-6}
       - EmailVerification__CodeTtlMinutes=${EMAIL_VERIFICATION_CODE_TTL_MINUTES:-10}
       - EmailVerification__ResendCooldownSeconds=${EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS:-30}

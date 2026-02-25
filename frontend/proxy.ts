@@ -14,7 +14,7 @@ export function proxy(req: NextRequest) {
     return NextResponse.next()
   }
 
-  if (pathname.startsWith("/api/auth")) {
+  if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) {
     return NextResponse.next()
   }
 

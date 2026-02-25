@@ -48,7 +48,12 @@ public sealed class KeycloakAppUserSyncMiddleware
         }
         else
         {
-            _logger.LogWarning("Authenticated principal is not a ClaimsIdentity. Local AppUser claim was not attached.");
+            _logger.LogWarning("Authenticated principal is not a ClaimsIdentity. Rejecting request.");
+            httpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await httpContext.Response.WriteAsJsonAsync(
+                new { error = "Unauthorized" },
+                cancellationToken: httpContext.RequestAborted);
+            return;
         }
 
         await _next(httpContext);

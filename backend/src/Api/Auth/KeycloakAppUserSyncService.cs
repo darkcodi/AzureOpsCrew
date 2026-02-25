@@ -118,6 +118,11 @@ public sealed class KeycloakAppUserSyncService
                 else
                 {
                     linkedIdentity.UpdateEmail(email);
+                    // Also sync the canonical user email when it changes in Keycloak.
+                    if (!string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+                    {
+                        user.UpdateEmail(email, normalizedEmail);
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(displayName) &&
@@ -145,10 +150,17 @@ public sealed class KeycloakAppUserSyncService
 
                 return KeycloakAppUserSyncResult.Success(user.Id, user.Email, user.DisplayName);
             }
-            catch (DbUpdateException) when (attempt == 0)
+            catch (DbUpdateException)
             {
-                _context.ChangeTracker.Clear();
-                createdUser = false;
+                if (attempt == 0)
+                {
+                    _context.ChangeTracker.Clear();
+                    createdUser = false;
+                }
+                else
+                {
+                    return KeycloakAppUserSyncResult.Fail(503, "Unable to synchronize user profile.");
+                }
             }
         }
 

@@ -26,6 +26,13 @@ public sealed class User
     public DateTime? DateModified { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
 
+    public void UpdateEmail(string email, string normalizedEmail)
+    {
+        Email = email;
+        NormalizedEmail = normalizedEmail;
+        DateModified = DateTime.UtcNow;
+    }
+
     public void UpdateDisplayName(string displayName)
     {
         DisplayName = displayName;

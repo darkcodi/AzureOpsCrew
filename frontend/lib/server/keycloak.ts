@@ -92,6 +92,14 @@ export function getPublicRequestOrigin(req: NextRequest): string {
     }
   }
 
+  // In production PUBLIC_APP_URL must be set — falling back to untrusted
+  // request headers enables open-redirect attacks.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "PUBLIC_APP_URL environment variable must be configured in production."
+    )
+  }
+
   const forwardedProto = firstHeaderValue(req.headers.get("x-forwarded-proto"))
   const forwardedHost =
     firstHeaderValue(req.headers.get("x-forwarded-host")) ??
@@ -130,22 +138,24 @@ export function createRandomState() {
 }
 
 export function getTransientAuthCookieOptions() {
+  const isProduction = process.env.NODE_ENV === "production"
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    // OIDC broker flows (Keycloak -> Entra -> app callback) can lose Lax cookies in
-    // some browser/privacy/MFA redirect chains. None is safer for transient auth state.
-    sameSite: "none" as const,
+    secure: isProduction,
+    // SameSite=None requires Secure=true (enforced by all modern browsers since 2020).
+    // In development (Secure=false) use Lax, which works fine for localhost OIDC flows.
+    sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
     path: "/",
     maxAge: 60 * 30,
   }
 }
 
 export function clearTransientAuthCookieOptions() {
+  const isProduction = process.env.NODE_ENV === "production"
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "none" as const,
+    secure: isProduction,
+    sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
     path: "/",
     maxAge: 0,
   }

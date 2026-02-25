@@ -87,8 +87,8 @@ jobs:
               KEYCLOAK_ENTRA_SSO_ENABLED="true"
               ;;
             dev|prod)
-              KEYCLOAK_LOCAL_LOGIN_ENABLED="true"
-              KEYCLOAK_LOCAL_SIGNUP_ENABLED="true"
+              KEYCLOAK_LOCAL_LOGIN_ENABLED="false"
+              KEYCLOAK_LOCAL_SIGNUP_ENABLED="false"
               KEYCLOAK_ENTRA_SSO_ENABLED="true"
               ;;
             *)
