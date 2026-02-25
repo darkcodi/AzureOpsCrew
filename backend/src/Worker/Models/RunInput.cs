@@ -1,6 +1,6 @@
 namespace Worker.Models;
 
 public record RunInput(
-    string RunId,
+    Guid RunId,
     Guid AgentId,
     TriggerEvent Trigger);

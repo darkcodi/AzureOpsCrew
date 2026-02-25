@@ -36,6 +36,9 @@ public static class ChannelAgUiEndpoints
             Log.Information("Received AG-UI event for agent with id {AgentId} with threadId {ThreadId} and runId {RunId}", agentId, input.ThreadId, input.RunId);
             Log.Information("Input: {Input}", JsonSerializer.Serialize(input));
 
+            var threadId = Guid.TryParse(input.ThreadId, out var parsedThreadId) ? parsedThreadId : Guid.NewGuid();
+            var runId = Guid.TryParse(input.RunId, out var parsedRunId) ? parsedRunId : Guid.NewGuid();
+
             var jsonOptions = context.RequestServices.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>();
             var jsonSerializerOptions = jsonOptions.Value.SerializerOptions;
             var maxDate = await GetLastMessageTimestampAsync(agentId, dbContext, cancellationToken);
@@ -69,6 +72,8 @@ public static class ChannelAgUiEndpoints
                 TriggerId: Guid.NewGuid(),
                 Source: TriggerSource.Dm,
                 CreatedAt: DateTime.UtcNow,
+                ThreadId: threadId,
+                RunId: runId,
                 Text: userInput);
 
             var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.CoordinatorWorkflowId(agentId));

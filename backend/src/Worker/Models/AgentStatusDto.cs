@@ -2,7 +2,7 @@ namespace Worker.Models;
 
 public record AgentStatusDto(
     AgentStatus Status,
-    string? CurrentRunId,
+    Guid? RunId,
     int QueueDepth,
     long RunNumber,
     string? Error);

@@ -19,6 +19,8 @@ public class CronTriggerWorkflow
             TriggerId: Guid.NewGuid(),
             Source: TriggerSource.Cron,
             CreatedAt: DateTime.UtcNow,
+            ThreadId: input.AgentId,
+            RunId: Guid.NewGuid(),
             Text: "scheduled tick");
 
         await coord.SignalAsync("EnqueueAsync", [trigger]);
