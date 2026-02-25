@@ -49,11 +49,6 @@ public class DatabaseActivities
     [Activity]
     public async Task UpsertLlmChatMessage(LlmChatMessage chatMessage)
     {
-        if (chatMessage.RunId is null)
-        {
-            throw new Exception("RunId cannot be null");
-        }
-
         // Check if the entity is already being tracked and detach it
         var trackedEntry = _context.ChangeTracker.Entries<LlmChatMessage>()
             .FirstOrDefault(e => e.Entity.Id == chatMessage.Id);

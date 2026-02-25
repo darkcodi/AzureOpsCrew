@@ -6,7 +6,7 @@ public class LlmChatMessage
 {
     public Guid Id { get; set; }
     public Guid AgentId { get; set; }
-    public string RunId { get; set; } = string.Empty;
+    public Guid RunId { get; set; } = Guid.Empty;
     public bool IsHidden { get; set; }
     public ChatRole Role { get; set; }
     public string? AuthorName { get; set; }

@@ -255,9 +255,9 @@ public static class ChannelAgUiEndpoints
         switch (aiContent)
         {
             case AocRunStart runStart:
-                return new RunStartedEvent { RunId = runStart.RunId, ThreadId = runStart.ThreadId };
+                return new RunStartedEvent { RunId = runStart.RunId.ToString().ToLowerInvariant(), ThreadId = runStart.ThreadId.ToString().ToLowerInvariant() };
             case AocRunFinished runFinished:
-                return new RunFinishedEvent { RunId = runFinished.RunId, ThreadId = runFinished.ThreadId, Result = runFinished.Result };
+                return new RunFinishedEvent { RunId = runFinished.RunId.ToString().ToLowerInvariant(), ThreadId = runFinished.ThreadId.ToString().ToLowerInvariant(), Result = runFinished.Result };
             case AocRunError runError:
                 return new RunErrorEvent { Message = runError.Message };
             case AocTextContent textContent:
