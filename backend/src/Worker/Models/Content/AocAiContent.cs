@@ -7,6 +7,7 @@ namespace Worker.Models.Content;
 #pragma warning disable MEAI001
 
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
+// mapped from MAF types
 [JsonDerivedType(typeof(AocCodeInterpreterToolCallContent), nameof(AocCodeInterpreterToolCallContent))]
 [JsonDerivedType(typeof(AocCodeInterpreterToolResultContent), nameof(AocCodeInterpreterToolResultContent))]
 [JsonDerivedType(typeof(AocDataContent), nameof(AocDataContent))]
@@ -27,6 +28,10 @@ namespace Worker.Models.Content;
 [JsonDerivedType(typeof(AocTextReasoningContent), nameof(AocTextReasoningContent))]
 [JsonDerivedType(typeof(AocUriContent), nameof(AocUriContent))]
 [JsonDerivedType(typeof(AocUsageContent), nameof(AocUsageContent))]
+// our custom system content types
+[JsonDerivedType(typeof(AocRunStart), nameof(AocRunStart))]
+[JsonDerivedType(typeof(AocRunFinished), nameof(AocRunFinished))]
+[JsonDerivedType(typeof(AocRunError), nameof(AocRunError))]
 public abstract class AocAiContent
 {
     public static AocAiContent? FromAiContent(AIContent content)
@@ -296,6 +301,12 @@ public abstract class AocAiContent
                         AdditionalCounts = additionalCounts,
                     }
                 };
+            }
+            case AocRunError:
+            case AocRunFinished:
+            case AocRunStart:
+            {
+                throw new InvalidOperationException($"System content type {GetType().Name} cannot be converted to AIContent");
             }
             default:
                 throw new InvalidOperationException($"Unknown AocAiContent type {GetType().Name}");
