@@ -5,4 +5,5 @@ public enum AgentStatus
     Idle,
     Running,
     Paused,
+    Failed,
 }

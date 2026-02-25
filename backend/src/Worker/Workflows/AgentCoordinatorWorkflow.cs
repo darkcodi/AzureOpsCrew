@@ -17,6 +17,7 @@ public class AgentCoordinatorWorkflow
     private AgentStatus _status = AgentStatus.Idle;
     private string? _currentRunId;
     private long _runNumber;
+    private string? _error;
 
     private readonly Dictionary<Guid, RunOutcome> _outcomes = new();
 
@@ -34,9 +35,10 @@ public class AgentCoordinatorWorkflow
             // Sleep until there is something to do (durable wait)
             await Workflow.WaitConditionAsync(() =>
                 _status != AgentStatus.Paused &&
+                _status != AgentStatus.Failed &&
                 _triggersQueue.Count > 0);
 
-            if (_status == AgentStatus.Paused)
+            if (_status == AgentStatus.Paused || _status == AgentStatus.Failed)
                 continue;
 
             var trigger = _triggersQueue.Dequeue();
@@ -69,28 +71,32 @@ public class AgentCoordinatorWorkflow
             }
 
             _outcomes[trigger.TriggerId] = outcome;
+            _currentRunId = null;
 
-            if (outcome.Kind == RunOutcomeKind.Completed)
+            _status = outcome.Kind == RunOutcomeKind.Failed ? AgentStatus.Failed : AgentStatus.Idle;
+            _error = outcome.Kind == RunOutcomeKind.Failed ? (outcome.Error ?? "An error occurred during agent execution.") : null;
+
+            var notificationMessage = outcome.Kind switch
             {
-                _status = AgentStatus.Idle;
-
-                if (outcome.AgentReply is not null)
+                RunOutcomeKind.Completed => outcome.AgentReply?.Text,
+                RunOutcomeKind.Failed => _error ?? "An error occurred during agent execution.",
+                RunOutcomeKind.Canceled => "Run was canceled.",
+                _ => null,
+            };
+            if (notificationMessage is not null)
+            {
+                try
                 {
-                    try
-                    {
-                        await Workflow.ExecuteActivityAsync(
-                            (McpActivities a) => a.NotifyUserAsync(init.AgentId, outcome.AgentReply.Text),
-                            NotifyOpts);
-                    }
-                    catch
-                    {
-                        // Don't fail the workflow if notification fails, just log it
-                        ActivityExecutionContext.Current.Logger.LogError("Failed to notify user for trigger {TriggerId}", trigger.TriggerId);
-                    }
+                    await Workflow.ExecuteActivityAsync(
+                        (McpActivities a) => a.NotifyUserAsync(init.AgentId, notificationMessage),
+                        NotifyOpts);
+                }
+                catch
+                {
+                    // Don't fail the workflow if notification fails, just log it
+                    ActivityExecutionContext.Current.Logger.LogError("Failed to notify user for trigger {TriggerId}", trigger.TriggerId);
                 }
             }
-
-            _currentRunId = null;
 
             // Keep history bounded
             if (Workflow.AllHandlersFinished &&
@@ -129,7 +135,7 @@ public class AgentCoordinatorWorkflow
     [WorkflowUpdate]
     public Task ResumeAsync()
     {
-        if (_status == AgentStatus.Paused)
+        if (_status == AgentStatus.Paused || _status == AgentStatus.Failed)
             _status = AgentStatus.Idle;
         return Task.CompletedTask;
     }
