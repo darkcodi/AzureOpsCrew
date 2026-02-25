@@ -46,9 +46,8 @@ public class AgentCoordinatorWorkflow
             _status = AgentStatus.Running;
             _runNumber++;
 
-            var runInput = new RunInput(init.AgentId, trigger);
-
             _currentRunId = $"run-{trigger.Source.ToString().ToLowerInvariant()}-{trigger.TriggerId:N}-num-{_runNumber}";
+            var runInput = new RunInput(_currentRunId, init.AgentId, trigger);
 
             RunOutcome? outcome;
             try

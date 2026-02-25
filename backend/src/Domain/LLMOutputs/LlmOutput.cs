@@ -4,7 +4,7 @@ public class LlmOutput
 {
     private LlmOutput() { }
 
-    public LlmOutput(Guid id, Guid runId, string text, string? toolCall, long? inputTokens, long? outputTokens)
+    public LlmOutput(Guid id, string runId, string? text, string? toolCall, long? inputTokens, long? outputTokens)
     {
         Id = id;
         RunId = runId;
@@ -15,8 +15,8 @@ public class LlmOutput
     }
 
     public Guid Id { get; private set; }
-    public Guid RunId { get; private set; }
-    public string Text { get; private set; } = string.Empty;
+    public string RunId { get; private set; } = string.Empty;
+    public string? Text { get; private set; } = string.Empty;
     public string? ToolCall { get; private set; }
     public long? InputTokens { get; private set; }
     public long? OutputTokens { get; private set; }

@@ -62,8 +62,9 @@ var mcpActivities = serviceProvider.GetRequiredService<McpActivities>();
 using var worker = new TemporalWorker(
     client,
     new TemporalWorkerOptions("aoc-agent-task-queue")
-        .AddActivity(databaseActivities.LoadAgentAsync)
-        .AddActivity(databaseActivities.LoadProviderAsync)
+        .AddActivity(databaseActivities.LoadAgent)
+        .AddActivity(databaseActivities.LoadProvider)
+        .AddActivity(databaseActivities.SaveLlmOutputBulk)
         .AddActivity(llmActivities.LlmThinkAsync)
         .AddActivity(mcpActivities.CallMcpAsync)
         .AddActivity(mcpActivities.NotifyUserAsync)

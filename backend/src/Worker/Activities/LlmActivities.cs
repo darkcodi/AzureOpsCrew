@@ -99,7 +99,7 @@ public class LlmActivities
 
         if (toolCalls.Any())
         {
-            return new NextStepDecision(null, toolCalls);
+            return new NextStepDecision(null, new ToolCallsRequest(textResponse, toolCalls));
         }
 
         return new NextStepDecision(new FinalAnswer(textResponse, lastUsageContent), null);

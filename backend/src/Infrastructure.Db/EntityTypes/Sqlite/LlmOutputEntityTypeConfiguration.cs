@@ -15,7 +15,7 @@ public sealed class LlmOutputEntityTypeConfiguration : IEntityTypeConfiguration<
 
         builder.Property(x => x.RunId).IsRequired();
 
-        builder.Property(x => x.Text).IsRequired();
+        builder.Property(x => x.Text).IsRequired(false);
 
         builder.Property(x => x.ToolCall).IsRequired(false);
 

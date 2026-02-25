@@ -1,4 +1,5 @@
 using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.LLMOutputs;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,7 @@ public class DatabaseActivities
     }
 
     [Activity]
-    public async Task<Agent> LoadAgentAsync(Guid agentId)
+    public async Task<Agent> LoadAgent(Guid agentId)
     {
         var agent = await _context.Agents.FirstOrDefaultAsync(a => a.Id == agentId);
         if (agent is null)
@@ -26,12 +27,19 @@ public class DatabaseActivities
     }
 
     [Activity]
-    public async Task<Provider> LoadProviderAsync(Guid providerId)
+    public async Task<Provider> LoadProvider(Guid providerId)
     {
         var provider = await _context.Providers.FirstOrDefaultAsync(p => p.Id == providerId);
         if (provider is null)
             throw new Exception($"Provider not found: {providerId}");
 
         return provider;
+    }
+
+    [Activity]
+    public async Task SaveLlmOutputBulk(List<LlmOutput> entities)
+    {
+        _context.LlmOutputs.AddRange(entities);
+        await _context.SaveChangesAsync();
     }
 }
