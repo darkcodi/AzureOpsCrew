@@ -45,7 +45,7 @@ try
     builder.Services.AddDatabase(builder.Configuration);
     builder.Services.AddProviderFacades();
     builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
-    builder.Services.AddKeycloakOidcSupport(builder.Configuration);
+    builder.Services.AddKeycloakOidcSupport(builder.Configuration, builder.Environment);
 
     // Configure AG-UI
     builder.Services.AddHttpClient();

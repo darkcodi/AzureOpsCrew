@@ -147,6 +147,7 @@ export async function GET(req: NextRequest) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: tokenRequestBody.toString(),
       cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
     })
 
     const tokenData = (await tokenResponse.json().catch(() => ({}))) as Partial<KeycloakTokenResponse>
@@ -166,6 +167,7 @@ export async function GET(req: NextRequest) {
       method: "GET",
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
       cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
     })
 
     const backendData = await backendResponse.json().catch(() => ({}))

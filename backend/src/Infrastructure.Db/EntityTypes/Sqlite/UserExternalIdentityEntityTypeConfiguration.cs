@@ -37,5 +37,10 @@ public sealed class UserExternalIdentityEntityTypeConfiguration : IEntityTypeCon
             .IsUnique();
 
         builder.HasIndex(x => x.UserId);
+
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

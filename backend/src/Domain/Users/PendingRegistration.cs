@@ -28,6 +28,7 @@ public sealed class PendingRegistration
 
     public void Refresh(
         string email,
+        string normalizedEmail,
         string displayName,
         string passwordHash,
         string verificationCodeHash,
@@ -35,6 +36,7 @@ public sealed class PendingRegistration
         DateTime codeSentAtUtc)
     {
         Email = email;
+        NormalizedEmail = normalizedEmail;
         DisplayName = displayName;
         PasswordHash = passwordHash;
         VerificationCodeHash = verificationCodeHash;

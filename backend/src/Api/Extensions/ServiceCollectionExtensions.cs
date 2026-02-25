@@ -171,7 +171,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<KeycloakAppUserSyncService>();
     }
 
-    public static void AddKeycloakOidcSupport(this IServiceCollection services, IConfiguration configuration)
+    public static void AddKeycloakOidcSupport(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         var settings = configuration.GetSection("KeycloakOidc").Get<KeycloakOidcSettings>() ?? new KeycloakOidcSettings();
 
@@ -183,8 +183,9 @@ public static class ServiceCollectionExtensions
             if (!Uri.TryCreate(settings.Authority, UriKind.Absolute, out var authorityUri))
                 throw new InvalidOperationException("KeycloakOidc__Authority must be an absolute URL.");
 
-            if (!string.Equals(authorityUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("KeycloakOidc__Authority must use HTTPS.");
+            if (!environment.IsDevelopment() &&
+                !string.Equals(authorityUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("KeycloakOidc__Authority must use HTTPS in non-development environments.");
 
             if (string.IsNullOrWhiteSpace(settings.ClientId))
                 throw new InvalidOperationException("KeycloakOidc__ClientId is required when KeycloakOidc__Enabled=true.");

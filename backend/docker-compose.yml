@@ -10,7 +10,7 @@ services:
       - ASPNETCORE_URLS=http://*:80
       - DatabaseProvider=Sqlite
       - Sqlite__DataSource=Data Source=/app/data/azureopscrew.db
-      - SqlServer__ConnectionString=Server=sqlserver;Database=AzureOpsCrew;User Id=sa;Password=YourStrong@Password;TrustServerCertificate=True;
+      - SqlServer__ConnectionString=Server=sqlserver;Database=AzureOpsCrew;User Id=sa;Password=${SQL_SERVER_SA_PASSWORD:-YourStrong@Password};TrustServerCertificate=True;
       - Jwt__Issuer=${JWT_ISSUER:-AzureOpsCrew}
       - Jwt__Audience=${JWT_AUDIENCE:-AzureOpsCrewFrontend}
       - Jwt__SigningKey=${JWT_SIGNING_KEY:?JWT_SIGNING_KEY must be set}
