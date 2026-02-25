@@ -66,7 +66,7 @@ public class LlmActivities
             var contents = update.Contents;
             foreach (var content in contents)
             {
-                var parsed = AocAiContent.Parse(content);
+                var parsed = AocAiContent.FromAiContent(content);
                 if (parsed != null)
                 {
                     contentList.Add(parsed);

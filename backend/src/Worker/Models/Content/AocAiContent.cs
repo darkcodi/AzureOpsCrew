@@ -7,7 +7,7 @@ namespace Worker.Models.Content;
 
 public abstract class AocAiContent
 {
-    public static AocAiContent? Parse(AIContent content)
+    public static AocAiContent? FromAiContent(AIContent content)
     {
         switch (content)
         {
@@ -15,13 +15,15 @@ public abstract class AocAiContent
                 return new AocCodeInterpreterToolCallContent
                 {
                     CallId = c.CallId,
-                    Inputs = (c.Inputs ?? new List<AIContent>()).Select(Parse).Where(x => x != null).Select(x => x!).ToList(),
+                    Inputs = (c.Inputs ?? new List<AIContent>()).Select(FromAiContent).Where(x => x != null)
+                        .Select(x => x!).ToList(),
                 };
             case CodeInterpreterToolResultContent c:
                 return new AocCodeInterpreterToolResultContent
                 {
                     CallId = c.CallId,
-                    Outputs = (c.Outputs ?? new List<AIContent>()).Select(Parse).Where(x => x != null).Select(x => x!).ToList(),
+                    Outputs = (c.Outputs ?? new List<AIContent>()).Select(FromAiContent).Where(x => x != null)
+                        .Select(x => x!).ToList(),
                 };
             case DataContent c:
                 return new AocDataContent
@@ -41,7 +43,7 @@ public abstract class AocAiContent
                 return new AocFunctionApprovalRequestContent
                 {
                     Id = c.Id,
-                    FunctionCall = Parse(c.FunctionCall) as AocFunctionCallContent,
+                    FunctionCall = FromAiContent(c.FunctionCall) as AocFunctionCallContent,
                 };
             case FunctionApprovalResponseContent c:
                 return new AocFunctionApprovalResponseContent
@@ -49,7 +51,7 @@ public abstract class AocAiContent
                     Id = c.Id,
                     Approved = c.Approved,
                     Reason = c.Reason,
-                    FunctionCall = Parse(c.FunctionCall) as AocFunctionCallContent,
+                    FunctionCall = FromAiContent(c.FunctionCall) as AocFunctionCallContent,
                 };
             case FunctionCallContent c:
                 return new AocFunctionCallContent
@@ -86,13 +88,14 @@ public abstract class AocAiContent
                 return new AocImageGenerationToolResultContent
                 {
                     ImageId = c.ImageId,
-                    Outputs = (c.Outputs ?? new List<AIContent>()).Select(Parse).Where(x => x != null).Select(x => x!).ToList(),
+                    Outputs = (c.Outputs ?? new List<AIContent>()).Select(FromAiContent).Where(x => x != null)
+                        .Select(x => x!).ToList(),
                 };
             case McpServerToolApprovalRequestContent c:
                 return new AocMcpServerToolApprovalRequestContent
                 {
                     Id = c.Id,
-                    ToolCall = Parse(c.ToolCall) as AocMcpServerToolCallContent,
+                    ToolCall = FromAiContent(c.ToolCall) as AocMcpServerToolCallContent,
                 };
             case McpServerToolApprovalResponseContent c:
                 return new AocMcpServerToolApprovalResponseContent
@@ -112,7 +115,8 @@ public abstract class AocAiContent
                 return new AocMcpServerToolResultContent
                 {
                     CallId = c.CallId,
-                    Output = (c.Output ?? new List<AIContent>()).Select(Parse).Where(x => x != null).Select(x => x!).ToList(),
+                    Output = (c.Output ?? new List<AIContent>()).Select(FromAiContent).Where(x => x != null)
+                        .Select(x => x!).ToList(),
                 };
             case TextContent c:
                 return new AocTextContent
@@ -156,6 +160,108 @@ public abstract class AocAiContent
                 Log.Warning("Unknown content type {ContentType}", content.GetType().Name);
                 return null;
             }
+        }
+    }
+
+    public static AIContent ToAiContent(AocAiContent content)
+    {
+        switch (content)
+        {
+            case AocCodeInterpreterToolCallContent c:
+                return new CodeInterpreterToolCallContent
+                {
+                    CallId = c.CallId,
+                    Inputs = c.Inputs?.Select(ToAiContent).ToList() ?? new List<AIContent>(),
+                };
+            case AocCodeInterpreterToolResultContent c:
+                return new CodeInterpreterToolResultContent
+                {
+                    CallId = c.CallId,
+                    Outputs = c.Outputs?.Select(ToAiContent).ToList() ?? new List<AIContent>(),
+                };
+            case AocDataContent c:
+                return new DataContent(c.Uri, c.MediaType);
+            case AocErrorContent c:
+                return new ErrorContent(c.Message)
+                {
+                    ErrorCode = c.ErrorCode,
+                    Details = c.Details,
+                };
+            case AocFunctionApprovalRequestContent c:
+                return new FunctionApprovalRequestContent(c.Id, ToAiContent(c.FunctionCall) as FunctionCallContent);
+            case AocFunctionApprovalResponseContent c:
+                return new FunctionApprovalResponseContent(c.Id, c.Approved, ToAiContent(c.FunctionCall) as FunctionCallContent)
+                {
+                    Reason = c.Reason,
+                };
+            case AocFunctionCallContent c:
+                return new FunctionCallContent(c.CallId, c.Name, c.Arguments)
+                {
+                    InformationalOnly = c.InformationalOnly,
+                };
+            case AocFunctionResultContent c:
+                return new FunctionResultContent(c.CallId, c.Result);
+            case AocHostedFileContent c:
+                return new HostedFileContent(c.FileId)
+                {
+                    MediaType = c.MediaType,
+                    Name = c.Name,
+                };
+            case AocHostedVectorStoreContent c:
+                return new HostedVectorStoreContent(c.VectorStoreId);
+            case AocImageGenerationToolCallContent c:
+                return new ImageGenerationToolCallContent
+                {
+                    ImageId = c.ImageId,
+                };
+            case AocImageGenerationToolResultContent c:
+                return new ImageGenerationToolResultContent
+                {
+                    ImageId = c.ImageId,
+                    Outputs = c.Outputs?.Select(ToAiContent).ToList() ?? new List<AIContent>(),
+                };
+            case AocMcpServerToolApprovalRequestContent c:
+                return new McpServerToolApprovalRequestContent(c.Id, ToAiContent(c.ToolCall) as McpServerToolCallContent);
+            case AocMcpServerToolApprovalResponseContent c:
+                return new McpServerToolApprovalResponseContent(c.Id, c.Approved);
+            case AocMcpServerToolCallContent c:
+                return new McpServerToolCallContent(c.CallId, c.ToolName, c.ServerName)
+                {
+                    Arguments = c.Arguments
+                };
+            case AocMcpServerToolResultContent c:
+                return new McpServerToolResultContent(c.CallId)
+                {
+                    Output = c.Output?.Select(ToAiContent).ToList() ?? new List<AIContent>(),
+                };
+            case AocTextContent c:
+                return new TextContent(c.Text);
+            case AocTextReasoningContent c:
+                return new TextReasoningContent(c.Text)
+                {
+                    ProtectedData = c.ProtectedData,
+                };
+            case AocUriContent c:
+                return new UriContent(c.Uri, c.MediaType);
+            case AocUsageContent c:
+                return new UsageContent
+                {
+                    Details = new UsageDetails
+                    {
+                        InputTokenCount = c.InputTokenCount,
+                        OutputTokenCount = c.OutputTokenCount,
+                        TotalTokenCount = c.TotalTokenCount,
+                        CachedInputTokenCount = c.CachedInputTokenCount,
+                        ReasoningTokenCount = c.ReasoningTokenCount,
+                        AdditionalCounts = new AdditionalPropertiesDictionary<long>(c.AdditionalCounts),
+                    }
+                };
+            // case AocUserInputRequestContent c:
+            //     return new UserInputRequestContent(c.Id);
+            // case AocUserInputResponseContent c:
+            //     return new UserInputResponseContent(c.Id);
+            default:
+                throw new InvalidOperationException($"Unknown AocAiContent type {content.GetType().Name}");
         }
     }
 }
