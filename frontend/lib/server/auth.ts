@@ -31,7 +31,7 @@ export function getAuthCookieOptions(maxAgeSeconds: number = ACCESS_TOKEN_TTL_SE
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict" as const,
+    sameSite: "lax" as const,
     path: "/",
     maxAge: maxAgeSeconds,
   }

@@ -63,8 +63,34 @@ export async function GET(req: NextRequest) {
       return response
     }
 
+    // Translate common Entra / Keycloak broker errors into user-friendly messages.
+    let friendlyMessage = errorDescription ?? error
+    const lowerDesc = (errorDescription ?? "").toLowerCase()
+    const lowerError = error.toLowerCase()
+
+    if (
+      lowerError === "access_denied" ||
+      lowerDesc.includes("aadsts50105") ||
+      lowerDesc.includes("not assigned a role") ||
+      lowerDesc.includes("does not have access") ||
+      lowerDesc.includes("user assignment required")
+    ) {
+      friendlyMessage =
+        "Your Microsoft account is not authorized to access this application. " +
+        "Please contact an administrator to be added to the access group."
+    } else if (
+      lowerError === "login_required" ||
+      lowerDesc.includes("interaction_required")
+    ) {
+      friendlyMessage =
+        "Microsoft sign-in was cancelled or timed out. Please try again."
+    } else if (lowerError === "temporarily_unavailable") {
+      friendlyMessage =
+        "The identity provider is temporarily unavailable. Please try again in a few minutes."
+    }
+
     const response = NextResponse.redirect(
-      buildLoginRedirect(req, errorDescription ?? error)
+      buildLoginRedirect(req, friendlyMessage)
     )
     clearKeycloakTransientCookies(response)
     return response
