@@ -1,5 +1,4 @@
 using System.Text.Json;
-using AzureOpsCrew.Domain.LLMOutputs;
 using Microsoft.Extensions.AI;
 using Temporalio.Workflows;
 using Worker.Activities;
@@ -43,6 +42,7 @@ public class AgentRunWorkflow
             },
         };
 
+        // ToDo: Define a better stopping criteria. For example, we can let the agent decide when to stop by itself, or stop when reaching max context.
         const int maxSteps = 6;
 
         for (int step = 0; step < maxSteps; step++)
@@ -51,8 +51,8 @@ public class AgentRunWorkflow
                 (LlmActivities a) => a.LlmThinkAsync(agent, provider, messages, tools),
                 Options);
 
-            var llmOutputs = ToLllmOutputs(input, newChatMessages);
-            await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.SaveLlmOutputBulk(llmOutputs), Options);
+            // var llmOutputs = ToLllmOutputs(input, newChatMessages);
+            // await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.SaveLlmOutputBulk(llmOutputs), Options);
 
             // foreach (var llmOutput in newChatMessages)
             // {
@@ -71,31 +71,6 @@ public class AgentRunWorkflow
         return new RunOutcome(
             RunOutcomeKind.Completed,
             new FinalAnswer("I hit my step budget. Tell me what to focus on next.", null), null);
-    }
-
-    private static List<LlmOutput> ToLllmOutputs(RunInput input, IList<ChatMessage> chatMessages)
-    {
-        var outputs = new List<LlmOutput>();
-
-        foreach (var chatMessage in chatMessages)
-        {
-            var messageContents = chatMessage.Contents;
-            var functionCalls = messageContents.OfType<FunctionCallContent>().ToList();
-
-            if (functionCalls.Any())
-            {
-                foreach (var functionCall in functionCalls)
-                {
-                    outputs.Add(new LlmOutput(Guid.NewGuid(), input.RunId, chatMessage.Text, functionCall.Name, null, null));
-                }
-            }
-            else
-            {
-                outputs.Add(new LlmOutput(Guid.NewGuid(), input.RunId, chatMessage.Text, null, null, null));
-            }
-        }
-
-        return outputs;
     }
 
     private async Task<List<AIFunctionDeclaration>> GetTools()

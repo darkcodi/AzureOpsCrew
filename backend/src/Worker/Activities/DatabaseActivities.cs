@@ -1,5 +1,4 @@
 using AzureOpsCrew.Domain.Agents;
-using AzureOpsCrew.Domain.LLMOutputs;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
@@ -34,12 +33,5 @@ public class DatabaseActivities
             throw new Exception($"Provider not found: {providerId}");
 
         return provider;
-    }
-
-    [Activity]
-    public async Task SaveLlmOutputBulk(List<LlmOutput> entities)
-    {
-        _context.LlmOutputs.AddRange(entities);
-        await _context.SaveChangesAsync();
     }
 }

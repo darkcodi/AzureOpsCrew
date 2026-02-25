@@ -64,7 +64,6 @@ using var worker = new TemporalWorker(
     new TemporalWorkerOptions("aoc-agent-task-queue")
         .AddActivity(databaseActivities.LoadAgent)
         .AddActivity(databaseActivities.LoadProvider)
-        .AddActivity(databaseActivities.SaveLlmOutputBulk)
         .AddActivity(llmActivities.LlmThinkAsync)
         .AddActivity(mcpActivities.CallMcpAsync)
         .AddActivity(mcpActivities.NotifyUserAsync)

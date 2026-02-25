@@ -7,7 +7,6 @@ public class AocLlmChatMessage
     public ChatRole Role { get; set; }
     public string? AuthorName { get; set; }
     public DateTimeOffset? CreatedAt { get; set; }
-    public string? MessageId { get; set; }
     public AocAiContent? Content { get; set; }
 
     public ChatMessage ToChatMessage()
@@ -21,7 +20,6 @@ public class AocLlmChatMessage
             Role = Role,
             AuthorName = AuthorName,
             CreatedAt = CreatedAt ?? DateTimeOffset.UtcNow,
-            MessageId = MessageId,
         };
     }
 
