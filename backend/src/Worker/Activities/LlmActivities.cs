@@ -20,7 +20,7 @@ public class LlmActivities
     }
 
     [Activity]
-    public async Task<LlmOutput> LlmThinkAsync(
+    public async Task<NextStepDecision> LlmThinkAsync(
         Agent agent,
         Provider provider,
         string userText,
@@ -77,7 +77,7 @@ public class LlmActivities
         return ToLlmOutput(contentList);
     }
 
-    private static LlmOutput ToLlmOutput(List<AocAiContent> contentList)
+    private static NextStepDecision ToLlmOutput(List<AocAiContent> contentList)
     {
         // extract usage stats
         var usageContents = contentList.OfType<AocUsageContent>().ToArray();
@@ -99,10 +99,10 @@ public class LlmActivities
 
         if (toolCalls.Any())
         {
-            return new LlmOutput(null, toolCalls);
+            return new NextStepDecision(null, toolCalls);
         }
 
-        return new LlmOutput(new FinalAnswer(textResponse, lastUsageContent), null);
+        return new NextStepDecision(new FinalAnswer(textResponse, lastUsageContent), null);
     }
 
     static JsonElement Schema(string json)
