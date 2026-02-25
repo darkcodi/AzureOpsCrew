@@ -2,6 +2,6 @@ namespace Worker.Models;
 
 public enum TriggerSource
 {
-    UserMessage,
+    Dm,
     Cron,
 }

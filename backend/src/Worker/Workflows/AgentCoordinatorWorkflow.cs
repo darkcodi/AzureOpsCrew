@@ -1,6 +1,8 @@
+using Microsoft.Extensions.Logging;
+using Temporalio.Activities;
+using Temporalio.Exceptions;
 using Temporalio.Workflows;
 using Worker.Activities;
-using Worker.Extensions;
 using Worker.Models;
 
 namespace Worker.Workflows;
@@ -9,18 +11,18 @@ namespace Worker.Workflows;
 public class AgentCoordinatorWorkflow
 {
     private readonly Queue<TriggerEvent> _triggersQueue = new();
-    private readonly HashSet<string> _triggerIds = new();
+    private readonly HashSet<Guid> _triggerIds = new();
 
     private AgentStatus _status = AgentStatus.Idle;
     private string? _currentRunId;
-    private int _runNumber;
+    private long _runNumber;
 
-    private readonly Dictionary<string, RunOutcome> _outcomes = new();
+    private readonly Dictionary<Guid, RunOutcome> _outcomes = new();
 
     private static readonly ActivityOptions NotifyOpts = new()
     {
-        StartToCloseTimeout = TimeSpan.FromMinutes(1),
-        RetryPolicy = new() { MaximumAttempts = 5 }
+        StartToCloseTimeout = TimeSpan.FromMinutes(5),
+        RetryPolicy = new() { MaximumAttempts = 3 },
     };
 
     [WorkflowRun]
@@ -43,28 +45,48 @@ public class AgentCoordinatorWorkflow
 
             var runInput = new RunInput(init.AgentId, trigger);
 
-            _currentRunId = $"run-{Workflow.UtcNow.ToUnixTimeMilliseconds()}";
+            _currentRunId = $"run-{trigger.Source.ToString().ToLowerInvariant()}-{trigger.TriggerId:N}-num-{_runNumber}";
 
-            var outcome = await Workflow.ExecuteChildWorkflowAsync(
-                (AgentRunWorkflow wf) => wf.RunAsync(runInput),
-                new ChildWorkflowOptions
-                {
-                    TaskQueue = "aoc-agent-task-queue"
-                });
+            RunOutcome? outcome;
+            try
+            {
+                outcome = await Workflow.ExecuteChildWorkflowAsync(
+                    (AgentRunWorkflow wf) => wf.RunAsync(runInput),
+                    new ChildWorkflowOptions
+                    {
+                        Id = _currentRunId,
+                        TaskQueue = "aoc-agent-task-queue",
+                    });
+            }
+            catch (Exception e)
+            {
+                ActivityExecutionContext.Current.Logger.LogError("Run failed for trigger {TriggerId} with error: {Error}", trigger.TriggerId, e.ToString());
+                var isCanceledException = TemporalException.IsCanceledException(e);
+                outcome = isCanceledException
+                    ? new RunOutcome(RunOutcomeKind.Canceled, null, e.Message)
+                    : new RunOutcome(RunOutcomeKind.Failed, null, e.Message);
+            }
 
             _outcomes[trigger.TriggerId] = outcome;
 
-            if (outcome.Kind == RunOutcomeKind.Completed && outcome.AgentReply is not null)
+            if (outcome.Kind == RunOutcomeKind.Completed)
             {
                 _status = AgentStatus.Idle;
 
-                await Workflow.ExecuteActivityAsync(
-                    (McpActivities a) => a.NotifyUserAsync(init.AgentId, outcome.AgentReply.Text),
-                    NotifyOpts);
-            }
-            else
-            {
-                _status = AgentStatus.Idle;
+                if (outcome.AgentReply is not null)
+                {
+                    try
+                    {
+                        await Workflow.ExecuteActivityAsync(
+                            (McpActivities a) => a.NotifyUserAsync(init.AgentId, outcome.AgentReply.Text),
+                            NotifyOpts);
+                    }
+                    catch
+                    {
+                        // Don't fail the workflow if notification fails, just log it
+                        ActivityExecutionContext.Current.Logger.LogError("Failed to notify user for trigger {TriggerId}", trigger.TriggerId);
+                    }
+                }
             }
 
             _currentRunId = null;

@@ -46,12 +46,12 @@ public class AgentRunWorkflow
 
             if (decision.FinalAnswer is not null)
             {
-                return new RunOutcome(RunOutcomeKind.Completed, decision.FinalAnswer);
+                return new RunOutcome(RunOutcomeKind.Completed, decision.FinalAnswer, null);
             }
         }
 
         return new RunOutcome(
             RunOutcomeKind.Completed,
-            new FinalAnswer("I hit my step budget. Tell me what to focus on next.", null));
+            new FinalAnswer("I hit my step budget. Tell me what to focus on next.", null), null);
     }
 }

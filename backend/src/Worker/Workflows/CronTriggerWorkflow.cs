@@ -1,5 +1,4 @@
 using Temporalio.Workflows;
-using Worker.Extensions;
 using Worker.Models;
 
 namespace Worker.Workflows;
@@ -14,7 +13,7 @@ public class CronTriggerWorkflow
         var coord = Workflow.GetExternalWorkflowHandle(coordId);
 
         var trigger = new TriggerEvent(
-            TriggerId: $"cron-{Workflow.UtcNow.ToUnixTimeMilliseconds()}",
+            TriggerId: Guid.NewGuid(),
             Source: TriggerSource.Cron,
             AgentId: input.AgentId,
             Text: "scheduled tick");

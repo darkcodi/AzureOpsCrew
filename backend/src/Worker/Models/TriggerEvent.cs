@@ -1,7 +1,7 @@
 namespace Worker.Models;
 
 public record TriggerEvent(
-    string TriggerId,
+    Guid TriggerId,
     TriggerSource Source,
     Guid AgentId,
     string? Text = null);

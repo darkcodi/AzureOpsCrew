@@ -2,4 +2,5 @@ namespace Worker.Models;
 
 public record RunOutcome(
     RunOutcomeKind Kind,
-    FinalAnswer? AgentReply);
+    FinalAnswer? AgentReply,
+    string? Error);

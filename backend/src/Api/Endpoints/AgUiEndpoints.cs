@@ -77,8 +77,8 @@ public static class ChannelAgUiEndpoints
             // await EnsureCronScheduleAsync(client, agentId);
 
             var trigger = new TriggerEvent(
-                TriggerId: $"agui-dm-{Guid.NewGuid()}",
-                Source: TriggerSource.UserMessage,
+                TriggerId: Guid.NewGuid(),
+                Source: TriggerSource.Dm,
                 AgentId: agentId,
                 Text: lastMessage?.Text);
 
