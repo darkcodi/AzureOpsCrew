@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
 
-public sealed class AocMessageConfig : IEntityTypeConfiguration<AocMessage>
+public sealed class AocMessageEntityTypeConfiguration : IEntityTypeConfiguration<AocMessage>
 {
     public void Configure(EntityTypeBuilder<AocMessage> builder)
     {

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
 
-public sealed class AocDmConfig : IEntityTypeConfiguration<AocDm>
+public sealed class AocDmEntityTypeConfiguration : IEntityTypeConfiguration<AocDm>
 {
     public void Configure(EntityTypeBuilder<AocDm> builder)
     {

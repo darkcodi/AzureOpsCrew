@@ -3,13 +3,14 @@ using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.LLMOutputs;
-using AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using AgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.AgentEntityTypeConfiguration;
 using ChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ChannelEntityTypeConfiguration;
 using AiProviderConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ProviderEntityTypeConfiguration;
 using PendingRegistrationConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.PendingRegistrationEntityTypeConfiguration;
 using UserConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.UserEntityTypeConfiguration;
+using AocMessageConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.AocMessageEntityTypeConfiguration;
+using AocDmConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.AocDmEntityTypeConfiguration;
 using LlmOutputConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.LlmOutputEntityTypeConfiguration;
 using AiProvider = AzureOpsCrew.Domain.Providers.Provider;
 
