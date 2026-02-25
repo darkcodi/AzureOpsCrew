@@ -2,7 +2,7 @@ using AzureOpsCrew.Domain.Agents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
+namespace AzureOpsCrew.Infrastructure.Db.EntityTypes;
 
 public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agent>
 {

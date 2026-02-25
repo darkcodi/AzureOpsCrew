@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.Extensions.AI;
 
-namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
+namespace AzureOpsCrew.Infrastructure.Db.EntityTypes;
 
 public sealed class LlmChatMessageEntityTypeConfiguration : IEntityTypeConfiguration<LlmChatMessage>
 {

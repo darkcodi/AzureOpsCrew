@@ -2,13 +2,13 @@ using AzureOpsCrew.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
+namespace AzureOpsCrew.Infrastructure.Db.EntityTypes;
 
-public sealed class PendingRegistrationEntityTypeConfiguration : IEntityTypeConfiguration<PendingRegistration>
+public sealed class UserEntityTypeConfiguration : IEntityTypeConfiguration<User>
 {
-    public void Configure(EntityTypeBuilder<PendingRegistration> builder)
+    public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.ToTable("PendingRegistration");
+        builder.ToTable("AppUser");
 
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id)
@@ -25,31 +25,22 @@ public sealed class PendingRegistrationEntityTypeConfiguration : IEntityTypeConf
         builder.HasIndex(x => x.NormalizedEmail)
             .IsUnique();
 
-        builder.Property(x => x.DisplayName)
-            .IsRequired()
-            .HasMaxLength(120);
-
         builder.Property(x => x.PasswordHash)
             .IsRequired()
             .HasMaxLength(512);
 
-        builder.Property(x => x.VerificationCodeHash)
+        builder.Property(x => x.DisplayName)
             .IsRequired()
-            .HasMaxLength(512);
+            .HasMaxLength(120);
 
-        builder.Property(x => x.VerificationCodeExpiresAt)
-            .IsRequired();
-
-        builder.Property(x => x.VerificationCodeSentAt)
-            .IsRequired();
-
-        builder.Property(x => x.VerificationAttempts)
+        builder.Property(x => x.IsActive)
             .IsRequired()
-            .HasDefaultValue(0);
+            .HasDefaultValue(true);
 
         builder.Property(x => x.DateCreated)
             .IsRequired();
 
         builder.Property(x => x.DateModified);
+        builder.Property(x => x.LastLoginAt);
     }
 }

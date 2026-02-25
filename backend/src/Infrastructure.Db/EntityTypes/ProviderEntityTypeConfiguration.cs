@@ -2,7 +2,7 @@ using AzureOpsCrew.Domain.Providers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
+namespace AzureOpsCrew.Infrastructure.Db.EntityTypes;
 
 public sealed class ProviderEntityTypeConfiguration : IEntityTypeConfiguration<Provider>
 {
