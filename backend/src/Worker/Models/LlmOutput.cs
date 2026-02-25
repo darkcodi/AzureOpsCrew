@@ -4,4 +4,4 @@ namespace Worker.Models;
 
 public record LlmOutput(
     FinalAnswer? FinalAnswer,
-    List<AocFunctionCallContent> ToolCalls);
+    List<AocFunctionCallContent>? ToolCalls);

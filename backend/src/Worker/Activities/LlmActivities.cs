@@ -102,7 +102,7 @@ public class LlmActivities
             return new LlmOutput(null, toolCalls);
         }
 
-        return new LlmOutput(new FinalAnswer(textResponse, lastUsageContent), new());
+        return new LlmOutput(new FinalAnswer(textResponse, lastUsageContent), null);
     }
 
     static JsonElement Schema(string json)

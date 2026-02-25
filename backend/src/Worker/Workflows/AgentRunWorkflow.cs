@@ -32,7 +32,7 @@ public class AgentRunWorkflow
                 (LlmActivities a) => a.LlmThinkAsync(agent, provider, userText, "", toolResults),
                 Options);
 
-            if (output.ToolCalls.Count > 0)
+            if (output.ToolCalls != null && output.ToolCalls.Count > 0)
             {
                 foreach (var call in output.ToolCalls)
                 {
