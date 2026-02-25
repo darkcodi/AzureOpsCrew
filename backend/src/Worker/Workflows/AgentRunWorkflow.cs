@@ -4,6 +4,7 @@ using Microsoft.Extensions.AI;
 using Temporalio.Workflows;
 using Worker.Activities;
 using Worker.Models;
+using Worker.Models.Content;
 
 namespace Worker.Workflows;
 
@@ -28,7 +29,19 @@ public class AgentRunWorkflow
         var userText = input.Trigger.Text ?? "";
 
         // ToDo: Add memory loading
-        var messages = new List<ChatMessage>() { new ChatMessage(ChatRole.User, userText) };
+        var messages = new List<AocLlmChatMessage>()
+        {
+            new AocLlmChatMessage
+            {
+                Role = ChatRole.User,
+                AuthorName = "User",
+                CreatedAt = input.Trigger.CreatedAt,
+                Content = new AocTextContent
+                {
+                    Text = userText,
+                },
+            },
+        };
 
         const int maxSteps = 6;
 
@@ -37,7 +50,6 @@ public class AgentRunWorkflow
             var newChatMessages = await Workflow.ExecuteActivityAsync(
                 (LlmActivities a) => a.LlmThinkAsync(agent, provider, messages, tools),
                 Options);
-            newChatMessages = ConcatMessages(newChatMessages);
 
             var llmOutputs = ToLllmOutputs(input, newChatMessages);
             await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.SaveLlmOutputBulk(llmOutputs), Options);
@@ -59,32 +71,6 @@ public class AgentRunWorkflow
         return new RunOutcome(
             RunOutcomeKind.Completed,
             new FinalAnswer("I hit my step budget. Tell me what to focus on next.", null), null);
-    }
-
-    private static List<ChatMessage> ConcatMessages(List<ChatMessage> messages)
-    {
-        var chatMessages = new List<ChatMessage>();
-        var lastChatMessage = messages.FirstOrDefault();
-        if (lastChatMessage == null)
-        {
-            return chatMessages;
-        }
-
-        // Concat adjusent TextContent into one ChatMessage, so that we can have a better display in UI and also better token usage.
-        foreach (var message in messages)
-        {
-            if (message.Role == ChatRole.Assistant)
-            {
-                var text = string.Join("", message.Contents.OfType<TextContent>().Select(c => c.Text));
-                chatMessages.Add(new ChatMessage(message.Role, text));
-            }
-            else
-            {
-                chatMessages.Add(message);
-            }
-        }
-
-        return chatMessages;
     }
 
     private static List<LlmOutput> ToLllmOutputs(RunInput input, IList<ChatMessage> chatMessages)
