@@ -1,6 +1,6 @@
 namespace Worker.Models.Content;
 
-public class AocUsageContent : AocAiContent
+public sealed class AocUsageContent : AocAiContent
 {
     public long? InputTokenCount { get; set; }
     public long? OutputTokenCount { get; set; }

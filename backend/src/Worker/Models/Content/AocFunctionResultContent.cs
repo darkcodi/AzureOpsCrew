@@ -1,7 +1,7 @@
 namespace Worker.Models.Content;
 
-public class AocFunctionResultContent : AocAiContent
+public sealed class AocFunctionResultContent : AocAiContent
 {
-    public string? CallId { get; set; }
+    public string CallId { get; set; } = string.Empty;
     public object? Result { get; set; }
 }

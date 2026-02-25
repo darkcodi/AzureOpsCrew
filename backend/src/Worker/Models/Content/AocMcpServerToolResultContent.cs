@@ -1,7 +1,7 @@
 namespace Worker.Models.Content;
 
-public class AocMcpServerToolResultContent : AocAiContent
+public sealed class AocMcpServerToolResultContent : AocAiContent
 {
-    public string? CallId { get; set; }
+    public string CallId { get; set; } = string.Empty;
     public List<AocAiContent>? Output { get; set; }
 }

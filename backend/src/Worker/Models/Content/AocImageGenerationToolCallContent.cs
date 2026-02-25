@@ -1,6 +1,6 @@
 namespace Worker.Models.Content;
 
-public class AocImageGenerationToolCallContent : AocAiContent
+public sealed class AocImageGenerationToolCallContent : AocAiContent
 {
     public string? ImageId { get; set; }
 }

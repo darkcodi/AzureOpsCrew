@@ -1,6 +1,6 @@
 namespace Worker.Models.Content;
 
-public class AocHostedVectorStoreContent : AocAiContent
+public sealed class AocHostedVectorStoreContent : AocAiContent
 {
-    public string? VectorStoreId { get; set; }
+    public string VectorStoreId { get; set; } = string.Empty;
 }

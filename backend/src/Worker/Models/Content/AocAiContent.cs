@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.AI;
 using Serilog;
 
@@ -5,6 +6,27 @@ namespace Worker.Models.Content;
 
 #pragma warning disable MEAI001
 
+[JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
+[JsonDerivedType(typeof(AocCodeInterpreterToolCallContent), nameof(AocCodeInterpreterToolCallContent))]
+[JsonDerivedType(typeof(AocCodeInterpreterToolResultContent), nameof(AocCodeInterpreterToolResultContent))]
+[JsonDerivedType(typeof(AocDataContent), nameof(AocDataContent))]
+[JsonDerivedType(typeof(AocErrorContent), nameof(AocErrorContent))]
+[JsonDerivedType(typeof(AocFunctionApprovalRequestContent), nameof(AocFunctionApprovalRequestContent))]
+[JsonDerivedType(typeof(AocFunctionApprovalResponseContent), nameof(AocFunctionApprovalResponseContent))]
+[JsonDerivedType(typeof(AocFunctionCallContent), nameof(AocFunctionCallContent))]
+[JsonDerivedType(typeof(AocFunctionResultContent), nameof(AocFunctionResultContent))]
+[JsonDerivedType(typeof(AocHostedFileContent), nameof(AocHostedFileContent))]
+[JsonDerivedType(typeof(AocHostedVectorStoreContent), nameof(AocHostedVectorStoreContent))]
+[JsonDerivedType(typeof(AocImageGenerationToolCallContent), nameof(AocImageGenerationToolCallContent))]
+[JsonDerivedType(typeof(AocImageGenerationToolResultContent), nameof(AocImageGenerationToolResultContent))]
+[JsonDerivedType(typeof(AocMcpServerToolApprovalRequestContent), nameof(AocMcpServerToolApprovalRequestContent))]
+[JsonDerivedType(typeof(AocMcpServerToolApprovalResponseContent), nameof(AocMcpServerToolApprovalResponseContent))]
+[JsonDerivedType(typeof(AocMcpServerToolCallContent), nameof(AocMcpServerToolCallContent))]
+[JsonDerivedType(typeof(AocMcpServerToolResultContent), nameof(AocMcpServerToolResultContent))]
+[JsonDerivedType(typeof(AocTextContent), nameof(AocTextContent))]
+[JsonDerivedType(typeof(AocTextReasoningContent), nameof(AocTextReasoningContent))]
+[JsonDerivedType(typeof(AocUriContent), nameof(AocUriContent))]
+[JsonDerivedType(typeof(AocUsageContent), nameof(AocUsageContent))]
 public abstract class AocAiContent
 {
     public static AocAiContent? FromAiContent(AIContent content)
@@ -138,22 +160,12 @@ public abstract class AocAiContent
             case UsageContent c:
                 return new AocUsageContent
                 {
-                    InputTokenCount = c.Details?.InputTokenCount,
-                    OutputTokenCount = c.Details?.OutputTokenCount,
-                    TotalTokenCount = c.Details?.TotalTokenCount,
-                    CachedInputTokenCount = c.Details?.CachedInputTokenCount,
-                    ReasoningTokenCount = c.Details?.ReasoningTokenCount,
-                    AdditionalCounts = c.Details?.AdditionalCounts?.ToDictionary(x => x.Key, x => x.Value)
-                };
-            case UserInputRequestContent c:
-                return new AocUserInputRequestContent
-                {
-                    Id = c.Id,
-                };
-            case UserInputResponseContent c:
-                return new AocUserInputResponseContent
-                {
-                    Id = c.Id,
+                    InputTokenCount = c.Details.InputTokenCount,
+                    OutputTokenCount = c.Details.OutputTokenCount,
+                    TotalTokenCount = c.Details.TotalTokenCount,
+                    CachedInputTokenCount = c.Details.CachedInputTokenCount,
+                    ReasoningTokenCount = c.Details.ReasoningTokenCount,
+                    AdditionalCounts = c.Details.AdditionalCounts?.ToDictionary(x => x.Key, x => x.Value)
                 };
             default:
             {
@@ -163,21 +175,21 @@ public abstract class AocAiContent
         }
     }
 
-    public static AIContent ToAiContent(AocAiContent content)
+    public AIContent? ToAiContent()
     {
-        switch (content)
+        switch (this)
         {
             case AocCodeInterpreterToolCallContent c:
                 return new CodeInterpreterToolCallContent
                 {
                     CallId = c.CallId,
-                    Inputs = c.Inputs?.Select(ToAiContent).ToList() ?? new List<AIContent>(),
+                    Inputs = c.Inputs.Select(x => x.ToAiContent()).Where(x => x != null).Select(x => x!).ToList(),
                 };
             case AocCodeInterpreterToolResultContent c:
                 return new CodeInterpreterToolResultContent
                 {
                     CallId = c.CallId,
-                    Outputs = c.Outputs?.Select(ToAiContent).ToList() ?? new List<AIContent>(),
+                    Outputs = c.Outputs.Select(x => x.ToAiContent()).Where(x => x != null).Select(x => x!).ToList(),
                 };
             case AocDataContent c:
                 return new DataContent(c.Uri, c.MediaType);
@@ -188,12 +200,28 @@ public abstract class AocAiContent
                     Details = c.Details,
                 };
             case AocFunctionApprovalRequestContent c:
-                return new FunctionApprovalRequestContent(c.Id, ToAiContent(c.FunctionCall) as FunctionCallContent);
+            {
+                var functionCallContent = c.FunctionCall?.ToAiContent() as FunctionCallContent;
+                if (functionCallContent == null)
+                {
+                    Log.Warning("FunctionApprovalRequestContent with id {Id} has invalid FunctionCallContent", c.Id);
+                    return null;
+                }
+                return new FunctionApprovalRequestContent(c.Id, functionCallContent);
+            }
             case AocFunctionApprovalResponseContent c:
-                return new FunctionApprovalResponseContent(c.Id, c.Approved, ToAiContent(c.FunctionCall) as FunctionCallContent)
+            {
+                var functionCallContent = c.FunctionCall?.ToAiContent() as FunctionCallContent;
+                if (functionCallContent == null)
+                {
+                    Log.Warning("FunctionApprovalRequestContent with id {Id} has invalid FunctionCallContent", c.Id);
+                    return null;
+                }
+                return new FunctionApprovalResponseContent(c.Id, c.Approved, functionCallContent)
                 {
                     Reason = c.Reason,
                 };
+            }
             case AocFunctionCallContent c:
                 return new FunctionCallContent(c.CallId, c.Name, c.Arguments)
                 {
@@ -218,10 +246,18 @@ public abstract class AocAiContent
                 return new ImageGenerationToolResultContent
                 {
                     ImageId = c.ImageId,
-                    Outputs = c.Outputs?.Select(ToAiContent).ToList() ?? new List<AIContent>(),
+                    Outputs = c.Outputs?.Select(x => x.ToAiContent()).Where(x => x != null).Select(x => x!).ToList(),
                 };
             case AocMcpServerToolApprovalRequestContent c:
-                return new McpServerToolApprovalRequestContent(c.Id, ToAiContent(c.ToolCall) as McpServerToolCallContent);
+            {
+                var toolCallContent = c.ToolCall?.ToAiContent() as McpServerToolCallContent;
+                if (toolCallContent == null)
+                {
+                    Log.Warning("McpServerToolApprovalRequestContent with id {Id} has invalid McpServerToolCallContent", c.Id);
+                    return null;
+                }
+                return new McpServerToolApprovalRequestContent(c.Id, toolCallContent);
+            }
             case AocMcpServerToolApprovalResponseContent c:
                 return new McpServerToolApprovalResponseContent(c.Id, c.Approved);
             case AocMcpServerToolCallContent c:
@@ -232,7 +268,7 @@ public abstract class AocAiContent
             case AocMcpServerToolResultContent c:
                 return new McpServerToolResultContent(c.CallId)
                 {
-                    Output = c.Output?.Select(ToAiContent).ToList() ?? new List<AIContent>(),
+                    Output = c.Output?.Select(x => x.ToAiContent()).Where(x => x != null).Select(x => x!).ToList(),
                 };
             case AocTextContent c:
                 return new TextContent(c.Text);
@@ -244,6 +280,10 @@ public abstract class AocAiContent
             case AocUriContent c:
                 return new UriContent(c.Uri, c.MediaType);
             case AocUsageContent c:
+            {
+                var additionalCounts = c.AdditionalCounts != null
+                    ? new AdditionalPropertiesDictionary<long>(c.AdditionalCounts)
+                    : null;
                 return new UsageContent
                 {
                     Details = new UsageDetails
@@ -253,15 +293,12 @@ public abstract class AocAiContent
                         TotalTokenCount = c.TotalTokenCount,
                         CachedInputTokenCount = c.CachedInputTokenCount,
                         ReasoningTokenCount = c.ReasoningTokenCount,
-                        AdditionalCounts = new AdditionalPropertiesDictionary<long>(c.AdditionalCounts),
+                        AdditionalCounts = additionalCounts,
                     }
                 };
-            // case AocUserInputRequestContent c:
-            //     return new UserInputRequestContent(c.Id);
-            // case AocUserInputResponseContent c:
-            //     return new UserInputResponseContent(c.Id);
+            }
             default:
-                throw new InvalidOperationException($"Unknown AocAiContent type {content.GetType().Name}");
+                throw new InvalidOperationException($"Unknown AocAiContent type {GetType().Name}");
         }
     }
 }
