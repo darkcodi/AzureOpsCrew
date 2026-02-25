@@ -27,7 +27,9 @@ var services = new ServiceCollection();
 services.AddSingleton(configuration);
 services.AddDatabase(configuration);
 services.AddProviderFacades();
-services.AddTransient<AgentActivities>();
+services.AddTransient<DatabaseActivities>();
+services.AddTransient<LlmActivities>();
+services.AddTransient<McpActivities>();
 
 // Build the service provider
 var serviceProvider = services.BuildServiceProvider();
@@ -52,19 +54,19 @@ Console.CancelKeyPress += (_, eventArgs) =>
     eventArgs.Cancel = true;
 };
 
-// Create an activity instance since we have instance activities. If we had
-// all static activities, we could just reference those directly.
-var activities = serviceProvider.GetRequiredService<AgentActivities>();
+var databaseActivities = serviceProvider.GetRequiredService<DatabaseActivities>();
+var llmActivities = serviceProvider.GetRequiredService<LlmActivities>();
+var mcpActivities = serviceProvider.GetRequiredService<McpActivities>();
 
 // Create worker with the activity and workflow registered
 using var worker = new TemporalWorker(
     client,
     new TemporalWorkerOptions("aoc-agent-task-queue")
-        .AddActivity(activities.LoadAgentAsync)
-        .AddActivity(activities.LoadProviderAsync)
-        .AddActivity(activities.AgentThinkAsync)
-        .AddActivity(activities.CallMcpAsync)
-        .AddActivity(activities.NotifyUserAsync)
+        .AddActivity(databaseActivities.LoadAgentAsync)
+        .AddActivity(databaseActivities.LoadProviderAsync)
+        .AddActivity(llmActivities.LlmThinkAsync)
+        .AddActivity(mcpActivities.CallMcpAsync)
+        .AddActivity(mcpActivities.NotifyUserAsync)
         .AddWorkflow<AgentCoordinatorWorkflow>()
         .AddWorkflow<AgentRunWorkflow>()
         .AddWorkflow<CronTriggerWorkflow>()

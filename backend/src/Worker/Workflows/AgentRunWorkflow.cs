@@ -18,8 +18,8 @@ public class AgentRunWorkflow
     {
         var agentId = input.AgentId;
 
-        var agent = await Workflow.ExecuteActivityAsync((AgentActivities a) => a.LoadAgentAsync(agentId), Options);
-        var provider = await Workflow.ExecuteActivityAsync((AgentActivities a) => a.LoadProviderAsync(agent.ProviderId), Options);
+        var agent = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadAgentAsync(agentId), Options);
+        var provider = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadProviderAsync(agent.ProviderId), Options);
 
         var toolResults = new List<ToolResult>();
         var userText = input.Trigger.Text ?? "";
@@ -29,7 +29,7 @@ public class AgentRunWorkflow
         for (int step = 0; step < maxSteps; step++)
         {
             var decision = await Workflow.ExecuteActivityAsync(
-                (AgentActivities a) => a.AgentThinkAsync(agent, provider, userText, "", toolResults),
+                (LlmActivities a) => a.LlmThinkAsync(agent, provider, userText, "", toolResults),
                 Options);
 
             if (decision.ToolCalls.Count > 0)
@@ -37,7 +37,7 @@ public class AgentRunWorkflow
                 foreach (var call in decision.ToolCalls)
                 {
                     var res = await Workflow.ExecuteActivityAsync(
-                        (AgentActivities a) => a.CallMcpAsync(call),
+                        (McpActivities a) => a.CallMcpAsync(call),
                         Options);
                     toolResults.Add(res);
                 }

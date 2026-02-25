@@ -2,8 +2,6 @@ using System.Text.Json;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
-using AzureOpsCrew.Infrastructure.Db;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Serilog;
 using Temporalio.Activities;
@@ -12,39 +10,17 @@ using Worker.Models.Content;
 
 namespace Worker.Activities;
 
-public class AgentActivities
+public class LlmActivities
 {
-    private readonly AzureOpsCrewContext _context;
     private readonly IProviderFacadeResolver _providerFactory;
 
-    public AgentActivities(AzureOpsCrewContext context, IProviderFacadeResolver providerFactory)
+    public LlmActivities(IProviderFacadeResolver providerFactory)
     {
-        _context = context;
         _providerFactory = providerFactory;
     }
 
     [Activity]
-    public async Task<Agent> LoadAgentAsync(Guid agentId)
-    {
-        var agent = await _context.Agents.FirstOrDefaultAsync(a => a.Id == agentId);
-        if (agent is null)
-            throw new Exception($"Agent not found: {agentId}");
-
-        return agent;
-    }
-
-    [Activity]
-    public async Task<Provider> LoadProviderAsync(Guid providerId)
-    {
-        var provider = await _context.Providers.FirstOrDefaultAsync(p => p.Id == providerId);
-        if (provider is null)
-            throw new Exception($"Provider not found: {providerId}");
-
-        return provider;
-    }
-
-    [Activity]
-    public async Task<NextStepDecision> AgentThinkAsync(
+    public async Task<NextStepDecision> LlmThinkAsync(
         Agent agent,
         Provider provider,
         string userText,
@@ -119,19 +95,6 @@ public class AgentActivities
         {
             return new NextStepDecision(new FinalAnswer("TODO#47", null), new());
         }
-    }
-
-    [Activity]
-    public Task<ToolResult> CallMcpAsync(AocFunctionCallContent call)
-    {
-        return Task.FromResult(new ToolResult("DONE", IsError: false));
-    }
-
-    [Activity]
-    public Task NotifyUserAsync(Guid agentId, string message)
-    {
-        Log.Information($"[NotifyUser] agent={agentId} message={message}");
-        return Task.CompletedTask;
     }
 
     static JsonElement Schema(string json)
