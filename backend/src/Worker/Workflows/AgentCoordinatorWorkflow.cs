@@ -104,7 +104,7 @@ public class AgentCoordinatorWorkflow
             IsHidden = true,
             Role = ChatRole.System,
             CreatedAt = Workflow.UtcNow,
-            ContentJson = JsonSerializer.Serialize(AocAiContentDto.FromAocAiContent(new AocRunStart { RunId = _currentRunId!, ThreadId = _agentId.ToString() })),
+            ContentJson = JsonSerializer.Serialize(new AocRunStart { RunId = _currentRunId!, ThreadId = _agentId.ToString() }),
         };
         // ToDo: Do not silently swallow the exception here
         await ResultWrapper.Wrap(() => Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(startTaskMessage), Options));
@@ -120,7 +120,7 @@ public class AgentCoordinatorWorkflow
             IsHidden = true,
             Role = ChatRole.System,
             CreatedAt = Workflow.UtcNow,
-            ContentJson = JsonSerializer.Serialize(AocAiContentDto.FromAocAiContent(new AocRunFinished { RunId = _currentRunId!, ThreadId = _agentId.ToString(), Result = JsonElement.Parse(JsonSerializer.Serialize(outcome)) })),
+            ContentJson = JsonSerializer.Serialize(new AocRunFinished { RunId = _currentRunId!, ThreadId = _agentId.ToString(), Result = JsonElement.Parse(JsonSerializer.Serialize(outcome)) }),
         };
         // ToDo: Do not silently swallow the exception here
         await ResultWrapper.Wrap(() => Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(endTaskMessage), Options));
@@ -136,7 +136,7 @@ public class AgentCoordinatorWorkflow
             IsHidden = true,
             Role = ChatRole.System,
             CreatedAt = Workflow.UtcNow,
-            ContentJson = JsonSerializer.Serialize(AocAiContentDto.FromAocAiContent(new AocRunError { Message = error })),
+            ContentJson = JsonSerializer.Serialize(new AocRunError { Message = error }),
         };
         // ToDo: Do not silently swallow the exception here
         await ResultWrapper.Wrap(() => Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(errorTaskMessage), Options));

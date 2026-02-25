@@ -1,4 +1,3 @@
-using System.Text.Json;
 using AzureOpsCrew.Domain.Chats;
 using Microsoft.Extensions.AI;
 
@@ -51,20 +50,25 @@ public class AocLlmChatMessage
             Role = Role,
             AuthorName = AuthorName,
             CreatedAt = CreatedAt,
-            ContentJson = JsonSerializer.Serialize(ContentDto),
+            ContentType = ContentDto.ContentType.ToString(),
+            ContentJson = ContentDto.Content,
         };
     }
 
     public static AocLlmChatMessage FromDomain(LlmChatMessage domainMessage)
     {
-        var content = JsonSerializer.Deserialize<AocAiContentDto>(domainMessage.ContentJson) ?? new AocAiContentDto();
+        var contentDto = new AocAiContentDto
+        {
+            Content = domainMessage.ContentJson,
+            ContentType = Enum.Parse<AocAiContentType>(domainMessage.ContentType),
+        };
         return new AocLlmChatMessage
         {
             Id = domainMessage.Id,
             Role = domainMessage.Role,
             AuthorName = domainMessage.AuthorName,
             CreatedAt = domainMessage.CreatedAt,
-            ContentDto = content,
+            ContentDto = contentDto,
         };
     }
 }

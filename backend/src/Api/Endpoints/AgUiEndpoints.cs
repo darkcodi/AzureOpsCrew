@@ -222,7 +222,11 @@ public static class ChannelAgUiEndpoints
 
     private static BaseEvent? MapToBaseEvent(LlmChatMessage message)
     {
-        var aiContentDto = JsonSerializer.Deserialize<AocAiContentDto>(message.ContentJson);
+        var aiContentDto = new AocAiContentDto
+        {
+            Content = message.ContentJson,
+            ContentType = Enum.Parse<AocAiContentType>(message.ContentType, ignoreCase: true),
+        };
         var aiContent = aiContentDto?.ToAocAiContent();
         switch (aiContent)
         {

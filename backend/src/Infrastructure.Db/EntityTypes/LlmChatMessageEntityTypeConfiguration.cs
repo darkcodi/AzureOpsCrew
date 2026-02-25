@@ -44,6 +44,11 @@ public sealed class LlmChatMessageEntityTypeConfiguration : IEntityTypeConfigura
         builder.Property(m => m.ContentJson)
                .IsRequired();
 
+        builder.Property(m => m.ContentType)
+               .IsRequired()
+               .HasMaxLength(100)
+               .HasDefaultValue(string.Empty);
+
         builder.HasIndex(m => m.AgentId);
         builder.HasIndex(m => m.CreatedAt);
     }
