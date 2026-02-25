@@ -62,6 +62,7 @@ public class AgentCoordinatorWorkflow
             var runInput = new RunInput(_currentRunId, _agentId, _currentTrigger);
 
             RunOutcome? outcome;
+            bool hasErrored = false;
             try
             {
                 outcome = await Workflow.ExecuteChildWorkflowAsync(
@@ -80,12 +81,19 @@ public class AgentCoordinatorWorkflow
                     ? new RunOutcome(RunOutcomeKind.Canceled, e.Message ?? "Run was canceled.")
                     : new RunOutcome(RunOutcomeKind.Failed, e.Message ?? "An error occurred during agent execution.");
                 await InsertRunErrorMessage(outcome.Error!);
+                hasErrored = true;
             }
 
             _outcomes[_currentTrigger.TriggerId] = outcome;
             _status = outcome.Kind == RunOutcomeKind.Failed ? AgentStatus.Failed : AgentStatus.Idle;
             _error = outcome.Error;
-            await InsertRunFinishedMessage(outcome);
+
+            // Only send RUN_FINISHED if we haven't already sent RUN_ERROR
+            // The @ag-ui/core library rejects any events after RUN_ERROR
+            if (!hasErrored)
+            {
+                await InsertRunFinishedMessage(outcome);
+            }
 
             _currentRunId = null;
 

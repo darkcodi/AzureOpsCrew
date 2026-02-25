@@ -226,7 +226,9 @@ public static class ChannelAgUiEndpoints
                 if (baseEvent != null)
                 {
                     yield return baseEvent;
-                    if (baseEvent is RunFinishedEvent)
+                    // End the stream on RUN_FINISHED or RUN_ERROR
+                    // RUN_ERROR is now terminal since we don't send RUN_FINISHED after errors
+                    if (baseEvent is RunFinishedEvent or RunErrorEvent)
                     {
                         yield break;
                     }
