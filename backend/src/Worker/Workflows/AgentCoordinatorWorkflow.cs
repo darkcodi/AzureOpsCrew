@@ -21,6 +21,7 @@ public class AgentCoordinatorWorkflow
     private AgentStatus _status = AgentStatus.Idle;
     private Guid _agentId = Guid.Empty;
     private string? _currentRunId;
+    private TriggerEvent? _currentTrigger;
     private long _runNumber;
     private string? _error;
     private readonly Dictionary<Guid, RunOutcome> _outcomes = new();
@@ -47,15 +48,16 @@ public class AgentCoordinatorWorkflow
             if (_status == AgentStatus.Paused || _status == AgentStatus.Failed)
                 continue;
 
-            var trigger = _triggersQueue.Dequeue();
+            _currentTrigger = _triggersQueue.Dequeue();
 
             _status = AgentStatus.Running;
             _runNumber++;
-            _currentRunId = $"run-{trigger.Source.ToString().ToLowerInvariant()}-{trigger.TriggerId:N}-num-{_runNumber}";
+            _currentRunId = $"run-{_currentTrigger.Source.ToString().ToLowerInvariant()}-{_currentTrigger.TriggerId:N}-num-{_runNumber}";
             _error = null;
             await InsertRunStartMessage();
+            await InsertRunTriggerMessage();
 
-            var runInput = new RunInput(_currentRunId, _agentId, trigger);
+            var runInput = new RunInput(_currentRunId, _agentId, _currentTrigger);
 
             RunOutcome? outcome;
             try
@@ -70,7 +72,7 @@ public class AgentCoordinatorWorkflow
             }
             catch (Exception e)
             {
-                ActivityExecutionContext.Current.Logger.LogError("Run failed for trigger {TriggerId} with error: {Error}", trigger.TriggerId, e.ToString());
+                ActivityExecutionContext.Current.Logger.LogError("Run failed for trigger {TriggerId} with error: {Error}", _currentTrigger.TriggerId, e.ToString());
                 var isCanceledException = TemporalException.IsCanceledException(e);
                 outcome = isCanceledException
                     ? new RunOutcome(RunOutcomeKind.Canceled, e.Message ?? "Run was canceled.")
@@ -78,7 +80,7 @@ public class AgentCoordinatorWorkflow
                 await InsertRunErrorMessage(outcome.Error!);
             }
 
-            _outcomes[trigger.TriggerId] = outcome;
+            _outcomes[_currentTrigger.TriggerId] = outcome;
             _currentRunId = null;
             _status = outcome.Kind == RunOutcomeKind.Failed ? AgentStatus.Failed : AgentStatus.Idle;
             _error = outcome.Error;
@@ -107,8 +109,24 @@ public class AgentCoordinatorWorkflow
             ContentType = LlmMessageContentType.RunStart,
             ContentJson = JsonSerializer.Serialize(new AocRunStart { RunId = _currentRunId!, ThreadId = _agentId.ToString() }),
         };
-        // ToDo: Do not silently swallow the exception here
-        await ResultWrapper.Wrap(() => Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(startTaskMessage), Options));
+        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(startTaskMessage), Options);
+    }
+
+    private async Task InsertRunTriggerMessage()
+    {
+        var triggerMessage = new LlmChatMessage
+        {
+            Id = HashUtils.HashStringToGuid($"trigger-message-{_currentRunId!}-{_currentTrigger!.TriggerId}"),
+            AgentId = _agentId,
+            RunId = _currentRunId!,
+            IsHidden = false,
+            Role = _currentTrigger.Source == TriggerSource.Cron ? ChatRole.System : ChatRole.User,
+            AuthorName = _currentTrigger.Source == TriggerSource.Cron ? "SYSTEM" : "User",
+            CreatedAt = Workflow.UtcNow,
+            ContentType = LlmMessageContentType.TextContent,
+            ContentJson = JsonSerializer.Serialize(new AocTextContent { Text = _currentTrigger.Text ?? "" }),
+        };
+        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(triggerMessage), Options);
     }
 
     private async Task InsertRunFinishedMessage(RunOutcome outcome)
@@ -124,8 +142,7 @@ public class AgentCoordinatorWorkflow
             ContentType = LlmMessageContentType.RunFinished,
             ContentJson = JsonSerializer.Serialize(new AocRunFinished { RunId = _currentRunId!, ThreadId = _agentId.ToString(), Result = JsonElement.Parse(JsonSerializer.Serialize(outcome)) }),
         };
-        // ToDo: Do not silently swallow the exception here
-        await ResultWrapper.Wrap(() => Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(endTaskMessage), Options));
+        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(endTaskMessage), Options);
     }
 
     private async Task InsertRunErrorMessage(string error)
@@ -141,8 +158,7 @@ public class AgentCoordinatorWorkflow
             ContentType = LlmMessageContentType.RunError,
             ContentJson = JsonSerializer.Serialize(new AocRunError { Message = error }),
         };
-        // ToDo: Do not silently swallow the exception here
-        await ResultWrapper.Wrap(() => Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(errorTaskMessage), Options));
+        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(errorTaskMessage), Options);
     }
 
     // Fire-and-forget enqueue (cron trigger will use this)

@@ -23,20 +23,6 @@ public class AgentRunWorkflow
     {
         var agentId = input.AgentId;
 
-        var triggerMessage = new LlmChatMessage
-        {
-            Id = HashUtils.HashStringToGuid($"trigger-message-{input.Trigger.TriggerId}"),
-            AgentId = agentId,
-            RunId = input.RunId,
-            IsHidden = false,
-            Role = input.Trigger.Source == TriggerSource.Cron ? ChatRole.System : ChatRole.User,
-            AuthorName = input.Trigger.Source == TriggerSource.Cron ? "SYSTEM" : "User",
-            CreatedAt = input.Trigger.CreatedAt,
-            ContentType = LlmMessageContentType.TextContent,
-            ContentJson = JsonSerializer.Serialize(new AocTextContent { Text = input.Trigger.Text ?? "" }),
-        };
-        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(triggerMessage), Options);
-
         var agent = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadAgent(agentId), Options);
         var provider = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadProvider(agent.ProviderId), Options);
 
