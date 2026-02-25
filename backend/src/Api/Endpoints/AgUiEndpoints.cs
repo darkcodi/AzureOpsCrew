@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Domain.AgentServices;
@@ -10,14 +10,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using Serilog;
 using System.Text.Json;
-using AzureOpsCrew.Domain.Chats;
-using AzureOpsCrew.Domain.Utils;
-using Temporalio.Client;
-using Worker.Models;
-using Worker.Models.Content;
-using Worker.Workflows;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -25,58 +20,82 @@ public static class ChannelAgUiEndpoints
 {
     public static void MapAllAgUi(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/agents/{id}/agui", async (
-                [FromRoute(Name = "id")] Guid agentId,
-                [FromBody] RunAgentInput? input,
-                AzureOpsCrewContext dbContext,
-                HttpContext context,
-                CancellationToken cancellationToken) =>
+        const string toolHint =
+            " When you have tools available (showPipelineStatus, showWorkItems, showResourceInfo, showDeployment, showMetrics), " +
+            "use them proactively to present information visually instead of plain text. " +
+            "For example, show pipeline stages as a visual card, display work items in a list, or present metrics in a dashboard-style card.";
+
+        app.MapPost("/api/agents/{id}/agui", async ([FromRoute(Name = "id")] Guid agentId, [FromBody] RunAgentInput? input, IProviderFacadeResolver providerFactory, AzureOpsCrewContext dbContext, HttpContext context, CancellationToken cancellationToken) =>
         {
             if (input is null) return Results.BadRequest();
             Log.Information("Received AG-UI event for agent with id {AgentId} with threadId {ThreadId} and runId {RunId}", agentId, input.ThreadId, input.RunId);
-            Log.Information("Input: {Input}", JsonSerializer.Serialize(input));
+            Log.Information("Input: {Input}", JsonConvert.SerializeObject(input));
 
             var jsonOptions = context.RequestServices.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>();
             var jsonSerializerOptions = jsonOptions.Value.SerializerOptions;
-            var maxDate = await GetLastMessageTimestampAsync(agentId, dbContext, cancellationToken);
 
-            var userInput = input.Messages.AsChatMessages(jsonSerializerOptions).LastOrDefault()?.Text;
-
-            var client = await TemporalClient.ConnectAsync(new("localhost:7233"));
-
-            await AgentCoordinatorWorkflow.EnsureCoordinatorStartedAsync(client, agentId);
-            // await CronTriggerWorkflow.EnsureCronScheduleAsync(client, agentId);
+            var messages = input.Messages.AsChatMessages(jsonSerializerOptions);
+            var clientTools = input.Tools?.AsAITools().ToList();
 
             // Create run options with AG-UI context in AdditionalProperties
-            // var clientTools = input.Tools?.AsAITools().ToList();
-            // var runOptions = new ChatClientAgentRunOptions
-            // {
-            //     ChatOptions = new ChatOptions
-            //     {
-            //         Tools = clientTools,
-            //         AdditionalProperties = new AdditionalPropertiesDictionary
-            //         {
-            //             ["ag_ui_state"] = input.State,
-            //             ["ag_ui_context"] = input.Context?.Select(c => new KeyValuePair<string, string>(c.Description, c.Value)).ToArray(),
-            //             ["ag_ui_forwarded_properties"] = input.ForwardedProperties,
-            //             ["ag_ui_thread_id"] = input.ThreadId,
-            //             ["ag_ui_run_id"] = input.RunId
-            //         }
-            //     }
-            // };
+            var runOptions = new ChatClientAgentRunOptions
+            {
+                ChatOptions = new ChatOptions
+                {
+                    Tools = clientTools,
+                    AdditionalProperties = new AdditionalPropertiesDictionary
+                    {
+                        ["ag_ui_state"] = input.State,
+                        ["ag_ui_context"] = input.Context?.Select(c => new KeyValuePair<string, string>(c.Description, c.Value)).ToArray(),
+                        ["ag_ui_forwarded_properties"] = input.ForwardedProperties,
+                        ["ag_ui_thread_id"] = input.ThreadId,
+                        ["ag_ui_run_id"] = input.RunId
+                    }
+                }
+            };
+            Log.Information("RunOptions: {RunOptions}", JsonConvert.SerializeObject(runOptions));
 
-            var trigger = new TriggerEvent(
-                TriggerId: Guid.NewGuid(),
-                Source: TriggerSource.Dm,
-                CreatedAt: DateTime.UtcNow,
-                Text: userInput);
+            // Find Agent
+            var agent = dbContext.Set<Domain.Agents.Agent>().SingleOrDefault(a => a.Id == agentId);
+            if (agent is null)
+            {
+                Log.Warning("Unknown agent with id: {AgentId}", agentId);
+                return Results.BadRequest($"Unknown agent with id: {agentId}");
+            }
+            Log.Information("Found agent {AgentId}", agent.Id);
 
-            var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.CoordinatorWorkflowId(agentId));
-            await handle.SignalAsync(wf => wf.EnqueueAsync(trigger));
+            // Find Provider
+            var provider = dbContext.Set<Domain.Providers.Provider>().SingleOrDefault(p => p.Id == agent.ProviderId);
+            if (provider is null)
+            {
+                Log.Warning("Unknown provider with id: {ProviderId} for agent {AgentId}", agent.ProviderId, agent.Id);
+                return Results.BadRequest($"Unknown provider with id: {agent.ProviderId}");
+            }
+            Log.Information("Found provider {ProviderId} for agent {AgentId}", provider.Id, agent.Id);
 
-            var runEvents = GetDmEventsAsync(agentId, dbContext, maxDate, cancellationToken);
+            // Create Ai Agent
+            var providerService = providerFactory.GetService(provider.ProviderType);
+            var chatClient = providerService.CreateChatClient(provider, agent.Info.Model, cancellationToken);
+
+            var aiAgent = chatClient.AsAIAgent(
+                name: agent.Info.Name,
+                instructions: agent.Info.Prompt + toolHint);
+
+            // Run the agent and convert to AG-UI events
+            var events = aiAgent.RunStreamingAsync(
+                messages,
+                options: runOptions,
+                cancellationToken: cancellationToken)
+                .AsChatResponseUpdatesAsync()
+                .FilterServerToolsFromMixedToolInvocationsAsync(clientTools, cancellationToken)
+                .AsAGUIEventStreamAsync(
+                    input.ThreadId,
+                    input.RunId,
+                    jsonSerializerOptions,
+                    cancellationToken);
+
             var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
-            return new AGUIServerSentEventsResult(runEvents, sseLogger, jsonSerializerOptions);
+            return new AGUIServerSentEventsResult(events, sseLogger, jsonSerializerOptions);
         })
         .WithTags("AG-UI")
         .RequireAuthorization();
@@ -91,8 +110,9 @@ public static class ChannelAgUiEndpoints
             CancellationToken cancellationToken) =>
         {
             if (input is null) return Results.BadRequest();
+            var userId = http.User.GetRequiredUserId();
             Log.Information("Received AG-UI event for channel with id {ChannelId} with threadId {ThreadId} and runId {RunId}", channelId, input.ThreadId, input.RunId);
-            Log.Information("Input: {Input}", JsonSerializer.Serialize(input));
+            Log.Information("Input: {Input}", JsonConvert.SerializeObject(input));
 
             var jsonOptions = http.RequestServices.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>();
             var jsonSerializerOptions = jsonOptions.Value.SerializerOptions;
@@ -188,83 +208,6 @@ public static class ChannelAgUiEndpoints
         })
         .WithTags("AG-UI")
         .RequireAuthorization();
-    }
-
-    private static async Task<DateTime> GetLastMessageTimestampAsync(Guid agentId, AzureOpsCrewContext context, CancellationToken ct)
-    {
-        var lastMessage = await context.LlmChatMessages
-            .Where(m => m.AgentId == agentId)
-            .OrderByDescending(m => m.CreatedAt)
-            .FirstOrDefaultAsync(ct);
-        return lastMessage?.CreatedAt ?? DateTime.MinValue;
-    }
-
-    // Periodically (once in 1sec) pulls new events from DB related to the agent and yields them.
-    // ToDo: Replace with more efficient pub/sub mechanism
-    private static async IAsyncEnumerable<BaseEvent> GetDmEventsAsync(
-        Guid agentId,
-        AzureOpsCrewContext context,
-        DateTime maxDate,
-        [EnumeratorCancellation] CancellationToken ct)
-    {
-        var maxDateLocal = maxDate;
-        while (!ct.IsCancellationRequested)
-        {
-            var newMessages = await context.LlmChatMessages
-                .Where(m => m.AgentId == agentId && m.CreatedAt > maxDateLocal)
-                .OrderByDescending(m => m.CreatedAt)
-                .ToListAsync(ct);
-            foreach (var newMessage in newMessages)
-            {
-                if (newMessage.CreatedAt <= maxDateLocal)
-                    continue;
-
-                if (newMessage.CreatedAt > maxDateLocal)
-                    maxDateLocal = newMessage.CreatedAt;
-
-                var baseEvent = MapToBaseEvent(newMessage);
-                if (baseEvent != null)
-                {
-                    yield return baseEvent;
-                    // End the stream on RUN_FINISHED or RUN_ERROR
-                    // RUN_ERROR is now terminal since we don't send RUN_FINISHED after errors
-                    if (baseEvent is RunFinishedEvent or RunErrorEvent)
-                    {
-                        yield break;
-                    }
-                }
-            }
-
-            await ResultWrapper.Wrap(() => Task.Delay(TimeSpan.FromSeconds(1), ct));
-        }
-    }
-
-    private static BaseEvent? MapToBaseEvent(LlmChatMessage message)
-    {
-        var aiContentDto = new AocAiContentDto
-        {
-            Content = message.ContentJson,
-            ContentType = Enum.Parse<LlmMessageContentType>(message.ContentType.ToString(), ignoreCase: true),
-        };
-        var aiContent = aiContentDto?.ToAocAiContent();
-        switch (aiContent)
-        {
-            case AocRunStart runStart:
-                return new RunStartedEvent { RunId = runStart.RunId, ThreadId = runStart.ThreadId };
-            case AocRunFinished runFinished:
-                return new RunFinishedEvent { RunId = runFinished.RunId, ThreadId = runFinished.ThreadId, Result = runFinished.Result };
-            case AocRunError runError:
-                return new RunErrorEvent { Message = runError.Message };
-            case AocTextContent textContent:
-                return new TextMessageContentEvent { MessageId = message.Id.ToString(), Delta = textContent.Text };
-            case AocFunctionCallContent functionCallContent:
-                return new ToolCallStartEvent { ToolCallId = functionCallContent.CallId, ToolCallName = functionCallContent.Name };
-            case AocFunctionResultContent functionResultContent:
-                // ToDo: Maybe return ToolCallEndEvent?
-                return new ToolCallResultEvent { ToolCallId = functionResultContent.CallId, Content = functionResultContent.Result?.ToString() ?? "<null>" };
-            default:
-                return null;
-        }
     }
 }
 
