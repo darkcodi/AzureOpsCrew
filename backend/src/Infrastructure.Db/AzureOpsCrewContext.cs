@@ -2,6 +2,7 @@ using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.LLMOutputs;
 using AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using AgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.AgentEntityTypeConfiguration;
@@ -9,6 +10,7 @@ using ChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ChannelE
 using AiProviderConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.ProviderEntityTypeConfiguration;
 using PendingRegistrationConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.PendingRegistrationEntityTypeConfiguration;
 using UserConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.UserEntityTypeConfiguration;
+using LlmOutputConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite.LlmOutputEntityTypeConfiguration;
 using AiProvider = AzureOpsCrew.Domain.Providers.Provider;
 
 namespace AzureOpsCrew.Infrastructure.Db;
@@ -27,6 +29,7 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<PendingRegistration> PendingRegistrations => Set<PendingRegistration>();
     public DbSet<AocMessage> Messages => Set<AocMessage>();
     public DbSet<AocDm> Dms => Set<AocDm>();
+    public DbSet<LlmOutput> LlmOutputs => Set<LlmOutput>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,5 +40,6 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new PendingRegistrationConfig());
         modelBuilder.ApplyConfiguration(new AocMessageConfig());
         modelBuilder.ApplyConfiguration(new AocDmConfig());
+        modelBuilder.ApplyConfiguration(new LlmOutputConfig());
     }
 }
