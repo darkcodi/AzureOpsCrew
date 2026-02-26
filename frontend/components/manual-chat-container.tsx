@@ -163,7 +163,6 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
       let assistantMessageId = crypto.randomUUID()
       let fullContent = ""
       let currentToolCall: { id: string; name: string; args: string } | null = null
-      let currentWidget: ChatMessage["widget"] | null = null
 
       while (true) {
         const { done, value } = await reader!.read()
@@ -206,16 +205,18 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 }
               }
 
-              // Handle tool call end - render widget if it's showMyIp
+              // Handle tool call end - push widget as its own message (do not embed in text message)
               if (event.type === EventType.TOOL_CALL_END) {
                 if (currentToolCall?.name === "showMyIp") {
                   try {
                     const args = JSON.parse(currentToolCall.args)
-                    currentWidget = {
-                      type: "myIp",
-                      data: args as IpInfo,
+                    const widgetMessage: ChatMessage = {
+                      id: currentToolCall.id,
+                      role: "assistant",
+                      content: "",
+                      widget: { type: "myIp", data: args as IpInfo },
                     }
-                    setStreamingWidget(currentWidget)
+                    setMessages((prev) => [...prev, widgetMessage])
                   } catch (e) {
                     console.error("Failed to parse myIp args:", e)
                   }
@@ -223,7 +224,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 currentToolCall = null
               }
 
-              // Handle text message end - finalize and append the message (only once)
+              // Handle text message end - finalize and append the text-only message (only once)
               if (event.type === EventType.TEXT_MESSAGE_END) {
                 const newMessage: ChatMessage = {
                   id: assistantMessageId,
@@ -231,22 +232,15 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                   content: fullContent,
                 }
 
-                // Add widget if we have one
-                if (currentWidget) {
-                  newMessage.widget = currentWidget
-                }
-
                 setMessages((prev) => [...prev, newMessage])
                 setStreamingContent("")
                 setStreamingWidget(null)
-                currentWidget = null
               }
 
               // Handle run finished - only clear streaming state (do not append again)
               if (event.type === EventType.RUN_FINISHED) {
                 setStreamingContent("")
                 setStreamingWidget(null)
-                currentWidget = null
               }
             } catch (e) {
               // Skip unparseable events
@@ -325,7 +319,8 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 )
               }
 
-              // Assistant message - on the left with avatar and card styling
+              // Assistant message - on the left with avatar; widget-only as standalone, text in bubble
+              const isWidgetOnly = !msg.content && msg.widget
               return (
                 <div key={msg.id} className="mb-4 flex items-start gap-3">
                   <div
@@ -337,31 +332,37 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                   >
                     {selectedAgent ? selectedAgent.name.charAt(0).toUpperCase() : "A"}
                   </div>
-                  <div
-                    className="copilotKitAssistantMessage"
-                    style={{
-                      color: "hsl(210, 3%, 92%)",
-                      background: "hsl(228, 12%, 18%)",
-                      border: "1px solid hsl(228, 6%, 28%)",
-                      borderRadius: "var(--radius)",
-                      padding: "0.75rem 1rem",
-                      maxWidth: "100%",
-                    }}
-                  >
-                    {msg.content && (
-                      <div className="messageContent prose prose-invert max-w-none">
-                        <ReactMarkdown components={markdownComponents}>
-                          {msg.content}
-                        </ReactMarkdown>
-                      </div>
-                    )}
-                    {msg.widget && renderWidget(msg.widget)}
-                  </div>
+                  {isWidgetOnly ? (
+                    <div className="min-w-0 flex-1">
+                      {renderWidget(msg.widget)}
+                    </div>
+                  ) : (
+                    <div
+                      className="copilotKitAssistantMessage"
+                      style={{
+                        color: "hsl(210, 3%, 92%)",
+                        background: "hsl(228, 12%, 18%)",
+                        border: "1px solid hsl(228, 6%, 28%)",
+                        borderRadius: "var(--radius)",
+                        padding: "0.75rem 1rem",
+                        maxWidth: "100%",
+                      }}
+                    >
+                      {msg.content && (
+                        <div className="messageContent prose prose-invert max-w-none">
+                          <ReactMarkdown components={markdownComponents}>
+                            {msg.content}
+                          </ReactMarkdown>
+                        </div>
+                      )}
+                      {msg.widget && renderWidget(msg.widget)}
+                    </div>
+                  )}
                 </div>
               )
             })}
-            {/* Streaming content */}
-            {(streamingContent || streamingWidget) && (
+            {/* Streaming content - text only; tool results are committed as separate messages */}
+            {streamingContent && (
               <div className="mb-4 flex items-start gap-3">
                 <div
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
@@ -383,14 +384,11 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                     maxWidth: "100%",
                   }}
                 >
-                  {streamingContent && (
-                    <div className="messageContent prose prose-invert max-w-none">
-                      <ReactMarkdown components={markdownComponents}>
-                        {streamingContent}
-                      </ReactMarkdown>
-                    </div>
-                  )}
-                  {streamingWidget && renderWidget(streamingWidget)}
+                  <div className="messageContent prose prose-invert max-w-none">
+                    <ReactMarkdown components={markdownComponents}>
+                      {streamingContent}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             )}
