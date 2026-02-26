@@ -217,49 +217,98 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
             <StartConversationEmpty subtitle={DM_EMPTY_SUBTITLE} />
           </div>
         ) : (
-          <div className="copilotKitMessagesContainer overflow-y-auto">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`copilotMessage copilotKit${msg.role === "assistant" ? "Assistant" : "User"}Message`}
-                style={{
-                  color: msg.role === "assistant" ? "hsl(210, 3%, 92%)" : "hsl(210, 3%, 90%)",
-                  background: msg.role === "assistant" ? "hsl(228, 12%, 18%)" : "transparent",
-                  border: msg.role === "assistant" ? "1px solid hsl(228, 6%, 28%)" : "none",
-                  borderRadius: "var(--radius)",
-                  padding: msg.role === "assistant" ? "0.75rem 1rem" : "0.5rem 1rem",
-                  margin: "0.25rem 1rem",
-                  maxWidth: "100%",
-                }}
-              >
-                <div className="messageContent prose prose-invert max-w-none">
-                  {msg.role === "assistant" ? (
-                    <ReactMarkdown components={markdownComponents}>
-                      {msg.content}
-                    </ReactMarkdown>
-                  ) : (
-                    msg.content
-                  )}
+          <div className="copilotKitMessagesContainer overflow-y-auto px-4 py-4">
+            {messages.map((msg) => {
+              if (msg.role === "user") {
+                // User message - bubble on the right
+                return (
+                  <div
+                    key={msg.id}
+                    className="mb-4 flex items-start justify-end gap-3"
+                  >
+                    <div className="flex max-w-lg flex-col items-end">
+                      <div
+                        className="rounded-xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed"
+                        style={{
+                          backgroundColor: "hsl(235, 86%, 65%)",
+                          color: "#fff",
+                        }}
+                      >
+                        {msg.content}
+                      </div>
+                    </div>
+                    <div
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                      style={{
+                        backgroundColor: "hsl(168, 76%, 42%)",
+                        color: "#fff",
+                      }}
+                    >
+                      U
+                    </div>
+                  </div>
+                )
+              }
+
+              // Assistant message - on the left with avatar and card styling
+              return (
+                <div key={msg.id} className="mb-4 flex items-start gap-3">
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                    style={{
+                      backgroundColor: "hsl(235, 86%, 65%)",
+                      color: "#fff",
+                    }}
+                  >
+                    {selectedAgent ? selectedAgent.name.charAt(0).toUpperCase() : "A"}
+                  </div>
+                  <div
+                    className="copilotKitAssistantMessage"
+                    style={{
+                      color: "hsl(210, 3%, 92%)",
+                      background: "hsl(228, 12%, 18%)",
+                      border: "1px solid hsl(228, 6%, 28%)",
+                      borderRadius: "var(--radius)",
+                      padding: "0.75rem 1rem",
+                      maxWidth: "100%",
+                    }}
+                  >
+                    <div className="messageContent prose prose-invert max-w-none">
+                      <ReactMarkdown components={markdownComponents}>
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
             {streamingContent && (
-              <div
-                className="copilotMessage copilotKitAssistantMessage"
-                style={{
-                  color: "hsl(210, 3%, 92%)",
-                  background: "hsl(228, 12%, 18%)",
-                  border: "1px solid hsl(228, 6%, 28%)",
-                  borderRadius: "var(--radius)",
-                  padding: "0.75rem 1rem",
-                  margin: "0.25rem 1rem",
-                  maxWidth: "100%",
-                }}
-              >
-                <div className="messageContent prose prose-invert max-w-none">
-                  <ReactMarkdown components={markdownComponents}>
-                    {streamingContent}
-                  </ReactMarkdown>
+              <div className="mb-4 flex items-start gap-3">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                  style={{
+                    backgroundColor: "hsl(235, 86%, 65%)",
+                    color: "#fff",
+                  }}
+                >
+                  {selectedAgent ? selectedAgent.name.charAt(0).toUpperCase() : "A"}
+                </div>
+                <div
+                  className="copilotKitAssistantMessage"
+                  style={{
+                    color: "hsl(210, 3%, 92%)",
+                    background: "hsl(228, 12%, 18%)",
+                    border: "1px solid hsl(228, 6%, 28%)",
+                    borderRadius: "var(--radius)",
+                    padding: "0.75rem 1rem",
+                    maxWidth: "100%",
+                  }}
+                >
+                  <div className="messageContent prose prose-invert max-w-none">
+                    <ReactMarkdown components={markdownComponents}>
+                      {streamingContent}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             )}
