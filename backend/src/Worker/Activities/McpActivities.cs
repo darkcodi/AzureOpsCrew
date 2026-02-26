@@ -6,9 +6,30 @@ namespace Worker.Activities;
 
 public class McpActivities
 {
+
     [Activity]
-    public Task<ToolCallResult> CallMcpAsync(AocFunctionCallContent call)
+    public async Task<ToolCallResult> CallMcpAsync(AocFunctionCallContent call)
     {
-        return Task.FromResult(new ToolCallResult("DONE", IsError: false));
+        // ToDo: Implement proper handling of MCP calls
+        switch (call.Name)
+        {
+            case "showMyIp":
+                return await ShowMyIpAsync();
+            default:
+                return new ToolCallResult($"Unknown function: {call.Name}", IsError: true);
+        }
+    }
+
+    private static readonly HttpClient HttpClient = new();
+    private async Task<ToolCallResult> ShowMyIpAsync()
+    {
+        var response = await HttpClient.GetAsync("https://free.freeipapi.com/api/json/");
+        if (!response.IsSuccessStatusCode)
+        {
+            return new ToolCallResult($"Failed to call showMyIp API: {response.StatusCode}", IsError: true);
+        }
+
+        var content = await response.Content.ReadAsStringAsync();
+        return new ToolCallResult(content, IsError: false);
     }
 }
