@@ -8,6 +8,15 @@ import { CopilotActions } from "@/components/copilot-actions"
 import { DMMessages } from "@/components/dm-messages"
 import { MessageInputAdapter } from "@/components/message-input"
 import type { Agent } from "@/lib/agents"
+import { fetchWithErrorHandling } from "@/lib/fetch"
+import type { Message } from "@copilotkit/shared"
+
+interface ChatHistoryMessage {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  timestamp: string
+}
 
 const DEFAULT_INSTRUCTIONS =
   "You are a helpful AI assistant for AzureOpsCrew. Respond in a direct, conversational way."
@@ -63,6 +72,9 @@ export function DirectMessagesArea({
   showRightPane = true,
   onToggleRightPane,
 }: DirectMessagesAreaProps) {
+  const { setMessages } = useCopilotChatInternal()
+  const loadedAgentsRef = useRef<Set<string>>(new Set())
+
   const threadId = activeDMId ?? "assistant"
   const selectedAgent = agents.find((a) => a.id === activeDMId)
   const instructions = selectedAgent
@@ -71,6 +83,42 @@ export function DirectMessagesArea({
   const placeholder = selectedAgent
     ? `Message @${selectedAgent.name}...`
     : "Message @AzureOpsCrew Assistant..."
+
+  // Load message history when switching to an agent
+  useEffect(() => {
+    if (!activeDMId) {
+      loadedAgentsRef.current.clear()
+      return
+    }
+
+    // Skip if already loaded for this agent (to avoid duplicates on re-renders)
+    if (loadedAgentsRef.current.has(activeDMId)) return
+
+    const agentId = activeDMId // Capture non-null value
+
+    async function loadHistory() {
+      try {
+        const response = await fetchWithErrorHandling(`/api/chat-history/agents/${agentId}`)
+        if (response.ok) {
+          const data = await response.json() as { messages: ChatHistoryMessage[] }
+
+          // Convert to CopilotKit message format
+          const copilotMessages: Message[] = data.messages.map(msg => ({
+            id: msg.id,
+            role: msg.role as "user" | "assistant",
+            content: msg.content,
+          }))
+
+          setMessages(copilotMessages)
+          loadedAgentsRef.current.add(agentId)
+        }
+      } catch (error) {
+        console.error("Failed to load chat history:", error)
+      }
+    }
+
+    loadHistory()
+  }, [activeDMId, setMessages])
 
   return (
     <div
