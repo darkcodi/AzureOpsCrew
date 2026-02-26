@@ -5,6 +5,7 @@ import type { Agent } from "@/lib/agents"
 import { X, Plus, Pencil, Trash2, ChevronLeft, Save, Loader2 } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
+import { fetchWithErrorHandling } from "@/lib/fetch"
 import {
   Dialog,
   DialogContent,
@@ -64,7 +65,7 @@ export function ManageAgentsDialog({
 
   // Fetch providers on mount
   useEffect(() => {
-    fetch("/api/providers")
+    fetchWithErrorHandling("/api/providers")
       .then((res) => res.json())
       .then((data: Provider[]) => {
         setProviders(data.filter((p) => p.status === "enabled"))
@@ -149,7 +150,7 @@ export function ManageAgentsDialog({
     try {
       if (view === "create") {
         // Call backend API to create agent
-        const response = await fetch("/api/agents/create", {
+        const response = await fetchWithErrorHandling("/api/agents/create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -169,7 +170,7 @@ export function ManageAgentsDialog({
         const newAgent = await response.json()
         await onAddAgent(newAgent)
       } else if (editingAgent) {
-        const response = await fetch(`/api/agents/${editingAgent.id}`, {
+        const response = await fetchWithErrorHandling(`/api/agents/${editingAgent.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

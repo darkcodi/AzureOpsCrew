@@ -9,6 +9,7 @@ import { MemberList } from "@/components/member-list"
 import type { AGUIEvent } from "@ag-ui/core"
 import { EventType } from "@ag-ui/core"
 import type { HumanMember } from "@/lib/humans"
+import { fetchWithErrorHandling } from "@/lib/fetch"
 
 interface ChannelAreaProps {
   channel: Channel
@@ -48,7 +49,7 @@ export function ChannelArea({
       ? `/api/channels/${channel.id}/add-agent`
       : `/api/channels/${channel.id}/remove-agent`
 
-    const response = await fetch(endpoint, {
+    const response = await fetchWithErrorHandling(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ agentId }),
@@ -67,7 +68,7 @@ export function ChannelArea({
 
   const handleKickMember = useCallback(
     async (agentId: string) => {
-      const response = await fetch(
+      const response = await fetchWithErrorHandling(
         `/api/channels/${channel.id}/remove-agent`,
         {
           method: "POST",

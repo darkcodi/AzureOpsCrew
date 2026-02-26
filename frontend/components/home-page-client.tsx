@@ -13,6 +13,7 @@ import {
   setCachedHumans,
   type HumanMember,
 } from "@/lib/humans"
+import { fetchWithErrorHandling } from "@/lib/fetch"
 
 interface HomePageClientProps {
   initialHumans: HumanMember[]
@@ -51,7 +52,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
 
     async function ensureAuthenticated() {
       try {
-        const response = await fetch("/api/auth/me")
+        const response = await fetchWithErrorHandling("/api/auth/me")
         // Only log out on 401 Unauthorized, not on 500 server errors
         if (response.status === 401 && !isCancelled) {
           clearCachedHumans()
@@ -74,7 +75,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     async function loadAgents() {
       try {
         setIsLoadingAgents(true)
-        const response = await fetch("/api/agents")
+        const response = await fetchWithErrorHandling("/api/agents")
         if (response.ok) {
           const backendAgents: Agent[] = await response.json()
           if (backendAgents.length > 0) {
@@ -95,7 +96,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     async function loadChannels() {
       try {
         setIsLoadingChannels(true)
-        const response = await fetch("/api/channels")
+        const response = await fetchWithErrorHandling("/api/channels")
         if (response.ok) {
           const backendChannels: Channel[] = await response.json()
           if (backendChannels.length > 0) {
@@ -119,7 +120,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
 
     async function loadHumans() {
       try {
-        const response = await fetch("/api/users")
+        const response = await fetchWithErrorHandling("/api/users")
         if (!response.ok) return
 
         const users: HumanMember[] = await response.json()
@@ -145,7 +146,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
 
   const handleCreateChannel = useCallback(async (name: string) => {
     try {
-      const response = await fetch("/api/channels/create", {
+      const response = await fetchWithErrorHandling("/api/channels/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, agentIds: [] }),
@@ -180,7 +181,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
 
   const handleDeleteChannel = useCallback(async (channelId: string) => {
     try {
-      const response = await fetch(`/api/channels/${channelId}`, {
+      const response = await fetchWithErrorHandling(`/api/channels/${channelId}`, {
         method: "DELETE",
       })
       if (!response.ok) {
@@ -204,7 +205,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
   const handleAddAgent = useCallback(async (agent: Agent) => {
     // Reload agents from backend after creation to ensure consistency
     try {
-      const response = await fetch("/api/agents")
+      const response = await fetchWithErrorHandling("/api/agents")
       if (response.ok) {
         const backendAgents: Agent[] = await response.json()
         if (backendAgents.length > 0) {
@@ -225,7 +226,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
   }, [])
 
   const handleDeleteAgent = useCallback(async (agentId: string) => {
-    const response = await fetch(`/api/agents/${agentId}`, {
+    const response = await fetchWithErrorHandling(`/api/agents/${agentId}`, {
       method: "DELETE",
     })
     if (!response.ok) {
