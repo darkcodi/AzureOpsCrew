@@ -7,7 +7,7 @@ public static class BackEndTools
 {
     public static List<ToolDeclaration> GetDeclarations()
     {
-        return new List<ToolDeclaration>() { GetMyIpTool(), AddNumbersTool() };
+        return new List<ToolDeclaration>() { GetMyIpTool() };
     }
 
     private static ToolDeclaration GetMyIpTool()
@@ -49,36 +49,6 @@ public static class BackEndTools
                                               "isProxy": { "type": "boolean", "description": "Whether the IP is a proxy" }
                                           },
                                           "required": ["ipAddress", "countryName", "cityName"]
-                                      }
-                                      """).ToString(),
-            ToolType = ToolType.BackEnd
-        };
-    }
-
-    private static ToolDeclaration AddNumbersTool()
-    {
-        return new ToolDeclaration
-        {
-            Name = "addNumbers",
-            Description = "Adds two numbers a and b and returns their sum.",
-            JsonSchema = Schema("""
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "a": { "type": "number", "description": "First number" },
-                                        "b": { "type": "number", "description": "Second number" }
-                                    },
-                                    "required": ["a", "b"],
-                                    "additionalProperties": false
-                                }
-                                """).ToString(),
-            ReturnJsonSchema = Schema("""
-                                      {
-                                          "type": "object",
-                                          "properties": {
-                                              "sum": { "type": "number", "description": "Sum of a and b" }
-                                          },
-                                          "required": ["sum"]
                                       }
                                       """).ToString(),
             ToolType = ToolType.BackEnd
