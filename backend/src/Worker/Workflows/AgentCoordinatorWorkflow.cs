@@ -65,7 +65,7 @@ public class AgentCoordinatorWorkflow
             await InsertRunStartMessage(_agentId, ThreadId!.Value, RunId!.Value);
             await InsertRunTriggerMessage(_agentId, _trigger);
 
-            var runInput = new RunInput(RunId!.Value, _agentId, _trigger);
+            var runInput = new RunInput(_agentId, ThreadId!.Value, RunId!.Value, _trigger);
 
             RunOutcome? outcome;
             bool hasErrored = false;
@@ -119,6 +119,7 @@ public class AgentCoordinatorWorkflow
         {
             Id = HashUtils.HashStringToGuid($"run-start-{runId}"),
             AgentId = agentId,
+            ThreadId = threadId,
             RunId = runId,
             IsHidden = true,
             Role = ChatRole.System,
@@ -135,6 +136,7 @@ public class AgentCoordinatorWorkflow
         {
             Id = HashUtils.HashStringToGuid($"trigger-message-{trigger.RunId}"),
             AgentId = agentId,
+            ThreadId = trigger.ThreadId,
             RunId = trigger.RunId,
             IsHidden = false,
             Role = trigger.Source == TriggerSource.Cron ? ChatRole.System : ChatRole.User,
@@ -152,6 +154,7 @@ public class AgentCoordinatorWorkflow
         {
             Id = HashUtils.HashStringToGuid($"run-finished-{runId}"),
             AgentId = agentId,
+            ThreadId = threadId,
             RunId = runId,
             IsHidden = true,
             Role = ChatRole.System,
@@ -168,6 +171,7 @@ public class AgentCoordinatorWorkflow
         {
             Id = HashUtils.HashStringToGuid($"run-error-{runId}"),
             AgentId = agentId,
+            ThreadId = threadId,
             RunId = runId,
             IsHidden = true,
             Role = ChatRole.System,

@@ -21,7 +21,11 @@ public sealed class LlmChatMessageEntityTypeConfiguration : IEntityTypeConfigura
         builder.Property(m => m.RunId)
                .IsRequired();
 
+        builder.Property(m => m.ThreadId)
+               .IsRequired();
+
         builder.HasIndex(m => m.RunId);
+        builder.HasIndex(m => m.ThreadId);
 
         builder.Property(m => m.IsHidden)
                .IsRequired()

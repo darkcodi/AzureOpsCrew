@@ -43,7 +43,7 @@ public class AgentRunWorkflow
                 Options);
             messages.AddRange(newChatMessages);
 
-            var newDomainMessages = newChatMessages.Select(m => m.ToDomain(agentId, input.RunId)).ToList();
+            var newDomainMessages = newChatMessages.Select(m => m.ToDomain(agentId, input.ThreadId, input.RunId)).ToList();
             foreach (var newDomainMessage in newDomainMessages)
             {
                 await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(newDomainMessage), Options);
