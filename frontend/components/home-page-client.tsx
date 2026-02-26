@@ -20,7 +20,7 @@ interface HomePageClientProps {
 }
 
 export default function HomePageClient({ initialHumans }: HomePageClientProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>("channels")
+  const [viewMode, setViewMode] = useState<ViewMode>("direct-messages")
   const [agents, setAgents] = useState<Agent[]>([])
   const [isLoadingAgents, setIsLoadingAgents] = useState(true)
   const [channels, setChannels] = useState<Channel[]>([])
