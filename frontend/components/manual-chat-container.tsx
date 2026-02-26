@@ -173,7 +173,8 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
               const event: AGUIEvent = JSON.parse(data)
 
               if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
-                fullContent += event.content
+                const chunk = (event as { delta?: string }).delta ?? (event as { content?: string }).content ?? ""
+                fullContent += chunk
                 setStreamingContent(fullContent)
               }
 
