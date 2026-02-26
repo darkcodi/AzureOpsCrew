@@ -247,6 +247,11 @@ public static class ChannelAgUiEndpoints
 
     private static List<BaseEvent> MapToBaseEvents(LlmChatMessage message)
     {
+        if (message.Role == ChatRole.User)
+        {
+            // we don't need to send user messages to AG-UI, because they are already in the input
+            return new List<BaseEvent>();
+        }
         var events = new List<BaseEvent>();
         var aiContentDto = new AocAiContentDto
         {
