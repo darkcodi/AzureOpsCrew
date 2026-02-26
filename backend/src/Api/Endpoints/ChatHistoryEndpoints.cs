@@ -65,6 +65,19 @@ public static class ChatHistoryEndpoints
                         Widget = new ChatHistoryWidget { ToolName = functionCallContent.Name, Data = functionCallContent.Arguments }
                     });
                 }
+                else if (aiContent is AocFunctionCallContent functionCallContentDeploy
+                    && functionCallContentDeploy.Name.Equals("showDeployment", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Return showDeployment tool call as a widget-only message (no args)
+                    historyMessages.Add(new ChatHistoryMessage
+                    {
+                        Id = functionCallContentDeploy.CallId,
+                        Role = "assistant",
+                        Content = "",
+                        Timestamp = msg.CreatedAt,
+                        Widget = new ChatHistoryWidget { ToolName = "showDeployment", Data = null }
+                    });
+                }
             }
 
             return Results.Ok(new ChatHistoryResponse { Messages = historyMessages });

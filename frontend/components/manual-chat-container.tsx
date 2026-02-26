@@ -9,6 +9,7 @@ import type { Agent } from "@/lib/agents"
 import type { AGUIEvent } from "@ag-ui/core"
 import { EventType } from "@ag-ui/core"
 import { StartConversationEmpty } from "@/components/start-conversation-empty"
+import { DeploymentCard } from "@/components/deployment-card"
 import { MyIpCard, type IpInfo } from "@/components/my-ip-card"
 
 const DM_EMPTY_SUBTITLE = "Send a message to get started."
@@ -74,10 +75,9 @@ export interface ChatMessage {
   id: string
   role: "user" | "assistant"
   content: string
-  widget?: {
-    toolName: "showMyIp"
-    data: IpInfo
-  }
+  widget?:
+    | { toolName: "showMyIp"; data: IpInfo }
+    | { toolName: "showDeployment"; data?: never }
 }
 
 interface ManualChatContainerProps {
@@ -220,6 +220,14 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                   } catch (e) {
                     console.error("Failed to parse showMyIp args:", e)
                   }
+                } else if (currentToolCall?.name === "showDeployment") {
+                  const widgetMessage: ChatMessage = {
+                    id: currentToolCall.id,
+                    role: "assistant",
+                    content: "",
+                    widget: { toolName: "showDeployment" },
+                  }
+                  setMessages((prev) => [...prev, widgetMessage])
                 }
                 currentToolCall = null
               }
@@ -263,6 +271,8 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     switch (widget.toolName) {
       case "showMyIp":
         return <MyIpCard ipInfo={widget.data} onFollowUp={sendMessage} />
+      case "showDeployment":
+        return <DeploymentCard onFollowUp={sendMessage} />
       default:
         return null
     }

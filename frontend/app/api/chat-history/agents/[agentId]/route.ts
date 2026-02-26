@@ -9,10 +9,9 @@ interface ChatHistoryMessage {
   role: "user" | "assistant"
   content: string
   timestamp: string
-  widget?: {
-    toolName: "showMyIp"
-    data: IpInfo
-  }
+  widget?:
+    | { toolName: "showMyIp"; data: IpInfo }
+    | { toolName: "showDeployment"; data?: null | object }
 }
 
 interface ChatHistoryResponse {

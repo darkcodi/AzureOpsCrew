@@ -7,7 +7,7 @@ public static class FrontEndTools
 {
     public static List<ToolDeclaration> GetDeclarations()
     {
-        return new List<ToolDeclaration>() { ShowMyIpTool() };
+        return new List<ToolDeclaration>() { ShowMyIpTool(), ShowDeploymentTool() };
     }
 
     public static bool IsFrontEndTool(string toolName)
@@ -47,6 +47,30 @@ public static class FrontEndTools
                                         "isProxy": { "type": "boolean", "description": "Whether the IP is a proxy" }
                                     },
                                     "required": ["ipAddress", "countryName", "cityName"]
+                                }
+                                """).ToString(),
+            ReturnJsonSchema = Schema("""
+                                      {
+                                        "type": "object",
+                                        "properties": {},
+                                        "additionalProperties": false
+                                      }
+                                      """).ToString(),
+            ToolType = ToolType.FrontEnd
+        };
+    }
+
+    private static ToolDeclaration ShowDeploymentTool()
+    {
+        return new ToolDeclaration
+        {
+            Name = "showDeployment",
+            Description = "Display a deployment status card in the chat. No parameters; the card is shown with default/empty state.",
+            JsonSchema = Schema("""
+                                {
+                                    "type": "object",
+                                    "properties": {},
+                                    "additionalProperties": false
                                 }
                                 """).ToString(),
             ReturnJsonSchema = Schema("""
