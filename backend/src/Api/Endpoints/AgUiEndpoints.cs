@@ -79,8 +79,8 @@ public static class ChannelAgUiEndpoints
             var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.CoordinatorWorkflowId(agentId));
             await handle.SignalAsync(wf => wf.EnqueueAsync(trigger));
 
-            // Use hard-coded IP widget response
-            var runEvents = GetHardCodedIpResponseAsync(threadId.ToString(), runId.ToString(), cancellationToken);
+            // Poll the database for real events
+            var runEvents = GetDmEventsAsync(agentId, dbContext, maxDate, cancellationToken);
             var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
             return new AGUIServerSentEventsResult(runEvents, sseLogger, jsonSerializerOptions);
         })
@@ -300,6 +300,22 @@ public static class ChannelAgUiEndpoints
                     ToolCallId = functionCallContent.CallId,
                     ToolCallName = functionCallContent.Name
                 });
+
+                if (functionCallContent.Arguments != null)
+                {
+                    events.Add(new ToolCallArgsEvent
+                    {
+                        ToolCallId = functionCallContent.CallId,
+                        Delta = JsonSerializer.Serialize(
+                            functionCallContent.Arguments,
+                            new JsonSerializerOptions { WriteIndented = false })
+                    });
+                }
+
+                events.Add(new ToolCallEndEvent
+                {
+                    ToolCallId = functionCallContent.CallId
+                });
                 break;
             }
             case AocFunctionResultContent functionResultContent:
@@ -317,78 +333,6 @@ public static class ChannelAgUiEndpoints
         return events;
     }
 
-    /// <summary>
-    /// Returns a hard-coded IP widget response, bypassing the actual agent response.
-    /// This forces the showMyIp widget to be displayed regardless of the LLM's output.
-    /// </summary>
-    private static async IAsyncEnumerable<BaseEvent> GetHardCodedIpResponseAsync(
-        string threadId,
-        string runId,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        // Run started
-        yield return new RunStartedEvent
-        {
-            ThreadId = threadId,
-            RunId = runId
-        };
-
-        // Generate unique tool call ID
-        var toolCallId = Guid.NewGuid().ToString();
-
-        // Tool call start
-        yield return new ToolCallStartEvent
-        {
-            ToolCallId = toolCallId,
-            ToolCallName = "showMyIp",
-            ParentMessageId = $"assistant|msg-{toolCallId}"
-        };
-
-        // IP data - example structure, BE will provide real data
-        var ipArgs = new
-        {
-            ipVersion = 4,
-            ipAddress = "203.0.112.42",
-            latitude = 37.7749,
-            longitude = -122.4194,
-            countryName = "United States",
-            countryCode = "US",
-            capital = "Washington D.C.",
-            phoneCodes = new[] { 1 },
-            timeZones = new[] { "America/Los_Angeles" },
-            zipCode = "94102",
-            cityName = "San Francisco",
-            regionName = "California",
-            regionCode = "CA",
-            continent = "Americas",
-            continentCode = "AM",
-            currencies = new[] { "USD" },
-            languages = new[] { "en" },
-            asn = "13335",
-            asnOrganization = "Cloudflare, Inc.",
-            isProxy = false
-        };
-
-        // Tool call args
-        yield return new ToolCallArgsEvent
-        {
-            ToolCallId = toolCallId,
-            Delta = JsonSerializer.Serialize(ipArgs, new JsonSerializerOptions { WriteIndented = false })
-        };
-
-        // Tool call end
-        yield return new ToolCallEndEvent
-        {
-            ToolCallId = toolCallId
-        };
-
-        // Run finished
-        yield return new RunFinishedEvent
-        {
-            ThreadId = threadId,
-            RunId = runId
-        };
-    }
 }
 
 public static class ChannelAgUiFactory
