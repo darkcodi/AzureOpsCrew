@@ -10,6 +10,7 @@ public class AocLlmChatMessage
     public string? AuthorName { get; set; }
     public DateTime CreatedAt { get; set; }
     public AocAiContentDto ContentDto { get; set; } = new AocAiContentDto();
+    public bool IsHidden { get; set; }
 
     public ChatMessage ToChatMessage()
     {
@@ -29,6 +30,10 @@ public class AocLlmChatMessage
     public static AocLlmChatMessage FromContent(AocAiContent content, ChatRole role, string authorName, DateTime createdAt)
     {
         var contentDto = AocAiContentDto.FromAocAiContent(content);
+
+        // ToDo: review what should be hidden from LLM and what's not
+        var isHidden = contentDto.ContentType == LlmMessageContentType.UsageContent;
+
         return new AocLlmChatMessage
         {
             Id = Guid.NewGuid(),
@@ -36,6 +41,7 @@ public class AocLlmChatMessage
             AuthorName = authorName,
             CreatedAt = createdAt,
             ContentDto = contentDto,
+            IsHidden = isHidden,
         };
     }
 
@@ -47,7 +53,7 @@ public class AocLlmChatMessage
             AgentId = agentId,
             ThreadId = threadId,
             RunId = runId,
-            IsHidden = false,
+            IsHidden = IsHidden,
             Role = Role,
             AuthorName = AuthorName,
             CreatedAt = CreatedAt,
@@ -70,6 +76,7 @@ public class AocLlmChatMessage
             AuthorName = domainMessage.AuthorName,
             CreatedAt = domainMessage.CreatedAt,
             ContentDto = contentDto,
+            IsHidden = domainMessage.IsHidden,
         };
     }
 }
