@@ -90,6 +90,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
+  const [isRunActive, setIsRunActive] = useState(false)
   const [streamingContent, setStreamingContent] = useState("")
   const [streamingWidget, setStreamingWidget] = useState<ChatMessage["widget"] | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -102,7 +103,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, streamingContent, streamingWidget])
+  }, [messages, streamingContent, streamingWidget, isRunActive])
 
   // Load chat history when agent changes
   useEffect(() => {
@@ -145,6 +146,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
       setIsStreaming(true)
       setStreamingContent("")
       setStreamingWidget(null)
+      setIsRunActive(false)
 
       const response = await fetch(`/api/agent-agui/${activeDMId}`, {
         method: "POST",
@@ -179,6 +181,11 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
 
             try {
               const event: AGUIEvent = JSON.parse(data)
+
+              // Run started - show typing indicator
+              if (event.type === EventType.RUN_STARTED) {
+                setIsRunActive(true)
+              }
 
               // Handle text message content
               if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
@@ -249,6 +256,13 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
               if (event.type === EventType.RUN_FINISHED) {
                 setStreamingContent("")
                 setStreamingWidget(null)
+                setIsRunActive(false)
+              }
+
+              // Run error - clear typing
+              if (event.type === EventType.RUN_ERROR) {
+                setIsRunActive(false)
+                console.error("AGUI run error:", (event as { message?: string }).message)
               }
             } catch (e) {
               // Skip unparseable events
@@ -261,6 +275,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
       // Could add error state here if needed
     } finally {
       setIsStreaming(false)
+      setIsRunActive(false)
     }
   }
 
@@ -291,7 +306,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Messages area */}
       <div className="copilotKitMessages min-h-0 flex-1 flex flex-col">
-        {messages.length === 0 && !streamingContent && !streamingWidget ? (
+        {messages.length === 0 && !streamingContent && !streamingWidget && !isRunActive ? (
           <div className="copilotKitMessagesContainer min-h-0 flex-1 flex flex-col justify-center">
             <StartConversationEmpty subtitle={DM_EMPTY_SUBTITLE} />
           </div>
@@ -371,6 +386,38 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 </div>
               )
             })}
+            {/* Typing indicator when run is active and no streaming content yet */}
+            {isRunActive && !streamingContent && (
+              <div className="mb-4 flex items-center gap-3">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                  style={{
+                    backgroundColor:
+                      selectedAgent?.color ?? "hsl(214, 5%, 55%)",
+                    color: "#fff",
+                  }}
+                >
+                  {selectedAgent?.avatar ?? selectedAgent?.name?.charAt(0).toUpperCase() ?? "?"}
+                </div>
+                <div className="flex items-center gap-1">
+                  <div
+                    className="typing-dot h-2 w-2 rounded-full"
+                    style={{ backgroundColor: "hsl(210, 3%, 80%)" }}
+                  />
+                  <div
+                    className="typing-dot h-2 w-2 rounded-full"
+                    style={{ backgroundColor: "hsl(210, 3%, 80%)" }}
+                  />
+                  <div
+                    className="typing-dot h-2 w-2 rounded-full"
+                    style={{ backgroundColor: "hsl(210, 3%, 80%)" }}
+                  />
+                </div>
+                <span className="text-xs" style={{ color: "hsl(214, 5%, 55%)" }}>
+                  {(selectedAgent?.name ?? "Agent") + " is typing..."}
+                </span>
+              </div>
+            )}
             {/* Streaming content - text only; tool results are committed as separate messages */}
             {streamingContent && (
               <div className="mb-4 flex items-start gap-3">
