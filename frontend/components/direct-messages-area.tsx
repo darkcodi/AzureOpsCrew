@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useCopilotChatInternal } from "@copilotkit/react-core"
 import { CopilotChat } from "@copilotkit/react-ui"
 import { PanelRightClose, PanelRightOpen } from "lucide-react"
@@ -74,6 +74,8 @@ export function DirectMessagesArea({
 }: DirectMessagesAreaProps) {
   const { setMessages } = useCopilotChatInternal()
   const loadedAgentsRef = useRef<Set<string>>(new Set())
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [historyLoadedForAgent, setHistoryLoadedForAgent] = useState<string | null>(null)
 
   const threadId = activeDMId ?? "assistant"
   const selectedAgent = agents.find((a) => a.id === activeDMId)
@@ -88,13 +90,19 @@ export function DirectMessagesArea({
   useEffect(() => {
     if (!activeDMId) {
       loadedAgentsRef.current.clear()
+      setHistoryLoadedForAgent(null)
       return
     }
 
     // Skip if already loaded for this agent (to avoid duplicates on re-renders)
-    if (loadedAgentsRef.current.has(activeDMId)) return
+    if (loadedAgentsRef.current.has(activeDMId)) {
+      setHistoryLoadedForAgent(activeDMId)
+      return
+    }
 
     const agentId = activeDMId // Capture non-null value
+    setIsLoadingHistory(true)
+    setHistoryLoadedForAgent(null)
 
     async function loadHistory() {
       try {
@@ -114,11 +122,29 @@ export function DirectMessagesArea({
         }
       } catch (error) {
         console.error("Failed to load chat history:", error)
+      } finally {
+        setIsLoadingHistory(false)
+        setHistoryLoadedForAgent(agentId)
       }
     }
 
     loadHistory()
   }, [activeDMId, setMessages])
+
+  // Show loading indicator while fetching history
+  if (isLoadingHistory && activeDMId) {
+    return (
+      <div
+        className="direct-messages-area flex flex-1 flex-col items-center justify-center"
+        style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
+      >
+        <div style={{ color: "hsl(0, 0%, 100%)" }}>Loading conversation...</div>
+      </div>
+    )
+  }
+
+  // Only render CopilotChat after history is loaded (or for default assistant)
+  const shouldShowChat = !activeDMId || historyLoadedForAgent === activeDMId
 
   return (
     <div
@@ -166,22 +192,24 @@ export function DirectMessagesArea({
       {/* Register dynamic UI actions (pipeline, work items, resources, etc.) */}
       <CopilotActions />
 
-      {/* Chat: key forces remount when switching DM so messages/context switch */}
-      <div className="flex min-h-0 flex-1 flex-col">
-        <CopilotChat
-          key={threadId}
-          instructions={instructions}
-          labels={{
-            title: "Direct Messages",
-            placeholder,
-          }}
-          className="h-full min-h-0 flex-1"
-          Messages={DMMessages}
-          Input={(props) => (
-            <MessageInputAdapter {...props} placeholder={placeholder} />
-          )}
-        />
-      </div>
+      {/* Chat: only render after history loaded */}
+      {shouldShowChat && (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <CopilotChat
+            key={threadId}
+            instructions={instructions}
+            labels={{
+              title: "Direct Messages",
+              placeholder,
+            }}
+            className="h-full min-h-0 flex-1"
+            Messages={DMMessages}
+            Input={(props) => (
+              <MessageInputAdapter {...props} placeholder={placeholder} />
+            )}
+          />
+        </div>
+      )}
     </div>
   )
 }
