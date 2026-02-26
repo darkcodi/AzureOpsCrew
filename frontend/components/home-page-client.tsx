@@ -52,17 +52,14 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     async function ensureAuthenticated() {
       try {
         const response = await fetch("/api/auth/me")
-        if (!response.ok && !isCancelled) {
+        // Only log out on 401 Unauthorized, not on 500 server errors
+        if (response.status === 401 && !isCancelled) {
           clearCachedHumans()
           await fetch("/api/auth/logout", { method: "POST" })
           window.location.href = "/login"
         }
       } catch {
-        if (!isCancelled) {
-          clearCachedHumans()
-          await fetch("/api/auth/logout", { method: "POST" }).catch(() => {})
-          window.location.href = "/login"
-        }
+        // Network errors (user offline, etc.) don't warrant logout
       }
     }
 
