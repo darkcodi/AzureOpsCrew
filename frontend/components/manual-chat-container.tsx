@@ -223,8 +223,8 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 currentToolCall = null
               }
 
-              // Handle run finished - finalize the message
-              if (event.type === EventType.RUN_FINISHED || event.type === EventType.TEXT_MESSAGE_END) {
+              // Handle text message end - finalize and append the message (only once)
+              if (event.type === EventType.TEXT_MESSAGE_END) {
                 const newMessage: ChatMessage = {
                   id: assistantMessageId,
                   role: "assistant",
@@ -237,6 +237,13 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 }
 
                 setMessages((prev) => [...prev, newMessage])
+                setStreamingContent("")
+                setStreamingWidget(null)
+                currentWidget = null
+              }
+
+              // Handle run finished - only clear streaming state (do not append again)
+              if (event.type === EventType.RUN_FINISHED) {
                 setStreamingContent("")
                 setStreamingWidget(null)
                 currentWidget = null
