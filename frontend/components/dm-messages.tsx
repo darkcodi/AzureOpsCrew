@@ -45,7 +45,7 @@ export function DMMessages(props: MessagesProps) {
     return (
       <div className="copilotKitMessages">
         <div className="copilotKitMessagesContainer min-h-0 flex-1 flex flex-col justify-center">
-          <StartConversationEmpty subtitle={DM_EMPTY_SUBTITLE} />
+          <StartConversationEmpty title="Start a conversation" subtitle={DM_EMPTY_SUBTITLE} />
         </div>
         <footer className="copilotKitMessagesFooter">{children}</footer>
       </div>

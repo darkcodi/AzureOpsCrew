@@ -250,6 +250,7 @@ export function ChannelArea({
         <MessageInput
           channelName={channel.name}
           onSend={handleSend}
+          disabled
         />
       </div>
 

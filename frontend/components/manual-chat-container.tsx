@@ -313,7 +313,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
       <div className="copilotKitMessages min-h-0 flex-1 flex flex-col">
         {messages.length === 0 && !streamingContent && !streamingWidget && !isRunActive ? (
           <div className="copilotKitMessagesContainer min-h-0 flex-1 flex flex-col justify-center">
-            <StartConversationEmpty subtitle={DM_EMPTY_SUBTITLE} />
+            <StartConversationEmpty title="Start a conversation" subtitle={DM_EMPTY_SUBTITLE} />
           </div>
         ) : (
           <div className="copilotKitMessagesContainer overflow-y-auto px-4 py-4">
