@@ -94,17 +94,28 @@ public class AgentRunWorkflow
         JsonElement argsSchema = Schema("""
                                         {
                                           "type": "object",
-                                          "properties": {},
-                                          "additionalProperties": false
+                                          "properties": {
+                                            "a": { "type": "number" },
+                                            "b": { "type": "number" }
+                                          },
+                                          "required": ["a", "b"]
                                         }
                                         """);
 
-        JsonElement returnSchema = Schema("""{ "type": "string" }""");
+        JsonElement returnSchema = Schema("""
+                                          {
+                                            "type": "object",
+                                            "properties": {
+                                              "sum": { "type": "number" }
+                                            },
+                                            "required": ["sum"]
+                                          }
+                                          """);
 
         var pingTool = new ToolDeclaration
         {
-            Name = "ping_something",
-            Description = "This is a tool to ping something. It is used for testing purposes.",
+            Name = "add_numbers",
+            Description = "Adds two numbers and returns { sum }.",
             JsonSchema = argsSchema.ToString(),
             ReturnJsonSchema = returnSchema.ToString(),
         };
