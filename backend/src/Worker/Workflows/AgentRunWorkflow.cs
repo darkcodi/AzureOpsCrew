@@ -6,6 +6,7 @@ using Temporalio.Workflows;
 using Worker.Activities;
 using Worker.Models;
 using Worker.Models.Content;
+using Worker.Tools;
 
 namespace Worker.Workflows;
 
@@ -33,7 +34,10 @@ public class AgentRunWorkflow
         var messages = domainMessages.Select(AocLlmChatMessage.FromDomain).ToList();
 
         // ToDo: Load tools based on agent configuration. For now we just return a hardcoded tool list for testing.
-        var tools = await GetTools();
+        var backendTools = BackEndTools.GetDeclarations();
+        var frontEndTools = FrontEndTools.GetDeclarations();
+        var externalMcpTools = ExternalMcpTools.GetDeclarations();
+        var tools = backendTools.Concat(frontEndTools).Concat(externalMcpTools).ToList();
 
         // ToDo: Define a better stopping criteria. For example, we can let the agent decide when to stop by itself, or stop when reaching max context.
         const int maxSteps = 6;
@@ -91,41 +95,4 @@ public class AgentRunWorkflow
 
         return new RunOutcome(RunOutcomeKind.Completed, null);
     }
-
-    private async Task<List<ToolDeclaration>> GetTools()
-    {
-        JsonElement argsSchema = Schema("""
-                                        {
-                                          "type": "object",
-                                          "properties": {
-                                            "a": { "type": "number" },
-                                            "b": { "type": "number" }
-                                          },
-                                          "required": ["a", "b"]
-                                        }
-                                        """);
-
-        JsonElement returnSchema = Schema("""
-                                          {
-                                            "type": "object",
-                                            "properties": {
-                                              "sum": { "type": "number" }
-                                            },
-                                            "required": ["sum"]
-                                          }
-                                          """);
-
-        var pingTool = new ToolDeclaration
-        {
-            Name = "add_numbers",
-            Description = "Adds two numbers and returns { sum }.",
-            JsonSchema = argsSchema.ToString(),
-            ReturnJsonSchema = returnSchema.ToString(),
-        };
-
-        return new List<ToolDeclaration> { pingTool };
-    }
-
-    private static JsonElement Schema(string json)
-        => JsonDocument.Parse(json).RootElement.Clone();
 }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.AI;
+using Worker.Tools;
 
 namespace Worker.Models;
 
@@ -9,6 +10,7 @@ public class ToolDeclaration
     public string Description { get; set; } = string.Empty;
     public string JsonSchema { get; set; } = "{}";
     public string ReturnJsonSchema { get; set; } = "{}";
+    public ToolType ToolType { get; set; } = ToolType.BackEnd;
 
     public AIFunctionDeclaration ToAiFunctionDeclaration()
     {
