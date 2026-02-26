@@ -10,6 +10,7 @@ import type { AGUIEvent } from "@ag-ui/core"
 import { EventType } from "@ag-ui/core"
 import { StartConversationEmpty } from "@/components/start-conversation-empty"
 import { DeploymentCard, type DeploymentEnv } from "@/components/deployment-card"
+import { MyIpCard, type IpInfo } from "@/components/my-ip-card"
 
 const DM_EMPTY_SUBTITLE = "Send a message to get started."
 
@@ -74,10 +75,15 @@ export interface ChatMessage {
   id: string
   role: "user" | "assistant"
   content: string
-  widget?: {
-    type: "deployment"
-    data: { applicationName: string; environments: DeploymentEnv[] }
-  }
+  widget?:
+    | {
+        type: "deployment"
+        data: { applicationName: string; environments: DeploymentEnv[] }
+      }
+    | {
+        type: "myIp"
+        data: IpInfo
+      }
 }
 
 interface ManualChatContainerProps {
@@ -206,7 +212,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 }
               }
 
-              // Handle tool call end - render widget if it's showDeployment
+              // Handle tool call end - render widget if it's showDeployment or showMyIp
               if (event.type === EventType.TOOL_CALL_END) {
                 if (currentToolCall?.name === "showDeployment") {
                   try {
@@ -221,6 +227,17 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                     setStreamingWidget(currentWidget)
                   } catch (e) {
                     console.error("Failed to parse deployment args:", e)
+                  }
+                } else if (currentToolCall?.name === "showMyIp") {
+                  try {
+                    const args = JSON.parse(currentToolCall.args)
+                    currentWidget = {
+                      type: "myIp",
+                      data: args as IpInfo,
+                    }
+                    setStreamingWidget(currentWidget)
+                  } catch (e) {
+                    console.error("Failed to parse myIp args:", e)
                   }
                 }
                 currentToolCall = null
@@ -271,6 +288,8 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
             onFollowUp={sendMessage}
           />
         )
+      case "myIp":
+        return <MyIpCard ipInfo={widget.data} onFollowUp={sendMessage} />
       default:
         return null
     }
