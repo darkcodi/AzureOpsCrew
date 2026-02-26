@@ -286,8 +286,7 @@ public static class ChannelAgUiEndpoints
             }
             case AocTextContent textContent:
             {
-                // ToDo: Fix it
-                var messageId = "Manager|chatcmpl-DDICAI0GU9Ycswukn8SR9pd5jaAkP";
+                var messageId = $"{message.AuthorName ?? "assistant"}|chatcmpl-{message.Id.ToString().ToLowerInvariant().Replace("-", "")}";
                 events.Add(new TextMessageStartEvent { MessageId = messageId, Role = "assistant" });
                 events.Add(new TextMessageContentEvent { MessageId = messageId, Delta = textContent.Text });
                 events.Add(new TextMessageEndEvent { MessageId = messageId });
