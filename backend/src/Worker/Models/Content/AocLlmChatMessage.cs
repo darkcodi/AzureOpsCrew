@@ -32,7 +32,7 @@ public class AocLlmChatMessage
         var contentDto = AocAiContentDto.FromAocAiContent(content);
 
         // ToDo: review what should be hidden from LLM and what's not
-        var isHidden = false; // contentDto.ContentType == LlmMessageContentType.UsageContent;
+        var isHidden = contentDto.ContentType == LlmMessageContentType.UsageContent;
 
         return new AocLlmChatMessage
         {
