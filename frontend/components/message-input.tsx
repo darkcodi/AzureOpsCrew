@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, type KeyboardEvent } from "react"
 import { ArrowUp } from "lucide-react"
-import type { InputProps } from "@copilotkit/react-ui"
 
 interface MessageInputProps {
   /** Channel name for placeholder, e.g. "general". Ignored if placeholder is set. */
@@ -82,24 +81,5 @@ export function MessageInput({
         </button>
       </div>
     </div>
-  )
-}
-
-/** Adapter so MessageInput can be used as CopilotChat's Input (e.g. in Direct Messages). */
-export type MessageInputAdapterProps = InputProps & { placeholder: string }
-
-export function MessageInputAdapter({
-  inProgress,
-  onSend,
-  placeholder,
-}: MessageInputAdapterProps) {
-  const handleSend = (text: string) => {
-    onSend(text).catch(() => {})
-  }
-  return (
-    <MessageInput
-      placeholder={placeholder}
-      onSend={handleSend}
-    />
   )
 }

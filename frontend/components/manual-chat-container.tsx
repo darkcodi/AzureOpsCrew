@@ -382,13 +382,13 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Messages area */}
-      <div className="copilotKitMessages min-h-0 flex-1 flex flex-col">
+      <div className="messagesArea min-h-0 flex-1 flex flex-col">
         {messages.length === 0 && !streamingContent && !streamingWidget && !isRunActive ? (
-          <div className="copilotKitMessagesContainer min-h-0 flex-1 flex flex-col justify-center">
+          <div className="messagesContainer min-h-0 flex-1 flex flex-col justify-center">
             <StartConversationEmpty title="Start a conversation" subtitle={DM_EMPTY_SUBTITLE} />
           </div>
         ) : (
-          <div className="copilotKitMessagesContainer overflow-y-auto px-4 py-4">
+          <div className="messagesContainer overflow-y-auto px-4 py-4">
             {messages.map((msg) => {
               if (msg.role === "user") {
                 // User message - bubble on the right
@@ -440,7 +440,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                     </div>
                   ) : (
                     <div
-                      className="copilotKitAssistantMessage"
+                      className="assistantMessage"
                       style={{
                         color: "hsl(210, 3%, 92%)",
                         background: "hsl(228, 12%, 18%)",
@@ -508,7 +508,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                   {selectedAgent ? selectedAgent.name.charAt(0).toUpperCase() : "A"}
                 </div>
                 <div
-                  className="copilotKitAssistantMessage"
+                  className="assistantMessage"
                   style={{
                     color: "hsl(210, 3%, 92%)",
                     background: "hsl(228, 12%, 18%)",
