@@ -1,8 +1,8 @@
 using AzureOpsCrew.Api.Endpoints.Dtos.ChatHistory;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Worker.Models.Content;
-using Worker.Tools;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -25,6 +25,31 @@ public static class ChatHistoryEndpoints
                 .ToListAsync(cancellationToken);
 
             var historyMessages = new List<ChatHistoryMessage>();
+
+            // First pass: collect tool result content by CallId (from tool-role messages)
+            var toolResultsByCallId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var msg in messages)
+            {
+                if (msg.Role.ToString() != "tool")
+                    continue;
+                var contentDto = new AocAiContentDto
+                {
+                    Content = msg.ContentJson,
+                    ContentType = msg.ContentType
+                };
+                var aiContent = contentDto.ToAocAiContent();
+                if (aiContent is AocFunctionResultContent functionResult)
+                {
+                    var resultStr = functionResult.Result switch
+                    {
+                        null => "<null>",
+                        string s => s,
+                        JsonElement el => el.GetRawText(),
+                        _ => JsonSerializer.Serialize(functionResult.Result)
+                    };
+                    toolResultsByCallId[functionResult.CallId] = resultStr ?? "";
+                }
+            }
 
             foreach (var msg in messages)
             {
@@ -51,31 +76,31 @@ public static class ChatHistoryEndpoints
                     });
                 }
                 else if (aiContent is AocFunctionCallContent functionCallContent
-                    && FrontEndTools.IsFrontEndTool(functionCallContent.Name)
-                    && functionCallContent.Name.Equals("showMyIp", StringComparison.OrdinalIgnoreCase)
-                    && functionCallContent.Arguments != null)
+                    && toolResultsByCallId.TryGetValue(functionCallContent.CallId, out var resultStr))
                 {
-                    // Return showMyIp tool call as a widget-only message so the frontend can restore the IP card
+                    object? resultObj;
+                    try
+                    {
+                        resultObj = JsonSerializer.Deserialize<JsonElement>(resultStr);
+                    }
+                    catch
+                    {
+                        resultObj = new Dictionary<string, object?> { ["raw"] = resultStr };
+                    }
+
                     historyMessages.Add(new ChatHistoryMessage
                     {
                         Id = functionCallContent.CallId,
                         Role = "assistant",
                         Content = "",
                         Timestamp = msg.CreatedAt,
-                        Widget = new ChatHistoryWidget { ToolName = functionCallContent.Name, Data = functionCallContent.Arguments }
-                    });
-                }
-                else if (aiContent is AocFunctionCallContent functionCallContentDeploy
-                    && functionCallContentDeploy.Name.Equals("showDeployment", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Return showDeployment tool call as a widget-only message (no args)
-                    historyMessages.Add(new ChatHistoryMessage
-                    {
-                        Id = functionCallContentDeploy.CallId,
-                        Role = "assistant",
-                        Content = "",
-                        Timestamp = msg.CreatedAt,
-                        Widget = new ChatHistoryWidget { ToolName = "showDeployment", Data = null }
+                        Widget = new ChatHistoryWidget
+                        {
+                            ToolName = functionCallContent.Name,
+                            CallId = functionCallContent.CallId,
+                            Args = functionCallContent.Arguments ?? new Dictionary<string, object?>(),
+                            Result = resultObj
+                        }
                     });
                 }
             }

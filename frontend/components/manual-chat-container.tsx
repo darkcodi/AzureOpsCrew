@@ -11,8 +11,27 @@ import { EventType } from "@ag-ui/core"
 import { StartConversationEmpty } from "@/components/start-conversation-empty"
 import { DeploymentCard } from "@/components/deployment-card"
 import { MyIpCard, type IpInfo } from "@/components/my-ip-card"
+import { BackendToolCard } from "@/components/backend-tool-card"
 
+const KNOWN_FE_TOOL_NAMES = new Set(["showMyIp", "showDeployment"])
 const DM_EMPTY_SUBTITLE = "Send a message to get started."
+
+/** Flat tool run widget: ToolName, CallId, Args, Result (no nested Data). */
+export interface ToolWidget {
+  toolName: string
+  callId: string
+  args: Record<string, unknown>
+  result: Record<string, unknown>
+}
+
+function deriveIpInfo(widget: ToolWidget): IpInfo | undefined {
+  const from = (o: Record<string, unknown>): IpInfo | undefined => {
+    if (!o || typeof o !== "object" || Array.isArray(o)) return undefined
+    if ("ipAddress" in o || "ipVersion" in o) return o as IpInfo
+    return undefined
+  }
+  return from(widget.result) ?? from(widget.args)
+}
 
 // Markdown components for consistent styling
 const markdownComponents = {
@@ -75,9 +94,7 @@ export interface ChatMessage {
   id: string
   role: "user" | "assistant"
   content: string
-  widget?:
-    | { toolName: "showMyIp"; data: IpInfo }
-    | { toolName: "showDeployment"; data?: never }
+  widget?: ToolWidget
 }
 
 interface ManualChatContainerProps {
@@ -94,6 +111,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   const [streamingContent, setStreamingContent] = useState("")
   const [streamingWidget, setStreamingWidget] = useState<ChatMessage["widget"] | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const pendingBackendToolsRef = useRef<Map<string, { name: string; args: string }>>(new Map())
 
   const selectedAgent = agents.find((a) => a.id === activeDMId)
   const placeholder = selectedAgent
@@ -121,8 +139,34 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     fetchWithErrorHandling(`/api/chat-history/agents/${activeDMId}`)
       .then(async (res) => {
         if (res.ok) {
-          const data = await res.json() as { messages: ChatMessage[] }
-          setMessages(data.messages)
+          const data = (await res.json()) as {
+            messages: Array<{
+              id: string
+              role: "user" | "assistant"
+              content: string
+              widget?: {
+                toolName: string
+                callId: string
+                args?: Record<string, unknown>
+                result?: Record<string, unknown>
+              }
+            }>
+          }
+          const chatMessages: ChatMessage[] = data.messages.map((m) => {
+            const base: ChatMessage = { id: m.id, role: m.role, content: m.content }
+            if (!m.widget) return base
+            const w = m.widget
+            return {
+              ...base,
+              widget: {
+                toolName: w.toolName,
+                callId: w.callId,
+                args: w.args ?? {},
+                result: w.result ?? {},
+              },
+            }
+          })
+          setMessages(chatMessages)
         } else {
           setMessages([])
         }
@@ -152,6 +196,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
       setStreamingContent("")
       setStreamingWidget(null)
       setIsRunActive(false)
+      pendingBackendToolsRef.current.clear()
 
       const response = await fetch(`/api/agent-agui/${activeDMId}`, {
         method: "POST",
@@ -199,7 +244,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 setStreamingContent(fullContent)
               }
 
-              // Handle tool call start
+              // Handle tool call start - track all tools the same way
               if (event.type === EventType.TOOL_CALL_START) {
                 const toolEvent = event as { toolCallId: string; toolCallName: string }
                 currentToolCall = {
@@ -207,6 +252,10 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                   name: toolEvent.toolCallName,
                   args: "",
                 }
+                pendingBackendToolsRef.current.set(toolEvent.toolCallId, {
+                  name: toolEvent.toolCallName,
+                  args: "",
+                })
               }
 
               // Handle tool call args
@@ -214,34 +263,53 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 if (currentToolCall) {
                   const argsEvent = event as { toolCallId: string; delta: string }
                   currentToolCall.args += argsEvent.delta
+                  const pending = pendingBackendToolsRef.current.get(argsEvent.toolCallId)
+                  if (pending) pending.args += argsEvent.delta
                 }
               }
 
-              // Handle tool call end - push widget as its own message (do not embed in text message)
+              // Handle tool call end - no widget push; all tools completed on TOOL_CALL_RESULT
               if (event.type === EventType.TOOL_CALL_END) {
-                if (currentToolCall?.name === "showMyIp") {
+                currentToolCall = null
+              }
+
+              // Handle tool call result - push one message for any tool; display resolved by toolName
+              if (event.type === EventType.TOOL_CALL_RESULT) {
+                const resultEvent = event as { toolCallId: string; content: string }
+                const pending = pendingBackendToolsRef.current.get(resultEvent.toolCallId)
+                if (pending) {
+                  let argsObj: Record<string, unknown> = {}
                   try {
-                    const args = JSON.parse(currentToolCall.args)
-                    const widgetMessage: ChatMessage = {
-                      id: currentToolCall.id,
-                      role: "assistant",
-                      content: "",
-                    widget: { toolName: "showMyIp", data: args as IpInfo },
-                    }
-                    setMessages((prev) => [...prev, widgetMessage])
-                  } catch (e) {
-                    console.error("Failed to parse showMyIp args:", e)
+                    if (pending.args.trim()) argsObj = JSON.parse(pending.args) as Record<string, unknown>
+                  } catch {
+                    // leave empty
                   }
-                } else if (currentToolCall?.name === "showDeployment") {
+                  let resultObj: Record<string, unknown> = {}
+                  try {
+                    const raw = resultEvent.content ?? ""
+                    if (raw.trim()) {
+                      const parsed = JSON.parse(raw) as unknown
+                      if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed))
+                        resultObj = parsed as Record<string, unknown>
+                      else resultObj = { value: raw }
+                    }
+                  } catch {
+                    resultObj = { raw: resultEvent.content ?? "" }
+                  }
                   const widgetMessage: ChatMessage = {
-                    id: currentToolCall.id,
+                    id: resultEvent.toolCallId,
                     role: "assistant",
                     content: "",
-                    widget: { toolName: "showDeployment" },
+                    widget: {
+                      toolName: pending.name,
+                      callId: resultEvent.toolCallId,
+                      args: argsObj,
+                      result: resultObj,
+                    },
                   }
                   setMessages((prev) => [...prev, widgetMessage])
+                  pendingBackendToolsRef.current.delete(resultEvent.toolCallId)
                 }
-                currentToolCall = null
               }
 
               // Handle text message end - finalize and append the text-only message (only once)
@@ -284,18 +352,22 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     }
   }
 
-  // Render a widget based on its type
+  // Render a widget; resolve by toolName (known FE → specific widget, else generic box)
   const renderWidget = (widget: ChatMessage["widget"]) => {
     if (!widget) return null
-
-    switch (widget.toolName) {
-      case "showMyIp":
-        return <MyIpCard ipInfo={widget.data} onFollowUp={sendMessage} />
-      case "showDeployment":
+    if (KNOWN_FE_TOOL_NAMES.has(widget.toolName)) {
+      if (widget.toolName === "showMyIp")
+        return <MyIpCard ipInfo={deriveIpInfo(widget)} onFollowUp={sendMessage} />
+      if (widget.toolName === "showDeployment")
         return <DeploymentCard onFollowUp={sendMessage} />
-      default:
-        return null
     }
+    return (
+      <BackendToolCard
+        toolName={widget.toolName}
+        args={widget.args}
+        result={widget.result}
+      />
+    )
   }
 
   // Show loading state

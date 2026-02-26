@@ -298,13 +298,7 @@ public static class ChannelAgUiEndpoints
             {
                 var toolName = functionCallContent.Name;
 
-                // As for now, we transmit to FE only FE tools
-                // ToDo: Add transmission and rendering of BE tools as well
-                if (!FrontEndTools.IsFrontEndTool(toolName))
-                {
-                    break;
-                }
-
+                // Emit tool call events for all tools (FE and BE) so the frontend can render them
                 events.Add(new ToolCallStartEvent
                 {
                     ToolCallId = functionCallContent.CallId,
@@ -330,11 +324,18 @@ public static class ChannelAgUiEndpoints
             }
             case AocFunctionResultContent functionResultContent:
             {
-                // events.Add(new ToolCallResultEvent
-                // {
-                //     ToolCallId = functionResultContent.CallId,
-                //     Content = functionResultContent.Result?.ToString() ?? "<null>"
-                // });
+                var content = functionResultContent.Result switch
+                {
+                    null => "<null>",
+                    string s => s,
+                    JsonElement el => el.GetRawText(),
+                    _ => JsonSerializer.Serialize(functionResultContent.Result)
+                };
+                events.Add(new ToolCallResultEvent
+                {
+                    ToolCallId = functionResultContent.CallId,
+                    Content = content ?? ""
+                });
                 break;
             }
         }

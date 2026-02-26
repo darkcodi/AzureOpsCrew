@@ -3,7 +3,9 @@ namespace AzureOpsCrew.Api.Endpoints.Dtos.ChatHistory;
 public record ChatHistoryWidget
 {
     public required string ToolName { get; init; }
-    public object? Data { get; init; }
+    public required string CallId { get; init; }
+    public required object? Args { get; init; }
+    public required object? Result { get; init; }
 }
 
 public record ChatHistoryMessage
