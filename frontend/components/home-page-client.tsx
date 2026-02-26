@@ -30,7 +30,6 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
   )
   const [activeChannelId, setActiveChannelId] = useState<string>("")
   const [activeDMId, setActiveDMId] = useState<string | null>(null)
-  const [pendingDMMessage, setPendingDMMessage] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState(() =>
     typeof window !== "undefined" ? getDisplayNameFromStorage() : "User"
   )
@@ -242,10 +241,9 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     )
   }, [])
 
-  const handleOpenAgentInDM = useCallback((agentId: string, message?: string) => {
+  const handleOpenAgentInDM = useCallback((agentId: string) => {
     setViewMode("direct-messages")
     setActiveDMId(agentId)
-    setPendingDMMessage(message ?? null)
   }, [])
 
   const handleLogout = useCallback(async () => {
@@ -307,8 +305,6 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
           setActiveDMId={setActiveDMId}
           agents={agents}
           humans={humans}
-          pendingDMMessage={pendingDMMessage}
-          onClearPendingDMMessage={() => setPendingDMMessage(null)}
         />
       )}
       {viewMode === "settings" && (
