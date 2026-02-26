@@ -34,34 +34,38 @@ public class LlmActivities
             Tools = tools.Select(x => (AITool)x.ToAiFunctionDeclaration()).ToArray(),
         };
 
-        var contentList = new List<AocAiContent>();
+        var newMessages = new List<AocLlmChatMessage>();
         await foreach (ChatResponseUpdate update in fClient.GetStreamingResponseAsync(chatMessages, chatOptions))
         {
             var contents = update.Contents;
             foreach (var content in contents)
             {
-                var parsed = AocAiContent.FromAiContent(content);
-                if (parsed != null)
+                var parsedContent = AocAiContent.FromAiContent(content);
+                if (parsedContent != null)
                 {
-                    contentList.Add(parsed);
+                    // Ensure that messages are created in chronological order.
+                    // This is important for the agent to process messages in the correct order, especially when there are tool calls involved.
+                    await Task.Delay(TimeSpan.FromMilliseconds(1));
+                    var now = DateTime.UtcNow;
+
+                    var newMessage = AocLlmChatMessage.FromContent(parsedContent, ChatRole.Assistant, agent.Info.Name, now);
+                    newMessages.Add(newMessage);
                 }
             }
         }
 
-        ConcatTextContent(contentList);
-
-        var newMessages = contentList.Select(x => AocLlmChatMessage.FromContent(x, ChatRole.Assistant, agent.Info.Name)).ToList();
+        ConcatTextContent(newMessages);
 
         return newMessages;
     }
 
     // If there are multiple text content in a row, we want to concat them into one content
-    private static void ConcatTextContent(List<AocAiContent> messages)
+    private static void ConcatTextContent(List<AocLlmChatMessage> messages)
     {
         for (int i = messages.Count - 1; i > 0; i--)
         {
-            var current = messages[i];
-            var previous = messages[i - 1];
+            var current = messages[i].ContentDto.ToAocAiContent();
+            var previous = messages[i - 1].ContentDto.ToAocAiContent();
             if (current is AocTextContent currentTextContent && previous is AocTextContent previousTextContent)
             {
                 previousTextContent.Text += currentTextContent.Text;

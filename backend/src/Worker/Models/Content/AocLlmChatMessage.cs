@@ -26,7 +26,7 @@ public class AocLlmChatMessage
         };
     }
 
-    public static AocLlmChatMessage FromContent(AocAiContent content, ChatRole role, string authorName)
+    public static AocLlmChatMessage FromContent(AocAiContent content, ChatRole role, string authorName, DateTime createdAt)
     {
         var contentDto = AocAiContentDto.FromAocAiContent(content);
         return new AocLlmChatMessage
@@ -34,7 +34,7 @@ public class AocLlmChatMessage
             Id = Guid.NewGuid(),
             Role = role,
             AuthorName = authorName,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = createdAt,
             ContentDto = contentDto,
         };
     }

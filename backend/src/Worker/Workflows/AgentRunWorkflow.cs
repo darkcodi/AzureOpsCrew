@@ -41,6 +41,10 @@ public class AgentRunWorkflow
             var newChatMessages = await Workflow.ExecuteActivityAsync(
                 (LlmActivities a) => a.LlmThinkAsync(agent, provider, messages, tools),
                 Options);
+
+            // Ensure new messages are in chronological order (in case the LLM returns them out of order)
+            newChatMessages = newChatMessages.OrderBy(x => x.CreatedAt).ToList();
+
             messages.AddRange(newChatMessages);
 
             var newDomainMessages = newChatMessages.Select(m => m.ToDomain(agentId, input.ThreadId, input.RunId)).ToList();
@@ -65,7 +69,7 @@ public class AgentRunWorkflow
                     var toolCallResultMessage = new AocLlmChatMessage
                     {
                         Role = ChatRole.Tool,
-                        CreatedAt = DateTime.UtcNow,
+                        CreatedAt = Workflow.UtcNow,
                         ContentDto = AocAiContentDto.FromAocAiContent(new AocFunctionResultContent
                         {
                             CallId = toolCall.CallId,

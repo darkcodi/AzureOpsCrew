@@ -18,7 +18,7 @@ public class CronTriggerWorkflow
         var trigger = new TriggerEvent(
             TriggerId: Guid.NewGuid(),
             Source: TriggerSource.Cron,
-            CreatedAt: DateTime.UtcNow,
+            CreatedAt: Workflow.UtcNow,
             ThreadId: input.AgentId,
             RunId: Guid.NewGuid(),
             Text: "scheduled tick");
