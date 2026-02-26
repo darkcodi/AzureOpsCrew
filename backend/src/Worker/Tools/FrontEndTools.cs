@@ -10,6 +10,11 @@ public static class FrontEndTools
         return new List<ToolDeclaration>() { ShowMyIpTool() };
     }
 
+    public static bool IsFrontEndTool(string toolName)
+    {
+        return GetDeclarations().Any(t => t.Name.Equals(toolName, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static ToolDeclaration ShowMyIpTool()
     {
         return new ToolDeclaration

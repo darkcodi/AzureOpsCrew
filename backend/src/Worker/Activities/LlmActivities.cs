@@ -5,6 +5,7 @@ using Microsoft.Extensions.AI;
 using Temporalio.Activities;
 using Worker.Models;
 using Worker.Models.Content;
+using Worker.Tools;
 
 namespace Worker.Activities;
 
@@ -32,14 +33,18 @@ public class LlmActivities
 
         const string SystemPrompt = "You are one of agents in group chat: agents + human. When you have tools available, use them proactively to present information visually instead of plain text.";
 
-        var availableTools = string.Join("\n", tools.Select(t => $"- {t.Name}: {t.Description}"));
+        var beTools = string.Join("\n\n", tools.Where(x => x.ToolType == ToolType.BackEnd).Select(FormatToolDeclaration));
+        var feTools = string.Join("\n\n", tools.Where(x => x.ToolType == ToolType.FrontEnd).Select(FormatToolDeclaration));
 
         var prompt = @$"
                     System prompt:
                     {SystemPrompt}
 
-                    Available tools:
-                    {availableTools}
+                    Available backend tools:
+                    {beTools}
+
+                    Available frontend tools:
+                    {feTools}
 
                     Your name is:
                     {agent.Info.Name}
@@ -99,5 +104,16 @@ public class LlmActivities
                 messages.RemoveAt(i);
             }
         }
+    }
+
+    private static string FormatToolDeclaration(ToolDeclaration tool)
+    {
+        return $"""
+                Tool Name: {tool.Name}
+                Tool Description: {tool.Description}
+                Tool Type: {tool.ToolType.ToString()}
+                Tool JSON Schema: {tool.JsonSchema}
+                Tool Return JSON Schema: {tool.ReturnJsonSchema}
+                """;
     }
 }

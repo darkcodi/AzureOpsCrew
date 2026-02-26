@@ -17,6 +17,7 @@ using AzureOpsCrew.Domain.Utils;
 using Temporalio.Client;
 using Worker.Models;
 using Worker.Models.Content;
+using Worker.Tools;
 using Worker.Workflows;
 
 namespace AzureOpsCrew.Api.Endpoints;
@@ -295,6 +296,15 @@ public static class ChannelAgUiEndpoints
             }
             case AocFunctionCallContent functionCallContent:
             {
+                var toolName = functionCallContent.Name;
+
+                // As for now, we transmit to FE only FE tools
+                // ToDo: Add transmission and rendering of BE tools as well
+                if (!FrontEndTools.IsFrontEndTool(toolName))
+                {
+                    break;
+                }
+
                 events.Add(new ToolCallStartEvent
                 {
                     ToolCallId = functionCallContent.CallId,
@@ -320,12 +330,11 @@ public static class ChannelAgUiEndpoints
             }
             case AocFunctionResultContent functionResultContent:
             {
-                // ToDo: Maybe return ToolCallEndEvent?
-                events.Add(new ToolCallResultEvent
-                {
-                    ToolCallId = functionResultContent.CallId,
-                    Content = functionResultContent.Result?.ToString() ?? "<null>"
-                });
+                // events.Add(new ToolCallResultEvent
+                // {
+                //     ToolCallId = functionResultContent.CallId,
+                //     Content = functionResultContent.Result?.ToString() ?? "<null>"
+                // });
                 break;
             }
         }
