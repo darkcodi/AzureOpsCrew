@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { useAgentRuntime } from "@/contexts/agent-runtime-context"
 import { MessageInput } from "@/components/message-input"
 import { fetchWithErrorHandling } from "@/lib/fetch"
@@ -33,10 +34,40 @@ function deriveIpInfo(widget: ToolWidget): IpInfo | undefined {
   return from(widget.result) ?? from(widget.args)
 }
 
+function normalizeMarkdownBlockNewlines(content: string): string {
+  if (!content || typeof content !== "string") return content
+  // Ensure newline after ATX headings when content continues on same line (e.g. "# Title Next paragraph")
+  let out = content.replace(/(#{1,6}\s[^\n]*?)(\s+)(?=[A-Z*_`-])/g, "$1\n\n$2")
+  // Ensure "---" is on its own line for horizontal rule
+  out = out.replace(/\s+---\s+/g, "\n\n---\n\n")
+  return out
+}
+
 // Markdown components for consistent styling
 const markdownComponents = {
   p: ({ children, ...props }: any) => (
     <p className="mb-2 last:mb-0" {...props}>{children}</p>
+  ),
+  h1: ({ children, ...props }: any) => (
+    <h1 className="mb-2 mt-4 text-xl font-bold first:mt-0" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h1>
+  ),
+  h2: ({ children, ...props }: any) => (
+    <h2 className="mb-2 mt-3 text-lg font-semibold" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h2>
+  ),
+  h3: ({ children, ...props }: any) => (
+    <h3 className="mb-2 mt-2 text-base font-semibold" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h3>
+  ),
+  h4: ({ children, ...props }: any) => (
+    <h4 className="mb-1 mt-2 text-sm font-semibold" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h4>
+  ),
+  h5: ({ children, ...props }: any) => (
+    <h5 className="mb-1 mt-1 text-sm font-medium" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h5>
+  ),
+  h6: ({ children, ...props }: any) => (
+    <h6 className="mb-1 mt-1 text-xs font-medium" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h6>
+  ),
+  hr: ({ ...props }: any) => (
+    <hr className="my-3 border-0" style={{ borderTop: "1px solid hsl(228, 6%, 28%)" }} {...props} />
   ),
   code: ({ children, className, ...props }: any) => {
     const isBlock = className?.includes("language-")
@@ -87,6 +118,24 @@ const markdownComponents = {
     >
       {children}
     </a>
+  ),
+  table: ({ children, ...props }: any) => (
+    <div className="my-2 overflow-x-auto rounded-md" style={{ border: "1px solid hsl(228, 6%, 20%)" }}>
+      <table className="w-full border-collapse text-sm" {...props}>{children}</table>
+    </div>
+  ),
+  thead: ({ children, ...props }: any) => (
+    <thead style={{ backgroundColor: "hsl(228, 7%, 12%)" }} {...props}>{children}</thead>
+  ),
+  tbody: ({ children, ...props }: any) => <tbody {...props}>{children}</tbody>,
+  tr: ({ children, ...props }: any) => (
+    <tr style={{ borderBottom: "1px solid hsl(228, 6%, 20%)" }} {...props}>{children}</tr>
+  ),
+  th: ({ children, ...props }: any) => (
+    <th className="px-3 py-2 text-left font-semibold" style={{ color: "hsl(0, 0%, 100%)", borderRight: "1px solid hsl(228, 6%, 20%)" }} {...props}>{children}</th>
+  ),
+  td: ({ children, ...props }: any) => (
+    <td className="px-3 py-2" style={{ borderRight: "1px solid hsl(228, 6%, 20%)" }} {...props}>{children}</td>
   ),
 }
 
@@ -452,8 +501,8 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                     >
                       {msg.content && (
                         <div className="messageContent prose prose-invert max-w-none">
-                          <ReactMarkdown components={markdownComponents}>
-                            {msg.content}
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                            {normalizeMarkdownBlockNewlines(msg.content)}
                           </ReactMarkdown>
                         </div>
                       )}
@@ -519,8 +568,8 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                   }}
                 >
                   <div className="messageContent prose prose-invert max-w-none">
-                    <ReactMarkdown components={markdownComponents}>
-                      {streamingContent}
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                      {normalizeMarkdownBlockNewlines(streamingContent)}
                     </ReactMarkdown>
                   </div>
                 </div>
