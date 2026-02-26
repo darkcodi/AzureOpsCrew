@@ -13,15 +13,15 @@ public class McpActivities
         // ToDo: Implement proper handling of MCP calls
         switch (call.Name)
         {
-            case "showMyIp":
-                return await ShowMyIpAsync();
+            case "getMyIp":
+                return await GetMyIpAsync();
             default:
                 return new ToolCallResult($"Unknown function: {call.Name}", IsError: true);
         }
     }
 
     private static readonly HttpClient HttpClient = new();
-    private async Task<ToolCallResult> ShowMyIpAsync()
+    private async Task<ToolCallResult> GetMyIpAsync()
     {
         var response = await HttpClient.GetAsync("https://free.freeipapi.com/api/json/");
         if (!response.IsSuccessStatusCode)
