@@ -81,7 +81,6 @@ public class AgentCoordinatorWorkflow
             }
             catch (Exception e)
             {
-                ActivityExecutionContext.Current.Logger.LogError("Run failed for trigger {TriggerId} with error: {Error}", _trigger.TriggerId, e.ToString());
                 var isCanceledException = TemporalException.IsCanceledException(e);
                 outcome = isCanceledException
                     ? new RunOutcome(RunOutcomeKind.Canceled, e.Message ?? "Run was canceled.")
