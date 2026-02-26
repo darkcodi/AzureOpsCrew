@@ -2,6 +2,7 @@ using AzureOpsCrew.Api.Endpoints.Dtos.ChatHistory;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Worker.Models.Content;
+using Worker.Tools;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -39,7 +40,6 @@ public static class ChatHistoryEndpoints
                 };
                 var aiContent = contentDto.ToAocAiContent();
 
-                // Only include TextContent for user-visible messages
                 if (aiContent is AocTextContent textContent)
                 {
                     historyMessages.Add(new ChatHistoryMessage
@@ -48,6 +48,21 @@ public static class ChatHistoryEndpoints
                         Role = msg.Role.ToString() == "user" ? "user" : "assistant",
                         Content = textContent.Text,
                         Timestamp = msg.CreatedAt
+                    });
+                }
+                else if (aiContent is AocFunctionCallContent functionCallContent
+                    && FrontEndTools.IsFrontEndTool(functionCallContent.Name)
+                    && functionCallContent.Name.Equals("showMyIp", StringComparison.OrdinalIgnoreCase)
+                    && functionCallContent.Arguments != null)
+                {
+                    // Return showMyIp tool call as a widget-only message so the frontend can restore the IP card
+                    historyMessages.Add(new ChatHistoryMessage
+                    {
+                        Id = functionCallContent.CallId,
+                        Role = "assistant",
+                        Content = "",
+                        Timestamp = msg.CreatedAt,
+                        Widget = new ChatHistoryWidget { ToolName = functionCallContent.Name, Data = functionCallContent.Arguments }
                     });
                 }
             }

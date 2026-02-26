@@ -75,7 +75,7 @@ export interface ChatMessage {
   role: "user" | "assistant"
   content: string
   widget?: {
-    type: "myIp"
+    toolName: "showMyIp"
     data: IpInfo
   }
 }
@@ -214,11 +214,11 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                       id: currentToolCall.id,
                       role: "assistant",
                       content: "",
-                      widget: { type: "myIp", data: args as IpInfo },
+                    widget: { toolName: "showMyIp", data: args as IpInfo },
                     }
                     setMessages((prev) => [...prev, widgetMessage])
                   } catch (e) {
-                    console.error("Failed to parse myIp args:", e)
+                    console.error("Failed to parse showMyIp args:", e)
                   }
                 }
                 currentToolCall = null
@@ -260,8 +260,8 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   const renderWidget = (widget: ChatMessage["widget"]) => {
     if (!widget) return null
 
-    switch (widget.type) {
-      case "myIp":
+    switch (widget.toolName) {
+      case "showMyIp":
         return <MyIpCard ipInfo={widget.data} onFollowUp={sendMessage} />
       default:
         return null
