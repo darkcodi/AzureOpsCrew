@@ -26,7 +26,7 @@ public class AocLlmChatMessage
         };
     }
 
-    public static AocLlmChatMessage FromContent(AocAiContent content, ChatRole role, string? authorName = null)
+    public static AocLlmChatMessage FromContent(AocAiContent content, ChatRole role, string authorName)
     {
         var contentDto = AocAiContentDto.FromAocAiContent(content);
         return new AocLlmChatMessage

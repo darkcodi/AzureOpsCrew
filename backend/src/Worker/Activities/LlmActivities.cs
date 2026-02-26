@@ -50,7 +50,7 @@ public class LlmActivities
 
         ConcatTextContent(contentList);
 
-        var newMessages = contentList.Select(x => AocLlmChatMessage.FromContent(x, ChatRole.Assistant)).ToList();
+        var newMessages = contentList.Select(x => AocLlmChatMessage.FromContent(x, ChatRole.Assistant, agent.Info.Name)).ToList();
 
         return newMessages;
     }
