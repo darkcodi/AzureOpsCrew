@@ -29,8 +29,30 @@ public class LlmActivities
         var fClient = new FunctionInvokingChatClient(chatClient);
 
         var chatMessages = messages.Select(x => x.ToChatMessage()).ToList();
+
+        const string SystemPrompt = "You are one of agents in group chat: agents + human. When you have tools available, use them proactively to present information visually instead of plain text.";
+
+        var availableTools = string.Join("\n", tools.Select(t => $"- {t.Name}: {t.Description}"));
+
+        var prompt = @$"
+                    System prompt:
+                    {SystemPrompt}
+
+                    Available tools:
+                    {availableTools}
+
+                    Your name is:
+                    {agent.Info.Name}
+
+                    Your description is:
+                    {agent.Info.Description}
+
+                    User prompt:
+                    {agent.Info.Prompt}
+                ";
         var chatOptions = new ChatOptions
         {
+            Instructions = prompt,
             Tools = tools.Select(x => (AITool)x.ToAiFunctionDeclaration()).ToArray(),
         };
 

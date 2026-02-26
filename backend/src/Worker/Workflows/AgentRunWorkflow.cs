@@ -34,10 +34,7 @@ public class AgentRunWorkflow
         var messages = domainMessages.Select(AocLlmChatMessage.FromDomain).ToList();
 
         // ToDo: Load tools based on agent configuration. For now we just return a hardcoded tool list for testing.
-        var backendTools = BackEndTools.GetDeclarations();
-        var frontEndTools = FrontEndTools.GetDeclarations();
-        var externalMcpTools = ExternalMcpTools.GetDeclarations();
-        var tools = backendTools.Concat(frontEndTools).Concat(externalMcpTools).ToList();
+        var tools = HardCodedTools.GetDeclarations();
 
         // ToDo: Define a better stopping criteria. For example, we can let the agent decide when to stop by itself, or stop when reaching max context.
         const int maxSteps = 6;
