@@ -3,19 +3,19 @@ using Worker.Models;
 
 namespace Worker.Tools;
 
-public class HardCodedTools
+public static class BackEndTools
 {
     public static List<ToolDeclaration> GetDeclarations()
     {
-        return new List<ToolDeclaration>() { ShowMyIpTool() };
+        return new List<ToolDeclaration>() { GetMyIpTool() };
     }
 
-    private static ToolDeclaration ShowMyIpTool()
+    private static ToolDeclaration GetMyIpTool()
     {
         return new ToolDeclaration
         {
-            Name = "showMyIp",
-            Description = "Display the user's IP information including IP address, location, ISP, and other network details in a visual card widget.",
+            Name = "getMyIp",
+            Description = "Gets the user's IP information including IP address, location, ISP, and other network details and returns raw JSON.",
             JsonSchema = Schema("""
                                 {
                                   "type": "object",
@@ -51,6 +51,7 @@ public class HardCodedTools
                                           "required": ["ipAddress", "countryName", "cityName"]
                                       }
                                       """).ToString(),
+            ToolType = ToolType.BackEnd
         };
     }
 
