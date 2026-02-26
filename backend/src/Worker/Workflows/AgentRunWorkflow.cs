@@ -22,6 +22,8 @@ public class AgentRunWorkflow
     public async Task<RunOutcome> RunAsync(RunInput input)
     {
         var agentId = input.AgentId;
+        var threadId = input.ThreadId;
+        var runId = input.RunId;
 
         var agent = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadAgent(agentId), Options);
         var provider = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadProvider(agent.ProviderId), Options);
@@ -76,6 +78,7 @@ public class AgentRunWorkflow
                             Result = toolCallResult,
                         }),
                     };
+                    await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(toolCallResultMessage.ToDomain(agentId, threadId, runId)), Options);
                     messages.Add(toolCallResultMessage);
                 }
             }
