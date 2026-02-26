@@ -37,7 +37,6 @@ export function ChannelArea({
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [streamingAgentId, setStreamingAgentId] = useState<string | null>(null)
   const [streamingContent, setStreamingContent] = useState("")
-  const [isProcessing, setIsProcessing] = useState(false)
   const [showMembers, setShowMembers] = useState(true)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -90,9 +89,7 @@ export function ChannelArea({
 
   const handleSend = useCallback(
     async (text: string) => {
-      if (isProcessing || activeAgents.length === 0) return
-
-      setIsProcessing(true)
+      if (activeAgents.length === 0) return
 
       const userMsg: ChatMessage = {
         id: "user-" + Date.now(),
@@ -225,10 +222,9 @@ export function ChannelArea({
       } finally {
         setStreamingAgentId(null)
         setStreamingContent("")
-        setIsProcessing(false)
       }
     },
-    [isProcessing, activeAgents, messages, channel.id, channel.name]
+    [activeAgents, messages, channel.id, channel.name]
   )
 
   return (
@@ -254,7 +250,6 @@ export function ChannelArea({
         <MessageInput
           channelName={channel.name}
           onSend={handleSend}
-          disabled={isProcessing}
         />
       </div>
 

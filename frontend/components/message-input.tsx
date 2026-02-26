@@ -10,14 +10,12 @@ interface MessageInputProps {
   /** Optional placeholder override (e.g. "Message @Agent..." for DMs). */
   placeholder?: string
   onSend: (text: string) => void
-  disabled: boolean
 }
 
 export function MessageInput({
   channelName = "",
   placeholder: placeholderProp,
   onSend,
-  disabled,
 }: MessageInputProps) {
   const placeholder =
     placeholderProp ?? (channelName ? `Message #${channelName}` : "Message...")
@@ -34,7 +32,7 @@ export function MessageInput({
 
   const handleSend = () => {
     const trimmed = value.trim()
-    if (!trimmed || disabled) return
+    if (!trimmed) return
     onSend(trimmed)
     setValue("")
     if (textareaRef.current) {
@@ -62,7 +60,6 @@ export function MessageInput({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           rows={1}
-          disabled={disabled}
           className="max-h-[200px] min-h-[24px] flex-1 resize-none bg-transparent text-sm leading-relaxed outline-none placeholder:opacity-40"
           style={{ color: "hsl(210, 3%, 90%)" }}
         />
@@ -70,7 +67,7 @@ export function MessageInput({
         <button
           type="button"
           onClick={handleSend}
-          disabled={disabled || !value.trim()}
+          disabled={!value.trim()}
           className="mb-0.5 shrink-0 transition-opacity hover:opacity-80 disabled:opacity-40"
           style={{ color: "hsl(214, 5%, 55%)" }}
           aria-label="Send"
@@ -97,7 +94,6 @@ export function MessageInputAdapter({
     <MessageInput
       placeholder={placeholder}
       onSend={handleSend}
-      disabled={inProgress}
     />
   )
 }
