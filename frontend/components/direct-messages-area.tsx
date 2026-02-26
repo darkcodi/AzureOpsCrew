@@ -1,7 +1,6 @@
 "use client"
 
 import { PanelRightClose, PanelRightOpen } from "lucide-react"
-import { CopilotActions } from "@/components/copilot-actions"
 import { ManualChatContainer } from "@/components/manual-chat-container"
 import type { Agent } from "@/lib/agents"
 
@@ -65,9 +64,6 @@ export function DirectMessagesArea({
           </div>
         )}
       </header>
-
-      {/* Register dynamic UI actions (pipeline, work items, resources, etc.) */}
-      <CopilotActions />
 
       {/* Manual chat container - NO CopilotKit */}
       <ManualChatContainer activeDMId={activeDMId} agents={agents} />

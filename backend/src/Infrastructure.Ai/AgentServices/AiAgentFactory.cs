@@ -12,9 +12,7 @@ namespace AzureOpsCrew.Domain.AgentServices
             "You are one of agents in group chat: agents + human.";
 
         private const string ToolHint =
-            "When you have tools available (showPipelineStatus, showWorkItems, showResourceInfo, showDeployment, showMetrics), " +
-            "use them proactively to present information visually instead of plain text. " +
-            "For example, show pipeline stages as a visual card, display work items in a list, or present metrics in a dashboard-style card.";
+            "When you have tools available, use them proactively to present information visually instead of plain text.";
 
         private readonly AgentAIContextProviderFactory _agentAIContextProviderFactory;
 
