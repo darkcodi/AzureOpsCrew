@@ -5,6 +5,7 @@ using Serilog;
 using Temporalio.Client;
 using Temporalio.Worker;
 using Worker.Activities;
+using Worker.Constants;
 using Worker.Extensions;
 using Worker.Workflows;
 
@@ -61,7 +62,7 @@ var mcpActivities = serviceProvider.GetRequiredService<McpActivities>();
 // Create worker with the activity and workflow registered
 using var worker = new TemporalWorker(
     client,
-    new TemporalWorkerOptions("aoc-agent-task-queue")
+    new TemporalWorkerOptions(WorkflowConstants.QueueName)
         .AddActivity(databaseActivities.LoadAgent)
         .AddActivity(databaseActivities.LoadProvider)
         .AddActivity(databaseActivities.LoadChatHistory)

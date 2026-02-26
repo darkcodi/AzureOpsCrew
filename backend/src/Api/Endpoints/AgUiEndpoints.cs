@@ -77,7 +77,7 @@ public static class ChannelAgUiEndpoints
                 RunId: runId,
                 Text: userInput);
 
-            var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.CoordinatorWorkflowId(agentId));
+            var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.WorkflowId(agentId));
             await handle.SignalAsync(wf => wf.EnqueueAsync(trigger));
 
             // Poll the database for real events

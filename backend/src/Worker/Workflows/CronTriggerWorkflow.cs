@@ -2,6 +2,7 @@ using Temporalio.Client;
 using Temporalio.Client.Schedules;
 using Temporalio.Exceptions;
 using Temporalio.Workflows;
+using Worker.Constants;
 using Worker.Models;
 
 namespace Worker.Workflows;
@@ -12,7 +13,7 @@ public class CronTriggerWorkflow
     [WorkflowRun]
     public async Task RunAsync(CronTriggerInput input)
     {
-        var coordId = AgentCoordinatorWorkflow.CoordinatorWorkflowId(input.AgentId);
+        var coordId = AgentCoordinatorWorkflow.WorkflowId(input.AgentId);
         var coord = Workflow.GetExternalWorkflowHandle(coordId);
 
         var trigger = new TriggerEvent(
@@ -40,7 +41,7 @@ public class CronTriggerWorkflow
                 new Schedule(
                     Action: ScheduleActionStartWorkflow.Create(
                         (CronTriggerWorkflow wf) => wf.RunAsync(new CronTriggerInput(agentId)),
-                        new(id: $"cron-trigger:{agentId}", taskQueue: "aoc-agent-task-queue")),
+                        new(id: ChildRunWorkflowId(agentId), taskQueue: WorkflowConstants.QueueName)),
                     Spec: new()
                     {
                         Intervals = new List<ScheduleIntervalSpec> { new(Every: TimeSpan.FromMinutes(5)) }
@@ -51,4 +52,6 @@ public class CronTriggerWorkflow
             // schedule already exists
         }
     }
+
+    public static string ChildRunWorkflowId(Guid agentId) => $"cron-trigger:{agentId}";
 }

@@ -8,6 +8,7 @@ using Temporalio.Client;
 using Temporalio.Exceptions;
 using Temporalio.Workflows;
 using Worker.Activities;
+using Worker.Constants;
 using Worker.Models;
 using Worker.Models.Content;
 
@@ -75,8 +76,8 @@ public class AgentCoordinatorWorkflow
                     (AgentRunWorkflow wf) => wf.RunAsync(runInput),
                     new ChildWorkflowOptions
                     {
-                        Id = $"run-{TriggerId:N}-num-{_runCounter}",
-                        TaskQueue = "aoc-agent-task-queue",
+                        Id = ChildRunWorkflowId(_agentId),
+                        TaskQueue = WorkflowConstants.QueueName,
                     });
             }
             catch (Exception e)
@@ -217,17 +218,18 @@ public class AgentCoordinatorWorkflow
     public AgentStatusDto GetStatus() =>
         new(_status, RunId, _triggersQueue.Count, _runCounter, _error);
 
-    public static string CoordinatorWorkflowId(Guid agentId) => $"agent:{agentId}";
+    public static string WorkflowId(Guid agentId) => $"agent-coordination-workflow:{agentId}";
+    public static string ChildRunWorkflowId(Guid agentId) => $"agent-run-workflow:{agentId}";
 
     public static async Task EnsureCoordinatorStartedAsync(TemporalClient client, Guid agentId)
     {
-        var coordinationWorkflowId = CoordinatorWorkflowId(agentId);
+        var coordinationWorkflowId = WorkflowId(agentId);
 
         try
         {
             await client.StartWorkflowAsync(
                 (AgentCoordinatorWorkflow wf) => wf.RunAsync(new CoordinatorInit(agentId)),
-                new(id: coordinationWorkflowId, taskQueue: "aoc-agent-task-queue"));
+                new(id: coordinationWorkflowId, taskQueue: WorkflowConstants.QueueName));
         }
         catch (WorkflowAlreadyStartedException)
         {
