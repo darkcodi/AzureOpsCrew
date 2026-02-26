@@ -9,7 +9,6 @@ import type { Agent } from "@/lib/agents"
 import type { AGUIEvent } from "@ag-ui/core"
 import { EventType } from "@ag-ui/core"
 import { StartConversationEmpty } from "@/components/start-conversation-empty"
-import { DeploymentCard, type DeploymentEnv } from "@/components/deployment-card"
 import { MyIpCard, type IpInfo } from "@/components/my-ip-card"
 
 const DM_EMPTY_SUBTITLE = "Send a message to get started."
@@ -75,15 +74,10 @@ export interface ChatMessage {
   id: string
   role: "user" | "assistant"
   content: string
-  widget?:
-    | {
-        type: "deployment"
-        data: { applicationName: string; environments: DeploymentEnv[] }
-      }
-    | {
-        type: "myIp"
-        data: IpInfo
-      }
+  widget?: {
+    type: "myIp"
+    data: IpInfo
+  }
 }
 
 interface ManualChatContainerProps {
@@ -212,23 +206,9 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 }
               }
 
-              // Handle tool call end - render widget if it's showDeployment or showMyIp
+              // Handle tool call end - render widget if it's showMyIp
               if (event.type === EventType.TOOL_CALL_END) {
-                if (currentToolCall?.name === "showDeployment") {
-                  try {
-                    const args = JSON.parse(currentToolCall.args)
-                    currentWidget = {
-                      type: "deployment",
-                      data: {
-                        applicationName: args.applicationName || "Application",
-                        environments: args.environments || [],
-                      },
-                    }
-                    setStreamingWidget(currentWidget)
-                  } catch (e) {
-                    console.error("Failed to parse deployment args:", e)
-                  }
-                } else if (currentToolCall?.name === "showMyIp") {
+                if (currentToolCall?.name === "showMyIp") {
                   try {
                     const args = JSON.parse(currentToolCall.args)
                     currentWidget = {
@@ -280,14 +260,6 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     if (!widget) return null
 
     switch (widget.type) {
-      case "deployment":
-        return (
-          <DeploymentCard
-            applicationName={widget.data.applicationName}
-            environments={widget.data.environments}
-            onFollowUp={sendMessage}
-          />
-        )
       case "myIp":
         return <MyIpCard ipInfo={widget.data} onFollowUp={sendMessage} />
       default:
