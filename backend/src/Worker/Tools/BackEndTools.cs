@@ -7,10 +7,10 @@ public static class BackEndTools
 {
     public static List<ToolDeclaration> GetDeclarations()
     {
-        return new List<ToolDeclaration>() { AddTool() };
+        return new List<ToolDeclaration>() { AddNumbersTool() };
     }
 
-    private static ToolDeclaration AddTool()
+    private static ToolDeclaration AddNumbersTool()
     {
         JsonElement argsSchema = Schema("""
                                         {
