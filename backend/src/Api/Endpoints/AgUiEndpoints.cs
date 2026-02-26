@@ -79,7 +79,8 @@ public static class ChannelAgUiEndpoints
             var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.CoordinatorWorkflowId(agentId));
             await handle.SignalAsync(wf => wf.EnqueueAsync(trigger));
 
-            var runEvents = GetDmEventsAsync(agentId, dbContext, maxDate, cancellationToken);
+            // Use hard-coded deployment widget response
+            var runEvents = GetHardCodedDeploymentResponseAsync(threadId.ToString(), runId.ToString(), cancellationToken);
             var sseLogger = context.RequestServices.GetRequiredService<ILogger<AGUIServerSentEventsResult>>();
             return new AGUIServerSentEventsResult(runEvents, sseLogger, jsonSerializerOptions);
         })
@@ -314,6 +315,66 @@ public static class ChannelAgUiEndpoints
         }
 
         return events;
+    }
+
+    /// <summary>
+    /// Returns a hard-coded deployment widget response, bypassing the actual agent response.
+    /// This forces the showDeployment widget to be displayed regardless of the LLM's output.
+    /// </summary>
+    private static async IAsyncEnumerable<BaseEvent> GetHardCodedDeploymentResponseAsync(
+        string threadId,
+        string runId,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        // Run started
+        yield return new RunStartedEvent
+        {
+            ThreadId = threadId,
+            RunId = runId
+        };
+
+        // Generate unique tool call ID
+        var toolCallId = Guid.NewGuid().ToString();
+
+        // Tool call start
+        yield return new ToolCallStartEvent
+        {
+            ToolCallId = toolCallId,
+            ToolCallName = "showDeployment",
+            ParentMessageId = $"assistant|msg-{toolCallId}"
+        };
+
+        // Deployment data
+        var deploymentArgs = new
+        {
+            applicationName = "SampleApplication",
+            environments = new[]
+            {
+                new { name = "Development", status = "succeeded", version = "1.2.3", lastDeployed = "2025-01-15 10:30" },
+                new { name = "Staging", status = "running", version = "1.2.4", lastDeployed = "2025-01-15 14:20" },
+                new { name = "Production", status = "pending", version = "1.2.4", lastDeployed = "Scheduled for 18:00" }
+            }
+        };
+
+        // Tool call args
+        yield return new ToolCallArgsEvent
+        {
+            ToolCallId = toolCallId,
+            Delta = JsonSerializer.Serialize(deploymentArgs, new JsonSerializerOptions { WriteIndented = false })
+        };
+
+        // Tool call end
+        yield return new ToolCallEndEvent
+        {
+            ToolCallId = toolCallId
+        };
+
+        // Run finished
+        yield return new RunFinishedEvent
+        {
+            ThreadId = threadId,
+            RunId = runId
+        };
     }
 }
 

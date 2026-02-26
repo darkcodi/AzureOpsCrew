@@ -9,6 +9,7 @@ import type { Agent } from "@/lib/agents"
 import type { AGUIEvent } from "@ag-ui/core"
 import { EventType } from "@ag-ui/core"
 import { StartConversationEmpty } from "@/components/start-conversation-empty"
+import { DeploymentCard, type DeploymentEnv } from "@/components/deployment-card"
 
 const DM_EMPTY_SUBTITLE = "Send a message to get started."
 
@@ -73,6 +74,10 @@ export interface ChatMessage {
   id: string
   role: "user" | "assistant"
   content: string
+  widget?: {
+    type: "deployment"
+    data: { applicationName: string; environments: DeploymentEnv[] }
+  }
 }
 
 interface ManualChatContainerProps {
@@ -86,6 +91,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   const [isLoading, setIsLoading] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState("")
+  const [streamingWidget, setStreamingWidget] = useState<ChatMessage["widget"] | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const selectedAgent = agents.find((a) => a.id === activeDMId)
@@ -96,7 +102,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, streamingContent])
+  }, [messages, streamingContent, streamingWidget])
 
   // Load chat history when agent changes
   useEffect(() => {
@@ -138,6 +144,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     try {
       setIsStreaming(true)
       setStreamingContent("")
+      setStreamingWidget(null)
 
       const response = await fetch(`/api/agent-agui/${activeDMId}`, {
         method: "POST",
@@ -155,6 +162,8 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
 
       let assistantMessageId = crypto.randomUUID()
       let fullContent = ""
+      let currentToolCall: { id: string; name: string; args: string } | null = null
+      let currentWidget: ChatMessage["widget"] | null = null
 
       while (true) {
         const { done, value } = await reader!.read()
@@ -172,19 +181,68 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
             try {
               const event: AGUIEvent = JSON.parse(data)
 
+              // Handle text message content
               if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
-                const chunk = (event as { delta?: string }).delta ?? (event as { content?: string }).content ?? ""
-                fullContent += chunk
+                const chunkText = (event as { delta?: string }).delta ?? (event as { content?: string }).content ?? ""
+                fullContent += chunkText
                 setStreamingContent(fullContent)
               }
 
-              if (event.type === EventType.TEXT_MESSAGE_END) {
-                // Finalize the message
-                setMessages((prev) => [
-                  ...prev,
-                  { id: assistantMessageId, role: "assistant", content: fullContent },
-                ])
+              // Handle tool call start
+              if (event.type === EventType.TOOL_CALL_START) {
+                const toolEvent = event as { toolCallId: string; toolCallName: string }
+                currentToolCall = {
+                  id: toolEvent.toolCallId,
+                  name: toolEvent.toolCallName,
+                  args: "",
+                }
+              }
+
+              // Handle tool call args
+              if (event.type === EventType.TOOL_CALL_ARGS) {
+                if (currentToolCall) {
+                  const argsEvent = event as { toolCallId: string; delta: string }
+                  currentToolCall.args += argsEvent.delta
+                }
+              }
+
+              // Handle tool call end - render widget if it's showDeployment
+              if (event.type === EventType.TOOL_CALL_END) {
+                if (currentToolCall?.name === "showDeployment") {
+                  try {
+                    const args = JSON.parse(currentToolCall.args)
+                    currentWidget = {
+                      type: "deployment",
+                      data: {
+                        applicationName: args.applicationName || "Application",
+                        environments: args.environments || [],
+                      },
+                    }
+                    setStreamingWidget(currentWidget)
+                  } catch (e) {
+                    console.error("Failed to parse deployment args:", e)
+                  }
+                }
+                currentToolCall = null
+              }
+
+              // Handle run finished - finalize the message
+              if (event.type === EventType.RUN_FINISHED || event.type === EventType.TEXT_MESSAGE_END) {
+                const newMessage: ChatMessage = {
+                  id: assistantMessageId,
+                  role: "assistant",
+                  content: fullContent,
+                }
+
+                // Add widget if we have one
+                if (currentWidget) {
+                  newMessage.widget = currentWidget
+                }
+
+                setMessages((prev) => [...prev, newMessage])
                 setStreamingContent("")
+                setStreamingWidget(null)
+                currentWidget = null
               }
             } catch (e) {
               // Skip unparseable events
@@ -197,6 +255,24 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
       // Could add error state here if needed
     } finally {
       setIsStreaming(false)
+    }
+  }
+
+  // Render a widget based on its type
+  const renderWidget = (widget: ChatMessage["widget"]) => {
+    if (!widget) return null
+
+    switch (widget.type) {
+      case "deployment":
+        return (
+          <DeploymentCard
+            applicationName={widget.data.applicationName}
+            environments={widget.data.environments}
+            onFollowUp={sendMessage}
+          />
+        )
+      default:
+        return null
     }
   }
 
@@ -213,7 +289,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Messages area */}
       <div className="copilotKitMessages min-h-0 flex-1 flex flex-col">
-        {messages.length === 0 && !streamingContent ? (
+        {messages.length === 0 && !streamingContent && !streamingWidget ? (
           <div className="copilotKitMessagesContainer min-h-0 flex-1 flex flex-col justify-center">
             <StartConversationEmpty subtitle={DM_EMPTY_SUBTITLE} />
           </div>
@@ -274,16 +350,20 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                       maxWidth: "100%",
                     }}
                   >
-                    <div className="messageContent prose prose-invert max-w-none">
-                      <ReactMarkdown components={markdownComponents}>
-                        {msg.content}
-                      </ReactMarkdown>
-                    </div>
+                    {msg.content && (
+                      <div className="messageContent prose prose-invert max-w-none">
+                        <ReactMarkdown components={markdownComponents}>
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                    {msg.widget && renderWidget(msg.widget)}
                   </div>
                 </div>
               )
             })}
-            {streamingContent && (
+            {/* Streaming content */}
+            {(streamingContent || streamingWidget) && (
               <div className="mb-4 flex items-start gap-3">
                 <div
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
@@ -305,11 +385,14 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                     maxWidth: "100%",
                   }}
                 >
-                  <div className="messageContent prose prose-invert max-w-none">
-                    <ReactMarkdown components={markdownComponents}>
-                      {streamingContent}
-                    </ReactMarkdown>
-                  </div>
+                  {streamingContent && (
+                    <div className="messageContent prose prose-invert max-w-none">
+                      <ReactMarkdown components={markdownComponents}>
+                        {streamingContent}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                  {streamingWidget && renderWidget(streamingWidget)}
                 </div>
               </div>
             )}
