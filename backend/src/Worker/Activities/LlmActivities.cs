@@ -64,11 +64,16 @@ public class LlmActivities
     {
         for (int i = messages.Count - 1; i > 0; i--)
         {
-            var current = messages[i].ContentDto.ToAocAiContent();
-            var previous = messages[i - 1].ContentDto.ToAocAiContent();
-            if (current is AocTextContent currentTextContent && previous is AocTextContent previousTextContent)
+            var currentMessage = messages[i];
+            var previousMessage = messages[i - 1];
+
+            var currentContent = currentMessage.ContentDto.ToAocAiContent();
+            var previousContent = previousMessage.ContentDto.ToAocAiContent();
+
+            if (currentContent is AocTextContent currentTextContent && previousContent is AocTextContent previousTextContent)
             {
                 previousTextContent.Text += currentTextContent.Text;
+                previousMessage.ContentDto = AocAiContentDto.FromAocAiContent(previousTextContent);
                 messages.RemoveAt(i);
             }
         }
