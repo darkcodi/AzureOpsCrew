@@ -2,6 +2,7 @@ using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using Microsoft.Extensions.AI;
+using OpenAI.Chat;
 using Temporalio.Activities;
 using Worker.Models;
 using Worker.Models.Content;
@@ -59,6 +60,12 @@ public class LlmActivities
         {
             Instructions = prompt,
             Tools = tools.Select(x => (AITool)x.ToAiFunctionDeclaration()).ToArray(),
+            RawRepresentationFactory = _ => new ChatCompletionOptions
+            {
+#pragma warning disable OPENAI001
+                ReasoningEffortLevel = ChatReasoningEffortLevel.High,
+#pragma warning restore OPENAI001
+            },
         };
 
         var newMessages = new List<AocLlmChatMessage>();
