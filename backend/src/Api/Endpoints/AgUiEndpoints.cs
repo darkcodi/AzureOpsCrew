@@ -227,10 +227,11 @@ public static class ChannelAgUiEndpoints
                 if (newMessage.CreatedAt > maxDateLocal)
                     maxDateLocal = newMessage.CreatedAt;
 
-                var baseEvent = MapToBaseEvent(newMessage);
-                if (baseEvent != null)
+                var baseEvents = MapToBaseEvents(newMessage);
+                foreach (var baseEvent in baseEvents)
                 {
                     yield return baseEvent;
+
                     // End the stream on RUN_FINISHED or RUN_ERROR
                     // RUN_ERROR is now terminal since we don't send RUN_FINISHED after errors
                     if (baseEvent is RunFinishedEvent or RunErrorEvent)
@@ -244,8 +245,9 @@ public static class ChannelAgUiEndpoints
         }
     }
 
-    private static BaseEvent? MapToBaseEvent(LlmChatMessage message)
+    private static List<BaseEvent> MapToBaseEvents(LlmChatMessage message)
     {
+        var events = new List<BaseEvent>();
         var aiContentDto = new AocAiContentDto
         {
             Content = message.ContentJson,
@@ -255,21 +257,59 @@ public static class ChannelAgUiEndpoints
         switch (aiContent)
         {
             case AocRunStart runStart:
-                return new RunStartedEvent { RunId = runStart.RunId.ToString().ToLowerInvariant(), ThreadId = runStart.ThreadId.ToString().ToLowerInvariant() };
+            {
+                events.Add(new RunStartedEvent
+                {
+                    RunId = runStart.RunId.ToString().ToLowerInvariant(),
+                    ThreadId = runStart.ThreadId.ToString().ToLowerInvariant()
+                });
+                break;
+            }
             case AocRunFinished runFinished:
-                return new RunFinishedEvent { RunId = runFinished.RunId.ToString().ToLowerInvariant(), ThreadId = runFinished.ThreadId.ToString().ToLowerInvariant(), Result = runFinished.Result };
+            {
+                events.Add(new RunFinishedEvent
+                {
+                    RunId = runFinished.RunId.ToString().ToLowerInvariant(),
+                    ThreadId = runFinished.ThreadId.ToString().ToLowerInvariant(), Result = runFinished.Result
+                });
+                break;
+            }
             case AocRunError runError:
-                return new RunErrorEvent { Message = runError.Message };
+            {
+                events.Add(new RunErrorEvent { Message = runError.Message });
+                break;
+            }
             case AocTextContent textContent:
-                return new TextMessageContentEvent { MessageId = message.Id.ToString(), Delta = textContent.Text };
+            {
+                // ToDo: Fix it
+                var messageId = "Manager|chatcmpl-DDICAI0GU9Ycswukn8SR9pd5jaAkP";
+                events.Add(new TextMessageStartEvent { MessageId = messageId, Role = "assistant" });
+                events.Add(new TextMessageContentEvent { MessageId = messageId, Delta = textContent.Text });
+                events.Add(new TextMessageEndEvent { MessageId = messageId });
+                break;
+            }
             case AocFunctionCallContent functionCallContent:
-                return new ToolCallStartEvent { ToolCallId = functionCallContent.CallId, ToolCallName = functionCallContent.Name };
+            {
+                events.Add(new ToolCallStartEvent
+                {
+                    ToolCallId = functionCallContent.CallId,
+                    ToolCallName = functionCallContent.Name
+                });
+                break;
+            }
             case AocFunctionResultContent functionResultContent:
+            {
                 // ToDo: Maybe return ToolCallEndEvent?
-                return new ToolCallResultEvent { ToolCallId = functionResultContent.CallId, Content = functionResultContent.Result?.ToString() ?? "<null>" };
-            default:
-                return null;
+                events.Add(new ToolCallResultEvent
+                {
+                    ToolCallId = functionResultContent.CallId,
+                    Content = functionResultContent.Result?.ToString() ?? "<null>"
+                });
+                break;
+            }
         }
+
+        return events;
     }
 }
 
