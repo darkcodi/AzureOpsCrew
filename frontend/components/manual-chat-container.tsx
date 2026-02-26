@@ -100,9 +100,14 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     ? `Message @${selectedAgent.name}...`
     : "Message @AzureOpsCrew Assistant..."
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages and when history loads
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    const el = messagesEndRef.current
+    if (!el) return
+    const id = requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth" })
+    })
+    return () => cancelAnimationFrame(id)
   }, [messages, streamingContent, streamingWidget, isRunActive])
 
   // Load chat history when agent changes
@@ -449,9 +454,9 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input area */}
