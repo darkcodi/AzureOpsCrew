@@ -15,8 +15,8 @@ public class AgentRunWorkflow
 {
     private static readonly ActivityOptions Options = new()
     {
-        StartToCloseTimeout = TimeSpan.FromMinutes(2),
-        RetryPolicy = new() { MaximumAttempts = 3 }
+        StartToCloseTimeout = TimeSpan.FromMinutes(5),
+        RetryPolicy = new() { MaximumAttempts = 2 }
     };
 
     [WorkflowRun]
