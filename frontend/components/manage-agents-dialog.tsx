@@ -89,19 +89,42 @@ export function ManageAgentsDialog({
   const selectedProvider = providers.find((p) => p.id === providerId)
   const providerModels = selectedProvider?.selectedModels ?? []
 
-  // Auto-select default model when provider changes
+  // Auto-select model when provider changes
   useEffect(() => {
     const provider = providers.find((p) => p.id === providerId)
     if (!provider) return
     const models = provider.selectedModels ?? []
-    if (provider.defaultModel && models.includes(provider.defaultModel)) {
-      setModel(provider.defaultModel)
-    } else if (models.length > 0) {
-      setModel(models[0])
-    } else {
-      setModel("")
-    }
-  }, [providerId, providers])
+    setModel((currentModel) => {
+      // If the current model is valid for the selected provider, keep it.
+      // This ensures that when editing an existing agent we keep its model
+      // instead of overwriting it with the provider's default.
+      if (currentModel && models.includes(currentModel)) {
+        return currentModel
+      }
+
+      // When creating a new agent, prefer the provider's default model,
+      // falling back to the first available model.
+      if (view === "create") {
+        if (provider.defaultModel && models.includes(provider.defaultModel)) {
+          return provider.defaultModel
+        }
+        if (models.length > 0) {
+          return models[0]
+        }
+        return ""
+      }
+
+      // When editing and switching providers, fall back to a sensible default
+      // for the newly selected provider.
+      if (provider.defaultModel && models.includes(provider.defaultModel)) {
+        return provider.defaultModel
+      }
+      if (models.length > 0) {
+        return models[0]
+      }
+      return ""
+    })
+  }, [providerId, providers, view])
 
   const openCreate = () => {
     setEditingAgent(null)
