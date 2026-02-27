@@ -194,9 +194,9 @@ public sealed class CustomOpenAiChatClient : IChatClient
             httpRequest.Headers.Add("OpenAI-Project", _options.ProjectId);
         }
 
-        if (!string.IsNullOrEmpty(_options.Audience))
+        if (!string.IsNullOrEmpty(_options.AzureAudience))
         {
-            httpRequest.Headers.Add("ms-azure-ai-audience", _options.Audience);
+            httpRequest.Headers.Add("ms-azure-ai-audience", _options.AzureAudience);
         }
 
         if (!string.IsNullOrEmpty(_options.UserAgentApplicationId))
@@ -230,7 +230,7 @@ public sealed class CustomOpenAiChatClient : IChatClient
             // Expected: https://<resource>.openai.azure.com
             // Appends: /openai/deployments/<model>/chat/completions?api-version=...
 
-            var version = _options.Version ?? "2024-06-01";
+            var version = _options.AzureVersion ?? "2024-06-01";
             var model = _options.Model;
 
             // Check if endpoint already includes deployment path
@@ -258,7 +258,7 @@ public sealed class CustomOpenAiChatClient : IChatClient
         return host.Contains(".openai.azure.com") ||
                host.Contains(".azure-api.net") ||
                host.Contains("azure.openai.") ||
-               _options.Audience != null;
+               _options.AzureAudience != null;
     }
 
     /// <summary>
@@ -351,6 +351,6 @@ public class CustomOpenAiChatClientOptions
     public string? UserAgentApplicationId { get; set; }
 
     // Optional Azure-specific options
-    public string? Audience { get; set; }
-    public string? Version { get; set; } // V2024_06_01
+    public string? AzureAudience { get; set; }
+    public string? AzureVersion { get; set; } // V2024_06_01
 }
