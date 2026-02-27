@@ -38,23 +38,23 @@ public class LlmActivities
         var feTools = string.Join("\n\n", tools.Where(x => x.ToolType == ToolType.FrontEnd).Select(FormatToolDeclaration));
 
         var prompt = @$"
-                    System prompt:
-                    {SystemPrompt}
+System prompt:
+{SystemPrompt}
 
-                    Available backend tools:
-                    {beTools}
+Available backend tools:
+{beTools}
 
-                    Available frontend tools:
-                    {feTools}
+Available frontend tools:
+{feTools}
 
-                    Your name is:
-                    {agent.Info.Name}
+Your name is:
+{agent.Info.Name}
 
-                    Your description is:
-                    {agent.Info.Description}
+Your description is:
+{agent.Info.Description}
 
-                    User prompt:
-                    {agent.Info.Prompt}
+User prompt:
+{agent.Info.Prompt}
                 ";
         var chatOptions = new ChatOptions
         {
