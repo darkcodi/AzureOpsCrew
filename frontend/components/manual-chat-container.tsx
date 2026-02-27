@@ -159,6 +159,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   const [isRunActive, setIsRunActive] = useState(false)
   const [streamingContent, setStreamingContent] = useState("")
   const [streamingWidget, setStreamingWidget] = useState<ChatMessage["widget"] | null>(null)
+  const [runError, setRunError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const pendingBackendToolsRef = useRef<Map<string, { name: string; args: string }>>(new Map())
 
@@ -175,12 +176,13 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
       el.scrollIntoView({ behavior: "smooth" })
     })
     return () => cancelAnimationFrame(id)
-  }, [messages, streamingContent, streamingWidget, isRunActive])
+  }, [messages, streamingContent, streamingWidget, isRunActive, runError])
 
   // Load chat history when agent changes
   useEffect(() => {
     if (!activeDMId) {
       setMessages([])
+      setRunError(null)
       return
     }
 
@@ -244,6 +246,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
       setIsStreaming(true)
       setStreamingContent("")
       setStreamingWidget(null)
+      setRunError(null)
       setIsRunActive(false)
       pendingBackendToolsRef.current.clear()
 
@@ -381,10 +384,16 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 setIsRunActive(false)
               }
 
-              // Run error - clear typing
+              // Run error - clear typing and show failure in chat
               if (event.type === EventType.RUN_ERROR) {
                 setIsRunActive(false)
-                console.error("AGUI run error:", (event as { message?: string }).message)
+                setStreamingContent("")
+                setStreamingWidget(null)
+                const errEvent = event as { message?: string; error?: string }
+                const errMessage =
+                  errEvent.message ?? errEvent.error ?? "The run failed. Please try again."
+                setRunError(errMessage)
+                console.error("AGUI run error:", errMessage)
               }
             } catch (e) {
               // Skip unparseable events
@@ -512,6 +521,45 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 </div>
               )
             })}
+            {/* Run error banner - shown when RUN_ERROR is received */}
+            {runError && (
+              <div className="mb-4 flex items-start gap-3">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                  style={{
+                    backgroundColor: "hsl(0, 60%, 45%)",
+                    color: "#fff",
+                  }}
+                  aria-hidden
+                >
+                  !
+                </div>
+                <div
+                  className="flex flex-1 flex-col gap-2 rounded-lg border px-4 py-3"
+                  style={{
+                    backgroundColor: "hsl(0, 40%, 14%)",
+                    borderColor: "hsl(0, 50%, 35%)",
+                    color: "hsl(0, 0%, 92%)",
+                  }}
+                >
+                  <span className="text-sm font-medium" style={{ color: "hsl(0, 70%, 75%)" }}>
+                    Run failed
+                  </span>
+                  <p className="text-sm leading-relaxed">{runError}</p>
+                  <button
+                    type="button"
+                    onClick={() => setRunError(null)}
+                    className="self-start rounded px-2 py-1 text-xs font-medium transition-colors hover:opacity-90"
+                    style={{
+                      backgroundColor: "hsl(0, 40%, 28%)",
+                      color: "hsl(0, 0%, 92%)",
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
             {/* Typing indicator when run is active and no streaming content yet */}
             {isRunActive && !streamingContent && (
               <div className="mb-4 flex items-center gap-3">
