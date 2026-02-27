@@ -83,8 +83,8 @@ public class AgentCoordinatorWorkflow
             {
                 var isCanceledException = TemporalException.IsCanceledException(e);
                 outcome = isCanceledException
-                    ? new RunOutcome(RunOutcomeKind.Canceled, e.Message ?? "Run was canceled.")
-                    : new RunOutcome(RunOutcomeKind.Failed, e.Message ?? "An error occurred during agent execution.");
+                    ? new RunOutcome(RunOutcomeKind.Canceled, FormatException(e))
+                    : new RunOutcome(RunOutcomeKind.Failed, FormatException(e));
                 await InsertRunErrorMessage(_agentId, ThreadId!.Value, RunId!.Value, outcome.Error!);
                 hasErrored = true;
             }
@@ -243,5 +243,25 @@ public class AgentCoordinatorWorkflow
 
         _queuedTriggerIds.Add(trigger.TriggerId);
         _triggersQueue.Enqueue(trigger);
+    }
+
+    private string FormatException(Exception e)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("==========");
+        sb.AppendLine($"Exception: {e.GetType().Name}");
+        if (!string.IsNullOrEmpty(e.Message))
+        {
+            sb.AppendLine($"Message: {e.Message}");
+        }
+        if (e.InnerException != null)
+        {
+            sb.AppendLine(FormatException(e.InnerException));
+        }
+        else
+        {
+            sb.AppendLine("==========");
+        }
+        return sb.ToString();
     }
 }

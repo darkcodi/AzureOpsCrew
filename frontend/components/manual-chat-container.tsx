@@ -552,7 +552,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                   <span className="text-sm font-medium" style={{ color: "hsl(0, 70%, 75%)" }}>
                     Run failed
                   </span>
-                  <p className="text-sm leading-relaxed">{runError}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{runError}</p>
                   <button
                     type="button"
                     onClick={() => setRunError(null)}
