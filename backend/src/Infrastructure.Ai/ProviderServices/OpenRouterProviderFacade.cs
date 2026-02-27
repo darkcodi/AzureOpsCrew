@@ -5,6 +5,7 @@ using System.Text.Json;
 using Azure.AI.OpenAI;
 using Microsoft.Extensions.AI;
 using AzureOpsCrew.Domain.ProviderServices;
+using AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
 
 namespace AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 
@@ -114,12 +115,9 @@ public sealed class OpenRouterProviderFacade : IProviderFacade
 
     public IChatClient CreateChatClient(Provider config, string model, CancellationToken cancellationToken)
     {
-        var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
-        var chatClient = new AzureOpenAIClient(
-                new Uri(config.ApiEndpoint!),
-                new ApiKeyCredential(config.ApiKey!),
-                options)
-            .GetChatClient(model);
-        return chatClient.AsIChatClient();
+        var options = new CustomOpenAiChatClientOptions(new Uri(config.ApiEndpoint!), config.ApiKey!, model) ;
+        var chatClient = new CustomOpenAiChatClient(options);
+
+        return chatClient;
     }
 }
