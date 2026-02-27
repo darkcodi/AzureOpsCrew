@@ -127,6 +127,6 @@ public sealed class OllamaProviderFacade : IProviderFacade
         var chatClient = new OpenAIClient(new ApiKeyCredential("ollama"), options)
             .GetChatClient(model);
 
-        return new CustomOpenAIChatClient(chatClient);
+        return chatClient.AsIChatClient();
     }
 }
