@@ -1,3 +1,5 @@
+using System.ClientModel;
+using Azure.AI.OpenAI;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using Microsoft.Extensions.AI;
@@ -112,6 +114,19 @@ public sealed class OllamaProviderFacade : IProviderFacade
 
     public IChatClient CreateChatClient(Provider config, string model, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
+            ? "http://localhost:11434/v1"
+            : config.ApiEndpoint.TrimEnd('/') + "/v1";
+
+        // Ollama provides an OpenAI-compatible API endpoint
+        // Use dummy API key as it's required but ignored by Ollama
+        var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
+        var chatClient = new AzureOpenAIClient(
+                new Uri(endpoint),
+                new ApiKeyCredential("ollama"),
+                options)
+            .GetChatClient(model);
+
+        return chatClient.AsIChatClient();
     }
 }
