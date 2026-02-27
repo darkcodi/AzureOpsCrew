@@ -1,8 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import { User, Brain } from "lucide-react"
 import type { Agent } from "@/lib/agents"
 import type { HumanMember } from "@/lib/humans"
+import { AgentMindModal } from "@/components/agent-mind-modal"
 
 interface DirectMessagesRightPaneProps {
   /** Agent id or human id (e.g. "human:1"). null to show nothing. */
@@ -180,6 +182,8 @@ export function DirectMessagesRightPane({
   agents,
   humans,
 }: DirectMessagesRightPaneProps) {
+  const [showAgentMindModal, setShowAgentMindModal] = useState(false)
+
   if (!selectedCardId) {
     return (
       <div
@@ -236,6 +240,7 @@ export function DirectMessagesRightPane({
     >
       <button
         type="button"
+        onClick={() => setShowAgentMindModal(true)}
         className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:opacity-90"
         style={{
           backgroundColor: "hsl(228, 6%, 22%)",
@@ -246,6 +251,12 @@ export function DirectMessagesRightPane({
         View Agent Mind
       </button>
       <AgentCard agent={agent} />
+      <AgentMindModal
+        open={showAgentMindModal}
+        onOpenChange={setShowAgentMindModal}
+        agentId={agent.id}
+        agent={agent}
+      />
     </div>
   )
 }

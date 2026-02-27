@@ -34,7 +34,7 @@ function deriveIpInfo(widget: ToolWidget): IpInfo | undefined {
   return from(widget.result) ?? from(widget.args)
 }
 
-function normalizeMarkdownBlockNewlines(content: string): string {
+export function normalizeMarkdownBlockNewlines(content: string): string {
   if (!content || typeof content !== "string") return content
   // Ensure newline after ATX headings when content continues on same line (e.g. "# Title Next paragraph")
   let out = content.replace(/(#{1,6}\s[^\n]*?)(\s+)(?=[A-Z*_`-])/g, "$1\n\n$2")
@@ -43,8 +43,8 @@ function normalizeMarkdownBlockNewlines(content: string): string {
   return out
 }
 
-// Markdown components for consistent styling
-const markdownComponents = {
+// Markdown components for consistent styling (exported for read-only chat views)
+export const markdownComponents = {
   p: ({ children, ...props }: any) => (
     <p className="mb-2 last:mb-0" {...props}>{children}</p>
   ),
@@ -137,6 +137,28 @@ const markdownComponents = {
   td: ({ children, ...props }: any) => (
     <td className="px-3 py-2" style={{ borderRight: "1px solid hsl(228, 6%, 20%)" }} {...props}>{children}</td>
   ),
+}
+
+/** Renders a single message widget (tool result). Optional onFollowUp for read-only views. */
+export function renderMessageWidget(
+  widget: ChatMessage["widget"],
+  onFollowUp?: (content: string) => void
+) {
+  if (!widget) return null
+  const followUp = onFollowUp ?? (() => {})
+  if (KNOWN_FE_TOOL_NAMES.has(widget.toolName)) {
+    if (widget.toolName === "showMyIp")
+      return <MyIpCard ipInfo={deriveIpInfo(widget)} onFollowUp={followUp} />
+    if (widget.toolName === "showDeployment")
+      return <DeploymentCard onFollowUp={followUp} />
+  }
+  return (
+    <BackendToolCard
+      toolName={widget.toolName}
+      args={widget.args}
+      result={widget.result}
+    />
+  )
 }
 
 export interface ChatMessage {
@@ -411,22 +433,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   }
 
   // Render a widget; resolve by toolName (known FE → specific widget, else generic box)
-  const renderWidget = (widget: ChatMessage["widget"]) => {
-    if (!widget) return null
-    if (KNOWN_FE_TOOL_NAMES.has(widget.toolName)) {
-      if (widget.toolName === "showMyIp")
-        return <MyIpCard ipInfo={deriveIpInfo(widget)} onFollowUp={sendMessage} />
-      if (widget.toolName === "showDeployment")
-        return <DeploymentCard onFollowUp={sendMessage} />
-    }
-    return (
-      <BackendToolCard
-        toolName={widget.toolName}
-        args={widget.args}
-        result={widget.result}
-      />
-    )
-  }
+  const renderWidget = (w: ChatMessage["widget"]) => renderMessageWidget(w, sendMessage)
 
   // Show loading state
   if (isLoading) {
