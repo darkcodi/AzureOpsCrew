@@ -104,6 +104,12 @@ public class LlmActivities
                 previousMessage.ContentDto = AocAiContentDto.FromAocAiContent(previousTextContent);
                 messages.RemoveAt(i);
             }
+            if (currentContent is AocTextReasoningContent currentReasoningContent && previousContent is AocTextReasoningContent previousReasoningContent)
+            {
+                previousReasoningContent.Text += currentReasoningContent.Text;
+                previousMessage.ContentDto = AocAiContentDto.FromAocAiContent(previousReasoningContent);
+                messages.RemoveAt(i);
+            }
         }
     }
 

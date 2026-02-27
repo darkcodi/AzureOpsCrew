@@ -521,6 +521,10 @@ public static class CustomOpenAiChatMessageConverter
         {
             contents.Add(new TextContent(delta.Content));
         }
+        else if (!string.IsNullOrEmpty(delta.Reasoning))
+        {
+            contents.Add(new TextReasoningContent(delta.Reasoning));
+        }
 
         // Handle tool calls in streaming
         if (delta.ToolCalls != null && delta.ToolCalls.Count > 0)
