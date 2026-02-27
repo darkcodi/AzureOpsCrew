@@ -1,6 +1,6 @@
 "use client"
 
-import { User } from "lucide-react"
+import { User, Brain } from "lucide-react"
 import type { Agent } from "@/lib/agents"
 import type { HumanMember } from "@/lib/humans"
 
@@ -234,6 +234,17 @@ export function DirectMessagesRightPane({
       className="flex h-full w-[280px] flex-col shrink-0 overflow-auto px-3 pt-4"
       style={{ backgroundColor: "hsl(228, 7%, 14%)" }}
     >
+      <button
+        type="button"
+        className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:opacity-90"
+        style={{
+          backgroundColor: "hsl(228, 6%, 22%)",
+          color: "hsl(210, 3%, 98%)",
+        }}
+      >
+        <Brain className="h-4 w-4 shrink-0" />
+        View Agent Mind
+      </button>
       <AgentCard agent={agent} />
     </div>
   )
