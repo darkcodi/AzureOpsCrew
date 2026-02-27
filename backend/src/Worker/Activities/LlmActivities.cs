@@ -60,12 +60,6 @@ public class LlmActivities
         {
             Instructions = prompt,
             Tools = tools.Select(x => (AITool)x.ToAiFunctionDeclaration()).ToArray(),
-            RawRepresentationFactory = _ => new ChatCompletionOptions
-            {
-#pragma warning disable OPENAI001
-                ReasoningEffortLevel = ChatReasoningEffortLevel.High,
-#pragma warning restore OPENAI001
-            },
         };
 
         var newMessages = new List<AocLlmChatMessage>();
