@@ -247,6 +247,14 @@ public class AgentCoordinatorWorkflow
 
     private string FormatException(Exception e)
     {
+        if (e is ChildWorkflowFailureException childWorkflowFailureException && childWorkflowFailureException.InnerException != null)
+        {
+            return FormatException(childWorkflowFailureException.InnerException);
+        }
+        if (e is ActivityFailureException activityFailureException && activityFailureException.InnerException != null)
+        {
+            return FormatException(activityFailureException.InnerException);
+        }
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("==========");
         sb.AppendLine($"Exception: {e.GetType().Name}");
