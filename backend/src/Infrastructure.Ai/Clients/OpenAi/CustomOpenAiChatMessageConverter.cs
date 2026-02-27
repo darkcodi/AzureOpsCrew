@@ -505,6 +505,7 @@ public static class CustomOpenAiChatMessageConverter
     /// </summary>
     public static ChatResponseUpdate ToChatResponseUpdate(
         OpenAiChatCompletionChunk chunk,
+        ref bool isReasoning,
         OpenAiStreamToolCallBuilder? toolCallBuilder = null)
     {
         if (chunk.Choices.Count == 0)
@@ -519,7 +520,30 @@ public static class CustomOpenAiChatMessageConverter
         // Add text content if present
         if (!string.IsNullOrEmpty(delta.Content))
         {
-            contents.Add(new TextContent(delta.Content));
+            if (delta.Content.Contains("<think>") ||
+                delta.Content.Contains("<thinking>") ||
+                delta.Content.Contains("<reason>") ||
+                delta.Content.Contains("<reasoning>"))
+            {
+                isReasoning = true;
+            }
+
+            if (isReasoning)
+            {
+                contents.Add(new TextReasoningContent(delta.Content));
+            }
+            else
+            {
+                contents.Add(new TextContent(delta.Content));
+            }
+
+            if (delta.Content.Contains("</think>") ||
+                delta.Content.Contains("</thinking>") ||
+                delta.Content.Contains("</reason>") ||
+                delta.Content.Contains("</reasoning>"))
+            {
+                isReasoning = false;
+            }
         }
         else if (!string.IsNullOrEmpty(delta.Reasoning))
         {

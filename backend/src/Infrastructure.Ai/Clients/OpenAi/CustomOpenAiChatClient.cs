@@ -59,11 +59,12 @@ public sealed class CustomOpenAiChatClient : IChatClient
 
         var toolCallBuilder = new CustomOpenAiChatMessageConverter.OpenAiStreamToolCallBuilder();
 
+        var isReasoning = false;
         await foreach (var chunk in CustomOpenAiSseParser.ParseStreamAsync(responseStream, cancellationToken))
         {
             if (chunk?.Choices != null && chunk.Choices.Count > 0)
             {
-                var update = CustomOpenAiChatMessageConverter.ToChatResponseUpdate(chunk, toolCallBuilder);
+                var update = CustomOpenAiChatMessageConverter.ToChatResponseUpdate(chunk, ref isReasoning, toolCallBuilder);
                 yield return update;
 
                 // Check if stream is complete
