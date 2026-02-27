@@ -52,10 +52,9 @@ public class AgentCoordinatorWorkflow
             // Sleep until there is something to do (durable wait)
             await Workflow.WaitConditionAsync(() =>
                 _status != AgentStatus.Paused &&
-                _status != AgentStatus.Failed &&
                 _triggersQueue.Count > 0);
 
-            if (_status == AgentStatus.Paused || _status == AgentStatus.Failed)
+            if (_status == AgentStatus.Paused)
                 continue;
 
             _trigger = _triggersQueue.Dequeue();
