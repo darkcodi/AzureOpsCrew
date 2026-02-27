@@ -10,6 +10,7 @@ using AzureOpsCrew.Infrastructure.Ai.Extensions;
 using Microsoft.Extensions.AI;
 using OpenAI;
 using OpenAI.Chat;
+using Serilog;
 using ChatFinishReason = Microsoft.Extensions.AI.ChatFinishReason;
 using ChatMessage = Microsoft.Extensions.AI.ChatMessage;
 using ChatResponseFormat = Microsoft.Extensions.AI.ChatResponseFormat;
@@ -61,6 +62,8 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
         _chatClient = chatClient ?? throw new ArgumentNullException(nameof(chatClient));
 
         _metadata = new("openai", chatClient.Endpoint, _chatClient.Model);
+
+        Serilog.Log.Information("[CustomOpenAIChatClient] Created. Endpoint={Endpoint}, Model={Model}", chatClient.Endpoint, _chatClient.Model);
     }
 
     /// <inheritdoc />
@@ -88,8 +91,16 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
             throw new ArgumentNullException(nameof(messages));
         }
 
+        Log.Information("[GetResponseAsync] Starting request. MessageCount={MessageCount}", messages.Count());
+
+        // Log request details
+        LogRequestDetails(messages, options);
+
         var openAIChatMessages = ToOpenAIChatMessages(messages, options);
         var openAIOptions = ToOpenAIOptions(options);
+
+        Log.Information("[GetResponseAsync] Sending request to OpenAI. Temperature={Temperature}, MaxTokens={MaxTokens}",
+            openAIOptions?.Temperature, openAIOptions?.MaxOutputTokenCount);
 
         // Make the call to OpenAI.
         var task = _completeChatAsync is not null ?
@@ -97,7 +108,205 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
             _chatClient.CompleteChatAsync(openAIChatMessages, openAIOptions, cancellationToken);
         var response = await task.ConfigureAwait(false);
 
-        return FromOpenAIChatCompletion(response.Value, openAIOptions);
+        Log.Information("[GetResponseAsync] Received response from OpenAI. ResponseId={ResponseId}, Role={Role}, FinishReason={FinishReason}, Model={Model}",
+            response.Value.Id, response.Value.Role, response.Value.FinishReason, response.Value.Model);
+
+        // Log EXTENSIVE response details
+        LogResponseDetails(response.Value);
+
+        var result = FromOpenAIChatCompletion(response.Value, openAIOptions);
+
+        // Log final result details
+        Log.Information("[GetResponseAsync] Returning ChatResponse. ResponseId={ResponseId}, FinishReason={FinishReason}, ModelId={ModelId}",
+            result.ResponseId, result.FinishReason, result.ModelId);
+
+        return result;
+    }
+
+    /// <summary>Logs detailed request information.</summary>
+    private void LogRequestDetails(IEnumerable<ChatMessage> messages, ChatOptions? options)
+    {
+        try
+        {
+            Log.Information("[LogRequestDetails] === REQUEST START ===");
+
+            foreach (var msg in messages)
+            {
+                Log.Information("[LogRequestDetails] Message: Role={Role}, AuthorName={AuthorName}, CreatedAt={CreatedAt}",
+                    msg.Role, msg.AuthorName, msg.CreatedAt);
+
+                foreach (var content in msg.Contents)
+                {
+                    switch (content)
+                    {
+                        case TextContent textContent:
+                            Log.Information("[LogRequestDetails]   TextContent: \"{Text}\"", Truncate(textContent.Text, 500));
+                            break;
+                        case FunctionCallContent funcCall:
+                            Log.Information("[LogRequestDetails]   FunctionCallContent: Name={Name}, CallId={CallId}, Arguments={Arguments}",
+                                funcCall.Name, funcCall.CallId, funcCall.Arguments);
+                            break;
+                        case FunctionResultContent funcResult:
+                            Log.Information("[LogRequestDetails]   FunctionResultContent: CallId={CallId}, Result={Result}",
+                                funcResult.CallId, Truncate(funcResult.Result?.ToString() ?? "null", 500));
+                            break;
+                        default:
+                            Log.Information("[LogRequestDetails]   Content: Type={ContentType}, ToString={ToString}",
+                                content.GetType().Name, content);
+                            break;
+                    }
+                }
+            }
+
+            if (options is not null)
+            {
+                Log.Information("[LogRequestDetails] Options: ModelId={ModelId}, Temperature={Temperature}, MaxOutputTokens={MaxOutputTokens}, TopP={TopP}, PresencePenalty={PresencePenalty}, FrequencyPenalty={FrequencyPenalty}",
+                    options.ModelId, options.Temperature, options.MaxOutputTokens, options.TopP, options.PresencePenalty, options.FrequencyPenalty);
+
+                if (options.Tools is { Count: > 0 })
+                {
+                    Log.Information("[LogRequestDetails] Tools: Count={ToolCount}", options.Tools.Count);
+                    foreach (var tool in options.Tools)
+                    {
+                        if (tool is AIFunctionDeclaration funcDecl)
+                        {
+                            Log.Information("[LogRequestDetails]   Tool: Name={Name}, Description={Description}",
+                                funcDecl.Name, funcDecl.Description);
+                        }
+                    }
+                }
+
+                if (options.ToolMode is not null)
+                {
+                    Log.Information("[LogRequestDetails] ToolMode: {ToolMode}", options.ToolMode);
+                }
+
+                if (options.Reasoning is not null)
+                {
+                    Log.Information("[LogRequestDetails] Reasoning: Effort={Effort}", options.Reasoning.Effort);
+                }
+            }
+
+            Log.Information("[LogRequestDetails] === REQUEST END ===");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[LogRequestDetails] Error logging request details");
+        }
+    }
+
+    /// <summary>Logs EXTENSIVE response details including all content and reasoning.</summary>
+    private void LogResponseDetails(ChatCompletion completion)
+    {
+        try
+        {
+            Log.Information("[LogResponseDetails] === RESPONSE START ===");
+            Log.Information("[LogResponseDetails] Completion: Id={Id}, CreatedAt={CreatedAt}, Model={Model}, Role={Role}, FinishReason={FinishReason}",
+                completion.Id, completion.CreatedAt, completion.Model, completion.Role, completion.FinishReason);
+
+            // Log all content parts - THIS IS WHERE REASONING TYPICALLY APPEARS
+            Log.Information("[LogResponseDetails] Content Parts: Count={Count}", completion.Content.Count);
+
+            foreach (var contentPart in completion.Content)
+            {
+                Log.Information("[LogResponseDetails]   ContentPart: Kind={Kind}, Text=\"{Text}\", ImageUri={ImageUri}, FileId={FileId}",
+                    contentPart.Kind, Truncate(contentPart.Text, 1000), contentPart.ImageUri, contentPart.FileId);
+
+                // Log any refusal in content parts
+                if (!string.IsNullOrEmpty(contentPart.Refusal))
+                {
+                    Log.Warning("[LogResponseDetails]   ContentPart.Refusal: \"{Refusal}\"", contentPart.Refusal);
+                }
+            }
+
+            // Log raw JSON representation of content for debugging
+            try
+            {
+                var contentJson = JsonSerializer.Serialize(completion.Content);
+                Log.Information("[LogResponseDetails] Raw Content JSON: {ContentJson}", Truncate(contentJson, 2000));
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "[LogResponseDetails] Could not serialize content to JSON");
+            }
+
+            // Log tool calls
+            if (completion.ToolCalls.Count > 0)
+            {
+                Log.Information("[LogResponseDetails] Tool Calls: Count={Count}", completion.ToolCalls.Count);
+                foreach (var toolCall in completion.ToolCalls)
+                {
+                    Log.Information("[LogResponseDetails]   ToolCall: Id={Id}, FunctionName={FunctionName}, FunctionArguments={Arguments}",
+                        toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments);
+                }
+            }
+
+            // Log refusal at message level
+            if (!string.IsNullOrEmpty(completion.Refusal))
+            {
+                Log.Warning("[LogResponseDetails] Message Refusal: \"{Refusal}\"", completion.Refusal);
+            }
+
+            // Log annotations (citations, etc.)
+            if (completion.Annotations.Count > 0)
+            {
+                Log.Information("[LogResponseDetails] Annotations: Count={Count}", completion.Annotations.Count);
+                foreach (var annotation in completion.Annotations)
+                {
+                    Log.Information("[LogResponseDetails]   Annotation: StartIndex={StartIndex}, EndIndex={EndIndex}, Title={Title}, Url={Url}",
+                        annotation.StartIndex, annotation.EndIndex, annotation.WebResourceTitle, annotation.WebResourceUri);
+                }
+            }
+
+            // Log usage/tokens
+            if (completion.Usage is not null)
+            {
+                Log.Information("[LogResponseDetails] Usage: InputTokens={InputTokens}, OutputTokens={OutputTokens}, TotalTokens={TotalTokens}, CachedTokens={CachedTokens}, ReasoningTokens={ReasoningTokens}",
+                    completion.Usage.InputTokenCount, completion.Usage.OutputTokenCount, completion.Usage.TotalTokenCount,
+                    completion.Usage.InputTokenDetails?.CachedTokenCount, completion.Usage.OutputTokenDetails?.ReasoningTokenCount);
+
+                if (completion.Usage.OutputTokenDetails is not null)
+                {
+                    Log.Information("[LogResponseDetails] OutputTokenDetails: ReasoningTokens={ReasoningTokens}, AcceptedPredictionTokens={AcceptedPredictionTokens}, RejectedPredictionTokens={RejectedPredictionTokens}, AudioTokens={AudioTokens}",
+                        completion.Usage.OutputTokenDetails.ReasoningTokenCount,
+                        completion.Usage.OutputTokenDetails.AcceptedPredictionTokenCount,
+                        completion.Usage.OutputTokenDetails.RejectedPredictionTokenCount,
+                        completion.Usage.OutputTokenDetails.AudioTokenCount);
+                }
+            }
+
+            // Log output audio if present
+            if (completion.OutputAudio is not null)
+            {
+                Log.Information("[LogResponseDetails] OutputAudio: ByteCount={ByteCount}",
+                    completion.OutputAudio.AudioBytes?.Length ?? 0);
+            }
+
+            // Try to serialize the completion to JSON for debugging
+            try
+            {
+                // Try to get raw JSON through ModelReaderWriter if available
+                var rawJson = completion.ToString();
+                Log.Information("[LogResponseDetails] Completion ToString: {RawJson}", Truncate(rawJson, 5000));
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "[LogResponseDetails] Could not serialize completion to string");
+            }
+
+            Log.Information("[LogResponseDetails] === RESPONSE END ===");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[LogResponseDetails] Error logging response details");
+        }
+    }
+
+    /// <summary>Truncates a string to a maximum length for logging.</summary>
+    private static string? Truncate(string? value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+        return value.Length <= maxLength ? value : value.Substring(0, maxLength) + "...";
     }
 
     /// <inheritdoc />
@@ -109,8 +318,16 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
             throw new ArgumentNullException(nameof(messages));
         }
 
+        Log.Information("[GetStreamingResponseAsync] Starting streaming request. MessageCount={MessageCount}", messages.Count());
+
+        // Log request details
+        LogRequestDetails(messages, options);
+
         var openAIChatMessages = ToOpenAIChatMessages(messages, options);
         var openAIOptions = ToOpenAIOptions(options);
+
+        Log.Information("[GetStreamingResponseAsync] Sending streaming request to OpenAI. Temperature={Temperature}, MaxTokens={MaxTokens}",
+            openAIOptions?.Temperature, openAIOptions?.MaxOutputTokenCount);
 
         // Make the call to OpenAI.
         var chatCompletionUpdates = _completeChatStreamingAsync is not null ?
@@ -334,11 +551,13 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
     }
 
     [Experimental("OPENAI001")]
-    internal static async IAsyncEnumerable<ChatResponseUpdate> FromOpenAIStreamingChatCompletionAsync(
+    internal async IAsyncEnumerable<ChatResponseUpdate> FromOpenAIStreamingChatCompletionAsync(
         IAsyncEnumerable<StreamingChatCompletionUpdate> updates,
         ChatCompletionOptions? options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        Log.Information("[FromOpenAIStreamingChatCompletionAsync] Starting to process streaming updates");
+
         Dictionary<int, FunctionCallInfo>? functionCallInfos = null;
         ChatRole? streamedRole = null;
         ChatFinishReason? finishReason = null;
@@ -346,10 +565,94 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
         string? responseId = null;
         DateTimeOffset? createdAt = null;
         string? modelId = null;
+        var updateCount = 0;
+        var fullContentBuilder = new StringBuilder();
+        var allContentParts = new List<string>();
 
         // Process each update as it arrives
         await foreach (StreamingChatCompletionUpdate update in updates.WithCancellation(cancellationToken).ConfigureAwait(false))
         {
+            updateCount++;
+
+            Log.Information("[FromOpenAIStreamingChatCompletionAsync] Update #{UpdateCount}: CompletionId={CompletionId}, Role={Role}, FinishReason={FinishReason}, Model={Model}",
+                updateCount, update.CompletionId, update.Role, update.FinishReason, update.Model);
+
+            Log.Information("LogUpdate: {Data}", JsonSerializer.Serialize(update));
+
+            // Log content update - THIS IS CRITICAL FOR CATCHING REASONING
+            if (update.ContentUpdate is { Count: > 0 })
+            {
+                Log.Information("[FromOpenAIStreamingChatCompletionAsync] ContentUpdate: Count={Count}", update.ContentUpdate.Count);
+                foreach (var contentPart in update.ContentUpdate)
+                {
+                    var text = contentPart.Text;
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        allContentParts.Add(text);
+                        fullContentBuilder.Append(text);
+                        Log.Information("[FromOpenAIStreamingChatCompletionAsync]   ContentPart: Kind={Kind}, Text=\"{Text}\"",
+                            contentPart.Kind, Truncate(text, 500));
+
+                        // Check for reasoning indicators in the text
+                        var lowerText = text.ToLowerInvariant();
+                        if (lowerText.Contains("reason") || lowerText.Contains("think") || lowerText.Contains("thought") ||
+                            lowerText.Contains("consider") || lowerText.Contains("analyze") || lowerText.Contains("because"))
+                        {
+                            Log.Information("[FromOpenAIStreamingChatCompletionAsync]   *** POTENTIAL REASONING DETECTED in content: \"{Text}\"", Truncate(text, 200));
+                        }
+                    }
+                    else
+                    {
+                        Log.Information("[FromOpenAIStreamingChatCompletionAsync]   ContentPart: Kind={Kind}, HasImageUri={HasImageUri}, HasImageBytes={HasImageBytes}, FileId={FileId}",
+                            contentPart.Kind, contentPart.ImageUri is not null, contentPart.ImageBytes is not null, contentPart.FileId);
+
+                        // Check for refusal in content part
+                        if (!string.IsNullOrEmpty(contentPart.Refusal))
+                        {
+                            Log.Warning("[FromOpenAIStreamingChatCompletionAsync]   *** REFUSAL in ContentPart: \"{Refusal}\"", contentPart.Refusal);
+                        }
+                    }
+                }
+            }
+
+            // Log refusal update at update level
+            if (update.RefusalUpdate is not null)
+            {
+                Log.Warning("[FromOpenAIStreamingChatCompletionAsync] *** REFUSAL UPDATE: \"{Refusal}\"", update.RefusalUpdate);
+            }
+
+            // Log tool call updates
+            if (update.ToolCallUpdates is { Count: > 0 })
+            {
+                Log.Information("[FromOpenAIStreamingChatCompletionAsync] ToolCallUpdates: Count={Count}", update.ToolCallUpdates.Count);
+                foreach (var toolCallUpdate in update.ToolCallUpdates)
+                {
+                    Log.Information("[FromOpenAIStreamingChatCompletionAsync]   ToolCall: Index={Index}, ToolCallId={ToolCallId}, FunctionName={FunctionName}, HasArgumentsUpdate={HasArguments}",
+                        toolCallUpdate.Index, toolCallUpdate.ToolCallId, toolCallUpdate.FunctionName,
+                        toolCallUpdate.FunctionArgumentsUpdate is not null);
+
+                    if (toolCallUpdate.FunctionArgumentsUpdate is { } argUpdate && !argUpdate.ToMemory().IsEmpty)
+                    {
+                        Log.Information("[FromOpenAIStreamingChatCompletionAsync]     Arguments: {Arguments}", Truncate(argUpdate.ToString(), 500));
+                    }
+                }
+            }
+
+            // Log usage updates
+            if (update.Usage is ChatTokenUsage usageLog)
+            {
+                Log.Information("[FromOpenAIStreamingChatCompletionAsync] Usage: InputTokens={InputTokens}, OutputTokens={OutputTokens}, TotalTokens={TotalTokens}, ReasoningTokens={ReasoningTokens}",
+                    usageLog.InputTokenCount, usageLog.OutputTokenCount, usageLog.TotalTokenCount,
+                    usageLog.OutputTokenDetails?.ReasoningTokenCount);
+            }
+
+            // Log audio update
+            if (update.OutputAudioUpdate is { } audioLog)
+            {
+                Log.Information("[FromOpenAIStreamingChatCompletionAsync] OutputAudioUpdate: ByteCount={ByteCount}",
+                    audioLog.AudioBytesUpdate?.Length ?? 0);
+            }
+
             // The role and finish reason may arrive during any update, but once they've arrived, the same value should be the same for all subsequent updates.
             streamedRole ??= update.Role is ChatMessageRole role ? FromOpenAIChatRole(role) : null;
             finishReason ??= update.FinishReason is OpenAI.Chat.ChatFinishReason reason ? FromOpenAIFinishReason(reason) : null;
@@ -422,6 +725,44 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
             yield return responseUpdate;
         }
 
+        // Log summary of streaming
+        var fullContent = fullContentBuilder.ToString();
+        Log.Information("[FromOpenAIStreamingChatCompletionAsync] === STREAMING SUMMARY ===");
+        Log.Information("[FromOpenAIStreamingChatCompletionAsync] Total Updates: {UpdateCount}", updateCount);
+        Log.Information("[FromOpenAIStreamingChatCompletionAsync] ResponseId: {ResponseId}", responseId);
+        Log.Information("[FromOpenAIStreamingChatCompletionAsync] Model: {Model}", modelId);
+        Log.Information("[FromOpenAIStreamingChatCompletionAsync] Role: {Role}", streamedRole);
+        Log.Information("[FromOpenAIStreamingChatCompletionAsync] FinishReason: {FinishReason}", finishReason);
+        Log.Information("[FromOpenAIStreamingChatCompletionAsync] Full Content Length: {ContentLength} chars", fullContent.Length);
+        Log.Information("[FromOpenAIStreamingChatCompletionAsync] Full Content: \"{FullContent}\"", Truncate(fullContent, 2000));
+
+        // Check for reasoning in full content
+        var lowerFullContent = fullContent.ToLowerInvariant();
+        if (lowerFullContent.Contains("reason") || lowerFullContent.Contains("think") || lowerFullContent.Contains("thought") ||
+            lowerFullContent.Contains("consider") || lowerFullContent.Contains("analyze") || lowerFullContent.Contains("because") ||
+            lowerFullContent.Contains("let me") || lowerFullContent.Contains("i should") || lowerFullContent.Contains("first"))
+        {
+            Log.Information("[FromOpenAIStreamingChatCompletionAsync] *** REASONING INDICATORS DETECTED IN FULL CONTENT ***");
+            Log.Information("[FromOpenAIStreamingChatCompletionAsync] *** Content: {Content}***", Truncate(fullContent, 3000));
+        }
+
+        // Log refusal if present
+        if (refusal is not null)
+        {
+            Log.Warning("[FromOpenAIStreamingChatCompletionAsync] *** REFUSAL: \"{Refusal}\"", refusal.ToString());
+        }
+
+        // Log function calls
+        if (functionCallInfos is not null)
+        {
+            Log.Information("[FromOpenAIStreamingChatCompletionAsync] Function Calls: Count={Count}", functionCallInfos.Count);
+            foreach (var entry in functionCallInfos)
+            {
+                Log.Information("[FromOpenAIStreamingChatCompletionAsync]   FunctionCall: Index={Index}, CallId={CallId}, Name={Name}, Arguments={Arguments}",
+                    entry.Key, entry.Value.CallId, entry.Value.Name, entry.Value.Arguments?.ToString() ?? string.Empty);
+            }
+        }
+
         // Now that we've received all updates, combine any for function calls into a single item to yield.
         if (functionCallInfos is not null)
         {
@@ -457,6 +798,8 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
 
             yield return responseUpdate;
         }
+
+        Log.Information("[FromOpenAIStreamingChatCompletionAsync] === END OF STREAMING ===");
     }
 
     [Experimental("OPENAI001")]
@@ -472,12 +815,16 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
         };
 
     [Experimental("OPENAI001")]
-    internal static ChatResponse FromOpenAIChatCompletion(ChatCompletion openAICompletion, ChatCompletionOptions? chatCompletionOptions)
+    internal ChatResponse FromOpenAIChatCompletion(ChatCompletion openAICompletion, ChatCompletionOptions? chatCompletionOptions)
     {
         if (openAICompletion is null)
         {
             throw new ArgumentNullException(nameof(openAICompletion));
         }
+
+        Log.Information("[FromOpenAIChatCompletion] === CONVERSION START ===");
+        Log.Information("[FromOpenAIChatCompletion] Completion: Id={Id}, CreatedAt={CreatedAt}, Model={Model}, Role={Role}, FinishReason={FinishReason}",
+            openAICompletion.Id, openAICompletion.CreatedAt, openAICompletion.Model, openAICompletion.Role, openAICompletion.FinishReason);
 
         // Create the return message.
         ChatMessage returnMessage = new()
@@ -488,18 +835,30 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
             Role = FromOpenAIChatRole(openAICompletion.Role),
         };
 
-        // Populate its content from those in the OpenAI response content.
+        // Log and populate its content from those in the OpenAI response content.
+        Log.Information("[FromOpenAIChatCompletion] Processing Content Parts: Count={Count}", openAICompletion.Content.Count);
         foreach (ChatMessageContentPart contentPart in openAICompletion.Content)
         {
+            Log.Information("[FromOpenAIChatCompletion]   ContentPart: Kind={Kind}, Text=\"{Text}\", ImageUri={ImageUri}, FileId={FileId}, Refusal=\"{Refusal}\"",
+                contentPart.Kind, Truncate(contentPart.Text, 500), contentPart.ImageUri, contentPart.FileId, contentPart.Refusal);
+
+            if (!string.IsNullOrEmpty(contentPart.Refusal))
+            {
+                Log.Warning("[FromOpenAIChatCompletion]   *** REFUSAL in ContentPart: {Refusal}", contentPart.Refusal);
+            }
+
             if (ToAIContent(contentPart) is AIContent aiContent)
             {
                 returnMessage.Contents.Add(aiContent);
+                Log.Information("[FromOpenAIChatCompletion]   -> Added AIContent: Type={Type}", aiContent.GetType().Name);
             }
         }
 
         // Output audio is handled separately from message content parts.
         if (openAICompletion.OutputAudio is ChatOutputAudio audio)
         {
+            Log.Information("[FromOpenAIChatCompletion] OutputAudio: ByteCount={ByteCount}",
+                audio.AudioBytes?.Length ?? 0);
             returnMessage.Contents.Add(new DataContent(audio.AudioBytes.ToMemory(), GetOutputAudioMimeType(chatCompletionOptions))
             {
                 RawRepresentation = audio,
@@ -507,8 +866,12 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
         }
 
         // Also manufacture function calling content items from any tool calls in the response.
+        Log.Information("[FromOpenAIChatCompletion] Processing Tool Calls: Count={Count}", openAICompletion.ToolCalls.Count);
         foreach (ChatToolCall toolCall in openAICompletion.ToolCalls)
         {
+            Log.Information("[FromOpenAIChatCompletion]   ToolCall: Id={Id}, FunctionName={FunctionName}, FunctionArguments={Arguments}",
+                toolCall.Id, toolCall.FunctionName, toolCall.FunctionArguments);
+
             if (!string.IsNullOrWhiteSpace(toolCall.FunctionName))
             {
                 var callContent = OpenAIClientExtensions.ParseCallContent(toolCall.FunctionArguments, toolCall.Id, toolCall.FunctionName);
@@ -521,6 +884,7 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
         // And add error content for any refusals, which represent errors in generating output that conforms to a provided schema.
         if (openAICompletion.Refusal is string refusal)
         {
+            Log.Warning("[FromOpenAIChatCompletion] *** MESSAGE REFUSAL: {Refusal}", refusal);
             returnMessage.Contents.Add(new ErrorContent(refusal) { ErrorCode = nameof(openAICompletion.Refusal) });
         }
 
@@ -529,6 +893,7 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
         // instance if not.
         if (openAICompletion.Annotations is { Count: > 0 })
         {
+            Log.Information("[FromOpenAIChatCompletion] Annotations: Count={Count}", openAICompletion.Annotations.Count);
             TextContent? annotationContent = returnMessage.Contents.OfType<TextContent>().FirstOrDefault();
             if (annotationContent is null)
             {
@@ -538,6 +903,8 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
 
             foreach (var annotation in openAICompletion.Annotations)
             {
+                Log.Information("[FromOpenAIChatCompletion]   Annotation: StartIndex={StartIndex}, EndIndex={EndIndex}, Title={Title}, Url={Url}",
+                    annotation.StartIndex, annotation.EndIndex, annotation.WebResourceTitle, annotation.WebResourceUri);
                 (annotationContent.Annotations ??= []).Add(new CitationAnnotation
                 {
                     RawRepresentation = annotation,
@@ -561,7 +928,14 @@ internal sealed partial class CustomOpenAIChatClient : IChatClient
         if (openAICompletion.Usage is ChatTokenUsage tokenUsage)
         {
             response.Usage = FromOpenAIUsage(tokenUsage);
+            Log.Information("[FromOpenAIChatCompletion] Usage: InputTokens={InputTokens}, OutputTokens={OutputTokens}, TotalTokens={TotalTokens}, ReasoningTokens={ReasoningTokens}",
+                tokenUsage.InputTokenCount, tokenUsage.OutputTokenCount, tokenUsage.TotalTokenCount,
+                tokenUsage.OutputTokenDetails?.ReasoningTokenCount);
         }
+
+        Log.Information("[FromOpenAIChatCompletion] Returning ChatResponse: ResponseId={ResponseId}, FinishReason={FinishReason}, ModelId={ModelId}",
+            response.ResponseId, response.FinishReason, response.ModelId);
+        Log.Information("[FromOpenAIChatCompletion] === CONVERSION END ===");
 
         return response;
     }
