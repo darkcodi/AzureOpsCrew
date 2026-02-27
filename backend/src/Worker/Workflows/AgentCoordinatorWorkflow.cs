@@ -216,7 +216,7 @@ public class AgentCoordinatorWorkflow
 
     [WorkflowQuery]
     public AgentStatusDto GetStatus() =>
-        new(_status, RunId, _triggersQueue.Count, _runCounter, _error);
+        new(_status.ToString(), RunId, _triggersQueue.Count, _runCounter, _error);
 
     public static string WorkflowId(Guid agentId) => $"agent-coordination-workflow:{agentId}";
     public static string ChildRunWorkflowId(Guid agentId) => $"agent-run-workflow:{agentId}";

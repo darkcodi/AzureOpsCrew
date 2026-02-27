@@ -1,7 +1,7 @@
 namespace Worker.Models;
 
 public record AgentStatusDto(
-    AgentStatus Status,
+    string AgentStatus,
     Guid? RunId,
     int QueueDepth,
     long RunNumber,
