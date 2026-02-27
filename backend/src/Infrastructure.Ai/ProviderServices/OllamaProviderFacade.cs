@@ -5,6 +5,8 @@ using Microsoft.Extensions.AI;
 using OpenAI;
 using System.Diagnostics;
 using System.Text.Json;
+using AzureOpsCrew.Infrastructure.Ai.Clients;
+using AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
 
 namespace AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 
@@ -120,13 +122,9 @@ public sealed class OllamaProviderFacade : IProviderFacade
 
         // Ollama provides an OpenAI-compatible API endpoint at /v1
         // Use dummy API key as it's required by OpenAIClient but ignored by Ollama
-        var options = new OpenAIClientOptions
-        {
-            Endpoint = new Uri(endpoint)
-        };
-        var chatClient = new OpenAIClient(new ApiKeyCredential("ollama"), options)
-            .GetChatClient(model);
+        var options = new CustomOpenAiChatClientOptions(new Uri(endpoint), "ollama", model);
+        var chatClient = new CustomOpenAiChatClient(options);
 
-        return chatClient.AsIChatClient();
+        return chatClient;
     }
 }
