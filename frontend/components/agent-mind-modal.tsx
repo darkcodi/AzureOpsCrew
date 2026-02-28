@@ -141,12 +141,6 @@ export function AgentMindModal({
                             }}
                             aria-hidden
                           />
-                          <div
-                            className="mb-1.5 text-xs font-semibold"
-                            style={{ color: "hsl(195, 80%, 85%)" }}
-                          >
-                            You
-                          </div>
                           {msg.content}
                         </div>
                       </div>
