@@ -123,16 +123,24 @@ export function AgentMindModal({
                   return (
                     <div
                       key={msg.id}
-                      className="mb-4 flex items-start justify-end gap-3"
+                      className="mb-4 flex items-end justify-end gap-3"
                     >
                       <div className="flex max-w-lg flex-col items-end">
                         <div
-                          className="rounded-xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed"
+                          className="relative rounded-xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed"
                           style={{
                             backgroundColor: "hsl(235, 86%, 65%)",
                             color: "#fff",
                           }}
                         >
+                          <span
+                            className="absolute bottom-2 right-0 block h-0 w-0 border-y-[6px] border-y-transparent border-l-[8px]"
+                            style={{
+                              borderLeftColor: "hsl(235, 86%, 65%)",
+                              right: "-6px",
+                            }}
+                            aria-hidden
+                          />
                           <div
                             className="mb-1.5 text-xs font-semibold"
                             style={{ color: "hsl(195, 80%, 85%)" }}
@@ -157,7 +165,7 @@ export function AgentMindModal({
 
                 const isWidgetOnly = !msg.content && msg.widget
                 return (
-                  <div key={msg.id} className="mb-4 flex items-start gap-3">
+                  <div key={msg.id} className="mb-4 flex items-end gap-3">
                     <div
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
                       style={{
@@ -181,7 +189,7 @@ export function AgentMindModal({
                       </div>
                     ) : (
                       <div
-                        className="assistantMessage min-w-0 max-w-3xl"
+                        className="assistantMessage relative min-w-0 max-w-3xl"
                         style={{
                           color: "hsl(210, 3%, 92%)",
                           background: "hsl(228, 12%, 18%)",
@@ -191,6 +199,14 @@ export function AgentMindModal({
                           maxWidth: "100%",
                         }}
                       >
+                        <span
+                          className="absolute bottom-2 left-0 block h-0 w-0 border-y-[6px] border-y-transparent border-r-[8px]"
+                          style={{
+                            borderRightColor: "hsl(228, 12%, 18%)",
+                            left: "-6px",
+                          }}
+                          aria-hidden
+                        />
                         <div
                           className="mb-1.5 text-xs font-semibold"
                           style={{

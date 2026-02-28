@@ -460,16 +460,24 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 return (
                   <div
                     key={msg.id}
-                    className="mb-4 flex items-start justify-end gap-3"
+                    className="mb-4 flex items-end justify-end gap-3"
                   >
                     <div className="flex max-w-lg flex-col items-end">
                       <div
-                        className="rounded-xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed"
+                        className="relative rounded-xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed"
                         style={{
                           backgroundColor: "hsl(235, 86%, 65%)",
                           color: "#fff",
                         }}
                       >
+                        <span
+                          className="absolute bottom-2 right-0 block h-0 w-0 border-y-[6px] border-y-transparent border-l-[8px]"
+                          style={{
+                            borderLeftColor: "hsl(235, 86%, 65%)",
+                            right: "-6px",
+                          }}
+                          aria-hidden
+                        />
                         <div
                           className="mb-1.5 text-xs font-semibold"
                           style={{ color: "hsl(195, 80%, 85%)" }}
@@ -495,7 +503,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
               // Assistant message - on the left with avatar; widget-only as standalone, text in bubble
               const isWidgetOnly = !msg.content && msg.widget
               return (
-                <div key={msg.id} className="mb-4 flex items-start gap-3">
+                <div key={msg.id} className="mb-4 flex items-end gap-3">
                   <div
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
                     style={{
@@ -519,7 +527,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                     </div>
                   ) : (
                     <div
-                      className="assistantMessage"
+                      className="assistantMessage relative"
                       style={{
                         color: "hsl(210, 3%, 92%)",
                         background: "hsl(228, 12%, 18%)",
@@ -529,6 +537,14 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                         maxWidth: "100%",
                       }}
                     >
+                      <span
+                        className="absolute bottom-2 left-0 block h-0 w-0 border-y-[6px] border-y-transparent border-r-[8px]"
+                        style={{
+                          borderRightColor: "hsl(228, 12%, 18%)",
+                          left: "-6px",
+                        }}
+                        aria-hidden
+                      />
                       <div
                         className="mb-1.5 text-xs font-semibold"
                         style={{
@@ -552,7 +568,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
             })}
             {/* Run error banner - shown when RUN_ERROR is received */}
             {runError && (
-              <div className="mb-4 flex items-start gap-3">
+              <div className="mb-4 flex items-end gap-3">
                 <div
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
                   style={{
@@ -623,7 +639,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
             )}
             {/* Streaming content - text only; tool results are committed as separate messages */}
             {streamingContent && (
-              <div className="mb-4 flex items-start gap-3">
+              <div className="mb-4 flex items-end gap-3">
                 <div
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
                   style={{
@@ -634,7 +650,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                   {selectedAgent ? selectedAgent.name.charAt(0).toUpperCase() : "A"}
                 </div>
                 <div
-                  className="assistantMessage"
+                  className="assistantMessage relative"
                   style={{
                     color: "hsl(210, 3%, 92%)",
                     background: "hsl(228, 12%, 18%)",
@@ -644,6 +660,14 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                     maxWidth: "100%",
                   }}
                 >
+                  <span
+                    className="absolute bottom-2 left-0 block h-0 w-0 border-y-[6px] border-y-transparent border-r-[8px]"
+                    style={{
+                      borderRightColor: "hsl(228, 12%, 18%)",
+                      left: "-6px",
+                    }}
+                    aria-hidden
+                  />
                   <div
                     className="mb-1.5 text-xs font-semibold"
                     style={{
