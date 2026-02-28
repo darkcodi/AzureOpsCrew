@@ -41,12 +41,12 @@ function unwrapSerializedResult(result: Record<string, unknown>): Record<string,
 }
 
 const cardStyle: CSSProperties = {
-  backgroundColor: "hsl(228, 6%, 22%)",
+  backgroundColor: "hsl(220, 12%, 18%)",
   border: "1px solid hsl(228, 6%, 28%)",
   borderRadius: 12,
-  padding: 16,
-  marginTop: 8,
-  marginBottom: 8,
+  padding: "8px 12px",
+  marginTop: 4,
+  marginBottom: 4,
   maxWidth: 560,
   fontSize: 13,
   fontFamily: "inherit",
@@ -56,19 +56,19 @@ const headerStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  marginBottom: 12,
+  marginBottom: 0,
   gap: 8,
 }
 
 const titleStyle: CSSProperties = {
-  fontSize: 14,
+  fontSize: 13,
   fontWeight: 600,
   color: "hsl(0, 0%, 100%)",
   margin: 0,
   flex: 1,
   display: "flex",
   alignItems: "center",
-  gap: 8,
+  gap: 6,
 }
 
 const paramKeyStyle: CSSProperties = {
@@ -81,18 +81,18 @@ const paramValueStyle: CSSProperties = {
 }
 
 const sectionLabelStyle: CSSProperties = {
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 600,
   color: "hsl(214, 5%, 55%)",
-  marginBottom: 6,
+  marginBottom: 4,
   marginTop: 0,
 }
 
 const outputBlockStyle: CSSProperties = {
-  backgroundColor: "hsl(228, 7%, 18%)",
+  backgroundColor: "hsl(228, 7%, 12%)",
   borderRadius: 8,
-  padding: 12,
-  marginTop: 12,
+  padding: 8,
+  marginTop: 8,
   fontFamily: "ui-monospace, monospace",
   fontSize: 12,
   color: "hsl(210, 3%, 92%)",
@@ -127,7 +127,7 @@ export function BackendToolCard({
     <div style={cardStyle}>
       <div style={headerStyle}>
         <div style={titleStyle}>
-          <Workflow size={16} style={{ flexShrink: 0, color: "hsl(214, 5%, 55%)" }} />
+          <Workflow size={14} style={{ flexShrink: 0, color: "hsl(214, 5%, 55%)" }} />
           <span>
             Tool call: {displayName}
           </span>
@@ -141,20 +141,20 @@ export function BackendToolCard({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            padding: 4,
+            padding: 2,
             background: "transparent",
             border: "none",
             cursor: "pointer",
             color: "hsl(214, 5%, 55%)",
           }}
         >
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
       </div>
 
       {expanded && (
         <>
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ marginBottom: 8, marginTop: 6 }}>
             <div style={sectionLabelStyle}>Arguments:</div>
             {argEntries.length > 0 ? (
               argEntries.map(([key, value]) => (
@@ -182,7 +182,7 @@ export function BackendToolCard({
           </div>
 
           <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
               <div style={sectionLabelStyle}>Result:</div>
               <button
                 type="button"
