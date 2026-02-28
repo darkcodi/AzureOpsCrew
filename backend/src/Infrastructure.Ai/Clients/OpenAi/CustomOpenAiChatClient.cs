@@ -2,7 +2,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
-using Serilog;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
 
@@ -65,25 +64,16 @@ public sealed class CustomOpenAiChatClient : IChatClient
         {
             if (chunk?.Choices != null && chunk.Choices.Count > 0)
             {
-                Log.Verbose("[Streaming] Chunk: {Chunk}", JsonSerializer.Serialize(chunk, JsonOptions));
                 var update = CustomOpenAiChatMessageConverter.ToChatResponseUpdate(chunk, ref isReasoning, toolCallBuilder);
-                Log.Verbose("[Streaming] Update: {Update}", JsonSerializer.Serialize(update, JsonOptions));
                 yield return update;
 
                 // Check if stream is complete
                 if (chunk.Choices[0].FinishReason != null)
                 {
-                    Log.Verbose("[Streaming] Stream complete, finishReason: {FinishReason}", chunk.Choices[0].FinishReason);
-
                     // Add any remaining incomplete tool calls at end of stream
                     var allCalls = toolCallBuilder.GetAllCalls(includeIncomplete: true);
-                    Log.Verbose("[Streaming] Getting all calls at end of stream: {Count} calls", allCalls.Count);
-
                     foreach (var call in allCalls)
                     {
-                        Log.Verbose("[Streaming] Processing remaining call - Id={Id}, Name={Name}, Args={Args}",
-                            call.Id, call.Function?.Name, call.Function?.Arguments);
-
                         if (!string.IsNullOrEmpty(call.Id) && !string.IsNullOrEmpty(call.Function?.Name))
                         {
                             // Parse arguments JSON to dictionary
@@ -93,26 +83,17 @@ public sealed class CustomOpenAiChatClient : IChatClient
                                 try
                                 {
                                     argumentsDict = JsonSerializer.Deserialize<Dictionary<string, object?>>(call.Function.Arguments);
-                                    Log.Verbose("[Streaming] Parsed arguments successfully: {ArgsDict}",
-                                        JsonSerializer.Serialize(argumentsDict));
                                 }
-                                catch (JsonException ex)
+                                catch (JsonException)
                                 {
-                                    Log.Error(ex, "[Streaming] Failed to parse arguments for call {Id}: {Args}",
-                                        call.Id, call.Function.Arguments);
                                     argumentsDict = new Dictionary<string, object?>();
                                 }
                             }
 
-                            var functionCallContent = new FunctionCallContent(
+                            yield return new ChatResponseUpdate(ChatRole.Assistant, [new FunctionCallContent(
                                 call.Id,
                                 call.Function.Name ?? string.Empty,
-                                argumentsDict ?? new Dictionary<string, object?>());
-
-                            Log.Verbose("[Streaming] Yielding FunctionCallContent - CallId={CallId}, Name={Name}, ArgumentCount={ArgCount}",
-                                functionCallContent.CallId, functionCallContent.Name, functionCallContent.Arguments?.Count ?? 0);
-
-                            yield return new ChatResponseUpdate(ChatRole.Assistant, [functionCallContent])
+                                argumentsDict ?? new Dictionary<string, object?>())])
                             {
                                 MessageId = chunk.Id,
                                 ModelId = chunk.Model
