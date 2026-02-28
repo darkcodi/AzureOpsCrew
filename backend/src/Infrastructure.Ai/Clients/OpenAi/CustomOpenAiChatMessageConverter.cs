@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
 
@@ -553,6 +554,7 @@ public static class CustomOpenAiChatMessageConverter
         // Handle tool calls in streaming
         if (delta.ToolCalls != null && delta.ToolCalls.Count > 0)
         {
+            Log.Verbose("[ToChatResponseUpdate] Processing {Count} tool calls in delta", delta.ToolCalls.Count);
             foreach (var toolCall in delta.ToolCalls)
             {
                 toolCallBuilder?.AddChunk(toolCall);
@@ -563,22 +565,32 @@ public static class CustomOpenAiChatMessageConverter
         if (toolCallBuilder != null)
         {
             var completeCalls = toolCallBuilder.GetCompleteCalls();
+            Log.Verbose("[ToChatResponseUpdate] Got {Count} complete calls from builder", completeCalls.Count);
             foreach (var call in completeCalls)
             {
+                Log.Verbose("[ToChatResponseUpdate] Processing complete call - Id={Id}, Name={Name}, Args={Args}",
+                    call.Id, call.Function.Name, call.Function.Arguments);
+
                 Dictionary<string, object?>? argumentsDict = null;
                 if (!string.IsNullOrEmpty(call.Function.Arguments))
                 {
                     try
                     {
                         argumentsDict = JsonSerializer.Deserialize<Dictionary<string, object?>>(call.Function.Arguments);
+                        Log.Verbose("[ToChatResponseUpdate] Parsed arguments successfully: {ArgsDict}",
+                            JsonSerializer.Serialize(argumentsDict));
                     }
-                    catch (JsonException)
+                    catch (JsonException ex)
                     {
+                        Log.Error(ex, "[ToChatResponseUpdate] Failed to parse arguments: {Args}", call.Function.Arguments);
                         argumentsDict = new Dictionary<string, object?>();
                     }
                 }
 
-                contents.Add(new FunctionCallContent(call.Id, call.Function.Name ?? string.Empty, argumentsDict ?? new Dictionary<string, object?>()));
+                var functionCallContent = new FunctionCallContent(call.Id, call.Function.Name ?? string.Empty, argumentsDict ?? new Dictionary<string, object?>());
+                Log.Verbose("[ToChatResponseUpdate] Created FunctionCallContent - CallId={CallId}, Name={Name}, ArgumentCount={ArgCount}",
+                    functionCallContent.CallId, functionCallContent.Name, functionCallContent.Arguments?.Count ?? 0);
+                contents.Add(functionCallContent);
             }
         }
 
@@ -638,15 +650,20 @@ public static class CustomOpenAiChatMessageConverter
         /// </summary>
         public void AddChunk(OpenAiStreamToolCall chunk)
         {
+            Log.Verbose("[ToolCallBuilder] AddChunk: Index={Index}, Id='{Id}', HasFunction={HasFunction}",
+                chunk.Index, chunk.Id, chunk.Function != null);
+
             if (!_accumulatingCalls.TryGetValue(chunk.Index, out var call))
             {
                 call = new AccumulatingToolCall { Index = chunk.Index };
                 _accumulatingCalls[chunk.Index] = call;
+                Log.Verbose("[ToolCallBuilder] Created new AccumulatingToolCall for index {Index}", chunk.Index);
             }
 
             if (!string.IsNullOrEmpty(chunk.Id))
             {
                 call.Id = chunk.Id;
+                Log.Verbose("[ToolCallBuilder] Set Id='{Id}' for index {Index}", chunk.Id, chunk.Index);
             }
 
             if (chunk.Function != null)
@@ -654,11 +671,15 @@ public static class CustomOpenAiChatMessageConverter
                 if (!string.IsNullOrEmpty(chunk.Function.Name))
                 {
                     call.Name = chunk.Function.Name;
+                    Log.Verbose("[ToolCallBuilder] Set Name='{Name}' for index {Index}", chunk.Function.Name, chunk.Index);
                 }
 
                 if (!string.IsNullOrEmpty(chunk.Function.Arguments))
                 {
+                    var beforeLength = call.ArgumentsBuilder.Length;
                     call.ArgumentsBuilder.Append(chunk.Function.Arguments);
+                    Log.Verbose("[ToolCallBuilder] Appended arguments chunk: '{Chunk}' -> TotalLength={TotalLength}, CurrentArgs='{CurrentArgs}'",
+                        chunk.Function.Arguments, call.ArgumentsBuilder.Length, call.ArgumentsBuilder.ToString());
                 }
             }
         }
@@ -668,19 +689,36 @@ public static class CustomOpenAiChatMessageConverter
         /// </summary>
         public List<OpenAiToolCall> GetCompleteCalls()
         {
+            Log.Verbose("[ToolCallBuilder] GetCompleteCalls called - Checking {Count} accumulating calls", _accumulatingCalls.Count);
             var complete = new List<OpenAiToolCall>();
 
             foreach (var kvp in _accumulatingCalls)
             {
                 var call = kvp.Value;
-                // A call is considered complete if it has id, name, and arguments
+                var arguments = call.ArgumentsBuilder.ToString();
+
+                Log.Verbose("[ToolCallBuilder] Checking call Index={Index}, Id='{Id}', Name='{Name}', ArgsLength={ArgsLength}, Args='{Args}'",
+                    call.Index, call.Id, call.Name, call.ArgumentsBuilder.Length, arguments);
+
+                // A call is considered complete if it has id, name, and VALID (complete) JSON arguments
                 if (!string.IsNullOrEmpty(call.Id) &&
                     !string.IsNullOrEmpty(call.Name) &&
                     call.ArgumentsBuilder.Length > 0)
                 {
-                    // Only return if not already emitted
-                    if (_emittedCallIds.Add(call.Id))  // Add returns false if already exists
+                    Log.Verbose("[ToolCallBuilder] Call has Id+Name+ArgsLength>0, checking if already emitted: {AlreadyEmitted}",
+                        _emittedCallIds.Contains(call.Id));
+
+                    var isValid = IsValidJson(arguments);
+                    Log.Verbose("[ToolCallBuilder] IsValidJson returned: {IsValid} for args '{Args}'", isValid, arguments);
+
+                    // Only return if not already emitted AND arguments form valid JSON
+                    if (!_emittedCallIds.Contains(call.Id) && isValid)
                     {
+                        Log.Verbose("[ToolCallBuilder] *** EMITTING CALL *** Id='{Id}', Name='{Name}', Args='{Args}'",
+                            call.Id, call.Name, arguments);
+
+                        _emittedCallIds.Add(call.Id); // Mark as emitted only when actually returning
+
                         complete.Add(new OpenAiToolCall
                         {
                             Index = call.Index,
@@ -689,13 +727,24 @@ public static class CustomOpenAiChatMessageConverter
                             Function = new OpenAiFunctionCall
                             {
                                 Name = call.Name,
-                                Arguments = call.ArgumentsBuilder.ToString()
+                                Arguments = arguments
                             }
                         });
                     }
+                    else
+                    {
+                        Log.Verbose("[ToolCallBuilder] Call NOT emitted - AlreadyEmitted={AlreadyEmitted}, IsValid={IsValid}",
+                            _emittedCallIds.Contains(call.Id), isValid);
+                    }
+                }
+                else
+                {
+                    Log.Verbose("[ToolCallBuilder] Call incomplete - HasId={HasId}, HasName={HasName}, HasArgs={HasArgs}",
+                        !string.IsNullOrEmpty(call.Id), !string.IsNullOrEmpty(call.Name), call.ArgumentsBuilder.Length > 0);
                 }
             }
 
+            Log.Verbose("[ToolCallBuilder] Returning {Count} complete calls", complete.Count);
             return complete;
         }
 
@@ -704,6 +753,8 @@ public static class CustomOpenAiChatMessageConverter
         /// </summary>
         public List<OpenAiToolCall> GetAllCalls(bool includeIncomplete = false)
         {
+            Log.Verbose("[ToolCallBuilder] GetAllCalls called - includeIncomplete={IncludeIncomplete}", includeIncomplete);
+
             if (includeIncomplete)
             {
                 return GetCompleteCalls();
@@ -720,6 +771,9 @@ public static class CustomOpenAiChatMessageConverter
 
                 if (hasData)
                 {
+                    Log.Verbose("[ToolCallBuilder] GetAllCalls adding call - Index={Index}, Id='{Id}', Name='{Name}', Args='{Args}'",
+                        call.Index, call.Id, call.Name, call.ArgumentsBuilder.ToString());
+
                     all.Add(new OpenAiToolCall
                     {
                         Index = call.Index,
@@ -742,8 +796,50 @@ public static class CustomOpenAiChatMessageConverter
         /// </summary>
         public void Clear()
         {
+            Log.Verbose("[ToolCallBuilder] Clear called - clearing {Count} accumulating calls and {EmittedCount} emitted IDs",
+                _accumulatingCalls.Count, _emittedCallIds.Count);
             _accumulatingCalls.Clear();
             _emittedCallIds.Clear();
+        }
+
+        /// <summary>
+        /// Checks if the accumulated arguments form complete, valid JSON
+        /// </summary>
+        private static bool IsValidJson(string json)
+        {
+            Log.Verbose("[ToolCallBuilder] IsValidJson checking: '{Json}'", json);
+
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                Log.Verbose("[ToolCallBuilder] IsValidJson: FALSE - null or whitespace");
+                return false;
+            }
+
+            // Quick check: valid JSON object must start with { and end with }
+            var trimmed = json.Trim();
+            var startsEndsOk = trimmed.StartsWith('{') && trimmed.EndsWith('}');
+            Log.Verbose("[ToolCallBuilder] IsValidJson: Quick structural check: {Ok} (starts with '{{': {Starts}, ends with '}}': {Ends})",
+                startsEndsOk, trimmed.StartsWith('{'), trimmed.EndsWith('}'));
+
+            if (!startsEndsOk)
+            {
+                Log.Verbose("[ToolCallBuilder] IsValidJson: FALSE - structural check failed");
+                return false;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(json);
+                var isObject = document.RootElement.ValueKind == JsonValueKind.Object;
+                Log.Verbose("[ToolCallBuilder] IsValidJson: {Result} - parsed successfully, ValueKind={ValueKind}",
+                    isObject, document.RootElement.ValueKind);
+                return isObject;
+            }
+            catch (JsonException ex)
+            {
+                Log.Error("[ToolCallBuilder] IsValidJson: FALSE - JsonException: {Message}", ex.Message);
+                return false;
+            }
         }
 
         private class AccumulatingToolCall
