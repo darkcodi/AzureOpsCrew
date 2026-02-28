@@ -631,6 +631,7 @@ public static class CustomOpenAiChatMessageConverter
     public class OpenAiStreamToolCallBuilder
     {
         private readonly Dictionary<int, AccumulatingToolCall> _accumulatingCalls = new();
+        private readonly HashSet<string> _emittedCallIds = new();
 
         /// <summary>
         /// Adds a tool call chunk to the accumulator
@@ -677,17 +678,21 @@ public static class CustomOpenAiChatMessageConverter
                     !string.IsNullOrEmpty(call.Name) &&
                     call.ArgumentsBuilder.Length > 0)
                 {
-                    complete.Add(new OpenAiToolCall
+                    // Only return if not already emitted
+                    if (_emittedCallIds.Add(call.Id))  // Add returns false if already exists
                     {
-                        Index = call.Index,
-                        Id = call.Id,
-                        Type = "function",
-                        Function = new OpenAiFunctionCall
+                        complete.Add(new OpenAiToolCall
                         {
-                            Name = call.Name,
-                            Arguments = call.ArgumentsBuilder.ToString()
-                        }
-                    });
+                            Index = call.Index,
+                            Id = call.Id,
+                            Type = "function",
+                            Function = new OpenAiFunctionCall
+                            {
+                                Name = call.Name,
+                                Arguments = call.ArgumentsBuilder.ToString()
+                            }
+                        });
+                    }
                 }
             }
 
@@ -738,6 +743,7 @@ public static class CustomOpenAiChatMessageConverter
         public void Clear()
         {
             _accumulatingCalls.Clear();
+            _emittedCallIds.Clear();
         }
 
         private class AccumulatingToolCall
