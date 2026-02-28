@@ -7,7 +7,7 @@ namespace AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
 /// <summary>
 /// Parser for Server-Sent Events (SSE) streams from OpenAI API
 /// </summary>
-public static class CustomOpenAiSseParser
+public static class OpenAiSseParser
 {
     /// <summary>
     /// Parses an SSE stream and yields OpenAI chat completion chunks
@@ -15,17 +15,19 @@ public static class CustomOpenAiSseParser
     /// <param name="stream">The input stream containing SSE data</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Async enumerable of OpenAI chat completion chunks</returns>
-    public static async IAsyncEnumerable<(string?, OpenAiChatCompletionChunk?)> ParseStreamAsync(
+    public static async IAsyncEnumerable<(string? data, OpenAiChatCompletionChunk? chunk)> ParseStreamAsync(
         Stream stream,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
 
         StringBuilder? dataBuffer = null;
+        var lines = new List<string?>();
 
         while (!cancellationToken.IsCancellationRequested)
         {
             var line = await reader.ReadLineAsync(cancellationToken);
+            lines.Add(line);
             if (line == null)
             {
                 // End of stream
@@ -42,7 +44,8 @@ public static class CustomOpenAiSseParser
                     dataBuffer = null;
 
                     var chunk = ParseDataLine(data);
-                    yield return (data, chunk);
+                    yield return (string.Join(Environment.NewLine, lines), chunk);
+                    lines.Clear();
                 }
                 continue;
             }
@@ -78,7 +81,8 @@ public static class CustomOpenAiSseParser
         {
             var data = dataBuffer.ToString();
             var chunk = ParseDataLine(data);
-            yield return (data, chunk);
+            yield return (string.Join(Environment.NewLine, lines), chunk);
+            lines.Clear();
         }
     }
 

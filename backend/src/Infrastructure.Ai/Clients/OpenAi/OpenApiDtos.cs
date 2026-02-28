@@ -2,6 +2,8 @@ using System.Text.Json.Serialization;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
 
+// https://developers.openai.com/api/reference/resources/chat/subresources/completions/streaming-events
+
 /// <summary>
 /// Request payload for OpenAI chat completion API
 /// </summary>
@@ -198,6 +200,9 @@ public class OpenAiChatCompletionChunk
 
     [JsonPropertyName("system_fingerprint")]
     public string? SystemFingerprint { get; set; }
+
+    [JsonPropertyName("prompt_filter_results")]
+    public List<OpenAiPromptFilterResults>? PromptFilterResults { get; set; }
 }
 
 /// <summary>
@@ -208,11 +213,56 @@ public class OpenAiStreamChoice
     [JsonPropertyName("index")]
     public int Index { get; set; }
 
+    [JsonPropertyName("content_filter_results")]
+    public OpenAiContentFilterResults? ContentFilterResults { get; set; }
+
     [JsonPropertyName("delta")]
     public OpenAiDelta Delta { get; set; } = new();
 
     [JsonPropertyName("finish_reason")]
     public string? FinishReason { get; set; }
+}
+
+/// <summary>
+/// Prompt filter result
+/// </summary>
+public class OpenAiPromptFilterResults
+{
+    [JsonPropertyName("prompt_index")]
+    public long? PromptIndex { get; set; }
+
+    [JsonPropertyName("content_filter_results")]
+    public OpenAiContentFilterResults? ContentFilterResults { get; set; }
+}
+
+/// <summary>
+/// Content filter results for prompt filtering
+/// </summary>
+public class OpenAiContentFilterResults
+{
+    [JsonPropertyName("hate")]
+    public OpenAiContentFilterResultDetail? Hate { get; set; }
+
+    [JsonPropertyName("self_harm")]
+    public OpenAiContentFilterResultDetail? SelfHarm { get; set; }
+
+    [JsonPropertyName("sexual")]
+    public OpenAiContentFilterResultDetail? Sexual { get; set; }
+
+    [JsonPropertyName("violence")]
+    public OpenAiContentFilterResultDetail? Violence { get; set; }
+}
+
+/// <summary>
+/// Results for individual content filter categories
+/// </summary>
+public class OpenAiContentFilterResultDetail
+{
+    [JsonPropertyName("filtered")]
+    public bool Filtered { get; set; }
+
+    [JsonPropertyName("severity")]
+    public string? Severity { get; set; }
 }
 
 /// <summary>
@@ -225,6 +275,9 @@ public class OpenAiDelta
 
     [JsonPropertyName("content")]
     public string? Content { get; set; }
+
+    [JsonPropertyName("refusal")]
+    public string? Refusal { get; set; }
 
     [JsonPropertyName("reasoning")]
     public string? Reasoning { get; set; }

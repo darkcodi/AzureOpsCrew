@@ -18,14 +18,12 @@ public sealed class CustomOpenAiChatClient : IChatClient
         _httpClient = httpClient ?? new HttpClient();
     }
 
-    public ChatClientMetadata Metadata { get; } = new("custom-openai", new Uri("https://api.openai.com"));
-
     public async Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        var request = CreateRequest(messages, options, stream: false);
+        var request = OpenAiRequestMapper.MapToOpenAiRequest(messages, options, _options.Model, stream: false);
         var requestJson = JsonSerializer.Serialize(request, JsonOptions);
 
         using var httpRequest = await CreateHttpRequestAsync(requestJson, cancellationToken);
@@ -38,10 +36,10 @@ public sealed class CustomOpenAiChatClient : IChatClient
 
         if (response == null)
         {
-            throw new CustomOpenAiApiException("Failed to deserialize OpenAI response", null);
+            throw new OpenAiApiException("Failed to deserialize OpenAI response", null);
         }
 
-        var chatResponse = CustomOpenAiChatMessageConverter.ToChatResponse(response);
+        var chatResponse = OpenAiResponseMapper.ToChatResponse(response);
 
         // Add request and response JSON as system messages for traceability
         chatResponse.Messages.Insert(0, new ChatMessage(new ChatRole(HttpClientRole), requestJson));
@@ -55,7 +53,7 @@ public sealed class CustomOpenAiChatClient : IChatClient
         ChatOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var request = CreateRequest(messages, options, stream: true);
+        var request = OpenAiRequestMapper.MapToOpenAiRequest(messages, options, _options.Model, stream: true);
         var requestJson = JsonSerializer.Serialize(request, JsonOptions);
         yield return new ChatResponseUpdate(new ChatRole(HttpClientRole), requestJson);
 
@@ -68,16 +66,17 @@ public sealed class CustomOpenAiChatClient : IChatClient
 
         var responseStream = await httpResponse.Content.ReadAsStreamAsync(cancellationToken);
 
-        var toolCallBuilder = new CustomOpenAiChatMessageConverter.OpenAiStreamToolCallBuilder();
+        var toolCallBuilder = new OpenAiStreamToolCallBuilder();
 
         var responseJsonBuilder = new StringBuilder();
         var isReasoning = false;
-        await foreach (var (data, chunk) in CustomOpenAiSseParser.ParseStreamAsync(responseStream, cancellationToken))
+        await foreach (var (data, chunk) in OpenAiSseParser.ParseStreamAsync(responseStream, cancellationToken))
         {
             responseJsonBuilder.AppendLine(data);
+            responseJsonBuilder.AppendLine();
             if (chunk != null && chunk.Choices.Count > 0)
             {
-                var update = CustomOpenAiChatMessageConverter.ToChatResponseUpdate(chunk, ref isReasoning, toolCallBuilder);
+                var update = OpenAiResponseMapper.ToChatResponseUpdate(chunk, ref isReasoning, toolCallBuilder);
                 yield return update;
 
                 // Check if stream is complete
@@ -129,55 +128,6 @@ public sealed class CustomOpenAiChatClient : IChatClient
     public void Dispose()
     {
         _httpClient.Dispose();
-    }
-
-    /// <summary>
-    /// Creates an OpenAI chat completion request from messages and options
-    /// </summary>
-    private OpenAiChatCompletionRequest CreateRequest(
-        IEnumerable<ChatMessage> messages,
-        ChatOptions? options,
-        bool stream)
-    {
-        var openAiMessages = CustomOpenAiChatMessageConverter.ToOpenAiMessages(messages);
-
-        var request = new OpenAiChatCompletionRequest
-        {
-            Model = _options.Model,
-            Messages = openAiMessages,
-            Stream = stream
-        };
-
-        // Apply instructions (system prompt override)
-        if (!string.IsNullOrEmpty(options?.Instructions))
-        {
-            // Check if there's already a system message
-            var existingSystemMessage = request.Messages.FirstOrDefault(m => m.Role == "system");
-            if (existingSystemMessage != null)
-            {
-                // Append instructions to existing system message
-                var existingContent = existingSystemMessage.Content?.ToString() ?? string.Empty;
-                existingSystemMessage.Content = $"{options.Instructions}\n\n{existingContent}";
-            }
-            else
-            {
-                // Prepend system message
-                request.Messages.Insert(0, new OpenAiMessage
-                {
-                    Role = "system",
-                    Content = options.Instructions
-                });
-            }
-        }
-
-        // Apply ChatOptions to request
-        CustomOpenAiChatMessageConverter.ApplyChatOptions(request, options);
-
-        // Apply default values if not specified
-        request.Temperature ??= GetDefaultTemperature(options);
-        request.MaxTokens ??= GetDefaultMaxTokens(options);
-
-        return request;
     }
 
     /// <summary>
@@ -291,7 +241,7 @@ public sealed class CustomOpenAiChatClient : IChatClient
             var errorResponse = JsonSerializer.Deserialize<OpenAiError>(content);
             if (errorResponse?.Error != null)
             {
-                throw CustomOpenAiApiException.FromErrorResponse(errorResponse, (int)response.StatusCode);
+                throw OpenAiApiException.FromErrorResponse(errorResponse, (int)response.StatusCode);
             }
         }
         catch (JsonException)
@@ -300,36 +250,12 @@ public sealed class CustomOpenAiChatClient : IChatClient
         }
 
         // Generic error
-        throw new CustomOpenAiApiException(
+        throw new OpenAiApiException(
             $"OpenAI API request failed with status {response.StatusCode}: {response.ReasonPhrase}. {content}",
             null)
         {
             StatusCode = (int)response.StatusCode
         };
-    }
-
-    /// <summary>
-    /// Gets the default temperature from options or returns null
-    /// </summary>
-    private float? GetDefaultTemperature(ChatOptions? options)
-    {
-        if (options?.AdditionalProperties?.TryGetValue("temperature", out var temp) == true)
-        {
-            return temp as float? ?? (float?)(temp as double?);
-        }
-        return null; // Let the API use its default
-    }
-
-    /// <summary>
-    /// Gets the default max tokens from options or returns null
-    /// </summary>
-    private int? GetDefaultMaxTokens(ChatOptions? options)
-    {
-        if (options?.AdditionalProperties?.TryGetValue("max_tokens", out var maxTokens) == true)
-        {
-            return maxTokens as int?;
-        }
-        return null; // Let the API use its default
     }
 
     /// <summary>

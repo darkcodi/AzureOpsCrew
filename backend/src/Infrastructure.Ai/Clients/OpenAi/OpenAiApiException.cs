@@ -6,7 +6,7 @@ namespace AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
 /// <summary>
 /// Exception thrown when the OpenAI API returns an error response
 /// </summary>
-public class CustomOpenAiApiException : Exception
+public class OpenAiApiException : Exception
 {
     /// <summary>
     /// Gets the HTTP status code from the API response
@@ -31,14 +31,14 @@ public class CustomOpenAiApiException : Exception
     /// <summary>
     /// Creates a new OpenAiApiException with a message
     /// </summary>
-    public CustomOpenAiApiException(string message) : base(message)
+    public OpenAiApiException(string message) : base(message)
     {
     }
 
     /// <summary>
     /// Creates a new OpenAiApiException with a message and error code
     /// </summary>
-    public CustomOpenAiApiException(string message, string? errorCode) : base(message)
+    public OpenAiApiException(string message, string? errorCode) : base(message)
     {
         ErrorCode = errorCode;
     }
@@ -46,7 +46,7 @@ public class CustomOpenAiApiException : Exception
     /// <summary>
     /// Creates a new OpenAiApiException with a message, error code, and inner exception
     /// </summary>
-    public CustomOpenAiApiException(string message, string? errorCode, Exception? innerException)
+    public OpenAiApiException(string message, string? errorCode, Exception? innerException)
         : base(message, innerException)
     {
         ErrorCode = errorCode;
@@ -55,10 +55,10 @@ public class CustomOpenAiApiException : Exception
     /// <summary>
     /// Creates an OpenAiApiException from an OpenAI error response
     /// </summary>
-    public static CustomOpenAiApiException FromErrorResponse(OpenAiError errorResponse, int statusCode)
+    public static OpenAiApiException FromErrorResponse(OpenAiError errorResponse, int statusCode)
     {
         var error = errorResponse.Error;
-        return new CustomOpenAiApiException(error.Message, error.Code)
+        return new OpenAiApiException(error.Message, error.Code)
         {
             StatusCode = statusCode,
             ErrorType = error.Type,
@@ -69,7 +69,7 @@ public class CustomOpenAiApiException : Exception
     /// <summary>
     /// Creates an OpenAiApiException from an HTTP response content
     /// </summary>
-    public static CustomOpenAiApiException FromHttpContent(string content, int statusCode)
+    public static OpenAiApiException FromHttpContent(string content, int statusCode)
     {
         try
         {
@@ -84,7 +84,7 @@ public class CustomOpenAiApiException : Exception
             // Not valid JSON error response
         }
 
-        return new CustomOpenAiApiException(
+        return new OpenAiApiException(
             $"OpenAI API request failed with status code {statusCode}: {content}",
             null)
         {
