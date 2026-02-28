@@ -92,7 +92,7 @@ export function AgentMindModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[90vh] w-full max-w-4xl flex-col gap-0 border p-0"
+        className="flex h-[90vh] max-h-[90vh] w-[95vw] !max-w-[95vw] flex-col gap-0 border p-0"
         style={{
           backgroundColor: "hsl(228, 6%, 22%)",
           borderColor: "hsl(228, 6%, 28%)",
