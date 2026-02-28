@@ -7,13 +7,13 @@ namespace AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
 public static class OpenAiResponseMapper
 {
     /// <summary>
-    /// Converts OpenAI response to ChatResponse
+    /// Converts a non-streaming OpenAI response to ChatResponse.
     /// </summary>
     public static ChatResponse ToChatResponse(OpenAiChatCompletionResponse openAiResponse)
     {
         if (openAiResponse.Choices.Count == 0)
         {
-            throw new InvalidOperationException("OpenAI response contained no choices");
+            throw new InvalidOperationException("OpenAI response contained no choices.");
         }
 
         var choice = openAiResponse.Choices[0];
@@ -48,10 +48,7 @@ public static class OpenAiResponseMapper
         // Add finish reason to additional properties
         if (!string.IsNullOrEmpty(choice.FinishReason))
         {
-            if (response.AdditionalProperties == null)
-            {
-                response.AdditionalProperties = new AdditionalPropertiesDictionary();
-            }
+            response.AdditionalProperties ??= new AdditionalPropertiesDictionary();
             response.AdditionalProperties["finish_reason"] = choice.FinishReason;
         }
 
@@ -59,29 +56,48 @@ public static class OpenAiResponseMapper
     }
 
     /// <summary>
-    /// Converts OpenAI streaming chunk to ChatResponseUpdate
+    /// Converts a streaming OpenAI chunk to ChatResponseUpdate.
     /// </summary>
     public static ChatResponseUpdate ToChatResponseUpdate(
         OpenAiChatCompletionChunk chunk,
         ref bool isReasoning,
         OpenAiStreamToolCallBuilder? toolCallBuilder = null)
     {
+        var contents = new List<AIContent>();
+
+        // Streaming usage can arrive in a chunk with choices: []
+        if (chunk.Usage != null)
+        {
+            contents.Add(new UsageContent(new UsageDetails
+            {
+                InputTokenCount = chunk.Usage.PromptTokens,
+                OutputTokenCount = chunk.Usage.CompletionTokens,
+                TotalTokenCount = chunk.Usage.TotalTokens,
+                CachedInputTokenCount = chunk.Usage.PromptTokensDetails?.CachedTokens,
+                ReasoningTokenCount = chunk.Usage.CompletionTokensDetails?.ReasoningTokens
+            }));
+        }
+
+        // Annotation / moderation / usage-only chunks can have no choices.
         if (chunk.Choices.Count == 0)
         {
-            return new ChatResponseUpdate(ChatRole.Assistant, new List<AIContent>());
+            return new ChatResponseUpdate(ChatRole.Assistant, contents)
+            {
+                MessageId = chunk.Id,
+                ModelId = chunk.Model
+            };
         }
 
         var choice = chunk.Choices[0];
         var delta = choice.Delta;
-        var contents = new List<AIContent>();
 
         // Add text content if present
         if (!string.IsNullOrEmpty(delta.Content))
         {
-            if (delta.Content.Contains("<think>") ||
-                delta.Content.Contains("<thinking>") ||
-                delta.Content.Contains("<reason>") ||
-                delta.Content.Contains("<reasoning>"))
+            if (delta.Content.Contains("<think>", StringComparison.OrdinalIgnoreCase) ||
+                delta.Content.Contains("<thinking>", StringComparison.OrdinalIgnoreCase) ||
+                delta.Content.Contains("<reason>", StringComparison.OrdinalIgnoreCase) ||
+                delta.Content.Contains("<reasoning>", StringComparison.OrdinalIgnoreCase))
             {
                 isReasoning = true;
             }
@@ -95,10 +111,10 @@ public static class OpenAiResponseMapper
                 contents.Add(new TextContent(delta.Content));
             }
 
-            if (delta.Content.Contains("</think>") ||
-                delta.Content.Contains("</thinking>") ||
-                delta.Content.Contains("</reason>") ||
-                delta.Content.Contains("</reasoning>"))
+            if (delta.Content.Contains("</think>", StringComparison.OrdinalIgnoreCase) ||
+                delta.Content.Contains("</thinking>", StringComparison.OrdinalIgnoreCase) ||
+                delta.Content.Contains("</reason>", StringComparison.OrdinalIgnoreCase) ||
+                delta.Content.Contains("</reasoning>", StringComparison.OrdinalIgnoreCase))
             {
                 isReasoning = false;
             }
@@ -108,7 +124,7 @@ public static class OpenAiResponseMapper
             contents.Add(new TextReasoningContent(delta.Reasoning));
         }
 
-        // Handle tool calls in streaming
+        // Accumulate streamed tool-call fragments.
         if (delta.ToolCalls != null && delta.ToolCalls.Count > 0)
         {
             foreach (var toolCall in delta.ToolCalls)
@@ -117,40 +133,23 @@ public static class OpenAiResponseMapper
             }
         }
 
-        // Get accumulated tool calls if any are complete
-        if (toolCallBuilder != null)
+        // Finalize tool calls only when the model explicitly ends on tool_calls/function_call.
+        if (toolCallBuilder != null &&
+            IsToolCallFinishReason(choice.FinishReason))
         {
-            var completeCalls = toolCallBuilder.GetCompleteCalls();
-            foreach (var call in completeCalls)
+            foreach (var call in toolCallBuilder.GetFinalizableCalls())
             {
-                Dictionary<string, object?>? argumentsDict = null;
-                if (!string.IsNullOrEmpty(call.Function.Arguments))
-                {
-                    try
-                    {
-                        argumentsDict = JsonSerializer.Deserialize<Dictionary<string, object?>>(call.Function.Arguments);
-                    }
-                    catch (JsonException)
-                    {
-                        argumentsDict = new Dictionary<string, object?>();
-                    }
-                }
+                var argumentsDict = ParseArgumentsToDictionary(
+                    call.Function.Arguments,
+                    throwOnInvalidJson: true);
 
-                contents.Add(new FunctionCallContent(call.Id, call.Function.Name ?? string.Empty, argumentsDict ?? new Dictionary<string, object?>()));
+                contents.Add(new FunctionCallContent(
+                    call.Id,
+                    call.Function.Name ?? string.Empty,
+                    argumentsDict));
             }
-        }
 
-        // Add usage if present (usually in last chunk) - before creating update
-        if (chunk.Usage != null)
-        {
-            contents.Add(new UsageContent(new UsageDetails
-            {
-                InputTokenCount = chunk.Usage.PromptTokens,
-                OutputTokenCount = chunk.Usage.CompletionTokens,
-                TotalTokenCount = chunk.Usage.TotalTokens,
-                CachedInputTokenCount = chunk.Usage.PromptTokensDetails?.CachedTokens,
-                ReasoningTokenCount = chunk.Usage.CompletionTokensDetails?.ReasoningTokens
-            }));
+            toolCallBuilder.Clear();
         }
 
         var update = new ChatResponseUpdate(ChatRole.Assistant, contents)
@@ -159,7 +158,6 @@ public static class OpenAiResponseMapper
             ModelId = chunk.Model
         };
 
-        // Add finish reason if present
         if (!string.IsNullOrEmpty(choice.FinishReason))
         {
             update.FinishReason = MapFinishReason(choice.FinishReason);
@@ -168,23 +166,27 @@ public static class OpenAiResponseMapper
         return update;
     }
 
+    private static bool IsToolCallFinishReason(string? finishReason) =>
+        string.Equals(finishReason, "tool_calls", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(finishReason, "function_call", StringComparison.OrdinalIgnoreCase);
+
     private static ChatFinishReason MapFinishReason(string finishReason)
+    {
+        return finishReason.ToLowerInvariant() switch
         {
-            return finishReason.ToLowerInvariant() switch
-            {
-                "stop" => ChatFinishReason.Stop,
-                "length" => ChatFinishReason.Length,
-                "tool_calls" => ChatFinishReason.ToolCalls,
-                "content_filter" => ChatFinishReason.ContentFilter,
-                _ => ChatFinishReason.Stop
-            };
-        }
+            "stop" => ChatFinishReason.Stop,
+            "length" => ChatFinishReason.Length,
+            "tool_calls" => ChatFinishReason.ToolCalls,
+            "function_call" => ChatFinishReason.ToolCalls,
+            "content_filter" => ChatFinishReason.ContentFilter,
+            _ => ChatFinishReason.Stop
+        };
+    }
 
     private static List<AIContent> ConvertMessageToContents(OpenAiMessage message)
     {
         var contents = new List<AIContent>();
 
-        // Add text content if present
         if (message.Content != null)
         {
             if (message.Content is string text)
@@ -196,29 +198,41 @@ public static class OpenAiResponseMapper
             }
             else if (message.Content is JsonElement element)
             {
-                // Handle JSON content
                 if (element.ValueKind == JsonValueKind.String)
                 {
-                    contents.Add(new TextContent(element.GetString() ?? string.Empty));
+                    var textValue = element.GetString();
+                    if (!string.IsNullOrEmpty(textValue))
+                    {
+                        contents.Add(new TextContent(textValue));
+                    }
                 }
                 else if (element.ValueKind == JsonValueKind.Array)
                 {
-                    // Multi-content format
                     foreach (var item in element.EnumerateArray())
                     {
-                        if (item.TryGetProperty("type", out var type))
+                        if (!item.TryGetProperty("type", out var type))
                         {
-                            var typeValue = type.GetString();
-                            if (typeValue == "text" && item.TryGetProperty("text", out var textProperty))
+                            continue;
+                        }
+
+                        var typeValue = type.GetString();
+
+                        if (typeValue == "text" && item.TryGetProperty("text", out var textProperty))
+                        {
+                            var textContent = textProperty.GetString();
+                            if (!string.IsNullOrEmpty(textContent))
                             {
-                                contents.Add(new TextContent(textProperty.GetString() ?? string.Empty));
+                                contents.Add(new TextContent(textContent));
                             }
-                            else if (typeValue == "image_url" && item.TryGetProperty("image_url", out var imageUrlProp))
+                        }
+                        else if (typeValue == "image_url" &&
+                                 item.TryGetProperty("image_url", out var imageUrlProp) &&
+                                 imageUrlProp.TryGetProperty("url", out var urlProp))
+                        {
+                            var url = urlProp.GetString();
+                            if (!string.IsNullOrEmpty(url))
                             {
-                                if (imageUrlProp.TryGetProperty("url", out var urlProp))
-                                {
-                                    contents.Add(new DataContent(new Uri(urlProp.GetString() ?? string.Empty)));
-                                }
+                                contents.Add(new DataContent(new Uri(url)));
                             }
                         }
                     }
@@ -226,44 +240,71 @@ public static class OpenAiResponseMapper
             }
         }
 
-        // Add tool calls if present
         if (message.ToolCalls != null)
         {
             foreach (var toolCall in message.ToolCalls)
             {
-                // Parse JSON arguments to dictionary
-                Dictionary<string, object?>? argumentsDict = null;
-                if (!string.IsNullOrEmpty(toolCall.Function.Arguments))
-                {
-                    try
-                    {
-                        argumentsDict = JsonSerializer.Deserialize<Dictionary<string, object?>>(toolCall.Function.Arguments);
-                    }
-                    catch (JsonException)
-                    {
-                        // If parsing fails, create empty dict
-                        argumentsDict = new Dictionary<string, object?>();
-                    }
-                }
+                var argumentsDict = ParseArgumentsToDictionary(
+                    toolCall.Function.Arguments,
+                    throwOnInvalidJson: true);
 
                 contents.Add(new FunctionCallContent(
                     toolCall.Id,
                     toolCall.Function.Name ?? string.Empty,
-                    argumentsDict ?? new Dictionary<string, object?>()));
+                    argumentsDict));
             }
         }
 
         return contents;
     }
+
+    private static Dictionary<string, object?> ParseArgumentsToDictionary(
+        string? argumentsJson,
+        bool throwOnInvalidJson)
+    {
+        if (string.IsNullOrWhiteSpace(argumentsJson))
+        {
+            return new Dictionary<string, object?>();
+        }
+
+        try
+        {
+            var element = JsonSerializer.Deserialize<JsonElement>(argumentsJson);
+
+            if (element.ValueKind == JsonValueKind.Null)
+            {
+                return new Dictionary<string, object?>();
+            }
+
+            if (element.ValueKind != JsonValueKind.Object)
+            {
+                throw new InvalidOperationException(
+                    $"Tool/function arguments must be a JSON object, but were {element.ValueKind}.");
+            }
+
+            return JsonSerializer.Deserialize<Dictionary<string, object?>>(argumentsJson)
+                   ?? new Dictionary<string, object?>();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        {
+            if (throwOnInvalidJson)
+            {
+                throw new InvalidOperationException(
+                    $"Tool/function arguments were not valid JSON object: {argumentsJson}",
+                    ex);
+            }
+
+            return new Dictionary<string, object?>();
+        }
+    }
 }
 
-public class OpenAiStreamToolCallBuilder
+public sealed class OpenAiStreamToolCallBuilder
 {
     private readonly Dictionary<int, AccumulatingToolCall> _accumulatingCalls = new();
-    private readonly HashSet<string> _emittedCallIds = new();
 
     /// <summary>
-    /// Adds a tool call chunk to the accumulator
+    /// Adds a streamed tool-call fragment to the accumulator.
     /// </summary>
     public void AddChunk(OpenAiStreamToolCall chunk)
     {
@@ -293,89 +334,90 @@ public class OpenAiStreamToolCallBuilder
     }
 
     /// <summary>
-    /// Gets complete tool calls that have all required data
+    /// Returns tool calls that are ready to be finalized after a terminal tool-calls finish reason.
+    /// This does not attempt to guess JSON completeness mid-stream.
     /// </summary>
-    public List<OpenAiToolCall> GetCompleteCalls()
+    public List<OpenAiToolCall> GetFinalizableCalls()
     {
-        var complete = new List<OpenAiToolCall>();
+        var result = new List<OpenAiToolCall>();
 
-        foreach (var kvp in _accumulatingCalls)
+        foreach (var call in _accumulatingCalls.Values.OrderBy(c => c.Index))
         {
-            var call = kvp.Value;
-            // A call is considered complete if it has id, name, and arguments
-            if (!string.IsNullOrEmpty(call.Id) &&
-                !string.IsNullOrEmpty(call.Name) &&
-                call.ArgumentsBuilder.Length > 0)
+            if (string.IsNullOrEmpty(call.Id) || string.IsNullOrEmpty(call.Name))
             {
-                // Only return if not already emitted
-                if (_emittedCallIds.Add(call.Id))  // Add returns false if already exists
-                {
-                    complete.Add(new OpenAiToolCall
-                    {
-                        Index = call.Index,
-                        Id = call.Id,
-                        Type = "function",
-                        Function = new OpenAiFunctionCall
-                        {
-                            Name = call.Name,
-                            Arguments = call.ArgumentsBuilder.ToString()
-                        }
-                    });
-                }
+                continue;
             }
+
+            result.Add(new OpenAiToolCall
+            {
+                Index = call.Index,
+                Id = call.Id,
+                Type = "function",
+                Function = new OpenAiFunctionCall
+                {
+                    Name = call.Name,
+                    Arguments = call.ArgumentsBuilder.ToString()
+                }
+            });
         }
 
-        return complete;
+        return result;
     }
 
     /// <summary>
-    /// Gets all accumulated tool calls, including incomplete ones
+    /// Gets all accumulated tool calls. If includeIncomplete is false,
+    /// only returns calls with at least id and name.
     /// </summary>
     public List<OpenAiToolCall> GetAllCalls(bool includeIncomplete = false)
     {
-        if (includeIncomplete)
+        var result = new List<OpenAiToolCall>();
+
+        foreach (var call in _accumulatingCalls.Values.OrderBy(c => c.Index))
         {
-            return GetCompleteCalls();
-        }
+            var isCompleteEnough =
+                !string.IsNullOrEmpty(call.Id) &&
+                !string.IsNullOrEmpty(call.Name);
 
-        var all = new List<OpenAiToolCall>();
-
-        foreach (var kvp in _accumulatingCalls)
-        {
-            var call = kvp.Value;
-            var hasData = !string.IsNullOrEmpty(call.Id) ||
-                          !string.IsNullOrEmpty(call.Name) ||
-                          call.ArgumentsBuilder.Length > 0;
-
-            if (hasData)
+            if (!includeIncomplete && !isCompleteEnough)
             {
-                all.Add(new OpenAiToolCall
-                {
-                    Index = call.Index,
-                    Id = call.Id ?? string.Empty,
-                    Type = "function",
-                    Function = new OpenAiFunctionCall
-                    {
-                        Name = call.Name ?? string.Empty,
-                        Arguments = call.ArgumentsBuilder.ToString()
-                    }
-                });
+                continue;
             }
+
+            var hasAnyData =
+                !string.IsNullOrEmpty(call.Id) ||
+                !string.IsNullOrEmpty(call.Name) ||
+                call.ArgumentsBuilder.Length > 0;
+
+            if (!hasAnyData)
+            {
+                continue;
+            }
+
+            result.Add(new OpenAiToolCall
+            {
+                Index = call.Index,
+                Id = call.Id ?? string.Empty,
+                Type = "function",
+                Function = new OpenAiFunctionCall
+                {
+                    Name = call.Name ?? string.Empty,
+                    Arguments = call.ArgumentsBuilder.ToString()
+                }
+            });
         }
 
-        return all;
+        return result;
     }
 
     /// <summary>
-    /// Clears accumulated state
+    /// Clears accumulated state.
     /// </summary>
     public void Clear()
     {
         _accumulatingCalls.Clear();
-        _emittedCallIds.Clear();
     }
 
-    private class AccumulatingToolCall
+    private sealed class AccumulatingToolCall
     {
         public int Index { get; set; }
         public string Id { get; set; } = string.Empty;
