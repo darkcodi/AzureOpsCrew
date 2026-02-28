@@ -162,12 +162,12 @@ export function AgentMindModal({
                       {agent.name.charAt(0).toUpperCase()}
                     </div>
                     {isWidgetOnly ? (
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 max-w-3xl">
                         {renderMessageWidget(msg.widget)}
                       </div>
                     ) : (
                       <div
-                        className="assistantMessage min-w-0 flex-1"
+                        className="assistantMessage min-w-0 max-w-3xl"
                         style={{
                           color: "hsl(210, 3%, 92%)",
                           background: "hsl(228, 12%, 18%)",
