@@ -75,4 +75,11 @@ public class DatabaseActivities
 
         await _context.SaveChangesAsync();
     }
+
+    [Activity]
+    public async Task InsertRawLlmHttpCall(RawLlmHttpCall rawCall)
+    {
+        await _context.RawLlmHttpCalls.AddAsync(rawCall);
+        await _context.SaveChangesAsync();
+    }
 }

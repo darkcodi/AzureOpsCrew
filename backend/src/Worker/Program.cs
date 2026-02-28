@@ -67,6 +67,7 @@ using var worker = new TemporalWorker(
         .AddActivity(databaseActivities.LoadProvider)
         .AddActivity(databaseActivities.LoadChatHistory)
         .AddActivity(databaseActivities.UpsertLlmChatMessage)
+        .AddActivity(databaseActivities.InsertRawLlmHttpCall)
         .AddActivity(llmActivities.LlmThinkAsync)
         .AddActivity(mcpActivities.CallMcpAsync)
         .AddWorkflow<AgentCoordinatorWorkflow>()

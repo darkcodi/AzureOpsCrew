@@ -44,7 +44,7 @@ public class AgentRunWorkflow
         for (int step = 0; step < maxSteps; step++)
         {
             var newChatMessages = await Workflow.ExecuteActivityAsync(
-                (LlmActivities a) => a.LlmThinkAsync(agent, provider, messages, tools),
+                (LlmActivities a) => a.LlmThinkAsync(agent, provider, threadId, runId, messages, tools),
                 Options);
 
             // Ensure new messages are in chronological order (in case the LLM returns them out of order)

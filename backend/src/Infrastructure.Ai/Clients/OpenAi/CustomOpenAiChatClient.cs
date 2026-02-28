@@ -10,6 +10,8 @@ public sealed class CustomOpenAiChatClient : IChatClient
     private readonly CustomOpenAiChatClientOptions _options;
     private readonly HttpClient _httpClient;
 
+    public const string HttpClientRole = "HTTP_CLIENT";
+
     public CustomOpenAiChatClient(CustomOpenAiChatClientOptions options, HttpClient? httpClient = null)
     {
         _options = options;
@@ -24,21 +26,28 @@ public sealed class CustomOpenAiChatClient : IChatClient
         CancellationToken cancellationToken = default)
     {
         var request = CreateRequest(messages, options, stream: false);
+        var requestJson = JsonSerializer.Serialize(request, JsonOptions);
 
-        using var httpRequest = await CreateHttpRequestAsync(request, cancellationToken);
+        using var httpRequest = await CreateHttpRequestAsync(requestJson, cancellationToken);
         using var httpResponse = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseContentRead, cancellationToken);
 
         await EnsureSuccessAsync(httpResponse, cancellationToken);
 
-        var json = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
-        var response = JsonSerializer.Deserialize<OpenAiChatCompletionResponse>(json, JsonOptions);
+        var responseJson = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
+        var response = JsonSerializer.Deserialize<OpenAiChatCompletionResponse>(responseJson, JsonOptions);
 
         if (response == null)
         {
             throw new CustomOpenAiApiException("Failed to deserialize OpenAI response", null);
         }
 
-        return CustomOpenAiChatMessageConverter.ToChatResponse(response);
+        var chatResponse = CustomOpenAiChatMessageConverter.ToChatResponse(response);
+
+        // Add request and response JSON as system messages for traceability
+        chatResponse.Messages.Insert(0, new ChatMessage(new ChatRole(HttpClientRole), requestJson));
+        chatResponse.Messages.Add(new ChatMessage(new ChatRole(HttpClientRole), responseJson));
+
+        return chatResponse;
     }
 
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
@@ -47,8 +56,10 @@ public sealed class CustomOpenAiChatClient : IChatClient
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var request = CreateRequest(messages, options, stream: true);
+        var requestJson = JsonSerializer.Serialize(request, JsonOptions);
+        yield return new ChatResponseUpdate(new ChatRole(HttpClientRole), requestJson);
 
-        using var httpRequest = await CreateHttpRequestAsync(request, cancellationToken);
+        using var httpRequest = await CreateHttpRequestAsync(requestJson, cancellationToken);
 
         // Use ResponseHeadersRead to start streaming immediately
         using var httpResponse = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -59,10 +70,12 @@ public sealed class CustomOpenAiChatClient : IChatClient
 
         var toolCallBuilder = new CustomOpenAiChatMessageConverter.OpenAiStreamToolCallBuilder();
 
+        var responseJsonBuilder = new StringBuilder();
         var isReasoning = false;
-        await foreach (var chunk in CustomOpenAiSseParser.ParseStreamAsync(responseStream, cancellationToken))
+        await foreach (var (data, chunk) in CustomOpenAiSseParser.ParseStreamAsync(responseStream, cancellationToken))
         {
-            if (chunk?.Choices != null && chunk.Choices.Count > 0)
+            responseJsonBuilder.AppendLine(data);
+            if (chunk != null && chunk.Choices.Count > 0)
             {
                 var update = CustomOpenAiChatMessageConverter.ToChatResponseUpdate(chunk, ref isReasoning, toolCallBuilder);
                 yield return update;
@@ -103,6 +116,8 @@ public sealed class CustomOpenAiChatClient : IChatClient
                 }
             }
         }
+
+        yield return new ChatResponseUpdate(new ChatRole(HttpClientRole), responseJsonBuilder.ToString());
     }
 
     // Why this method even exist in the IChatClient interface? Looks like a poor design.
@@ -168,15 +183,12 @@ public sealed class CustomOpenAiChatClient : IChatClient
     /// <summary>
     /// Creates an HttpRequestMessage with proper headers
     /// </summary>
-    private async Task<HttpRequestMessage> CreateHttpRequestAsync(
-        OpenAiChatCompletionRequest request,
-        CancellationToken cancellationToken)
+    private async Task<HttpRequestMessage> CreateHttpRequestAsync(string requestJson, CancellationToken ct)
     {
         var endpoint = GetEndpoint();
-        var json = JsonSerializer.Serialize(request, JsonOptions);
 
         var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
-        httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
+        httpRequest.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
 
         // Set headers
         if (!string.IsNullOrEmpty(_options.ApiKey))

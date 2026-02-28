@@ -1,8 +1,8 @@
 using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using Microsoft.Extensions.AI;
-using OpenAI.Chat;
 using Temporalio.Activities;
 using Worker.Models;
 using Worker.Models.Content;
@@ -13,16 +13,22 @@ namespace Worker.Activities;
 public class LlmActivities
 {
     private readonly IProviderFacadeResolver _providerFactory;
+    private readonly DatabaseActivities _databaseActivities;
 
-    public LlmActivities(IProviderFacadeResolver providerFactory)
+    public const string HttpClientRole = "HTTP_CLIENT";
+
+    public LlmActivities(IProviderFacadeResolver providerFactory, DatabaseActivities databaseActivities)
     {
         _providerFactory = providerFactory;
+        _databaseActivities = databaseActivities;
     }
 
     [Activity]
     public async Task<List<AocLlmChatMessage>> LlmThinkAsync(
         Agent agent,
         Provider provider,
+        Guid threadId,
+        Guid runId,
         List<AocLlmChatMessage> messages,
         List<ToolDeclaration> tools)
     {
@@ -37,7 +43,7 @@ public class LlmActivities
         var beTools = string.Join("\n\n", tools.Where(x => x.ToolType == ToolType.BackEnd).Select(FormatToolDeclaration));
         var feTools = string.Join("\n\n", tools.Where(x => x.ToolType == ToolType.FrontEnd).Select(FormatToolDeclaration));
 
-        var prompt = @$"
+        var prompt = $"""
 System prompt:
 {SystemPrompt}
 
@@ -55,7 +61,7 @@ Your description is:
 
 User prompt:
 {agent.Info.Prompt}
-                ";
+""";
         var chatOptions = new ChatOptions
         {
             Instructions = prompt,
@@ -76,11 +82,32 @@ User prompt:
                     await Task.Delay(TimeSpan.FromMilliseconds(1));
                     var now = DateTime.UtcNow;
 
-                    var newMessage = AocLlmChatMessage.FromContent(parsedContent, ChatRole.Assistant, agent.Info.Name, now);
+                    var newMessage = AocLlmChatMessage.FromContent(parsedContent, update.Role ?? ChatRole.Assistant, agent.Info.Name, now);
                     newMessages.Add(newMessage);
                 }
             }
         }
+
+        // Separate out messages related to HTTP client calls
+        var httpClientMessages = newMessages.Where(m => m.Role.Value == HttpClientRole).ToArray();
+        newMessages.RemoveAll(x => x.Role.Value == HttpClientRole);
+
+        // We should have two messages for each http client call: one for the request and one for the response
+        var httpRequestMessage = httpClientMessages.Length > 0 ? httpClientMessages[0] : null;
+        var httpResponseMessage = httpClientMessages.Length > 1 ? httpClientMessages[1] : null;
+
+        // Insert them in this activity to not pass huge strings between activities (they are stored in Temporal)
+        var rawCall = new RawLlmHttpCall
+        {
+            Id = Guid.NewGuid(),
+            AgentId = agent.Id,
+            ThreadId = threadId,
+            RunId = runId,
+            HttpRequest = (httpRequestMessage?.ContentDto?.ToAocAiContent() as AocTextContent)?.Text ?? "<empty>",
+            HttpResponse = (httpResponseMessage?.ContentDto?.ToAocAiContent() as AocTextContent)?.Text ?? "<empty>",
+            CreatedAt = DateTime.UtcNow,
+        };
+        await _databaseActivities.InsertRawLlmHttpCall(rawCall);
 
         ConcatTextContent(newMessages);
 
@@ -98,13 +125,15 @@ User prompt:
             var currentContent = currentMessage.ContentDto.ToAocAiContent();
             var previousContent = previousMessage.ContentDto.ToAocAiContent();
 
-            if (currentContent is AocTextContent currentTextContent && previousContent is AocTextContent previousTextContent)
+            if (currentContent is AocTextContent currentTextContent && previousContent is AocTextContent previousTextContent &&
+                currentMessage.Role == previousMessage.Role)
             {
                 previousTextContent.Text += currentTextContent.Text;
                 previousMessage.ContentDto = AocAiContentDto.FromAocAiContent(previousTextContent);
                 messages.RemoveAt(i);
             }
-            if (currentContent is AocTextReasoningContent currentReasoningContent && previousContent is AocTextReasoningContent previousReasoningContent)
+            if (currentContent is AocTextReasoningContent currentReasoningContent && previousContent is AocTextReasoningContent previousReasoningContent &&
+                currentMessage.Role == previousMessage.Role)
             {
                 previousReasoningContent.Text += currentReasoningContent.Text;
                 previousMessage.ContentDto = AocAiContentDto.FromAocAiContent(previousReasoningContent);
@@ -116,11 +145,11 @@ User prompt:
     private static string FormatToolDeclaration(ToolDeclaration tool)
     {
         return $"""
-                Tool Name: {tool.Name}
-                Tool Description: {tool.Description}
-                Tool Type: {tool.ToolType.ToString()}
-                Tool JSON Schema: {tool.JsonSchema}
-                Tool Return JSON Schema: {tool.ReturnJsonSchema}
-                """;
+Tool Name: {tool.Name}
+Tool Description: {tool.Description}
+Tool Type: {tool.ToolType.ToString()}
+Tool JSON Schema: {tool.JsonSchema}
+Tool Return JSON Schema: {tool.ReturnJsonSchema}
+""";
     }
 }
