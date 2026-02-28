@@ -133,6 +133,12 @@ export function AgentMindModal({
                             color: "#fff",
                           }}
                         >
+                          <div
+                            className="mb-1.5 text-xs font-semibold"
+                            style={{ color: "hsl(195, 80%, 85%)" }}
+                          >
+                            You
+                          </div>
                           {msg.content}
                         </div>
                       </div>
@@ -163,6 +169,14 @@ export function AgentMindModal({
                     </div>
                     {isWidgetOnly ? (
                       <div className="min-w-0 max-w-3xl">
+                        <div
+                          className="mb-1.5 text-xs font-semibold"
+                          style={{
+                            color: agent.color ?? "hsl(270, 55%, 78%)",
+                          }}
+                        >
+                          {agent.name}
+                        </div>
                         {renderMessageWidget(msg.widget)}
                       </div>
                     ) : (
@@ -177,6 +191,14 @@ export function AgentMindModal({
                           maxWidth: "100%",
                         }}
                       >
+                        <div
+                          className="mb-1.5 text-xs font-semibold"
+                          style={{
+                            color: agent.color ?? "hsl(270, 55%, 78%)",
+                          }}
+                        >
+                          {agent.name}
+                        </div>
                         {msg.content && (
                           <div className="messageContent prose prose-invert max-w-none">
                             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>

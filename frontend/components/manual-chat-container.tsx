@@ -470,6 +470,12 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                           color: "#fff",
                         }}
                       >
+                        <div
+                          className="mb-1.5 text-xs font-semibold"
+                          style={{ color: "hsl(195, 80%, 85%)" }}
+                        >
+                          You
+                        </div>
                         {msg.content}
                       </div>
                     </div>
@@ -501,6 +507,14 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                   </div>
                   {isWidgetOnly ? (
                     <div className="min-w-0 flex-1">
+                      <div
+                        className="mb-1.5 text-xs font-semibold"
+                        style={{
+                          color: selectedAgent?.color ?? "hsl(270, 55%, 78%)",
+                        }}
+                      >
+                        {selectedAgent?.name ?? "Assistant"}
+                      </div>
                       {renderWidget(msg.widget)}
                     </div>
                   ) : (
@@ -515,6 +529,14 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                         maxWidth: "100%",
                       }}
                     >
+                      <div
+                        className="mb-1.5 text-xs font-semibold"
+                        style={{
+                          color: selectedAgent?.color ?? "hsl(270, 55%, 78%)",
+                        }}
+                      >
+                        {selectedAgent?.name ?? "Assistant"}
+                      </div>
                       {msg.content && (
                         <div className="messageContent prose prose-invert max-w-none">
                           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
@@ -622,6 +644,14 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                     maxWidth: "100%",
                   }}
                 >
+                  <div
+                    className="mb-1.5 text-xs font-semibold"
+                    style={{
+                      color: selectedAgent?.color ?? "hsl(270, 55%, 78%)",
+                    }}
+                  >
+                    {selectedAgent?.name ?? "Assistant"}
+                  </div>
                   <div className="messageContent prose prose-invert max-w-none">
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                       {normalizeMarkdownBlockNewlines(streamingContent)}
