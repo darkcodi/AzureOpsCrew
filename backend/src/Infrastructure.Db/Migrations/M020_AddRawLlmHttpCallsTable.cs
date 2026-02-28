@@ -13,7 +13,8 @@ public class M020_AddRawLlmHttpCallsTable : Migration
             .WithColumn("ThreadId").AsGuid().NotNullable()
             .WithColumn("RunId").AsGuid().NotNullable()
             .WithColumn("HttpRequest").AsString(int.MaxValue).NotNullable()
-            .WithColumn("HttpResponse").AsString(int.MaxValue).NotNullable();
+            .WithColumn("HttpResponse").AsString(int.MaxValue).NotNullable()
+            .WithColumn("CreatedAt").AsDateTime().NotNullable();
 
         Create.Index("IX_RawLlmHttpCalls_AgentId").OnTable("RawLlmHttpCalls").OnColumn("AgentId");
         Create.Index("IX_RawLlmHttpCalls_ThreadId").OnTable("RawLlmHttpCalls").OnColumn("ThreadId");

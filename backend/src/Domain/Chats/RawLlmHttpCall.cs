@@ -8,4 +8,5 @@ public class RawLlmHttpCall
     public Guid RunId { get; set; }
     public string HttpRequest { get; set; } = string.Empty;
     public string HttpResponse { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
 }

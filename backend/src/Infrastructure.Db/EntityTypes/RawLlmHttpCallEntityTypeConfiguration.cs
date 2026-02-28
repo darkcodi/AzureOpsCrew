@@ -29,6 +29,9 @@ public sealed class RawLlmHttpCallEntityTypeConfiguration : IEntityTypeConfigura
         builder.Property(m => m.HttpResponse)
                .IsRequired();
 
+        builder.Property(m => m.CreatedAt)
+               .IsRequired();
+
         builder.HasIndex(m => m.AgentId);
         builder.HasIndex(m => m.ThreadId);
         builder.HasIndex(m => m.RunId);
