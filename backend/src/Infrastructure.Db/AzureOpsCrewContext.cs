@@ -11,6 +11,7 @@ using UserConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.UserEntityTypeConf
 using AocMessageConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AocMessageEntityTypeConfiguration;
 using AocDmConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AocDmEntityTypeConfiguration;
 using LlmChatMessageConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.LlmChatMessageEntityTypeConfiguration;
+using RawLlmHttpCallConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.RawLlmHttpCallEntityTypeConfiguration;
 using AiProvider = AzureOpsCrew.Domain.Providers.Provider;
 
 namespace AzureOpsCrew.Infrastructure.Db;
@@ -30,6 +31,7 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<AocMessage> Messages => Set<AocMessage>();
     public DbSet<AocDm> Dms => Set<AocDm>();
     public DbSet<LlmChatMessage> LlmChatMessages => Set<LlmChatMessage>();
+    public DbSet<RawLlmHttpCall> RawLlmHttpCalls => Set<RawLlmHttpCall>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,5 +43,6 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new AocMessageConfig());
         modelBuilder.ApplyConfiguration(new AocDmConfig());
         modelBuilder.ApplyConfiguration(new LlmChatMessageConfig());
+        modelBuilder.ApplyConfiguration(new RawLlmHttpCallConfig());
     }
 }
