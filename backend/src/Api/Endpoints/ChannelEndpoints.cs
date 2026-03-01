@@ -1,9 +1,17 @@
 using AzureOpsCrew.Api.Auth;
+using AzureOpsCrew.Api.Chat;
 using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
+using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
+using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
+using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Infrastructure.Ai.Models;
+using AzureOpsCrew.Infrastructure.Ai.Workflows;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Temporalio.Client;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -137,6 +145,66 @@ public static class ChannelEndpoints
             return Results.NoContent();
         })
         .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status404NotFound);
+
+        group.MapGet("/{id}/messages", async (
+            Guid id,
+            AzureOpsCrewContext context,
+            IChatServerClient chatServerClient,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+            if (channel is null)
+                return Results.Ok(new List<ChatMessageEntity>());
+
+            var messages = await chatServerClient.GetMessagesAsync(channel.Id, cancellationToken);
+            return Results.Ok(messages);
+        })
+        .Produces<List<ChatMessageEntity>>(StatusCodes.Status200OK);
+
+        group.MapPost("/{id}/messages", async (
+            Guid id,
+            CreateDirectMessageDto dto,
+            HttpContext httpContext,
+            AzureOpsCrewContext context,
+            IChatServerClient chatServerClient,
+            IOptions<TemporalSettings> temporalSettings,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+            if (channel is null)
+                return Results.NotFound();
+
+            var senderId = httpContext.User.GetRequiredUserId();
+            var message = await chatServerClient.CreateMessageAsync(channel.Id, dto.Content, senderId, cancellationToken);
+
+            // Trigger all agents in the channel
+            var client = await TemporalClient.ConnectAsync(new(temporalSettings.Value.GetTarget()));
+            foreach (var agentIdString in channel.AgentIds)
+            {
+                if (Guid.TryParse(agentIdString, out var agentId))
+                {
+                    await AgentCoordinatorWorkflow.EnsureCoordinatorStartedAsync(client, agentId);
+                    var trigger = new TriggerEvent(
+                        TriggerId: Guid.NewGuid(),
+                        Source: TriggerSource.DirectMessage,
+                        CreatedAt: DateTime.UtcNow,
+                        ThreadId: agentId,
+                        RunId: Guid.NewGuid(),
+                        Text: $"New message in channel '{channel.Name}'. Please check the message and respond accordingly. Use tool read_chat_messages to read the message content. ChatId: {channel.Id}, MessageId: {message.Id}"
+                    );
+                    var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.WorkflowId(agentId));
+                    await handle.SignalAsync(wf => wf.EnqueueAsync(trigger));
+                }
+            }
+
+            return Results.Created($"/api/channels/{id}/messages/{message.Id}", message);
+        })
+        .Produces<ChatMessageEntity>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status404NotFound);
     }
 }
