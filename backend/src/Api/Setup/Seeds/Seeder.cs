@@ -74,14 +74,15 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             foreach (var agent in agents)
                 await AddAgentIfNotExists(agent);
 
-            var channel = new Channel(generalChatId, "General")
+            // Create the General channel with its corresponding chat
+            var generalChannel = new Channel(generalChatId, "General")
             {
                 Description = "General discussion and collaboration",
                 ConversationId = null,
                 AgentIds = agents.Select(a => a.Id.ToString()).ToArray(),
                 DateCreated = DateTime.UtcNow
             };
-            await AddChannelIfNotExists(channel);
+            await AddChannelWithChatIfNotExists(generalChannel, agents.Select(a => a.Id).ToArray());
 
             var defaultUser = new User(
                 "AzureOpsCrew@mail.xyz",
@@ -172,6 +173,27 @@ namespace AzureOpsCrew.Api.Setup.Seeds
 
             if (!exists)
                 _context.Add(channel);
+        }
+
+        private async Task AddChannelWithChatIfNotExists(Channel channel, Guid[] participantIds)
+        {
+            var channelExists = await _context.Set<Channel>()
+                .AsNoTracking()
+                .AnyAsync(c => c.Id == channel.Id);
+
+            if (!channelExists)
+            {
+                // Create corresponding chat with participants
+                var chat = new ChatEntity(channel.Id, channel.Name);
+                foreach (var participantId in participantIds)
+                {
+                    chat.AddParticipant(participantId);
+                }
+                await _context.Chats.AddAsync(chat);
+
+                // Add the channel
+                await _context.Set<Channel>().AddAsync(channel);
+            }
         }
 
         private async Task AddUserIfNotExists(User user)
