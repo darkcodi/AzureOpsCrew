@@ -26,6 +26,7 @@ public static class ChannelEndpoints
         group.MapPost("/create", async (
             CreateChannelBodyDto body,
             AzureOpsCrewContext context,
+            IChatServerClient chatServerClient,
             CancellationToken cancellationToken) =>
         {
             body.AgentIds = body.AgentIds.Distinct().ToArray();
@@ -39,7 +40,12 @@ public static class ChannelEndpoints
                     return Results.BadRequest("One or more AgentIds are invalid.");
             }
 
-            var channel = new Channel(Guid.NewGuid(), body.Name)
+            // Create a chat with all agent IDs as participants
+            var participantIds = body.AgentIds;
+            var chat = await chatServerClient.CreateChatAsync(body.Name, participantIds, cancellationToken);
+
+            // Use the returned chat's ID as the channel's ID (like DMs)
+            var channel = new Channel(chat.Id, body.Name)
             {
                 Description = body.Description,
                 AgentIds = body.AgentIds.Select(a => a.ToString("D")).ToArray()
@@ -57,6 +63,7 @@ public static class ChannelEndpoints
             Guid id,
             AddAgentBodyDto body,
             AzureOpsCrewContext context,
+            IChatServerClient chatServerClient,
             CancellationToken cancellationToken) =>
         {
             var channel = await context.Set<Channel>()
@@ -75,6 +82,9 @@ public static class ChannelEndpoints
             if (!channel.AgentIds.Contains(agentId))
                 channel.AddAgent(agentId);
 
+            // Add agent to the chat
+            await chatServerClient.AddParticipantAsync(id, body.AgentId, cancellationToken);
+
             await context.SaveChangesAsync(cancellationToken);
 
             return Results.Ok();
@@ -86,6 +96,7 @@ public static class ChannelEndpoints
             Guid id,
             RemoveAgentBodyDto body,
             AzureOpsCrewContext context,
+            IChatServerClient chatServerClient,
             CancellationToken cancellationToken) =>
         {
             var channel = await context.Set<Channel>()
@@ -95,6 +106,9 @@ public static class ChannelEndpoints
                 return Results.BadRequest($"Unknown channel with id: {id}");
 
             channel.RemoveAgent(body.AgentId.ToString("D"));
+
+            // Remove agent from the chat
+            await chatServerClient.RemoveParticipantAsync(id, body.AgentId, cancellationToken);
 
             await context.SaveChangesAsync(cancellationToken);
 
