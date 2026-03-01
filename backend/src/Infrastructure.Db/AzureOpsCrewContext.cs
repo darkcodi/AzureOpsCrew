@@ -2,7 +2,6 @@ using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Domain.Chats;
-using AzureOpsCrew.Infrastructure.Db.EntityTypes;
 using Microsoft.EntityFrameworkCore;
 using AgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AgentEntityTypeConfiguration;
 using ChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.ChannelEntityTypeConfiguration;
@@ -35,8 +34,8 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<DirectMessageChannel> Dms => Set<DirectMessageChannel>();
     public DbSet<AgentThought> AgentThoughts => Set<AgentThought>();
     public DbSet<RawLlmHttpCall> RawLlmHttpCalls => Set<RawLlmHttpCall>();
-    public DbSet<Chat> Chats => Set<Chat>();
-    public DbSet<ChatMessageItem> ChatMessages => Set<ChatMessageItem>();
+    public DbSet<ChatEntity> Chats => Set<ChatEntity>();
+    public DbSet<ChatMessageEntity> ChatMessages => Set<ChatMessageEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,7 +45,7 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new UserConfig());
         modelBuilder.ApplyConfiguration(new PendingRegistrationConfig());
         modelBuilder.ApplyConfiguration(new AocMessageConfig());
-        modelBuilder.ApplyConfiguration(new DirectMessageChannelEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new DirectMessageChannelConfig());
         modelBuilder.ApplyConfiguration(new AgentThoughtConfig());
         modelBuilder.ApplyConfiguration(new RawLlmHttpCallConfig());
         modelBuilder.ApplyConfiguration(new ChatConfig());

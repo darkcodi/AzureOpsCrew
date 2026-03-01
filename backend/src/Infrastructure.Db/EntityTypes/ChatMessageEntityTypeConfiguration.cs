@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes;
 
-public sealed class ChatMessageEntityTypeConfiguration : IEntityTypeConfiguration<ChatMessageItem>
+public sealed class ChatMessageEntityTypeConfiguration : IEntityTypeConfiguration<ChatMessageEntity>
 {
-    public void Configure(EntityTypeBuilder<ChatMessageItem> builder)
+    public void Configure(EntityTypeBuilder<ChatMessageEntity> builder)
     {
         builder.ToTable("ChatMessages");
 

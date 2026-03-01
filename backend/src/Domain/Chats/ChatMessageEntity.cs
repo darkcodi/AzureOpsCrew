@@ -2,11 +2,11 @@
 
 namespace AzureOpsCrew.Domain.Chats;
 
-public sealed class ChatMessageItem
+public sealed class ChatMessageEntity
 {
-    private ChatMessageItem() { }
+    private ChatMessageEntity() { }
 
-    public ChatMessageItem(Guid id, Guid chatId, string content)
+    public ChatMessageEntity(Guid id, Guid chatId, string content)
     {
         Id = id;
         ChatId = chatId;

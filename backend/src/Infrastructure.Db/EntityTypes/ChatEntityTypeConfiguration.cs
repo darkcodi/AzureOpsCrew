@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes;
 
-public sealed class ChatEntityTypeConfiguration : IEntityTypeConfiguration<Chat>
+public sealed class ChatEntityTypeConfiguration : IEntityTypeConfiguration<ChatEntity>
 {
-    public void Configure(EntityTypeBuilder<Chat> builder)
+    public void Configure(EntityTypeBuilder<ChatEntity> builder)
     {
         builder.ToTable("Chats");
 
