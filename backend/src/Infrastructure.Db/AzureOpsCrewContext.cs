@@ -29,7 +29,7 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<PendingRegistration> PendingRegistrations => Set<PendingRegistration>();
     public DbSet<AocMessage> Messages => Set<AocMessage>();
-    public DbSet<AocDm> Dms => Set<AocDm>();
+    public DbSet<AocDirectMessages> Dms => Set<AocDirectMessages>();
     public DbSet<LlmChatMessage> LlmChatMessages => Set<LlmChatMessage>();
     public DbSet<RawLlmHttpCall> RawLlmHttpCalls => Set<RawLlmHttpCall>();
 

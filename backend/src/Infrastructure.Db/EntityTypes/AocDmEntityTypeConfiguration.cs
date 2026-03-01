@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes;
 
-public sealed class AocDmEntityTypeConfiguration : IEntityTypeConfiguration<AocDm>
+public sealed class AocDmEntityTypeConfiguration : IEntityTypeConfiguration<AocDirectMessages>
 {
-    public void Configure(EntityTypeBuilder<AocDm> builder)
+    public void Configure(EntityTypeBuilder<AocDirectMessages> builder)
     {
         builder.ToTable("Dms");
 
