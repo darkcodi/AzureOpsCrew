@@ -243,7 +243,14 @@ public static class ChannelAgUiEndpoints
                 }
             }
 
-            await ResultWrapper.Wrap(() => Task.Delay(TimeSpan.FromSeconds(1), ct));
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1), ct);
+            }
+            catch
+            {
+                // ignore cancellation exceptions from Task.Delay
+            }
         }
     }
 
