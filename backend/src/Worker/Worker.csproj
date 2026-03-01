@@ -8,7 +8,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Temporalio" Version="1.11.1" />
       <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
       <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.3" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.3" />

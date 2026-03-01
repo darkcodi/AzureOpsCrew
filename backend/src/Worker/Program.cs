@@ -1,12 +1,12 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using AzureOpsCrew.Infrastructure.Ai.Activities;
+using AzureOpsCrew.Infrastructure.Ai.Constants;
+using AzureOpsCrew.Infrastructure.Ai.Workflows;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Temporalio.Client;
 using Temporalio.Worker;
-using Worker.Activities;
-using Worker.Constants;
 using Worker.Extensions;
-using Worker.Workflows;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()

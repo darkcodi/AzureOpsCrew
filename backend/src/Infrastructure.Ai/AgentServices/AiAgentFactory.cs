@@ -1,9 +1,10 @@
 ﻿using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
-namespace AzureOpsCrew.Domain.AgentServices
+namespace AzureOpsCrew.Infrastructure.Ai.AgentServices
 {
     //!!! DRAFT !!!
     public class AiAgentFactory : IAiAgentFactory

@@ -14,11 +14,10 @@ using Serilog;
 using System.Text.Json;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Utils;
+using AzureOpsCrew.Infrastructure.Ai.Models;
+using AzureOpsCrew.Infrastructure.Ai.Models.Content;
+using AzureOpsCrew.Infrastructure.Ai.Workflows;
 using Temporalio.Client;
-using Worker.Models;
-using Worker.Models.Content;
-using Worker.Tools;
-using Worker.Workflows;
 
 namespace AzureOpsCrew.Api.Endpoints;
 

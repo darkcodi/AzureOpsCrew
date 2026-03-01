@@ -2,7 +2,7 @@ using AzureOpsCrew.Api.Endpoints.Dtos.ChatHistory;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
-using Worker.Models.Content;
+using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
