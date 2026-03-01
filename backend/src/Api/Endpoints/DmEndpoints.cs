@@ -1,4 +1,3 @@
-using AzureOpsCrew.Api.Chat;
 using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.Chats;
@@ -40,7 +39,6 @@ public static class DmEndpoints
             Guid userId,
             Guid otherUserId,
             AzureOpsCrewContext context,
-            IChatServerClient chatServerClient,
             CancellationToken cancellationToken) =>
         {
             var dm = await context.Dms
@@ -52,7 +50,10 @@ public static class DmEndpoints
             if (dm is null)
                 return Results.Ok(new List<ChatMessageEntity>());
 
-            var messages = await chatServerClient.GetMessagesAsync(dm.Id, cancellationToken);
+            var messages = await context.ChatMessages
+                .Where(m => m.ChatId == dm.Id)
+                .OrderBy(m => m.PostedAt)
+                .ToListAsync(cancellationToken);
             return Results.Ok(messages);
         })
         .Produces<List<ChatMessageEntity>>(StatusCodes.Status200OK);
@@ -62,7 +63,6 @@ public static class DmEndpoints
             Guid userId,
             Guid agentId,
             AzureOpsCrewContext context,
-            IChatServerClient chatServerClient,
             CancellationToken cancellationToken) =>
         {
             var dm = await context.Dms
@@ -76,7 +76,10 @@ public static class DmEndpoints
             if (dm is null)
                 return Results.Ok(new List<ChatMessageEntity>());
 
-            var messages = await chatServerClient.GetMessagesAsync(dm.Id, cancellationToken);
+            var messages = await context.ChatMessages
+                .Where(m => m.ChatId == dm.Id)
+                .OrderBy(m => m.PostedAt)
+                .ToListAsync(cancellationToken);
             return Results.Ok(messages);
         })
         .Produces<List<ChatMessageEntity>>(StatusCodes.Status200OK);
@@ -87,7 +90,6 @@ public static class DmEndpoints
             Guid otherUserId,
             CreateDirectMessageDto dto,
             AzureOpsCrewContext context,
-            IChatServerClient chatServerClient,
             CancellationToken cancellationToken) =>
         {
             var dm = await context.Dms
@@ -99,11 +101,9 @@ public static class DmEndpoints
             // Create DM channel if it doesn't exist
             if (dm is null)
             {
-                var participantIds = new[] { userId, otherUserId };
-                var chat = await chatServerClient.CreateChatAsync($"DM_{userId}_{otherUserId}", participantIds, cancellationToken);
                 dm = new DirectMessageChannel
                 {
-                    Id = chat.Id,
+                    Id = Guid.NewGuid(),
                     User1Id = userId,
                     User2Id = otherUserId,
                     CreatedAt = DateTime.UtcNow
@@ -112,7 +112,17 @@ public static class DmEndpoints
                 await context.SaveChangesAsync(cancellationToken);
             }
 
-            var message = await chatServerClient.CreateMessageAsync(dm.Id, dto.Content, userId, cancellationToken);
+            var message = new ChatMessageEntity
+            {
+                Id = Guid.NewGuid(),
+                ChatId = dm.Id,
+                Content = dto.Content,
+                SenderId = userId,
+                PostedAt = DateTime.UtcNow
+            };
+            await context.ChatMessages.AddAsync(message, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+
             return Results.Created($"/api/users/{userId}/dms/users/{otherUserId}/messages/{message.Id}", message);
         })
         .Produces<ChatMessageEntity>(StatusCodes.Status201Created);
@@ -123,7 +133,6 @@ public static class DmEndpoints
             Guid agentId,
             CreateDirectMessageDto dto,
             AzureOpsCrewContext context,
-            IChatServerClient chatServerClient,
             IOptions<TemporalSettings> temporalSettings,
             CancellationToken cancellationToken) =>
         {
@@ -138,11 +147,9 @@ public static class DmEndpoints
             // Create DM channel if it doesn't exist
             if (dm is null)
             {
-                var participantIds = new[] { userId, agentId };
-                var chat = await chatServerClient.CreateChatAsync($"DM_{userId}_Agent_{agentId}", participantIds, cancellationToken);
                 dm = new DirectMessageChannel
                 {
-                    Id = chat.Id,
+                    Id = Guid.NewGuid(),
                     User1Id = userId,
                     Agent1Id = agentId,
                     CreatedAt = DateTime.UtcNow
@@ -151,7 +158,16 @@ public static class DmEndpoints
                 await context.SaveChangesAsync(cancellationToken);
             }
 
-            var message = await chatServerClient.CreateMessageAsync(dm.Id, dto.Content, userId, cancellationToken);
+            var message = new ChatMessageEntity
+            {
+                Id = Guid.NewGuid(),
+                ChatId = dm.Id,
+                Content = dto.Content,
+                SenderId = userId,
+                PostedAt = DateTime.UtcNow
+            };
+            await context.ChatMessages.AddAsync(message, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
 
             var threadId = agentId;
             var runId = Guid.NewGuid();

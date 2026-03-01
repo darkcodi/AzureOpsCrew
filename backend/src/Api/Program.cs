@@ -47,7 +47,6 @@ try
     builder.Services.AddEmailVerification(builder.Configuration);
     builder.Services.AddAgentFactory(builder.Configuration);
     builder.Services.AddTemporalSettings(builder.Configuration);
-    builder.Services.AddChatServerClient(builder.Configuration);
 
     // Configure AG-UI
     builder.Services.AddHttpClient();
