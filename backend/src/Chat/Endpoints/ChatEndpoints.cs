@@ -51,7 +51,7 @@ namespace Chat.Endpoints
             {
                 var userId = httpContext.User.GetRequiredUserId();
                 var chat = new ChatEntity(Guid.NewGuid(), dto.Title);
-                chat.AddParticipantUser(userId);
+                chat.AddParticipant(userId);
 
                 await context.Chats.AddAsync(chat, cancellationToken);
                 await context.SaveChangesAsync(cancellationToken);
@@ -138,9 +138,8 @@ namespace Chat.Endpoints
                 if (chat is null)
                     return Results.NotFound();
 
-                var userId = httpContext.User.GetRequiredUserId();
-                var message = new ChatMessageEntity(Guid.NewGuid(), id, dto.Content);
-                message.SetSenderUser(userId);
+                var senderId = httpContext.User.GetRequiredUserId();
+                var message = new ChatMessageEntity(Guid.NewGuid(), id, dto.Content, senderId);
 
                 await context.ChatMessages.AddAsync(message, cancellationToken);
                 await context.SaveChangesAsync(cancellationToken);
@@ -150,10 +149,10 @@ namespace Chat.Endpoints
             .Produces<ChatMessageEntity>(StatusCodes.Status201Created)
             .Produces(StatusCodes.Status404NotFound);
 
-            // POST: Add a participant user to a chat
-            group.MapPost("/chats/{id:guid}/participants/users/{userId:guid}", async (
+            // POST: Add a participant to a chat
+            group.MapPost("/chats/{id:guid}/participants/{participantId:guid}", async (
                 Guid id,
-                Guid userId,
+                Guid participantId,
                 AzureOpsCrewContext context,
                 CancellationToken cancellationToken) =>
             {
@@ -163,7 +162,7 @@ namespace Chat.Endpoints
                 if (chat is null)
                     return Results.NotFound();
 
-                chat.AddParticipantUser(userId);
+                chat.AddParticipant(participantId);
                 await context.SaveChangesAsync(cancellationToken);
 
                 return Results.Ok();
@@ -171,10 +170,10 @@ namespace Chat.Endpoints
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
 
-            // DELETE: Remove a participant user from a chat
-            group.MapDelete("/chats/{id:guid}/participants/users/{userId:guid}", async (
+            // DELETE: Remove a participant from a chat
+            group.MapDelete("/chats/{id:guid}/participants/{participantId:guid}", async (
                 Guid id,
-                Guid userId,
+                Guid participantId,
                 AzureOpsCrewContext context,
                 CancellationToken cancellationToken) =>
             {
@@ -184,49 +183,7 @@ namespace Chat.Endpoints
                 if (chat is null)
                     return Results.NotFound();
 
-                chat.RemoveParticipantUser(userId);
-                await context.SaveChangesAsync(cancellationToken);
-
-                return Results.Ok();
-            })
-            .Produces(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status404NotFound);
-
-            // POST: Add a participant agent to a chat
-            group.MapPost("/chats/{id:guid}/participants/agents/{agentId:guid}", async (
-                Guid id,
-                Guid agentId,
-                AzureOpsCrewContext context,
-                CancellationToken cancellationToken) =>
-            {
-                var chat = await context.Chats
-                    .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
-
-                if (chat is null)
-                    return Results.NotFound();
-
-                chat.AddParticipantAgent(agentId);
-                await context.SaveChangesAsync(cancellationToken);
-
-                return Results.Ok();
-            })
-            .Produces(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status404NotFound);
-
-            // DELETE: Remove a participant agent from a chat
-            group.MapDelete("/chats/{id:guid}/participants/agents/{agentId:guid}", async (
-                Guid id,
-                Guid agentId,
-                AzureOpsCrewContext context,
-                CancellationToken cancellationToken) =>
-            {
-                var chat = await context.Chats
-                    .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
-
-                if (chat is null)
-                    return Results.NotFound();
-
-                chat.RemoveParticipantAgent(agentId);
+                chat.RemoveParticipant(participantId);
                 await context.SaveChangesAsync(cancellationToken);
 
                 return Results.Ok();

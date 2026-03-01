@@ -18,14 +18,9 @@ public sealed class ChatEntityTypeConfiguration : IEntityTypeConfiguration<ChatE
                .IsRequired()
                .HasMaxLength(256);
 
-        builder.Property(c => c.ParticipantUserIds)
+        builder.Property(c => c.ParticipantIds)
                .HasConversion(
                    v => v == null ? null : string.Join(',', v.Select(g => g.ToString())),
-                   s => string.IsNullOrEmpty(s) ? Array.Empty<Guid>() : s.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(Guid.Parse).ToArray());
-
-        builder.Property(c => c.ParticipantAgentIds)
-               .HasConversion(
-                   v => v == null ? null : string.Join(',', v),
                    s => string.IsNullOrEmpty(s) ? Array.Empty<Guid>() : s.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(Guid.Parse).ToArray());
 
         builder.Property(c => c.CreatedAt)

@@ -21,18 +21,14 @@ public sealed class ChatMessageEntityTypeConfiguration : IEntityTypeConfiguratio
                .IsRequired()
                .HasMaxLength(30000);
 
-        builder.Property(m => m.SenderUserId)
-               .IsRequired(false);
-
-        builder.Property(m => m.SenderAgentId)
-               .IsRequired(false);
+        builder.Property(m => m.SenderId)
+               .IsRequired();
 
         builder.Property(m => m.PostedAt)
                .IsRequired();
 
         builder.HasIndex(m => m.PostedAt);
         builder.HasIndex(m => m.ChatId);
-        builder.HasIndex(m => m.SenderUserId);
-        builder.HasIndex(m => m.SenderAgentId);
+        builder.HasIndex(m => m.SenderId);
     }
 }
