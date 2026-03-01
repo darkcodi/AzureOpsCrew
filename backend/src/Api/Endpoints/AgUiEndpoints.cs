@@ -55,24 +55,6 @@ public static class ChannelAgUiEndpoints
             await AgentCoordinatorWorkflow.EnsureCoordinatorStartedAsync(client, agentId);
             // await CronTriggerWorkflow.EnsureCronScheduleAsync(client, agentId);
 
-            // Create run options with AG-UI context in AdditionalProperties
-            // var clientTools = input.Tools?.AsAITools().ToList();
-            // var runOptions = new ChatClientAgentRunOptions
-            // {
-            //     ChatOptions = new ChatOptions
-            //     {
-            //         Tools = clientTools,
-            //         AdditionalProperties = new AdditionalPropertiesDictionary
-            //         {
-            //             ["ag_ui_state"] = input.State,
-            //             ["ag_ui_context"] = input.Context?.Select(c => new KeyValuePair<string, string>(c.Description, c.Value)).ToArray(),
-            //             ["ag_ui_forwarded_properties"] = input.ForwardedProperties,
-            //             ["ag_ui_thread_id"] = input.ThreadId,
-            //             ["ag_ui_run_id"] = input.RunId
-            //         }
-            //     }
-            // };
-
             var trigger = new TriggerEvent(
                 TriggerId: Guid.NewGuid(),
                 Source: TriggerSource.Dm,
@@ -302,6 +284,14 @@ public static class ChannelAgUiEndpoints
                 var messageId = $"{message.AuthorName ?? "assistant"}|chatcmpl-{message.Id.ToString().ToLowerInvariant().Replace("-", "")}";
                 events.Add(new TextMessageStartEvent { MessageId = messageId, Role = "assistant" });
                 events.Add(new TextMessageContentEvent { MessageId = messageId, Delta = textContent.Text });
+                events.Add(new TextMessageEndEvent { MessageId = messageId });
+                break;
+            }
+            case AocTextReasoningContent reasoningContent:
+            {
+                var messageId = $"{message.AuthorName ?? "assistant"}|chatcmpl-{message.Id.ToString().ToLowerInvariant().Replace("-", "")}";
+                events.Add(new TextMessageStartEvent { MessageId = messageId, Role = "assistant" });
+                events.Add(new TextMessageContentEvent { MessageId = messageId, Delta = reasoningContent.Text });
                 events.Add(new TextMessageEndEvent { MessageId = messageId });
                 break;
             }
