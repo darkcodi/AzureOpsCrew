@@ -1,3 +1,4 @@
+using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Ai.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
@@ -6,7 +7,9 @@ using FluentMigrator.Runner;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Serilog;
+using Worker.Chat;
 using Worker.Settings;
 
 namespace Worker.Extensions;
@@ -73,6 +76,18 @@ public static class ServiceCollectionExtensions
         });
         services.AddHttpClient<OpenRouterProviderFacade>(client =>
         {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+    }
+
+    public static void AddChatServerClient(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<ChatServerSettings>(configuration.GetSection("ChatServer"));
+        services.AddOptions<ChatServerSettings>();
+        services.AddHttpClient<IChatServerClient, ChatServerClient>((sp, client) =>
+        {
+            var settings = sp.GetRequiredService<IOptions<ChatServerSettings>>().Value;
+            client.BaseAddress = new Uri(settings.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(30);
         });
     }

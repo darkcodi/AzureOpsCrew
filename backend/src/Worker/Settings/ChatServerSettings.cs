@@ -1,4 +1,4 @@
-namespace AzureOpsCrew.Api.Settings;
+namespace Worker.Settings;
 
 public sealed class ChatServerSettings
 {

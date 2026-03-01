@@ -1,9 +1,11 @@
+using System.Net.Http.Json;
 using System.Text.Json;
-using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.Chats;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Worker.Settings;
 
-namespace AzureOpsCrew.Api.Chat;
+namespace Worker.Chat;
 
 public sealed class ChatServerClient(
     HttpClient httpClient,
