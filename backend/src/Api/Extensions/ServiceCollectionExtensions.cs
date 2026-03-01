@@ -224,4 +224,12 @@ public static class ServiceCollectionExtensions
             throw new InvalidOperationException($"Unknown LongTermMemory type '{memoryType}'. Supported providers: InMemory, Cypher");
         }
     }
+
+    public static void AddTemporalSettings(this IServiceCollection services, IConfiguration configuration)
+    {
+        var settings = configuration.GetSection("Temporal").Get<TemporalSettings>() ?? new TemporalSettings();
+
+        services.Configure<TemporalSettings>(configuration.GetSection("Temporal"));
+        services.AddOptions<TemporalSettings>();
+    }
 }

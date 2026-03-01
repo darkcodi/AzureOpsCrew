@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
 using AzureOpsCrew.Api.Extensions;
+using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
@@ -45,7 +46,11 @@ public static class ChannelAgUiEndpoints
 
             var userInput = input.Messages.AsChatMessages(jsonSerializerOptions).LastOrDefault()?.Text;
 
-            var client = await TemporalClient.ConnectAsync(new("localhost:7233"));
+            // Read Temporal configuration from service provider
+            var temporalSettings = context.RequestServices
+                .GetRequiredService<IOptions<TemporalSettings>>().Value;
+
+            var client = await TemporalClient.ConnectAsync(new(temporalSettings.GetTarget()));
 
             await AgentCoordinatorWorkflow.EnsureCoordinatorStartedAsync(client, agentId);
             // await CronTriggerWorkflow.EnsureCronScheduleAsync(client, agentId);
