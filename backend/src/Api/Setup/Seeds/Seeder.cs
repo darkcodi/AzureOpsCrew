@@ -1,6 +1,7 @@
 ﻿using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Providers;
+using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 
@@ -81,6 +82,13 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             };
             await AddChannelIfNotExists(channel);
 
+            var defaultUser = new User(
+                "AzureOpsCrew@mail.xyz",
+                "AZUREOPSCREW@MAIL.XYZ",
+                "AQAAAAIAAYagAAAAEHds/S4gmNc0Cf04kSQ5E+g2anSh8VUU/xSrmiNqJiq4APpch0OhtXvIWF9wsTf+Rg==", // Pass1234
+                "AzureOpsCrew");
+            await AddUserIfNotExists(defaultUser);
+
             await _context.SaveChangesAsync();
         }
 
@@ -112,6 +120,16 @@ namespace AzureOpsCrew.Api.Setup.Seeds
 
             if (!exists)
                 _context.Add(channel);
+        }
+
+        private async Task AddUserIfNotExists(User user)
+        {
+            var exists = await _context.Set<User>()
+                .AsNoTracking()
+                .AnyAsync(u => u.NormalizedEmail == user.NormalizedEmail);
+
+            if (!exists)
+                _context.Add(user);
         }
     }
 }
