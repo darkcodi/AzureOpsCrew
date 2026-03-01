@@ -91,37 +91,57 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             defaultUser.Id = Guid.Parse("EBB8CF5F-CA75-49C0-BED2-91C2DCCAB415");
             await AddUserIfNotExists(defaultUser);
 
-            // Seed DM channels
-            await SeedDmChannels(defaultUser.Id, managerId);
+            // Seed DM channels for all agents
+            await SeedDmChannels(defaultUser.Id, new[] { managerId, azDevOpsId, azDevId });
 
             await _context.SaveChangesAsync();
         }
 
-        private async Task SeedDmChannels(Guid userId, Guid managerAgentId)
+        private async Task SeedDmChannels(Guid userId, Guid[] agentIds)
         {
-            // User-to-Agent DM: default user to Manager agent
-            var userAgentDmId = Guid.Parse("b1c2d3e4-5678-90ab-cdef-123456789012");
-            var existingUserAgentDm = await _context.Dms
-                .AsNoTracking()
-                .AnyAsync(dm => dm.Id == userAgentDmId);
+            // User-to-Agent DMs for each agent
+            var dmIdBase = Guid.Parse("b1c2d3e4-5678-90ab-cdef-123456789012");
 
-            if (!existingUserAgentDm)
+            foreach (var (agentId, index) in agentIds.Select((id, i) => (id, i)))
             {
-                // Create corresponding chat in database with participants
-                var chat = new ChatEntity(userAgentDmId, "DM_User_Manager");
-                chat.AddParticipant(userId);
-                chat.AddParticipant(managerAgentId);
-                await _context.Chats.AddAsync(chat);
-
-                var userAgentDm = new DirectMessageChannel
+                var dmId = CreateDmId(dmIdBase, index);
+                var agentName = index switch
                 {
-                    Id = userAgentDmId,
-                    User1Id = userId,
-                    Agent1Id = managerAgentId,
-                    CreatedAt = DateTime.UtcNow
+                    0 => "Manager",
+                    1 => "AzureDevOps",
+                    2 => "AzureDev",
+                    _ => $"Agent{index}"
                 };
-                _context.Dms.Add(userAgentDm);
+
+                var existingDm = await _context.Dms
+                    .AsNoTracking()
+                    .AnyAsync(dm => dm.Id == dmId);
+
+                if (!existingDm)
+                {
+                    // Create corresponding chat in database with participants
+                    var chat = new ChatEntity(dmId, $"DM_User_{agentName}");
+                    chat.AddParticipant(userId);
+                    chat.AddParticipant(agentId);
+                    await _context.Chats.AddAsync(chat);
+
+                    var userAgentDm = new DirectMessageChannel
+                    {
+                        Id = dmId,
+                        User1Id = userId,
+                        Agent1Id = agentId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Dms.Add(userAgentDm);
+                }
             }
+        }
+
+        private static Guid CreateDmId(Guid baseId, int index)
+        {
+            var bytes = baseId.ToByteArray();
+            bytes[15] = (byte)index; // Modify last byte to create unique IDs
+            return new Guid(bytes);
         }
 
         private async Task AddProviderIfNotExists(Provider provider)
