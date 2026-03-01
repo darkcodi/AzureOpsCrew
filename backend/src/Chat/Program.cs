@@ -41,7 +41,6 @@ try
 
     // Configure settings and database
     builder.Services.AddDatabase(builder.Configuration);
-    builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
 
     // Enable Application Insights
     if (bool.TryParse(builder.Configuration["ApplicationInsights:Enable"], out var enableApplicationInsights)
@@ -76,8 +75,6 @@ try
     }
 
     app.UseHttpsRedirection();
-    app.UseAuthentication();
-    app.UseAuthorization();
 
     // Map endpoints
     app.MapChatEndpoints();

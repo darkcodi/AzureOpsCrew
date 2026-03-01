@@ -1,7 +1,5 @@
-using System.Security.Claims;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Infrastructure.Db;
-using Chat.Auth;
 using Chat.Endpoints.Dtos;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,13 +42,10 @@ namespace Chat.Endpoints
             // POST: Create a new chat
             group.MapPost("/chats", async (
                 CreateChatDto dto,
-                HttpContext httpContext,
                 AzureOpsCrewContext context,
                 CancellationToken cancellationToken) =>
             {
-                var userId = httpContext.User.GetRequiredUserId();
                 var chat = new ChatEntity(Guid.NewGuid(), dto.Title);
-                chat.AddParticipant(userId);
 
                 await context.Chats.AddAsync(chat, cancellationToken);
                 await context.SaveChangesAsync(cancellationToken);
@@ -127,7 +122,6 @@ namespace Chat.Endpoints
             group.MapPost("/chats/{id:guid}/messages", async (
                 Guid id,
                 CreateChatMessageDto dto,
-                HttpContext httpContext,
                 AzureOpsCrewContext context,
                 CancellationToken cancellationToken) =>
             {
@@ -137,7 +131,7 @@ namespace Chat.Endpoints
                 if (chat is null)
                     return Results.NotFound();
 
-                var senderId = httpContext.User.GetRequiredUserId();
+                var senderId = Guid.Empty; // System user when no auth
                 var message = new ChatMessageEntity(Guid.NewGuid(), id, dto.Content, senderId);
 
                 await context.ChatMessages.AddAsync(message, cancellationToken);
