@@ -41,24 +41,6 @@ services:
       temporal:
         condition: service_started
 
-  worker:
-    image: ${DOCKER_REGISTRY-}worker
-    build:
-      context: .
-      dockerfile: src/Worker/Dockerfile
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - DatabaseProvider=SqlServer
-      - SqlServer__ConnectionString=Server=sqlserver;Database=AzureOpsCrew;User Id=sa;Password=YourStrong@Password;TrustServerCertificate=True;
-      - Temporal__Host=temporal
-      - Temporal__Port=7233
-    restart: on-failure
-    depends_on:
-      sqlserver:
-        condition: service_healthy
-      temporal:
-        condition: service_started
-
   frontend:
     image: ${DOCKER_REGISTRY-}frontend
     build:
