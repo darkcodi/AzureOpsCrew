@@ -7,8 +7,6 @@ import { useAgentRuntime } from "@/contexts/agent-runtime-context"
 import { MessageInput } from "@/components/message-input"
 import { fetchWithErrorHandling } from "@/lib/fetch"
 import type { Agent } from "@/lib/agents"
-import type { AGUIEvent } from "@ag-ui/core"
-import { EventType } from "@ag-ui/core"
 import { StartConversationEmpty } from "@/components/start-conversation-empty"
 import { DeploymentCard } from "@/components/deployment-card"
 import { MyIpCard, type IpInfo } from "@/components/my-ip-card"
@@ -178,14 +176,8 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   const { agentId } = useAgentRuntime()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [isStreaming, setIsStreaming] = useState(false)
-  const [isRunActive, setIsRunActive] = useState(false)
-  const [streamingContent, setStreamingContent] = useState("")
-  const [streamingWidget, setStreamingWidget] = useState<ChatMessage["widget"] | null>(null)
-  const [runError, setRunError] = useState<string | null>(null)
   const [expandedReasoningIds, setExpandedReasoningIds] = useState<Set<string>>(new Set())
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const pendingBackendToolsRef = useRef<Map<string, { name: string; args: string }>>(new Map())
 
   const selectedAgent = agents.find((a) => a.id === activeDMId)
   const placeholder = selectedAgent
@@ -200,13 +192,12 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
       el.scrollIntoView({ behavior: "smooth" })
     })
     return () => cancelAnimationFrame(id)
-  }, [messages, streamingContent, streamingWidget, isRunActive, runError])
+  }, [messages])
 
   // Load chat history when agent changes
   useEffect(() => {
     if (!activeDMId) {
       setMessages([])
-      setRunError(null)
       setExpandedReasoningIds(new Set())
       return
     }
@@ -261,184 +252,23 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   }, [activeDMId])
 
   const sendMessage = async (content: string) => {
-    if (!activeDMId || isStreaming) return
+    if (!activeDMId) return
 
-    // Add user message immediately
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content,
-    }
-    setMessages((prev) => [...prev, userMessage])
+    const response = await fetchWithErrorHandling(`/api/dms/agents/${activeDMId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ Content: content }),
+    })
 
-    // Prepare request with all messages
-    const requestMessages = [...messages, userMessage]
-
-    try {
-      setIsStreaming(true)
-      setStreamingContent("")
-      setStreamingWidget(null)
-      setRunError(null)
-      setIsRunActive(false)
-      pendingBackendToolsRef.current.clear()
-
-      const response = await fetch(`/api/agent-agui/${activeDMId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: requestMessages }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to send message")
+    if (response.ok) {
+      const message = await response.json()
+      // Add user message to state
+      const userMessage: ChatMessage = {
+        id: message.id,
+        role: "user",
+        content: message.content,
       }
-
-      // Handle SSE stream
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-
-      let assistantMessageId = crypto.randomUUID()
-      let fullContent = ""
-      let currentToolCall: { id: string; name: string; args: string } | null = null
-
-      while (true) {
-        const { done, value } = await reader!.read()
-        if (done) break
-
-        const chunk = decoder.decode(value)
-        const lines = chunk.split("\n")
-
-        for (const line of lines) {
-          const trimmed = line.trim()
-          if (trimmed.startsWith("data:")) {
-            const data = trimmed.slice(5).trim()
-            if (!data || data === "[DONE]") continue
-
-            try {
-              const event: AGUIEvent = JSON.parse(data)
-
-              // Run started - show typing indicator
-              if (event.type === EventType.RUN_STARTED) {
-                setIsRunActive(true)
-              }
-
-              // Handle text message content
-              if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
-                const chunkText = (event as { delta?: string }).delta ?? (event as { content?: string }).content ?? ""
-                fullContent += chunkText
-                setStreamingContent(fullContent)
-              }
-
-              // Handle tool call start - track all tools the same way
-              if (event.type === EventType.TOOL_CALL_START) {
-                const toolEvent = event as { toolCallId: string; toolCallName: string }
-                currentToolCall = {
-                  id: toolEvent.toolCallId,
-                  name: toolEvent.toolCallName,
-                  args: "",
-                }
-                pendingBackendToolsRef.current.set(toolEvent.toolCallId, {
-                  name: toolEvent.toolCallName,
-                  args: "",
-                })
-              }
-
-              // Handle tool call args
-              if (event.type === EventType.TOOL_CALL_ARGS) {
-                if (currentToolCall) {
-                  const argsEvent = event as { toolCallId: string; delta: string }
-                  currentToolCall.args += argsEvent.delta
-                  const pending = pendingBackendToolsRef.current.get(argsEvent.toolCallId)
-                  if (pending) pending.args += argsEvent.delta
-                }
-              }
-
-              // Handle tool call end - no widget push; all tools completed on TOOL_CALL_RESULT
-              if (event.type === EventType.TOOL_CALL_END) {
-                currentToolCall = null
-              }
-
-              // Handle tool call result - push one message for any tool; display resolved by toolName
-              if (event.type === EventType.TOOL_CALL_RESULT) {
-                const resultEvent = event as { toolCallId: string; content: string }
-                const pending = pendingBackendToolsRef.current.get(resultEvent.toolCallId)
-                if (pending) {
-                  let argsObj: Record<string, unknown> = {}
-                  try {
-                    if (pending.args.trim()) argsObj = JSON.parse(pending.args) as Record<string, unknown>
-                  } catch {
-                    // leave empty
-                  }
-                  let resultObj: Record<string, unknown> = {}
-                  try {
-                    const raw = resultEvent.content ?? ""
-                    if (raw.trim()) {
-                      const parsed = JSON.parse(raw) as unknown
-                      if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed))
-                        resultObj = parsed as Record<string, unknown>
-                      else resultObj = { value: raw }
-                    }
-                  } catch {
-                    resultObj = { raw: resultEvent.content ?? "" }
-                  }
-                  const widgetMessage: ChatMessage = {
-                    id: resultEvent.toolCallId,
-                    role: "assistant",
-                    content: "",
-                    widget: {
-                      toolName: pending.name,
-                      callId: resultEvent.toolCallId,
-                      args: argsObj,
-                      result: resultObj,
-                    },
-                  }
-                  setMessages((prev) => [...prev, widgetMessage])
-                  pendingBackendToolsRef.current.delete(resultEvent.toolCallId)
-                }
-              }
-
-              // Handle text message end - finalize and append the text-only message (only once)
-              if (event.type === EventType.TEXT_MESSAGE_END) {
-                const newMessage: ChatMessage = {
-                  id: assistantMessageId,
-                  role: "assistant",
-                  content: fullContent,
-                }
-
-                setMessages((prev) => [...prev, newMessage])
-                setStreamingContent("")
-                setStreamingWidget(null)
-              }
-
-              // Handle run finished - only clear streaming state (do not append again)
-              if (event.type === EventType.RUN_FINISHED) {
-                setStreamingContent("")
-                setStreamingWidget(null)
-                setIsRunActive(false)
-              }
-
-              // Run error - clear typing and show failure in chat
-              if (event.type === EventType.RUN_ERROR) {
-                setIsRunActive(false)
-                setStreamingContent("")
-                setStreamingWidget(null)
-                const errEvent = event as { message?: string; error?: string }
-                const errMessage =
-                  errEvent.message ?? errEvent.error ?? "The run failed. Please try again."
-                setRunError(errMessage)
-                console.error("AGUI run error:", errMessage)
-              }
-            } catch (e) {
-              // Skip unparseable events
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error sending message:", error)
-      // Could add error state here if needed
-    } finally {
-      setIsStreaming(false)
-      setIsRunActive(false)
+      setMessages((prev) => [...prev, userMessage])
     }
   }
 
@@ -467,7 +297,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Messages area */}
       <div className="messagesArea min-h-0 flex-1 flex flex-col">
-        {messages.length === 0 && !streamingContent && !streamingWidget && !isRunActive ? (
+        {messages.length === 0 ? (
           <div className="messagesContainer min-h-0 flex-1 flex flex-col justify-center">
             <StartConversationEmpty title="Start a conversation" subtitle={DM_EMPTY_SUBTITLE} />
           </div>
@@ -639,124 +469,6 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                 </div>
               )
             })}
-            {/* Run error banner - shown when RUN_ERROR is received */}
-            {runError && (
-              <div className="mb-4 flex items-end gap-3">
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                  style={{
-                    backgroundColor: "hsl(0, 60%, 45%)",
-                    color: "#fff",
-                  }}
-                  aria-hidden
-                >
-                  !
-                </div>
-                <div
-                  className="flex flex-1 flex-col gap-2 rounded-lg border px-4 py-3"
-                  style={{
-                    backgroundColor: "hsl(0, 40%, 14%)",
-                    borderColor: "hsl(0, 50%, 35%)",
-                    color: "hsl(0, 0%, 92%)",
-                  }}
-                >
-                  <span className="text-sm font-medium" style={{ color: "hsl(0, 70%, 75%)" }}>
-                    Run failed
-                  </span>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{runError}</p>
-                  <button
-                    type="button"
-                    onClick={() => setRunError(null)}
-                    className="self-start rounded px-2 py-1 text-xs font-medium transition-colors hover:opacity-90"
-                    style={{
-                      backgroundColor: "hsl(0, 40%, 28%)",
-                      color: "hsl(0, 0%, 92%)",
-                    }}
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            )}
-            {/* Typing indicator when run is active and no streaming content yet */}
-            {isRunActive && !streamingContent && (
-              <div className="mb-4 flex items-center gap-3">
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                  style={{
-                    backgroundColor:
-                      selectedAgent?.color ?? "hsl(214, 5%, 55%)",
-                    color: "#fff",
-                  }}
-                >
-                  {selectedAgent?.avatar ?? selectedAgent?.name?.charAt(0).toUpperCase() ?? "?"}
-                </div>
-                <div className="flex items-center gap-1">
-                  <div
-                    className="typing-dot h-2 w-2 rounded-full"
-                    style={{ backgroundColor: "hsl(210, 3%, 80%)" }}
-                  />
-                  <div
-                    className="typing-dot h-2 w-2 rounded-full"
-                    style={{ backgroundColor: "hsl(210, 3%, 80%)" }}
-                  />
-                  <div
-                    className="typing-dot h-2 w-2 rounded-full"
-                    style={{ backgroundColor: "hsl(210, 3%, 80%)" }}
-                  />
-                </div>
-                <span className="text-xs" style={{ color: "hsl(214, 5%, 55%)" }}>
-                  {(selectedAgent?.name ?? "Agent") + " is typing..."}
-                </span>
-              </div>
-            )}
-            {/* Streaming content - text only; tool results are committed as separate messages */}
-            {streamingContent && (
-              <div className="mb-4 flex items-end gap-3">
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                  style={{
-                    backgroundColor: "hsl(235, 86%, 65%)",
-                    color: "#fff",
-                  }}
-                >
-                  {selectedAgent ? selectedAgent.name.charAt(0).toUpperCase() : "A"}
-                </div>
-                <div
-                  className="assistantMessage relative"
-                  style={{
-                    color: "hsl(210, 3%, 92%)",
-                    background: "hsl(228, 12%, 18%)",
-                    border: "1px solid hsl(228, 6%, 28%)",
-                    borderRadius: "var(--radius)",
-                    padding: "0.75rem 1rem",
-                    maxWidth: "100%",
-                  }}
-                >
-                  <span
-                    className="absolute bottom-2 left-0 block h-0 w-0 border-y-[6px] border-y-transparent border-r-[8px]"
-                    style={{
-                      borderRightColor: "hsl(228, 12%, 18%)",
-                      left: "-6px",
-                    }}
-                    aria-hidden
-                  />
-                  <div
-                    className="mb-1.5 text-xs font-semibold"
-                    style={{
-                      color: selectedAgent?.color ?? "hsl(270, 55%, 78%)",
-                    }}
-                  >
-                    {selectedAgent?.name ?? "Assistant"}
-                  </div>
-                  <div className="messageContent prose prose-invert max-w-none">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                      {normalizeMarkdownBlockNewlines(streamingContent)}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-              </div>
-            )}
             <div ref={messagesEndRef} />
           </div>
         )}
