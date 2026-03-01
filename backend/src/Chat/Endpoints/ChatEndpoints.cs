@@ -12,8 +12,7 @@ namespace Chat.Endpoints
         public static void MapChatEndpoints(this IEndpointRouteBuilder routeBuilder)
         {
             var group = routeBuilder.MapGroup("/api/chat")
-                .WithTags("Chat")
-                .RequireAuthorization();
+                .WithTags("Chat");
 
             // GET: List all chats
             group.MapGet("/chats", async (

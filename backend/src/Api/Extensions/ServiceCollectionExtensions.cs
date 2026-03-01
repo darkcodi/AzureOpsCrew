@@ -1,4 +1,5 @@
 using AzureOpsCrew.Api.Auth;
+using AzureOpsCrew.Api.Chat;
 using AzureOpsCrew.Api.Email;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.AgentServices;
@@ -231,5 +232,17 @@ public static class ServiceCollectionExtensions
 
         services.Configure<TemporalSettings>(configuration.GetSection("Temporal"));
         services.AddOptions<TemporalSettings>();
+    }
+
+    public static void AddChatServerClient(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<ChatServerSettings>(configuration.GetSection("ChatServer"));
+        services.AddOptions<ChatServerSettings>();
+        services.AddHttpClient<IChatServerClient, ChatServerClient>((sp, client) =>
+        {
+            var settings = sp.GetRequiredService<IOptions<ChatServerSettings>>().Value;
+            client.BaseAddress = new Uri(settings.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
     }
 }

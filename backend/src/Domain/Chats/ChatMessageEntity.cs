@@ -4,7 +4,7 @@ namespace AzureOpsCrew.Domain.Chats;
 
 public sealed class ChatMessageEntity
 {
-    private ChatMessageEntity() { }
+    public ChatMessageEntity() { }
 
     public ChatMessageEntity(Guid id, Guid chatId, string content, Guid senderId)
     {
@@ -14,11 +14,9 @@ public sealed class ChatMessageEntity
         SenderId = senderId;
     }
 
-    public Guid Id { get; private set; }
-    public Guid ChatId { get; private set; }
-    public string Content { get; private set; }
-
-    public Guid SenderId { get; private set; }
-
-    public DateTime PostedAt { get; private set; } = DateTime.UtcNow;
+    public Guid Id { get; set; }
+    public Guid ChatId { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public Guid SenderId { get; set; }
+    public DateTime PostedAt { get; set; } = DateTime.UtcNow;
 }
