@@ -165,6 +165,7 @@ export interface ChatMessage {
   id: string
   role: "user" | "assistant"
   content: string
+  reasoning?: string | null
   widget?: ToolWidget
 }
 
@@ -182,6 +183,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   const [streamingContent, setStreamingContent] = useState("")
   const [streamingWidget, setStreamingWidget] = useState<ChatMessage["widget"] | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
+  const [expandedReasoningIds, setExpandedReasoningIds] = useState<Set<string>>(new Set())
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const pendingBackendToolsRef = useRef<Map<string, { name: string; args: string }>>(new Map())
 
@@ -205,9 +207,11 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     if (!activeDMId) {
       setMessages([])
       setRunError(null)
+      setExpandedReasoningIds(new Set())
       return
     }
 
+    setExpandedReasoningIds(new Set())
     setIsLoading(true)
     fetchWithErrorHandling(`/api/chat-history/agents/${activeDMId}`)
       .then(async (res) => {
@@ -216,7 +220,8 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
             messages: Array<{
               id: string
               role: "user" | "assistant"
-              content: string
+              content: string | null
+              reasoning?: string | null
               widget?: {
                 toolName: string
                 callId: string
@@ -226,7 +231,12 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
             }>
           }
           const chatMessages: ChatMessage[] = data.messages.map((m) => {
-            const base: ChatMessage = { id: m.id, role: m.role, content: m.content }
+            const base: ChatMessage = {
+              id: m.id,
+              role: m.role,
+              content: m.content ?? "",
+              ...(m.reasoning != null && { reasoning: m.reasoning }),
+            }
             if (!m.widget) return base
             const w = m.widget
             return {
@@ -432,6 +442,15 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     }
   }
 
+  const toggleReasoning = (messageId: string) => {
+    setExpandedReasoningIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(messageId)) next.delete(messageId)
+      else next.add(messageId)
+      return next
+    })
+  }
+
   // Render a widget; resolve by toolName (known FE → specific widget, else generic box)
   const renderWidget = (w: ChatMessage["widget"]) => renderMessageWidget(w, sendMessage)
 
@@ -495,7 +514,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
               }
 
               // Assistant message - on the left with avatar; widget-only as standalone, text in bubble
-              const isWidgetOnly = !msg.content && msg.widget
+              const isWidgetOnly = !msg.content && !msg.reasoning && msg.widget
               return (
                 <div key={msg.id} className="mb-4 flex items-end gap-3">
                   <div
@@ -547,11 +566,71 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
                       >
                         {selectedAgent?.name ?? "Assistant"}
                       </div>
+                      {msg.reasoning && !msg.content && (
+                        <div
+                          className="messageContent max-w-none rounded"
+                          style={{ background: "hsl(228, 10%, 14%)" }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => toggleReasoning(msg.id)}
+                            className="flex w-full items-center justify-between gap-2 rounded py-2 px-3 pr-1 text-left text-xs font-medium transition-colors hover:opacity-90"
+                            style={{ color: "hsl(214, 5%, 65%)" }}
+                          >
+                            <span>Thought a bit...</span>
+                            <span
+                              className="shrink-0 transition-transform"
+                              style={{ transform: expandedReasoningIds.has(msg.id) ? "rotate(90deg)" : "none" }}
+                              aria-hidden
+                            >
+                              →
+                            </span>
+                          </button>
+                          {expandedReasoningIds.has(msg.id) && (
+                            <div
+                              className="whitespace-pre-wrap px-3 pb-3 pt-0 text-sm opacity-90"
+                              style={{ borderTop: "1px solid hsl(228, 6%, 22%)" }}
+                            >
+                              {msg.reasoning}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {msg.content && (
                         <div className="messageContent prose prose-invert max-w-none">
                           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                             {normalizeMarkdownBlockNewlines(msg.content)}
                           </ReactMarkdown>
+                        </div>
+                      )}
+                      {msg.reasoning && msg.content && (
+                        <div
+                          className="messageContent max-w-none mt-2 rounded border-t border-white/10 pt-2"
+                          style={{ background: "hsl(228, 10%, 14%)" }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => toggleReasoning(msg.id)}
+                            className="flex w-full items-center justify-between gap-2 rounded py-2 px-3 pr-1 text-left text-xs font-medium transition-colors hover:opacity-90"
+                            style={{ color: "hsl(214, 5%, 65%)" }}
+                          >
+                            <span>Thought a bit...</span>
+                            <span
+                              className="shrink-0 transition-transform"
+                              style={{ transform: expandedReasoningIds.has(msg.id) ? "rotate(90deg)" : "none" }}
+                              aria-hidden
+                            >
+                              →
+                            </span>
+                          </button>
+                          {expandedReasoningIds.has(msg.id) && (
+                            <div
+                              className="whitespace-pre-wrap px-3 pb-3 pt-0 text-xs opacity-80"
+                              style={{ borderTop: "1px solid hsl(228, 6%, 22%)" }}
+                            >
+                              {msg.reasoning}
+                            </div>
+                          )}
                         </div>
                       )}
                       {msg.widget && renderWidget(msg.widget)}

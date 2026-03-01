@@ -75,6 +75,17 @@ public static class ChatHistoryEndpoints
                         Timestamp = msg.CreatedAt
                     });
                 }
+                else if (aiContent is AocTextReasoningContent reasoningContent)
+                {
+                    historyMessages.Add(new ChatHistoryMessage
+                    {
+                        Id = msg.Id.ToString(),
+                        Role = msg.Role.ToString() == "user" ? "user" : "assistant",
+                        Content = null,
+                        Reasoning = reasoningContent.Text,
+                        Timestamp = msg.CreatedAt
+                    });
+                }
                 else if (aiContent is AocFunctionCallContent functionCallContent
                     && toolResultsByCallId.TryGetValue(functionCallContent.CallId, out var resultStr))
                 {
