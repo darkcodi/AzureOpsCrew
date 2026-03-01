@@ -7,7 +7,7 @@ public static class BackEndTools
 {
     public static List<ToolDeclaration> GetDeclarations()
     {
-        return new List<ToolDeclaration>() { GetMyIpTool(), ReadChatMessagesTool(), PostChatMessageTool() };
+        return new List<ToolDeclaration>() { GetMyIpTool() };
     }
 
     private static ToolDeclaration GetMyIpTool()
@@ -49,74 +49,6 @@ public static class BackEndTools
                                               "isProxy": { "type": "boolean", "description": "Whether the IP is a proxy" }
                                           },
                                           "required": ["ipAddress", "countryName", "cityName"]
-                                      }
-                                      """).ToString(),
-            ToolType = ToolType.BackEnd
-        };
-    }
-
-    private static ToolDeclaration ReadChatMessagesTool()
-    {
-        return new ToolDeclaration
-        {
-            Name = "read_chat_messages",
-            Description = "Reads all messages from a specific chat channel",
-            JsonSchema = Schema("""
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "chatId": { "type": "string", "description": "The GUID of the chat channel" }
-                                  },
-                                  "required": ["chatId"],
-                                  "additionalProperties": false
-                                }
-                                """).ToString(),
-            ReturnJsonSchema = Schema("""
-                                      {
-                                        "type": "array",
-                                        "items": {
-                                          "type": "object",
-                                          "properties": {
-                                            "id": { "type": "string" },
-                                            "chatId": { "type": "string" },
-                                            "content": { "type": "string" },
-                                            "senderId": { "type": "string" },
-                                            "postedAt": { "type": "string", "format": "date-time" }
-                                          }
-                                        }
-                                      }
-                                      """).ToString(),
-            ToolType = ToolType.BackEnd
-        };
-    }
-
-    private static ToolDeclaration PostChatMessageTool()
-    {
-        return new ToolDeclaration
-        {
-            Name = "post_chat_message",
-            Description = "Posts a new message to a chat channel. The sender is automatically set to the current agent.",
-            JsonSchema = Schema("""
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "chatId": { "type": "string", "description": "The GUID of the chat channel" },
-                                    "content": { "type": "string", "description": "The message content to post" }
-                                  },
-                                  "required": ["chatId", "content"],
-                                  "additionalProperties": false
-                                }
-                                """).ToString(),
-            ReturnJsonSchema = Schema("""
-                                      {
-                                        "type": "object",
-                                        "properties": {
-                                          "id": { "type": "string" },
-                                          "chatId": { "type": "string" },
-                                          "content": { "type": "string" },
-                                          "senderId": { "type": "string" },
-                                          "postedAt": { "type": "string", "format": "date-time" }
-                                        }
                                       }
                                       """).ToString(),
             ToolType = ToolType.BackEnd
