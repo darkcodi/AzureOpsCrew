@@ -43,6 +43,15 @@ public class LlmActivities
         var beTools = string.Join("\n\n", tools.Where(x => x.ToolType == ToolType.BackEnd).Select(FormatToolDeclaration));
         var feTools = string.Join("\n\n", tools.Where(x => x.ToolType == ToolType.FrontEnd).Select(FormatToolDeclaration));
 
+        if (string.IsNullOrEmpty(beTools))
+        {
+            beTools = "No backend tools available.";
+        }
+        if (string.IsNullOrEmpty(feTools))
+        {
+            feTools = "No frontend tools available.";
+        }
+
         var prompt = $"""
 System prompt:
 {SystemPrompt}
