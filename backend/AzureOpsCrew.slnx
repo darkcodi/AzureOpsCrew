@@ -1,7 +1,6 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Api/Api.csproj" />
-    <Project Path="src/Chat/Chat.csproj" />
     <Project Path="src/Domain/Domain.csproj" />
     <Project Path="src/Infrastructure.Ai/Infrastructure.Ai.csproj" />
     <Project Path="src/Infrastructure.Db/Infrastructure.Db.csproj" />
