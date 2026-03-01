@@ -1,5 +1,4 @@
 using System.Text.Json;
-using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Infrastructure.Ai.Activities;
 using AzureOpsCrew.Infrastructure.Ai.Models;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
@@ -114,31 +113,7 @@ public class AgentRunWorkflow
             }
             else
             {
-                var lastTextMessage = newChatMessages.LastOrDefault(m => m.ContentDto.ContentType == LlmMessageContentType.TextContent);
-                var lastTextString = lastTextMessage?.ContentDto.ToAocAiContent() is AocTextContent textContent
-                    ? textContent.Text
-                    : string.Empty;
-                if (!string.IsNullOrEmpty(lastTextString) &&
-                    !lastTextString.Equals("FINISHED", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    // If the last text message is not "FINISHED", LLM did not listen to system prompt.
-                    // Add a system reminder
-                    var reminderMessage = new AocAgentThought
-                    {
-                        Role = ChatRole.System,
-                        CreatedAt = Workflow.UtcNow,
-                        ContentDto = AocAiContentDto.FromAocAiContent(new AocTextContent
-                        {
-                            Text = "WARNING: Please respond with 'FINISHED' when you have completed your task. Don't forget to send message to chat using a tool (if needed)",
-                        }),
-                    };
-                    await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertAgentThougth(reminderMessage.ToDomain(agentId, threadId, runId)), Options);
-                    messages.Add(reminderMessage);
-                }
-                else
-                {
-                    break;
-                }
+                break;
             }
 
         }
