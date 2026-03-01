@@ -91,15 +91,16 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 "AZUREOPSCREW@MAIL.XYZ",
                 "AQAAAAIAAYagAAAAEHds/S4gmNc0Cf04kSQ5E+g2anSh8VUU/xSrmiNqJiq4APpch0OhtXvIWF9wsTf+Rg==", // Pass1234
                 "AzureOpsCrew");
+            defaultUser.Id = Guid.Parse("EBB8CF5F-CA75-49C0-BED2-91C2DCCAB415");
             await AddUserIfNotExists(defaultUser);
 
             // Seed DM channels
-            await SeedDmChannels(managerId);
+            await SeedDmChannels(defaultUser.Id, managerId);
 
             await _context.SaveChangesAsync();
         }
 
-        private async Task SeedDmChannels(Guid managerAgentId)
+        private async Task SeedDmChannels(Guid userId, Guid managerAgentId)
         {
             // User-to-Agent DM: default user to Manager agent
             var userAgentDmId = Guid.Parse("b1c2d3e4-5678-90ab-cdef-123456789012");
@@ -110,13 +111,13 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             if (!existingUserAgentDm)
             {
                 // Create corresponding chat in Chat server with participants
-                var participantIds = new[] { default(Guid), managerAgentId };
+                var participantIds = new[] { userId, managerAgentId };
                 var chat = await _chatServerClient.CreateChatAsync("DM_User_Manager", participantIds, default);
 
                 var userAgentDm = new DirectMessageChannel
                 {
                     Id = chat.Id,
-                    User1Id = default(Guid), // Will be updated when user is created
+                    User1Id = userId,
                     Agent1Id = managerAgentId,
                     CreatedAt = DateTime.UtcNow
                 };

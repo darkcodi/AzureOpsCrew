@@ -17,7 +17,7 @@ public sealed class User
         DisplayName = displayName;
     }
 
-    public Guid Id { get; private set; }
+    public Guid Id { get; set; }
     public string Email { get; private set; }
     public string NormalizedEmail { get; private set; }
     public string PasswordHash { get; private set; }
