@@ -47,7 +47,7 @@ export function AgentMindModal({
           const data = (await res.json()) as {
             events: Array<{
               id: string
-              role: "user" | "assistant"
+              role: "user" | "assistant" | "system"
               content: string
               widget?: {
                 toolName: string
@@ -152,6 +152,29 @@ export function AgentMindModal({
                         }}
                       >
                         U
+                      </div>
+                    </div>
+                  )
+                }
+
+                if (msg.role === "system") {
+                  return (
+                    <div key={msg.id} className="mb-4 flex justify-center">
+                      <div
+                        className="systemMessage max-w-2xl rounded-lg px-3 py-2 text-sm"
+                        style={{
+                          color: "hsl(214, 12%, 70%)",
+                          backgroundColor: "hsl(228, 12%, 14%)",
+                          border: "1px solid hsl(228, 8%, 24%)",
+                        }}
+                      >
+                        <span
+                          className="mb-1 block text-xs font-semibold uppercase tracking-wide"
+                          style={{ color: "hsl(214, 12%, 55%)" }}
+                        >
+                          System
+                        </span>
+                        {msg.content}
                       </div>
                     </div>
                   )
