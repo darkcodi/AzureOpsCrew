@@ -205,7 +205,7 @@ public static class ChannelEndpoints
                     await AgentCoordinatorWorkflow.EnsureCoordinatorStartedAsync(client, agentId);
                     var trigger = new TriggerEvent(
                         TriggerId: Guid.NewGuid(),
-                        Source: TriggerSource.DirectMessage,
+                        Source: TriggerSource.ChannelMessage,
                         CreatedAt: DateTime.UtcNow,
                         ThreadId: agentId,
                         RunId: Guid.NewGuid(),
