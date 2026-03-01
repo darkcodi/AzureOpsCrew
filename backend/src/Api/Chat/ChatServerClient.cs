@@ -143,12 +143,13 @@ public sealed class ChatServerClient(
         }
     }
 
-    public async Task<ChatMessageEntity> CreateMessageAsync(Guid chatId, string content, CancellationToken cancellationToken = default)
+    public async Task<ChatMessageEntity> CreateMessageAsync(Guid chatId, string content, Guid senderId, CancellationToken cancellationToken = default)
     {
         try
         {
+            var url = $"api/chat/chats/{chatId}/messages?senderId={senderId}";
             var dto = new { Content = content };
-            var response = await httpClient.PostAsJsonAsync($"api/chat/chats/{chatId}/messages", dto, _jsonOptions, cancellationToken);
+            var response = await httpClient.PostAsJsonAsync(url, dto, _jsonOptions, cancellationToken);
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {

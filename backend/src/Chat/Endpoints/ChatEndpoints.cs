@@ -122,6 +122,7 @@ namespace Chat.Endpoints
             group.MapPost("/chats/{id:guid}/messages", async (
                 Guid id,
                 CreateChatMessageDto dto,
+                Guid senderId,
                 AzureOpsCrewContext context,
                 CancellationToken cancellationToken) =>
             {
@@ -131,7 +132,6 @@ namespace Chat.Endpoints
                 if (chat is null)
                     return Results.NotFound();
 
-                var senderId = Guid.Empty; // System user when no auth
                 var message = new ChatMessageEntity(Guid.NewGuid(), id, dto.Content, senderId);
 
                 await context.ChatMessages.AddAsync(message, cancellationToken);

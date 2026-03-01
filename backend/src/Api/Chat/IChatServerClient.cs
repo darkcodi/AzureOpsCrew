@@ -13,7 +13,7 @@ public interface IChatServerClient
 
     // Messages
     Task<List<ChatMessageEntity>> GetMessagesAsync(Guid chatId, CancellationToken cancellationToken = default);
-    Task<ChatMessageEntity> CreateMessageAsync(Guid chatId, string content, CancellationToken cancellationToken = default);
+    Task<ChatMessageEntity> CreateMessageAsync(Guid chatId, string content, Guid senderId, CancellationToken cancellationToken = default);
 
     // Participants
     Task<bool> AddParticipantAsync(Guid chatId, Guid participantId, CancellationToken cancellationToken = default);

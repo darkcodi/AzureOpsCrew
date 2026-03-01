@@ -106,7 +106,7 @@ public static class DmEndpoints
                 await context.SaveChangesAsync(cancellationToken);
             }
 
-            var message = await chatServerClient.CreateMessageAsync(dm.Id, dto.Content, cancellationToken);
+            var message = await chatServerClient.CreateMessageAsync(dm.Id, dto.Content, userId, cancellationToken);
             return Results.Created($"/api/users/{userId}/dms/users/{otherUserId}/messages/{message.Id}", message);
         })
         .Produces<ChatMessageEntity>(StatusCodes.Status201Created);
@@ -143,7 +143,7 @@ public static class DmEndpoints
                 await context.SaveChangesAsync(cancellationToken);
             }
 
-            var message = await chatServerClient.CreateMessageAsync(dm.Id, dto.Content, cancellationToken);
+            var message = await chatServerClient.CreateMessageAsync(dm.Id, dto.Content, userId, cancellationToken);
             return Results.Created($"/api/users/{userId}/dms/agents/{agentId}/messages/{message.Id}", message);
         })
         .Produces<ChatMessageEntity>(StatusCodes.Status201Created);
