@@ -34,9 +34,9 @@ public class AgentRunWorkflow
 
         // ToDo: Load tools based on agent configuration. For now we just return a hardcoded tool list for testing.
         var backendTools = BackEndTools.GetDeclarations();
-        // var frontEndTools = FrontEndTools.GetDeclarations();
+        var frontEndTools = FrontEndTools.GetDeclarations();
         var tools = backendTools
-            //.Concat(frontEndTools)
+            .Concat(frontEndTools)
             .ToList();
 
         // ToDo: Define a better stopping criteria. For example, we can let the agent decide when to stop by itself, or stop when reaching max context.
