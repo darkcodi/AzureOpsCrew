@@ -1,13 +1,11 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useEffect } from "react"
 import type { Channel, Agent, ChatMessage } from "@/lib/agents"
 import { ChannelHeader } from "@/components/channel-header"
 import { MessageList } from "@/components/message-list"
 import { MessageInput } from "@/components/message-input"
 import { MemberList } from "@/components/member-list"
-import type { AGUIEvent } from "@ag-ui/core"
-import { EventType } from "@ag-ui/core"
 import type { HumanMember } from "@/lib/humans"
 import { fetchWithErrorHandling } from "@/lib/fetch"
 
@@ -35,12 +33,41 @@ export function ChannelArea({
   onOpenInDM,
 }: ChannelAreaProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [streamingAgentId, setStreamingAgentId] = useState<string | null>(null)
-  const [streamingContent, setStreamingContent] = useState("")
   const [showMembers, setShowMembers] = useState(true)
-  const abortRef = useRef<AbortController | null>(null)
 
   const activeAgents = allAgents.filter((a) => channel.agentIds.includes(a.id))
+
+  // Load messages when channel changes
+  useEffect(() => {
+    const loadMessages = async () => {
+      try {
+        const response = await fetchWithErrorHandling(`/api/channels/${channel.id}/messages`)
+        if (response.ok) {
+          const data = await response.json()
+          // Transform backend messages to frontend ChatMessage format
+          const meResponse = await fetchWithErrorHandling('/api/auth/me')
+          const user = meResponse.ok ? await meResponse.json() : null
+
+          const chatMessages: ChatMessage[] = data.map((m: {
+            id: string
+            chatId: string
+            content: string
+            senderId: string
+            postedAt: string
+          }) => ({
+            id: m.id,
+            role: m.senderId === user?.id ? 'user' : 'assistant',
+            content: m.content,
+          }))
+          setMessages(chatMessages)
+        }
+      } catch (err) {
+        console.error("Failed to load channel messages:", err)
+      }
+    }
+
+    loadMessages()
+  }, [channel.id])
 
   const handleToggleAgent = async (agentId: string) => {
     const isAdding = !channel.agentIds.includes(agentId)
@@ -89,142 +116,41 @@ export function ChannelArea({
 
   const handleSend = useCallback(
     async (text: string) => {
-      if (activeAgents.length === 0) return
-
+      // Optimistically add user message
       const userMsg: ChatMessage = {
         id: "user-" + Date.now(),
         role: "user",
         content: text,
         timestamp: new Date(),
       }
-
       setMessages((prev) => [...prev, userMsg])
 
-      // Build conversation history
-      // The backend's workflow agent handles context across agents
-      const history = [
-        ...messages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
-        { role: "user", content: text },
-      ]
-
-      abortRef.current = new AbortController()
-
       try {
-        // SINGLE call to backend - no loop!
-        // The backend workflow handles running all agents in sequence
-        const response = await fetch(`/api/channel-agui/${channel.id}`, {
+        const response = await fetchWithErrorHandling(`/api/channels/${channel.id}/messages`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: history,
-          }),
-          signal: abortRef.current.signal,
+          body: JSON.stringify({ Content: text }),
         })
 
-        if (!response.ok || !response.body) {
-          throw new Error("Failed to get AGUI response")
-        }
-
-        const reader = response.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ""
-
-        // Track the current message being streamed
-        let currentMessageId: string | null = null
-        let currentContent = ""
-        let currentAgentName: string | null = null
-        let messageIndex = 0
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split("\n")
-          buffer = lines.pop() || ""
-
-          for (const line of lines) {
-            const trimmed = line.trim()
-            if (trimmed.startsWith("data:")) {
-              const data = trimmed.slice(5).trim()
-              if (data === "[DONE]") continue
-              try {
-                const event: AGUIEvent = JSON.parse(data)
-
-                // TEXT_MESSAGE_START: A new message starts
-                if (event.type === EventType.TEXT_MESSAGE_START) {
-                  currentMessageId = event.messageId
-                  currentContent = ""
-                  // Extract authorName from message ID (format: "AuthorName|OriginalMessageId")
-                  const pipeIndex = event.messageId.indexOf("|")
-                  currentAgentName = pipeIndex !== -1 ? event.messageId.slice(0, pipeIndex) : null
-
-                  // Show typing indicator for the agent
-                  const agent = currentAgentName
-                    ? activeAgents.find((a) => a.name === currentAgentName)
-                    : null
-                  setStreamingAgentId(agent?.id ?? "channel")
-                  setStreamingContent("")
-                }
-                // TEXT_MESSAGE_CONTENT: Streaming content
-                else if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
-                  if (event.messageId === currentMessageId) {
-                    currentContent += event.delta
-                    setStreamingContent(currentContent)
-                  }
-                }
-                // TEXT_MESSAGE_END: Message finished
-                else if (event.type === EventType.TEXT_MESSAGE_END) {
-                  if (event.messageId === currentMessageId && currentContent) {
-                    // Map authorName to agentId
-                    const agent = currentAgentName
-                      ? activeAgents.find((a) => a.name === currentAgentName)
-                      : null
-                    const agentMsg: ChatMessage = {
-                      id: "channel-" + channel.id + "-" + messageIndex++,
-                      role: "assistant",
-                      content: currentContent,
-                      timestamp: new Date(),
-                      agentId: agent?.id,
-                    }
-                    setMessages((prev) => [...prev, agentMsg])
-
-                    // Reset for next message
-                    currentMessageId = null
-                    currentContent = ""
-                    currentAgentName = null
-                    setStreamingAgentId(null)
-                    setStreamingContent("")
-                  }
-                }
-                // RUN_FINISHED: All done
-                else if (event.type === EventType.RUN_FINISHED) {
-                  setStreamingAgentId(null)
-                  setStreamingContent("")
-                }
-                // RUN_ERROR: Error occurred
-                else if (event.type === EventType.RUN_ERROR) {
-                  console.error("AGUI run error:", event.message)
-                }
-              } catch {
-                /* skip invalid events */
-              }
-            }
-          }
+        if (response.ok) {
+          const message = await response.json()
+          // Update the optimistic message with the real ID
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === userMsg.id ? { ...m, id: message.id } : m
+            )
+          )
+        } else {
+          // Remove optimistic message on failure
+          setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
         }
       } catch (err) {
-        if (!(err instanceof DOMException && err.name === "AbortError")) {
-          console.error("Error processing channel stream:", err)
-        }
-      } finally {
-        setStreamingAgentId(null)
-        setStreamingContent("")
+        console.error("Error sending channel message:", err)
+        // Remove optimistic message on error
+        setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
       }
     },
-    [activeAgents, messages, channel.id, channel.name]
+    [channel.id]
   )
 
   return (
@@ -243,14 +169,13 @@ export function ChannelArea({
         <MessageList
           messages={messages}
           agents={allAgents}
-          streamingAgentId={streamingAgentId}
-          streamingContent={streamingContent}
+          streamingAgentId={null}
+          streamingContent=""
         />
 
         <MessageInput
           channelName={channel.name}
           onSend={handleSend}
-          disabled
         />
       </div>
 
@@ -259,7 +184,7 @@ export function ChannelArea({
           allAgents={allAgents}
           humans={humans}
           activeAgentIds={channel.agentIds}
-          streamingAgentId={streamingAgentId}
+          streamingAgentId={null}
           displayName={displayName}
           onToggleAgent={handleToggleAgent}
           onOpenInDM={onOpenInDM}
