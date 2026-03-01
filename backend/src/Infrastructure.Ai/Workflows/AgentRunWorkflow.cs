@@ -39,7 +39,7 @@ public class AgentRunWorkflow
             .ToList();
 
         // ToDo: Define a better stopping criteria. For example, we can let the agent decide when to stop by itself, or stop when reaching max context.
-        const int maxSteps = 6;
+        const int maxSteps = 12;
 
         for (int step = 0; step < maxSteps; step++)
         {
