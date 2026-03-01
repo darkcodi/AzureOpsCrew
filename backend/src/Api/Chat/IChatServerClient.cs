@@ -7,7 +7,7 @@ public interface IChatServerClient
     // Chat CRUD
     Task<List<ChatEntity>> GetChatsAsync(CancellationToken cancellationToken = default);
     Task<ChatEntity?> GetChatAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<ChatEntity> CreateChatAsync(string title, CancellationToken cancellationToken = default);
+    Task<ChatEntity> CreateChatAsync(string title, Guid[]? participantIds = null, CancellationToken cancellationToken = default);
     Task<ChatEntity?> UpdateChatAsync(Guid id, string title, CancellationToken cancellationToken = default);
     Task<bool> DeleteChatAsync(Guid id, CancellationToken cancellationToken = default);
 

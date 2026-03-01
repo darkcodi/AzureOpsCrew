@@ -109,8 +109,9 @@ namespace AzureOpsCrew.Api.Setup.Seeds
 
             if (!existingUserAgentDm)
             {
-                // Create corresponding chat in Chat server
-                var chat = await _chatServerClient.CreateChatAsync("DM_User_Manager", default);
+                // Create corresponding chat in Chat server with participants
+                var participantIds = new[] { default(Guid), managerAgentId };
+                var chat = await _chatServerClient.CreateChatAsync("DM_User_Manager", participantIds, default);
 
                 var userAgentDm = new DirectMessageChannel
                 {

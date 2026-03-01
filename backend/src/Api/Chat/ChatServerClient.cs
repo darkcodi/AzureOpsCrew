@@ -58,11 +58,11 @@ public sealed class ChatServerClient(
         }
     }
 
-    public async Task<ChatEntity> CreateChatAsync(string title, CancellationToken cancellationToken = default)
+    public async Task<ChatEntity> CreateChatAsync(string title, Guid[]? participantIds = null, CancellationToken cancellationToken = default)
     {
         try
         {
-            var dto = new { Title = title };
+            var dto = new { Title = title, ParticipantIds = participantIds };
             var response = await httpClient.PostAsJsonAsync("api/chat/chats", dto, _jsonOptions, cancellationToken);
             await EnsureSuccessAsync(response);
 

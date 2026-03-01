@@ -47,6 +47,14 @@ namespace Chat.Endpoints
             {
                 var chat = new ChatEntity(Guid.NewGuid(), dto.Title);
 
+                if (dto.ParticipantIds != null)
+                {
+                    foreach (var participantId in dto.ParticipantIds)
+                    {
+                        chat.AddParticipant(participantId);
+                    }
+                }
+
                 await context.Chats.AddAsync(chat, cancellationToken);
                 await context.SaveChangesAsync(cancellationToken);
 
