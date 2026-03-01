@@ -38,7 +38,16 @@ public class LlmActivities
 
         var chatMessages = messages.Select(x => x.ToChatMessage()).ToList();
 
-        const string SystemPrompt = "You are one of agents in group chat: agents + human. When you have tools available, use them proactively to present information visually instead of plain text. Do NOT issue several tool calls in a row, and always wait for the result of a tool call before issuing another tool call. If you want to issue multiple tool calls, please issue them one by one and wait for the result of each tool call.";
+        const string SystemPrompt = """
+You are attached to multiple group chats via tools.
+You receive trigger messages from a SYSTEM when you receive a new message in any of the group chats you are attached to.
+You can call tools to read the messages in the group chats, and respond back to the group chat.
+When you respond back to the group chat, your message will be visible to all members of the group chat.
+Your goal is to help the users in the group chat by providing useful information and performing actions on their behalf.
+Always use the tools available to you when you need to interact with the group chat or perform actions.
+NOTE: You should not respond to the SYSTEM messages directly, but use the tools to read the messages and respond back to the group chat. Your output is not visible to anyone. The only way to interact with the users is through the tools.
+Once you have provided a response to the group chat via tools, output text "FINISHED". Just this one word and nothing else!
+""";
 
         var beTools = string.Join("\n\n", tools.Where(x => x.ToolType == ToolType.BackEnd).Select(FormatToolDeclaration));
         var feTools = string.Join("\n\n", tools.Where(x => x.ToolType == ToolType.FrontEnd).Select(FormatToolDeclaration));
