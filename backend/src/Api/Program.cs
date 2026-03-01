@@ -95,6 +95,7 @@ try
     app.MapTestEndpoints();
     app.MapAgentEndpoints();
     app.MapChannelEndpoints();
+    app.MapDmEndpoints();
     app.MapProviderEndpoints();
 
     app.MapAllAgUi();
