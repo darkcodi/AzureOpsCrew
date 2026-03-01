@@ -41,11 +41,11 @@ export function AgentMindModal({
       return
     }
     setIsLoading(true)
-    fetchWithErrorHandling(`/api/chat-history/agents/${agentId}`)
+    fetchWithErrorHandling(`/api/agents/${agentId}/mind`)
       .then(async (res) => {
         if (res.ok) {
           const data = (await res.json()) as {
-            messages: Array<{
+            events: Array<{
               id: string
               role: "user" | "assistant"
               content: string
@@ -57,7 +57,7 @@ export function AgentMindModal({
               }
             }>
           }
-          const chatMessages: ChatMessage[] = data.messages.map((m) => {
+          const chatMessages: ChatMessage[] = data.events.map((m) => {
             const base: ChatMessage = { id: m.id, role: m.role, content: m.content }
             if (!m.widget) return base
             const w = m.widget

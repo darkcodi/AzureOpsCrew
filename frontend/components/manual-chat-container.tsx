@@ -213,11 +213,11 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
 
     setExpandedReasoningIds(new Set())
     setIsLoading(true)
-    fetchWithErrorHandling(`/api/chat-history/agents/${activeDMId}`)
+    fetchWithErrorHandling(`/api/agents/${activeDMId}/mind`)
       .then(async (res) => {
         if (res.ok) {
           const data = (await res.json()) as {
-            messages: Array<{
+            events: Array<{
               id: string
               role: "user" | "assistant"
               content: string | null
@@ -230,7 +230,7 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
               }
             }>
           }
-          const chatMessages: ChatMessage[] = data.messages.map((m) => {
+          const chatMessages: ChatMessage[] = data.events.map((m) => {
             const base: ChatMessage = {
               id: m.id,
               role: m.role,

@@ -1,7 +1,9 @@
+using System.Text.Json;
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints.Dtos.Agents;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
+using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 
@@ -136,6 +138,112 @@ namespace AzureOpsCrew.Api.Endpoints
             })
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound);
+
+            group.MapGet("/{id}/mind", async (
+                Guid id,
+                AzureOpsCrewContext context,
+                CancellationToken cancellationToken) =>
+            {
+                var messages = await context.AgentThoughts
+                    .Where(m => m.AgentId == id && !m.IsHidden)
+                    .OrderBy(m => m.CreatedAt)
+                    .ToListAsync(cancellationToken);
+
+                var historyMessages = new List<AgentMindEventDto>();
+
+                // First pass: collect tool result content by CallId (from tool-role messages)
+                var toolResultsByCallId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var msg in messages)
+                {
+                    if (msg.Role.ToString() != "tool")
+                        continue;
+                    var contentDto = new AocAiContentDto
+                    {
+                        Content = msg.ContentJson,
+                        ContentType = msg.ContentType
+                    };
+                    var aiContent = contentDto.ToAocAiContent();
+                    if (aiContent is AocFunctionResultContent functionResult)
+                    {
+                        var resultStr = functionResult.Result switch
+                        {
+                            null => "<null>",
+                            string s => s,
+                            JsonElement el => el.GetRawText(),
+                            _ => JsonSerializer.Serialize(functionResult.Result)
+                        };
+                        toolResultsByCallId[functionResult.CallId] = resultStr ?? "";
+                    }
+                }
+
+                foreach (var msg in messages)
+                {
+                    // Skip tool role messages (internal function calls)
+                    if (msg.Role.ToString() == "tool")
+                        continue;
+
+                    // Deserialize content
+                    var contentDto = new AocAiContentDto
+                    {
+                        Content = msg.ContentJson,
+                        ContentType = msg.ContentType
+                    };
+                    var aiContent = contentDto.ToAocAiContent();
+
+                    if (aiContent is AocTextContent textContent)
+                    {
+                        historyMessages.Add(new AgentMindEventDto
+                        {
+                            Id = msg.Id.ToString(),
+                            Role = msg.Role.ToString() == "user" ? "user" : "assistant",
+                            Content = textContent.Text,
+                            Timestamp = msg.CreatedAt
+                        });
+                    }
+                    else if (aiContent is AocTextReasoningContent reasoningContent)
+                    {
+                        historyMessages.Add(new AgentMindEventDto
+                        {
+                            Id = msg.Id.ToString(),
+                            Role = msg.Role.ToString() == "user" ? "user" : "assistant",
+                            Content = null,
+                            Reasoning = reasoningContent.Text,
+                            Timestamp = msg.CreatedAt
+                        });
+                    }
+                    else if (aiContent is AocFunctionCallContent functionCallContent
+                        && toolResultsByCallId.TryGetValue(functionCallContent.CallId, out var resultStr))
+                    {
+                        object? resultObj;
+                        try
+                        {
+                            resultObj = JsonSerializer.Deserialize<JsonElement>(resultStr);
+                        }
+                        catch
+                        {
+                            resultObj = new Dictionary<string, object?> { ["raw"] = resultStr };
+                        }
+
+                        historyMessages.Add(new AgentMindEventDto
+                        {
+                            Id = functionCallContent.CallId,
+                            Role = "assistant",
+                            Content = "",
+                            Timestamp = msg.CreatedAt,
+                            Widget = new UiWidgetDto
+                            {
+                                ToolName = functionCallContent.Name,
+                                CallId = functionCallContent.CallId,
+                                Args = functionCallContent.Arguments ?? new Dictionary<string, object?>(),
+                                Result = resultObj
+                            }
+                        });
+                    }
+                }
+
+                return Results.Ok(new AgentMindResponseDto { Events = historyMessages });
+            })
+            .Produces<AgentMindResponseDto>(StatusCodes.Status200OK);
         }
     }
 }
