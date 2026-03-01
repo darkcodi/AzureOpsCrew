@@ -54,11 +54,15 @@ export function ChannelArea({
             content: string
             senderId: string
             postedAt: string
-          }) => ({
-            id: m.id,
-            role: m.senderId === user?.id ? 'user' : 'assistant',
-            content: m.content,
-          }))
+          }) => {
+            const isUser = m.senderId === user?.id
+            return {
+              id: m.id,
+              role: isUser ? 'user' : 'assistant',
+              content: m.content,
+              ...(isUser ? {} : { agentId: m.senderId }),
+            }
+          })
           setMessages(chatMessages)
         }
       } catch (err) {
