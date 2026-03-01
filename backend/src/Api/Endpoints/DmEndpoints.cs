@@ -1,8 +1,13 @@
 using AzureOpsCrew.Api.Chat;
 using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
+using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Infrastructure.Ai.Models;
+using AzureOpsCrew.Infrastructure.Ai.Workflows;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Temporalio.Client;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -119,6 +124,7 @@ public static class DmEndpoints
             CreateDirectMessageDto dto,
             AzureOpsCrewContext context,
             IChatServerClient chatServerClient,
+            IOptions<TemporalSettings> temporalSettings,
             CancellationToken cancellationToken) =>
         {
             var dm = await context.Dms
@@ -146,6 +152,26 @@ public static class DmEndpoints
             }
 
             var message = await chatServerClient.CreateMessageAsync(dm.Id, dto.Content, userId, cancellationToken);
+
+            var threadId = agentId;
+            var runId = Guid.NewGuid();
+            var client = await TemporalClient.ConnectAsync(new(temporalSettings.Value.GetTarget()));
+
+            await AgentCoordinatorWorkflow.EnsureCoordinatorStartedAsync(client, agentId);
+            // await CronTriggerWorkflow.EnsureCronScheduleAsync(client, agentId);
+
+            var trigger = new TriggerEvent(
+                TriggerId: Guid.NewGuid(),
+                Source: TriggerSource.DirectMessage,
+                CreatedAt: DateTime.UtcNow,
+                ThreadId: threadId,
+                RunId: runId,
+                Text: "You have a new DM (direct message) from the user. Please check the message and respond accordingly. Use tool read_chat_messages to read the message content and details. ChatId: " + dm.Id + ", MessageId: " + message.Id
+            );
+
+            var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.WorkflowId(agentId));
+            await handle.SignalAsync(wf => wf.EnqueueAsync(trigger));
+
             return Results.Created($"/api/users/{userId}/dms/agents/{agentId}/messages/{message.Id}", message);
         })
         .Produces<ChatMessageEntity>(StatusCodes.Status201Created);
