@@ -46,6 +46,7 @@ try
     builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddEmailVerification(builder.Configuration);
     builder.Services.AddAgentFactory(builder.Configuration);
+    builder.Services.AddTemporalSettings(builder.Configuration);
 
     // Configure AG-UI
     builder.Services.AddHttpClient();

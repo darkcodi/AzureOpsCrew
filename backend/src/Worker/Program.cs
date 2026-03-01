@@ -34,8 +34,12 @@ services.AddTransient<McpActivities>();
 // Build the service provider
 var serviceProvider = services.BuildServiceProvider();
 
-// Create a client to localhost on "default" namespace
-var client = await TemporalClient.ConnectAsync(new("localhost:7233"));
+// Read Temporal configuration
+var temporalSettings = configuration.GetSection("Temporal").Get<AzureOpsCrew.Worker.Settings.TemporalSettings>()
+    ?? new AzureOpsCrew.Worker.Settings.TemporalSettings();
+
+// Create a client to configured host/port
+var client = await TemporalClient.ConnectAsync(new(temporalSettings.GetTarget()));
 
 // Cancellation token to shutdown worker on ctrl+c
 using var cts = new CancellationTokenSource();
