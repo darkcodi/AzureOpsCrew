@@ -6,8 +6,11 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { StartConversationEmpty } from "@/components/start-conversation-empty"
 
-function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+function formatTime(date: Date | string | undefined | null) {
+  if (date == null) return "--:--"
+  const d = typeof date === "string" ? new Date(date) : date
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "--:--"
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
 function normalizeMarkdownBlockNewlines(content: string): string {
