@@ -1,3 +1,4 @@
+using AzureOpsCrew.Api.Chat;
 using AzureOpsCrew.Infrastructure.Db;
 using Serilog;
 
@@ -20,7 +21,8 @@ public static class ServiceProviderExtensions
         using (var scope = provider.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
-            var seeder = new Seeder(context, options);
+            var chatServerClient = scope.ServiceProvider.GetRequiredService<IChatServerClient>();
+            var seeder = new Seeder(context, options, chatServerClient);
 
             await seeder.Seed();
         }

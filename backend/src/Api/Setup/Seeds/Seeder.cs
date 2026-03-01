@@ -1,5 +1,7 @@
-﻿using AzureOpsCrew.Domain.Agents;
+﻿using AzureOpsCrew.Api.Chat;
+using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
+using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Db;
@@ -11,11 +13,13 @@ namespace AzureOpsCrew.Api.Setup.Seeds
     {
         private readonly AzureOpsCrewContext _context;
         private readonly SeederOptions _seederOptions;
+        private readonly IChatServerClient _chatServerClient;
 
-        public Seeder(AzureOpsCrewContext context, SeederOptions seederOptions)
+        public Seeder(AzureOpsCrewContext context, SeederOptions seederOptions, IChatServerClient chatServerClient)
         {
             _context = context;
             _seederOptions = seederOptions;
+            _chatServerClient = chatServerClient;
         }
 
         public async Task Seed()
@@ -89,7 +93,34 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 "AzureOpsCrew");
             await AddUserIfNotExists(defaultUser);
 
+            // Seed DM channels
+            await SeedDmChannels(managerId);
+
             await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedDmChannels(Guid managerAgentId)
+        {
+            // User-to-Agent DM: default user to Manager agent
+            var userAgentDmId = Guid.Parse("b1c2d3e4-5678-90ab-cdef-123456789012");
+            var existingUserAgentDm = await _context.Dms
+                .AsNoTracking()
+                .AnyAsync(dm => dm.Id == userAgentDmId);
+
+            if (!existingUserAgentDm)
+            {
+                // Create corresponding chat in Chat server
+                var chat = await _chatServerClient.CreateChatAsync("DM_User_Manager", default);
+
+                var userAgentDm = new DirectMessageChannel
+                {
+                    Id = chat.Id,
+                    User1Id = default(Guid), // Will be updated when user is created
+                    Agent1Id = managerAgentId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Dms.Add(userAgentDm);
+            }
         }
 
         private async Task AddProviderIfNotExists(Provider provider)
