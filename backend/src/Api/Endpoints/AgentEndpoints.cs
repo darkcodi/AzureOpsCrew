@@ -195,7 +195,7 @@ namespace AzureOpsCrew.Api.Endpoints
                         historyMessages.Add(new AgentMindEventDto
                         {
                             Id = msg.Id.ToString(),
-                            Role = msg.Role.ToString() == "user" ? "user" : "assistant",
+                            Role = msg.Role.ToString(),
                             Content = textContent.Text,
                             Timestamp = msg.CreatedAt
                         });
@@ -205,7 +205,7 @@ namespace AzureOpsCrew.Api.Endpoints
                         historyMessages.Add(new AgentMindEventDto
                         {
                             Id = msg.Id.ToString(),
-                            Role = msg.Role.ToString() == "user" ? "user" : "assistant",
+                            Role = msg.Role.ToString(),
                             Content = null,
                             Reasoning = reasoningContent.Text,
                             Timestamp = msg.CreatedAt
@@ -227,7 +227,7 @@ namespace AzureOpsCrew.Api.Endpoints
                         historyMessages.Add(new AgentMindEventDto
                         {
                             Id = functionCallContent.CallId,
-                            Role = "assistant",
+                            Role = msg.Role.ToString(),
                             Content = "",
                             Timestamp = msg.CreatedAt,
                             Widget = new UiWidgetDto
