@@ -1,5 +1,4 @@
-﻿using AzureOpsCrew.Api.Chat;
-using AzureOpsCrew.Domain.Agents;
+﻿using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Providers;
@@ -13,13 +12,11 @@ namespace AzureOpsCrew.Api.Setup.Seeds
     {
         private readonly AzureOpsCrewContext _context;
         private readonly SeederOptions _seederOptions;
-        private readonly IChatServerClient _chatServerClient;
 
-        public Seeder(AzureOpsCrewContext context, SeederOptions seederOptions, IChatServerClient chatServerClient)
+        public Seeder(AzureOpsCrewContext context, SeederOptions seederOptions)
         {
             _context = context;
             _seederOptions = seederOptions;
-            _chatServerClient = chatServerClient;
         }
 
         public async Task Seed()
@@ -110,13 +107,15 @@ namespace AzureOpsCrew.Api.Setup.Seeds
 
             if (!existingUserAgentDm)
             {
-                // Create corresponding chat in Chat server with participants
-                var participantIds = new[] { userId, managerAgentId };
-                var chat = await _chatServerClient.CreateChatAsync("DM_User_Manager", participantIds, default);
+                // Create corresponding chat in database with participants
+                var chat = new ChatEntity(userAgentDmId, "DM_User_Manager");
+                chat.AddParticipant(userId);
+                chat.AddParticipant(managerAgentId);
+                await _context.Chats.AddAsync(chat);
 
                 var userAgentDm = new DirectMessageChannel
                 {
-                    Id = chat.Id,
+                    Id = userAgentDmId,
                     User1Id = userId,
                     Agent1Id = managerAgentId,
                     CreatedAt = DateTime.UtcNow
