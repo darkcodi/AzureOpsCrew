@@ -29,7 +29,7 @@ public class AgentRunWorkflow
 
         var domainMessages = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadChatHistory(agentId), Options);
         domainMessages = domainMessages.Where(m => !m.IsHidden).ToList();
-        var messages = domainMessages.Select(AocLlmChatMessage.FromDomain).ToList();
+        var messages = domainMessages.Select(AocAgentThought.FromDomain).ToList();
 
         // ToDo: Load tools based on agent configuration. For now we just return a hardcoded tool list for testing.
         var backendTools = BackEndTools.GetDeclarations();
@@ -53,7 +53,7 @@ public class AgentRunWorkflow
             var newDomainMessages = newChatMessages.Select(m => m.ToDomain(agentId, input.ThreadId, input.RunId)).ToList();
             foreach (var newDomainMessage in newDomainMessages)
             {
-                await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(newDomainMessage), Options);
+                await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertAgentThougth(newDomainMessage), Options);
             }
 
             var toolCalls = newChatMessages
@@ -70,7 +70,7 @@ public class AgentRunWorkflow
                     var toolDeclaration = tools.FirstOrDefault(t => t.Name == toolName);
                     if (toolDeclaration is null)
                     {
-                        var errorToolCallResultMessage = new AocLlmChatMessage
+                        var errorToolCallResultMessage = new AocAgentThought
                         {
                             Role = ChatRole.Tool,
                             CreatedAt = Workflow.UtcNow,
@@ -80,7 +80,7 @@ public class AgentRunWorkflow
                                 Result = new ToolCallResult(SerializedResult: JsonDocument.Parse("{\"ErrorMessage\":\"Tool does not exist\"}").RootElement.ToString(), IsError: true),
                             }),
                         };
-                        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(errorToolCallResultMessage.ToDomain(agentId, threadId, runId)), Options);
+                        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertAgentThougth(errorToolCallResultMessage.ToDomain(agentId, threadId, runId)), Options);
                         messages.Add(errorToolCallResultMessage);
                         continue;
                     }
@@ -95,7 +95,7 @@ public class AgentRunWorkflow
 
                         _ => throw new NotSupportedException($"Tool type {toolDeclaration.ToolType} is not supported."),
                     };
-                    var toolCallResultMessage = new AocLlmChatMessage
+                    var toolCallResultMessage = new AocAgentThought
                     {
                         Role = ChatRole.Tool,
                         CreatedAt = Workflow.UtcNow,
@@ -105,7 +105,7 @@ public class AgentRunWorkflow
                             Result = toolCallResult,
                         }),
                     };
-                    await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(toolCallResultMessage.ToDomain(agentId, threadId, runId)), Options);
+                    await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertAgentThougth(toolCallResultMessage.ToDomain(agentId, threadId, runId)), Options);
                     messages.Add(toolCallResultMessage);
                 }
             }

@@ -24,12 +24,12 @@ public class LlmActivities
     }
 
     [Activity]
-    public async Task<List<AocLlmChatMessage>> LlmThinkAsync(
+    public async Task<List<AocAgentThought>> LlmThinkAsync(
         Agent agent,
         Provider provider,
         Guid threadId,
         Guid runId,
-        List<AocLlmChatMessage> messages,
+        List<AocAgentThought> messages,
         List<ToolDeclaration> tools)
     {
         var providerService = _providerFactory.GetService(provider.ProviderType);
@@ -68,7 +68,7 @@ User prompt:
             Tools = tools.Select(x => (AITool)x.ToAiFunctionDeclaration()).ToArray(),
         };
 
-        var newMessages = new List<AocLlmChatMessage>();
+        var newMessages = new List<AocAgentThought>();
         await foreach (ChatResponseUpdate update in fClient.GetStreamingResponseAsync(chatMessages, chatOptions))
         {
             var contents = update.Contents;
@@ -82,7 +82,7 @@ User prompt:
                     await Task.Delay(TimeSpan.FromMilliseconds(1));
                     var now = DateTime.UtcNow;
 
-                    var newMessage = AocLlmChatMessage.FromContent(parsedContent, update.Role ?? ChatRole.Assistant, agent.Info.Name, now);
+                    var newMessage = AocAgentThought.FromContent(parsedContent, update.Role ?? ChatRole.Assistant, agent.Info.Name, now);
                     newMessages.Add(newMessage);
                 }
             }
@@ -115,7 +115,7 @@ User prompt:
     }
 
     // If there are multiple text content in a row, we want to concat them into one content
-    private static void ConcatTextContent(List<AocLlmChatMessage> messages)
+    private static void ConcatTextContent(List<AocAgentThought> messages)
     {
         for (int i = messages.Count - 1; i > 0; i--)
         {

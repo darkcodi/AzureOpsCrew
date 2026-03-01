@@ -3,7 +3,7 @@ using Microsoft.Extensions.AI;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Models.Content;
 
-public class AocLlmChatMessage
+public class AocAgentThought
 {
     public Guid Id { get; set; }
     public ChatRole Role { get; set; }
@@ -27,14 +27,14 @@ public class AocLlmChatMessage
         };
     }
 
-    public static AocLlmChatMessage FromContent(AocAiContent content, ChatRole role, string authorName, DateTime createdAt)
+    public static AocAgentThought FromContent(AocAiContent content, ChatRole role, string authorName, DateTime createdAt)
     {
         var contentDto = AocAiContentDto.FromAocAiContent(content);
 
         // ToDo: review what should be hidden from LLM and what's not
         var isHidden = contentDto.ContentType == LlmMessageContentType.UsageContent;
 
-        return new AocLlmChatMessage
+        return new AocAgentThought
         {
             Id = Guid.NewGuid(),
             Role = role,
@@ -45,9 +45,9 @@ public class AocLlmChatMessage
         };
     }
 
-    public LlmChatMessage ToDomain(Guid agentId, Guid threadId, Guid runId)
+    public AgentThought ToDomain(Guid agentId, Guid threadId, Guid runId)
     {
-        return new LlmChatMessage
+        return new AgentThought
         {
             Id = Id,
             AgentId = agentId,
@@ -62,14 +62,14 @@ public class AocLlmChatMessage
         };
     }
 
-    public static AocLlmChatMessage FromDomain(LlmChatMessage domainMessage)
+    public static AocAgentThought FromDomain(AgentThought domainMessage)
     {
         var contentDto = new AocAiContentDto
         {
             Content = domainMessage.ContentJson,
             ContentType = Enum.Parse<LlmMessageContentType>(domainMessage.ContentType.ToString()),
         };
-        return new AocLlmChatMessage
+        return new AocAgentThought
         {
             Id = domainMessage.Id,
             Role = domainMessage.Role,

@@ -60,7 +60,7 @@ using var worker = new TemporalWorker(
         .AddActivity(databaseActivities.LoadAgent)
         .AddActivity(databaseActivities.LoadProvider)
         .AddActivity(databaseActivities.LoadChatHistory)
-        .AddActivity(databaseActivities.UpsertLlmChatMessage)
+        .AddActivity(databaseActivities.UpsertAgentThougth)
         .AddActivity(databaseActivities.InsertRawLlmHttpCall)
         .AddActivity(llmActivities.LlmThinkAsync)
         .AddActivity(mcpActivities.CallMcpAsync)

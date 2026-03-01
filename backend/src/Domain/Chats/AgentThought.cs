@@ -2,7 +2,7 @@ using Microsoft.Extensions.AI;
 
 namespace AzureOpsCrew.Domain.Chats;
 
-public class LlmChatMessage
+public class AgentThought
 {
     public Guid Id { get; set; }
     public Guid AgentId { get; set; }

@@ -8,7 +8,7 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
 {
     public void Configure(EntityTypeBuilder<Agent> builder)
     {
-        builder.ToTable(nameof(Agent));
+        builder.ToTable("Agents");
 
         builder.HasKey(a => a.Id);
         builder.Property(a => a.Id)

@@ -112,7 +112,7 @@ public class AgentCoordinatorWorkflow
 
     private static async Task InsertRunStartMessage(Guid agentId, Guid threadId, Guid runId)
     {
-        var startTaskMessage = new LlmChatMessage
+        var startTaskMessage = new AgentThought
         {
             Id = HashUtils.HashStringToGuid($"run-start-{runId}"),
             AgentId = agentId,
@@ -124,12 +124,12 @@ public class AgentCoordinatorWorkflow
             ContentType = LlmMessageContentType.RunStart,
             ContentJson = JsonSerializer.Serialize(new AocRunStart { RunId = runId, ThreadId = threadId }),
         };
-        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(startTaskMessage), Options);
+        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertAgentThougth(startTaskMessage), Options);
     }
 
     private static async Task InsertRunTriggerMessage(Guid agentId, TriggerEvent trigger)
     {
-        var triggerMessage = new LlmChatMessage
+        var triggerMessage = new AgentThought
         {
             Id = HashUtils.HashStringToGuid($"trigger-message-{trigger.RunId}"),
             AgentId = agentId,
@@ -142,12 +142,12 @@ public class AgentCoordinatorWorkflow
             ContentType = LlmMessageContentType.TextContent,
             ContentJson = JsonSerializer.Serialize(new AocTextContent { Text = trigger.Text ?? "" }),
         };
-        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(triggerMessage), Options);
+        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertAgentThougth(triggerMessage), Options);
     }
 
     private static async Task InsertRunFinishedMessage(Guid agentId, Guid threadId, Guid runId)
     {
-        var endTaskMessage = new LlmChatMessage
+        var endTaskMessage = new AgentThought
         {
             Id = HashUtils.HashStringToGuid($"run-finished-{runId}"),
             AgentId = agentId,
@@ -159,12 +159,12 @@ public class AgentCoordinatorWorkflow
             ContentType = LlmMessageContentType.RunFinished,
             ContentJson = JsonSerializer.Serialize(new AocRunFinished { RunId = runId, ThreadId = threadId, Result = null }),
         };
-        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(endTaskMessage), Options);
+        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertAgentThougth(endTaskMessage), Options);
     }
 
     private static async Task InsertRunErrorMessage(Guid agentId, Guid threadId, Guid runId, string error)
     {
-        var errorTaskMessage = new LlmChatMessage
+        var errorTaskMessage = new AgentThought
         {
             Id = HashUtils.HashStringToGuid($"run-error-{runId}"),
             AgentId = agentId,
@@ -176,7 +176,7 @@ public class AgentCoordinatorWorkflow
             ContentType = LlmMessageContentType.RunError,
             ContentJson = JsonSerializer.Serialize(new AocRunError { Message = error }),
         };
-        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertLlmChatMessage(errorTaskMessage), Options);
+        await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.UpsertAgentThougth(errorTaskMessage), Options);
     }
 
     // Fire-and-forget enqueue (cron trigger will use this)

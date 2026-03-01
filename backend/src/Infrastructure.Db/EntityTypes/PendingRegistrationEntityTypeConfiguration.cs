@@ -8,7 +8,7 @@ public sealed class PendingRegistrationEntityTypeConfiguration : IEntityTypeConf
 {
     public void Configure(EntityTypeBuilder<PendingRegistration> builder)
     {
-        builder.ToTable("PendingRegistration");
+        builder.ToTable("PendingRegistrations");
 
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id)

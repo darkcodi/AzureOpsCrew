@@ -8,7 +8,7 @@ public sealed class ChannelEntityTypeConfiguration : IEntityTypeConfiguration<Ch
 {
     public void Configure(EntityTypeBuilder<Channel> builder)
     {
-        builder.ToTable(nameof(Channel));
+        builder.ToTable("Channels");
 
         builder.HasKey(c => c.Id);
         builder.Property(c => c.Id)

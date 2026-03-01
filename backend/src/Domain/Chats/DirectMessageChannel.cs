@@ -1,6 +1,6 @@
 namespace AzureOpsCrew.Domain.Chats;
 
-public class AocDirectMessages
+public class DirectMessageChannel
 {
     public Guid Id { get; set; }
     public string? User1Id { get; set; }

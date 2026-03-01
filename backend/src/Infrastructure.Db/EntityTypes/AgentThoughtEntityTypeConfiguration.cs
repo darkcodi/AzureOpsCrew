@@ -5,11 +5,11 @@ using Microsoft.Extensions.AI;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes;
 
-public sealed class LlmChatMessageEntityTypeConfiguration : IEntityTypeConfiguration<LlmChatMessage>
+public sealed class AgentThoughtEntityTypeConfiguration : IEntityTypeConfiguration<AgentThought>
 {
-    public void Configure(EntityTypeBuilder<LlmChatMessage> builder)
+    public void Configure(EntityTypeBuilder<AgentThought> builder)
     {
-        builder.ToTable("LlmChatMessages");
+        builder.ToTable("AgentThoughts");
 
         builder.HasKey(m => m.Id);
         builder.Property(m => m.Id)

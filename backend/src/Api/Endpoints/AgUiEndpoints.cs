@@ -57,7 +57,7 @@ public static class ChannelAgUiEndpoints
 
             var trigger = new TriggerEvent(
                 TriggerId: Guid.NewGuid(),
-                Source: TriggerSource.Dm,
+                Source: TriggerSource.DirectMessage,
                 CreatedAt: DateTime.UtcNow,
                 ThreadId: threadId,
                 RunId: runId,
@@ -185,7 +185,7 @@ public static class ChannelAgUiEndpoints
 
     private static async Task<DateTime> GetLastMessageTimestampAsync(Guid agentId, AzureOpsCrewContext context, CancellationToken ct)
     {
-        var lastMessage = await context.LlmChatMessages
+        var lastMessage = await context.AgentThoughts
             .Where(m => m.AgentId == agentId)
             .OrderByDescending(m => m.CreatedAt)
             .FirstOrDefaultAsync(ct);
@@ -203,7 +203,7 @@ public static class ChannelAgUiEndpoints
         var maxDateLocal = maxDate;
         while (!ct.IsCancellationRequested)
         {
-            var newMessages = await context.LlmChatMessages
+            var newMessages = await context.AgentThoughts
                 .Where(m => m.AgentId == agentId && m.CreatedAt > maxDateLocal)
                 .OrderBy(m => m.CreatedAt)
                 .ToListAsync(ct);
@@ -240,7 +240,7 @@ public static class ChannelAgUiEndpoints
         }
     }
 
-    private static List<BaseEvent> MapToBaseEvents(LlmChatMessage message)
+    private static List<BaseEvent> MapToBaseEvents(AgentThought message)
     {
         if (message.Role == ChatRole.User)
         {

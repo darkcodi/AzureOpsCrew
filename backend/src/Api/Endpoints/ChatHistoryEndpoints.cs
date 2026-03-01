@@ -19,7 +19,7 @@ public static class ChatHistoryEndpoints
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var messages = await context.LlmChatMessages
+            var messages = await context.AgentThoughts
                 .Where(m => m.AgentId == agentId && !m.IsHidden)
                 .OrderBy(m => m.CreatedAt)
                 .ToListAsync(cancellationToken);

@@ -48,12 +48,12 @@ public class DatabaseActivities
     }
 
     [Activity]
-    public async Task<List<LlmChatMessage>> LoadChatHistory(Guid agentId)
+    public async Task<List<AgentThought>> LoadChatHistory(Guid agentId)
     {
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
 
-        var messages = await context.LlmChatMessages
+        var messages = await context.AgentThoughts
             .AsNoTracking()
             .Where(m => m.AgentId == agentId)
             .OrderBy(m => m.CreatedAt)
@@ -62,23 +62,23 @@ public class DatabaseActivities
     }
 
     [Activity]
-    public async Task UpsertLlmChatMessage(LlmChatMessage chatMessage)
+    public async Task UpsertAgentThougth(AgentThought chatMessage)
     {
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
 
         // Query database to determine if entity exists
-        var existingMessage = await context.LlmChatMessages
+        var existingMessage = await context.AgentThoughts
             .AsNoTracking()
             .FirstOrDefaultAsync(m => m.Id == chatMessage.Id);
 
         if (existingMessage is null)
         {
-            await context.LlmChatMessages.AddAsync(chatMessage);
+            await context.AgentThoughts.AddAsync(chatMessage);
         }
         else
         {
-            context.LlmChatMessages.Update(chatMessage);
+            context.AgentThoughts.Update(chatMessage);
         }
 
         await context.SaveChangesAsync();

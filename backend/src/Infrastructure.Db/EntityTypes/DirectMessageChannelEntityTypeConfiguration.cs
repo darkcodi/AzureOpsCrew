@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes;
 
-public sealed class AocDmEntityTypeConfiguration : IEntityTypeConfiguration<AocDirectMessages>
+public sealed class DirectMessageChannelEntityTypeConfiguration : IEntityTypeConfiguration<DirectMessageChannel>
 {
-    public void Configure(EntityTypeBuilder<AocDirectMessages> builder)
+    public void Configure(EntityTypeBuilder<DirectMessageChannel> builder)
     {
-        builder.ToTable("Dms");
+        builder.ToTable("DirectMessageChannels");
 
         builder.HasKey(d => d.Id);
         builder.Property(d => d.Id)

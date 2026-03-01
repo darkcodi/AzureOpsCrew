@@ -2,6 +2,7 @@ using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Infrastructure.Db.EntityTypes;
 using Microsoft.EntityFrameworkCore;
 using AgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AgentEntityTypeConfiguration;
 using ChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.ChannelEntityTypeConfiguration;
@@ -9,8 +10,8 @@ using AiProviderConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.ProviderEnti
 using PendingRegistrationConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.PendingRegistrationEntityTypeConfiguration;
 using UserConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.UserEntityTypeConfiguration;
 using AocMessageConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AocMessageEntityTypeConfiguration;
-using AocDmConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AocDmEntityTypeConfiguration;
-using LlmChatMessageConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.LlmChatMessageEntityTypeConfiguration;
+using DirectMessageChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.DirectMessageChannelEntityTypeConfiguration;
+using AgentThoughtConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AgentThoughtEntityTypeConfiguration;
 using RawLlmHttpCallConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.RawLlmHttpCallEntityTypeConfiguration;
 using AiProvider = AzureOpsCrew.Domain.Providers.Provider;
 
@@ -29,8 +30,8 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<PendingRegistration> PendingRegistrations => Set<PendingRegistration>();
     public DbSet<AocMessage> Messages => Set<AocMessage>();
-    public DbSet<AocDirectMessages> Dms => Set<AocDirectMessages>();
-    public DbSet<LlmChatMessage> LlmChatMessages => Set<LlmChatMessage>();
+    public DbSet<DirectMessageChannel> Dms => Set<DirectMessageChannel>();
+    public DbSet<AgentThought> AgentThoughts => Set<AgentThought>();
     public DbSet<RawLlmHttpCall> RawLlmHttpCalls => Set<RawLlmHttpCall>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -41,8 +42,8 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new UserConfig());
         modelBuilder.ApplyConfiguration(new PendingRegistrationConfig());
         modelBuilder.ApplyConfiguration(new AocMessageConfig());
-        modelBuilder.ApplyConfiguration(new AocDmConfig());
-        modelBuilder.ApplyConfiguration(new LlmChatMessageConfig());
+        modelBuilder.ApplyConfiguration(new DirectMessageChannelEntityTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new AgentThoughtConfig());
         modelBuilder.ApplyConfiguration(new RawLlmHttpCallConfig());
     }
 }
