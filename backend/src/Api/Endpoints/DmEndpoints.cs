@@ -94,9 +94,10 @@ public static class DmEndpoints
             // Create DM channel if it doesn't exist
             if (dm is null)
             {
+                var chat = await chatServerClient.CreateChatAsync($"DM_{userId}_{otherUserId}", cancellationToken);
                 dm = new DirectMessageChannel
                 {
-                    Id = Guid.NewGuid(),
+                    Id = chat.Id,
                     User1Id = userId,
                     User2Id = otherUserId,
                     CreatedAt = DateTime.UtcNow
@@ -130,9 +131,10 @@ public static class DmEndpoints
             // Create DM channel if it doesn't exist
             if (dm is null)
             {
+                var chat = await chatServerClient.CreateChatAsync($"DM_{userId}_Agent_{agentId}", cancellationToken);
                 dm = new DirectMessageChannel
                 {
-                    Id = Guid.NewGuid(),
+                    Id = chat.Id,
                     User1Id = userId,
                     Agent1Id = agentId,
                     CreatedAt = DateTime.UtcNow
