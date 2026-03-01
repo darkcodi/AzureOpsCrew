@@ -5,6 +5,13 @@ using Microsoft.Extensions.AI;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
 
+/// <summary>
+/// This is a custom implementation of IChatClient that directly interacts with the OpenAI API using HttpClient.
+/// The main reason why I created it is... support for TextReasoningContent!
+/// This seems to be an issue in .NET OpenAi client: https://github.com/openai/openai-dotnet/issues/748
+/// It was resolved and should be fixed in version v2.7.0.
+/// We use version 2.8.0 (comes via Azure.AI.OpenAI and Microsoft.Extensions.AI.OpenAI) but the issue still persists, so I decided to implement a custom client to have full control over the request/response handling and support TextReasoningContent properly.
+/// </summary>
 public sealed class CustomOpenAiChatClient : IChatClient
 {
     private readonly CustomOpenAiChatClientOptions _options;
