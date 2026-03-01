@@ -8,6 +8,4 @@ public class DirectMessageChannel
     public string? Agent1Id { get; set; }
     public string? Agent2Id { get; set; }
     public DateTime CreatedAt { get; set; }
-
-    public List<AocMessage> Messages { get; set; } = [];
 }
