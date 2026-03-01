@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { useCopilotContext } from "@copilotkit/react-core"
 import { useAgentRuntime } from "@/contexts/agent-runtime-context"
 import { DirectMessagesSidebar } from "@/components/direct-messages-sidebar"
 import { DirectMessagesArea } from "@/components/direct-messages-area"
@@ -15,8 +14,6 @@ interface DirectMessagesViewProps {
   setActiveDMId: (id: string | null) => void
   agents: Agent[]
   humans: HumanMember[]
-  pendingDMMessage?: string | null
-  onClearPendingDMMessage?: () => void
 }
 
 export function DirectMessagesView({
@@ -24,13 +21,10 @@ export function DirectMessagesView({
   setActiveDMId,
   agents,
   humans,
-  pendingDMMessage = null,
-  onClearPendingDMMessage,
 }: DirectMessagesViewProps) {
-  const { setThreadId } = useCopilotContext()
   const { setAgentId } = useAgentRuntime()
   const effectiveId = activeDMId ?? agents[0]?.id ?? null
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(() => activeDMId ?? agents[0]?.id ?? null)
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(() => effectiveId)
   const [showRightPane, setShowRightPane] = useState(true)
 
   useEffect(() => {
@@ -41,18 +35,11 @@ export function DirectMessagesView({
   const handleSelectDM = useCallback(
     (id: string) => {
       setSelectedCardId(id)
-      if (isHumanCardId(id)) {
-        return
-      }
-      setThreadId(id)
+      if (isHumanCardId(id)) return
       setActiveDMId(id)
     },
-    [setThreadId, setActiveDMId]
+    [setActiveDMId]
   )
-
-  useEffect(() => {
-    setThreadId(effectiveId ?? "")
-  }, [effectiveId, setThreadId])
 
   useEffect(() => {
     if (activeDMId) {
@@ -74,8 +61,6 @@ export function DirectMessagesView({
       <DirectMessagesArea
         activeDMId={activeDMId}
         agents={agents}
-        pendingDMMessage={pendingDMMessage}
-        onClearPendingDMMessage={onClearPendingDMMessage}
         showRightPane={showRightPane}
         onToggleRightPane={() => setShowRightPane((prev) => !prev)}
       />

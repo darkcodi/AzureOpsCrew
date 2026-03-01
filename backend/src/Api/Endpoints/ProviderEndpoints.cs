@@ -19,16 +19,12 @@ public static class ProviderEndpoints
         // CREATE
         group.MapPost("/create", async (
             CreateProviderBodyDto body,
-            HttpContext httpContext,
             AzureOpsCrewContext context,
             IProviderFacadeResolver providerServiceFactory,
             CancellationToken cancellationToken) =>
         {
-            var userId = httpContext.User.GetRequiredUserId();
-
             var config = new Provider(
                 Guid.NewGuid(),
-                userId,
                 body.Name,
                 body.ProviderType,
                 body.ApiKey,
@@ -69,14 +65,10 @@ public static class ProviderEndpoints
 
         // LIST (current user)
         group.MapGet("", async (
-            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var userId = httpContext.User.GetRequiredUserId();
-
             var configs = await context.Set<Provider>()
-                .Where(p => p.ClientId == userId)
                 .OrderBy(p => p.DateCreated)
                 .ToListAsync(cancellationToken);
 
@@ -87,14 +79,11 @@ public static class ProviderEndpoints
         // GET by ID
         group.MapGet("/{id}", async (
             Guid id,
-            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var userId = httpContext.User.GetRequiredUserId();
-
             var found = await context.Set<Provider>()
-                .SingleOrDefaultAsync(p => p.Id == id && p.ClientId == userId, cancellationToken);
+                .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
             return found is null ? Results.NotFound() : Results.Ok(found.ToResponseDto());
         })
@@ -105,15 +94,12 @@ public static class ProviderEndpoints
         group.MapPut("/{id}", async (
             Guid id,
             UpdateProviderBodyDto body,
-            HttpContext httpContext,
             AzureOpsCrewContext context,
             IProviderFacadeResolver providerServiceFactory,
             CancellationToken cancellationToken) =>
         {
-            var userId = httpContext.User.GetRequiredUserId();
-
             var found = await context.Set<Provider>()
-                .SingleOrDefaultAsync(p => p.Id == id && p.ClientId == userId, cancellationToken);
+                .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
             if (found is null)
                 return Results.NotFound();
@@ -161,14 +147,11 @@ public static class ProviderEndpoints
         // DELETE
         group.MapDelete("/{id}", async (
             Guid id,
-            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var userId = httpContext.User.GetRequiredUserId();
-
             var found = await context.Set<Provider>()
-                .SingleOrDefaultAsync(p => p.Id == id && p.ClientId == userId, cancellationToken);
+                .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
             if (found is null)
                 return Results.NotFound();
@@ -184,19 +167,17 @@ public static class ProviderEndpoints
         // TEST CONNECTION (by inline config, for drafts / not-yet-saved providers) — must be before /{id}/test
         group.MapPost("/test", async (
             TestConnectionBodyDto body,
-            HttpContext httpContext,
             IProviderFacadeResolver providerServiceFactory,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var userId = httpContext.User.GetRequiredUserId();
             Provider config;
 
             // If providerId is supplied, fetch from database
             if (body.ProviderId.HasValue)
             {
                 var existing = await context.Set<Provider>()
-                    .SingleOrDefaultAsync(p => p.Id == body.ProviderId.Value && p.ClientId == userId, cancellationToken);
+                    .SingleOrDefaultAsync(p => p.Id == body.ProviderId.Value, cancellationToken);
 
                 if (existing is null)
                     return Results.NotFound("Provider not found");
@@ -208,7 +189,6 @@ public static class ProviderEndpoints
 
                 config = new Provider(
                     existing.Id,
-                    existing.ClientId,
                     body.Name ?? existing.Name,
                     existing.ProviderType,
                     testKey,
@@ -220,7 +200,6 @@ public static class ProviderEndpoints
             {
                 config = new Provider(
                     Guid.Empty,
-                    userId,
                     body.Name ?? "Test",
                     body.ProviderType,
                     body.ApiKey,
@@ -249,15 +228,12 @@ public static class ProviderEndpoints
         // TEST CONNECTION (by saved provider id)
         group.MapPost("/{id}/test", async (
             Guid id,
-            HttpContext httpContext,
             IProviderFacadeResolver providerServiceFactory,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var userId = httpContext.User.GetRequiredUserId();
-
             var config = await context.Set<Provider>()
-                .SingleOrDefaultAsync(p => p.Id == id && p.ClientId == userId, cancellationToken);
+                .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
             if (config is null)
                 return Results.NotFound();
@@ -281,15 +257,12 @@ public static class ProviderEndpoints
         // LIST MODELS
         group.MapGet("/{id}/models", async (
             Guid id,
-            HttpContext httpContext,
             IProviderFacadeResolver providerServiceFactory,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var userId = httpContext.User.GetRequiredUserId();
-
             var config = await context.Set<Provider>()
-                .SingleOrDefaultAsync(p => p.Id == id && p.ClientId == userId, cancellationToken);
+                .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
             if (config is null)
                 return Results.NotFound();

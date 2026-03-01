@@ -3,10 +3,18 @@
 import { useEffect, useRef } from "react"
 import type { Agent, ChatMessage } from "@/lib/agents"
 import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { StartConversationEmpty } from "@/components/start-conversation-empty"
 
 function formatTime(date: Date) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+}
+
+function normalizeMarkdownBlockNewlines(content: string): string {
+  if (!content || typeof content !== "string") return content
+  let out = content.replace(/(#{1,6}\s[^\n]*?)(\s+)(?=[A-Z*_`-])/g, "$1\n\n$2")
+  out = out.replace(/\s+---\s+/g, "\n\n---\n\n")
+  return out
 }
 
 interface MessageListProps {
@@ -121,9 +129,31 @@ export function MessageList({
                 style={{ color: "hsl(210, 3%, 83%)" }}
               >
                 <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
                   components={{
                     p: ({ children }) => (
                       <p className="mb-2 last:mb-0">{children}</p>
+                    ),
+                    h1: ({ children, ...props }) => (
+                      <h1 className="mb-2 mt-4 text-xl font-bold first:mt-0" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h1>
+                    ),
+                    h2: ({ children, ...props }) => (
+                      <h2 className="mb-2 mt-3 text-lg font-semibold" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h2>
+                    ),
+                    h3: ({ children, ...props }) => (
+                      <h3 className="mb-2 mt-2 text-base font-semibold" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h3>
+                    ),
+                    h4: ({ children, ...props }) => (
+                      <h4 className="mb-1 mt-2 text-sm font-semibold" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h4>
+                    ),
+                    h5: ({ children, ...props }) => (
+                      <h5 className="mb-1 mt-1 text-sm font-medium" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h5>
+                    ),
+                    h6: ({ children, ...props }) => (
+                      <h6 className="mb-1 mt-1 text-xs font-medium" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h6>
+                    ),
+                    hr: (props) => (
+                      <hr className="my-3 border-0" style={{ borderTop: "1px solid hsl(228, 6%, 28%)" }} {...props} />
                     ),
                     code: ({ children, className }) => {
                       const isBlock = className?.includes("language-")
@@ -175,9 +205,27 @@ export function MessageList({
                         {children}
                       </a>
                     ),
+                    table: ({ children, ...props }) => (
+                      <div className="my-2 overflow-x-auto rounded-md" style={{ border: "1px solid hsl(228, 6%, 20%)" }}>
+                        <table className="w-full border-collapse text-sm" {...props}>{children}</table>
+                      </div>
+                    ),
+                    thead: ({ children, ...props }) => (
+                      <thead style={{ backgroundColor: "hsl(228, 7%, 12%)" }} {...props}>{children}</thead>
+                    ),
+                    tbody: ({ children, ...props }) => <tbody {...props}>{children}</tbody>,
+                    tr: ({ children, ...props }) => (
+                      <tr style={{ borderBottom: "1px solid hsl(228, 6%, 20%)" }} {...props}>{children}</tr>
+                    ),
+                    th: ({ children, ...props }) => (
+                      <th className="px-3 py-2 text-left font-semibold" style={{ color: "hsl(0, 0%, 100%)", borderRight: "1px solid hsl(228, 6%, 20%)" }} {...props}>{children}</th>
+                    ),
+                    td: ({ children, ...props }) => (
+                      <td className="px-3 py-2" style={{ borderRight: "1px solid hsl(228, 6%, 20%)" }} {...props}>{children}</td>
+                    ),
                   }}
                 >
-                  {message.content}
+                  {normalizeMarkdownBlockNewlines(message.content)}
                 </ReactMarkdown>
               </div>
             </div>
@@ -218,9 +266,31 @@ export function MessageList({
               style={{ color: "hsl(210, 3%, 83%)" }}
             >
               <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
                 components={{
                   p: ({ children }) => (
                     <p className="mb-2 last:mb-0">{children}</p>
+                  ),
+                  h1: ({ children, ...props }) => (
+                    <h1 className="mb-2 mt-4 text-xl font-bold first:mt-0" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h1>
+                  ),
+                  h2: ({ children, ...props }) => (
+                    <h2 className="mb-2 mt-3 text-lg font-semibold" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h2>
+                  ),
+                  h3: ({ children, ...props }) => (
+                    <h3 className="mb-2 mt-2 text-base font-semibold" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h3>
+                  ),
+                  h4: ({ children, ...props }) => (
+                    <h4 className="mb-1 mt-2 text-sm font-semibold" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h4>
+                  ),
+                  h5: ({ children, ...props }) => (
+                    <h5 className="mb-1 mt-1 text-sm font-medium" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h5>
+                  ),
+                  h6: ({ children, ...props }) => (
+                    <h6 className="mb-1 mt-1 text-xs font-medium" style={{ color: "hsl(0, 0%, 100%)" }} {...props}>{children}</h6>
+                  ),
+                  hr: (props) => (
+                    <hr className="my-3 border-0" style={{ borderTop: "1px solid hsl(228, 6%, 28%)" }} {...props} />
                   ),
                   code: ({ children, className }) => {
                     const isBlock = className?.includes("language-")
@@ -250,9 +320,27 @@ export function MessageList({
                     )
                   },
                   pre: ({ children }) => <>{children}</>,
+                  table: ({ children, ...props }) => (
+                    <div className="my-2 overflow-x-auto rounded-md" style={{ border: "1px solid hsl(228, 6%, 20%)" }}>
+                      <table className="w-full border-collapse text-sm" {...props}>{children}</table>
+                    </div>
+                  ),
+                  thead: ({ children, ...props }) => (
+                    <thead style={{ backgroundColor: "hsl(228, 7%, 12%)" }} {...props}>{children}</thead>
+                  ),
+                  tbody: ({ children, ...props }) => <tbody {...props}>{children}</tbody>,
+                  tr: ({ children, ...props }) => (
+                    <tr style={{ borderBottom: "1px solid hsl(228, 6%, 20%)" }} {...props}>{children}</tr>
+                  ),
+                  th: ({ children, ...props }) => (
+                    <th className="px-3 py-2 text-left font-semibold" style={{ color: "hsl(0, 0%, 100%)", borderRight: "1px solid hsl(228, 6%, 20%)" }} {...props}>{children}</th>
+                  ),
+                  td: ({ children, ...props }) => (
+                    <td className="px-3 py-2" style={{ borderRight: "1px solid hsl(228, 6%, 20%)" }} {...props}>{children}</td>
+                  ),
                 }}
               >
-                {streamingContent}
+                {normalizeMarkdownBlockNewlines(streamingContent)}
               </ReactMarkdown>
             </div>
           </div>

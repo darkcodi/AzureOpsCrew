@@ -99,64 +99,62 @@ public class AGUIServerSentEventsResult : IResult, IDisposable
         {
             case RunStartedEvent e:
             {
-                Log.Information("AGUI Event: RunStarted - ThreadId: {ThreadId}, RunId: {RunId}", e.ThreadId, e.RunId);
+                Log.Information("AGUI Event: {Event}", JsonSerializer.Serialize(e));
                 break;
             }
             case RunFinishedEvent e:
             {
-                Log.Information("AGUI Event: RunFinished - ThreadId: {ThreadId}, RunId: {RunId}", e.ThreadId, e.RunId);
+                Log.Information("AGUI Event: {Event}", JsonSerializer.Serialize(e));
                 break;
             }
             case RunErrorEvent e:
             {
-                Log.Error("AGUI Event: RunError - Code: {Code}, Message: {Message}", e.Code, e.Message);
+                Log.Error("AGUI Event: {Event}", JsonSerializer.Serialize(e));
                 break;
             }
             case TextMessageStartEvent e:
             {
-                Log.Information("AGUI Event: TextMessageStart - MessageId: {MessageId}, Role: {Role}", e.MessageId, e.Role);
+                Log.Information("AGUI Event: {Event}", JsonSerializer.Serialize(e));
                 break;
             }
             case TextMessageContentEvent e:
             {
-                Log.Information("AGUI Event: TextMessageContent - MessageId: {MessageId}, Delta: {Delta}", e.MessageId, e.Delta);
+                Log.Information("AGUI Event: {Event}", JsonSerializer.Serialize(e));
                 break;
             }
             case TextMessageEndEvent e:
             {
-                Log.Information("AGUI Event: TextMessageEnd - MessageId: {MessageId}", e.MessageId);
+                Log.Information("AGUI Event: {Event}", JsonSerializer.Serialize(e));
                 break;
             }
             case ToolCallStartEvent e:
             {
-                Log.Information("AGUI Event: ToolCallStart - ToolCallId: {ToolCallId}, ToolCallName: {ToolCallName}, ParentMessageId: {ParentMessageId}",
-                    e.ToolCallId, e.ToolCallName, e.ParentMessageId);
+                Log.Information("AGUI Event: {Event}", JsonSerializer.Serialize(e));
                 break;
             }
             case ToolCallArgsEvent e:
             {
-                Log.Information("AGUI Event: ToolCallArgs - ToolCallId: {ToolCallId}, Delta: {Delta}", e.ToolCallId, e.Delta);
+                Log.Information("AGUI Event: {Event}", JsonSerializer.Serialize(e));
                 break;
             }
             case ToolCallEndEvent e:
             {
-                Log.Information("AGUI Event: ToolCallEnd - ToolCallId: {ToolCallId}", e.ToolCallId);
+                Log.Information("AGUI Event: {Event}", JsonSerializer.Serialize(e));
                 break;
             }
             case ToolCallResultEvent e:
             {
-                Log.Information("AGUI Event: ToolCallResult - MessageId: {MessageId}, ToolCallId: {ToolCallId}, Role: {Role}",
-                    e.MessageId, e.ToolCallId, e.Role);
+                Log.Information("AGUI Event: {Event}", JsonSerializer.Serialize(e));
                 break;
             }
             case StateSnapshotEvent e:
             {
-                Log.Information("AGUI Event: StateSnapshot");
+                Log.Information("AGUI Event: {Event}", JsonSerializer.Serialize(e));
                 break;
             }
             case StateDeltaEvent e:
             {
-                Log.Information("AGUI Event: StateDelta");
+                Log.Information("AGUI Event: {Event}", JsonSerializer.Serialize(e));
                 break;
             }
             default:

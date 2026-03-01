@@ -2,7 +2,7 @@ using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Email;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.AgentServices;
-using AzureOpsCrew.Domain.Providers;
+using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
@@ -19,23 +19,12 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 
 namespace AzureOpsCrew.Api.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static SQLiteSettings AddSqliteSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
-    {
-        var settings = configuration.GetSection(configurationKey).Get<SQLiteSettings>() ?? new SQLiteSettings();
-
-        // Validate the settings immediately and throw an exception if invalid
-        if (string.IsNullOrEmpty(settings.DataSource)) throw new InvalidOperationException($"{configurationKey}__DataSource is required.");
-
-        services.Configure<SQLiteSettings>(configuration.GetSection(configurationKey));
-        services.AddOptions<SQLiteSettings>();
-        return settings;
-    }
-
     public static SqlServerSettings AddSqlServerSettings(this IServiceCollection services, IConfiguration configuration, string configurationKey)
     {
         var settings = configuration.GetSection(configurationKey).Get<SqlServerSettings>() ?? new SqlServerSettings();
@@ -53,22 +42,7 @@ public static class ServiceCollectionExtensions
         var provider = configuration["DatabaseProvider"];
         Log.Information("Configuring database provider: {DbProvider}", provider);
 
-        if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-        {
-            var sqliteSettings = services.AddSqliteSettings(configuration, "Sqlite");
-            services.AddDbContext<AzureOpsCrewContext>(options =>
-            {
-                options.UseSqlite(sqliteSettings.DataSource!);
-            });
-            services.AddFluentMigratorCore()
-                .ConfigureRunner(rb =>
-                {
-                    rb.AddSQLite()
-                        .WithGlobalConnectionString(sqliteSettings.DataSource)
-                        .ScanIn(typeof(M001_InitialCreate).Assembly).For.All();
-                });
-        }
-        else if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
         {
             var sqlServerSettings = services.AddSqlServerSettings(configuration, "SqlServer");
             services.AddDbContext<AzureOpsCrewContext>(options =>
@@ -85,7 +59,7 @@ public static class ServiceCollectionExtensions
         }
         else
         {
-            throw new InvalidOperationException($"Unknown DB provider '{provider}'. Supported providers: Sqlite, SqlServer");
+            throw new InvalidOperationException($"Unknown DB provider '{provider}'. Supported providers: SqlServer");
         }
     }
 
@@ -170,45 +144,55 @@ public static class ServiceCollectionExtensions
         var emailVerificationSettings = configuration.GetSection("EmailVerification").Get<EmailVerificationSettings>()
             ?? new EmailVerificationSettings();
 
-        if (string.IsNullOrWhiteSpace(brevoSettings.ApiBaseUrl))
-            throw new InvalidOperationException("Brevo__ApiBaseUrl is required.");
-
-        if (string.IsNullOrWhiteSpace(brevoSettings.ApiKey))
-            throw new InvalidOperationException("Brevo__ApiKey is required.");
-
-        if (brevoSettings.ApiKey.Contains("CHANGEME", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("A real Brevo API key must be configured.");
-
-        if (string.IsNullOrWhiteSpace(brevoSettings.SenderEmail))
-            throw new InvalidOperationException("Brevo__SenderEmail is required.");
-
-        if (string.IsNullOrWhiteSpace(brevoSettings.SenderName))
-            throw new InvalidOperationException("Brevo__SenderName is required.");
-
-        if (emailVerificationSettings.CodeLength is < 4 or > 8)
-            throw new InvalidOperationException("EmailVerification__CodeLength must be between 4 and 8.");
-
-        if (emailVerificationSettings.CodeTtlMinutes <= 0)
-            throw new InvalidOperationException("EmailVerification__CodeTtlMinutes must be greater than zero.");
-
-        if (emailVerificationSettings.ResendCooldownSeconds < 0)
-            throw new InvalidOperationException("EmailVerification__ResendCooldownSeconds must be zero or greater.");
-
-        if (emailVerificationSettings.MaxVerificationAttempts <= 0)
-            throw new InvalidOperationException("EmailVerification__MaxVerificationAttempts must be greater than zero.");
-
-        services.Configure<BrevoSettings>(configuration.GetSection("Brevo"));
-        services.AddOptions<BrevoSettings>();
-
-        services.Configure<EmailVerificationSettings>(configuration.GetSection("EmailVerification"));
-        services.AddOptions<EmailVerificationSettings>();
-
-        services.AddHttpClient<IRegistrationEmailSender, BrevoRegistrationEmailSender>((sp, client) =>
+        if (emailVerificationSettings.IsEnabled)
         {
-            var settings = sp.GetRequiredService<IOptions<BrevoSettings>>().Value;
-            client.BaseAddress = new Uri(settings.ApiBaseUrl);
-            client.Timeout = TimeSpan.FromSeconds(15);
-        });
+            if (string.IsNullOrWhiteSpace(brevoSettings.ApiBaseUrl))
+                throw new InvalidOperationException("Brevo__ApiBaseUrl is required.");
+
+            if (string.IsNullOrWhiteSpace(brevoSettings.ApiKey))
+                throw new InvalidOperationException("Brevo__ApiKey is required.");
+
+            if (brevoSettings.ApiKey.Contains("CHANGEME", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("A real Brevo API key must be configured.");
+
+            if (string.IsNullOrWhiteSpace(brevoSettings.SenderEmail))
+                throw new InvalidOperationException("Brevo__SenderEmail is required.");
+
+            if (string.IsNullOrWhiteSpace(brevoSettings.SenderName))
+                throw new InvalidOperationException("Brevo__SenderName is required.");
+
+            if (emailVerificationSettings.CodeLength is < 4 or > 8)
+                throw new InvalidOperationException("EmailVerification__CodeLength must be between 4 and 8.");
+
+            if (emailVerificationSettings.CodeTtlMinutes <= 0)
+                throw new InvalidOperationException("EmailVerification__CodeTtlMinutes must be greater than zero.");
+
+            if (emailVerificationSettings.ResendCooldownSeconds < 0)
+                throw new InvalidOperationException("EmailVerification__ResendCooldownSeconds must be zero or greater.");
+
+            if (emailVerificationSettings.MaxVerificationAttempts <= 0)
+                throw new InvalidOperationException("EmailVerification__MaxVerificationAttempts must be greater than zero.");
+
+            services.Configure<BrevoSettings>(configuration.GetSection("Brevo"));
+            services.AddOptions<BrevoSettings>();
+
+            services.Configure<EmailVerificationSettings>(configuration.GetSection("EmailVerification"));
+            services.AddOptions<EmailVerificationSettings>();
+
+            services.AddHttpClient<IRegistrationEmailSender, BrevoRegistrationEmailSender>((sp, client) =>
+            {
+                var settings = sp.GetRequiredService<IOptions<BrevoSettings>>().Value;
+                client.BaseAddress = new Uri(settings.ApiBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(15);
+            });
+        }
+        else
+        {
+            services.Configure<EmailVerificationSettings>(configuration.GetSection("EmailVerification"));
+            services.AddOptions<EmailVerificationSettings>();
+
+            services.AddHttpClient<IRegistrationEmailSender, NoopEmailSender>();
+        }
 
         services.AddScoped<IPasswordHasher<PendingRegistration>, PasswordHasher<PendingRegistration>>();
     }

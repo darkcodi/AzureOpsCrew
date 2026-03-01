@@ -7,6 +7,7 @@ import { SettingsContent } from "./settings-content"
 import { SettingsInfoPanel } from "./settings-info-panel"
 import { type SettingsState, type ProviderTestResult, defaultSettings } from "./settings-types"
 import { useToast } from "@/hooks/use-toast"
+import { fetchWithErrorHandling } from "@/lib/fetch"
 
 const SETTINGS_STORAGE_KEY = "azureopscrew-settings"
 
@@ -72,7 +73,7 @@ export function SettingsView({
   useEffect(() => {
     const persisted = loadPersistedSettings()
 
-    fetch("/api/providers")
+    fetchWithErrorHandling("/api/providers")
       .then((res) => {
         if (!res.ok) return null
         return res.json()
@@ -160,7 +161,7 @@ export function SettingsView({
     setSaveError(null)
     setIsSaving(true)
     try {
-      const res = await fetch("/api/settings", {
+      const res = await fetchWithErrorHandling("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ providers: settings.providers }),
@@ -189,7 +190,7 @@ export function SettingsView({
     setSaveError(null)
     setIsSaving(true)
     try {
-      const res = await fetch("/api/settings", {
+      const res = await fetchWithErrorHandling("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ providers: [current] }),
@@ -233,7 +234,7 @@ export function SettingsView({
     setIsTesting(true)
     setSaveError(null)
     try {
-      const res = await fetch("/api/providers/test", {
+      const res = await fetchWithErrorHandling("/api/providers/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -311,7 +312,7 @@ export function SettingsView({
       }
       setIsSaving(true)
       try {
-        const res = await fetch(`/api/providers/${provider.backendId}`, {
+        const res = await fetchWithErrorHandling(`/api/providers/${provider.backendId}`, {
           method: "DELETE",
         })
         if (!res.ok) {

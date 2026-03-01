@@ -1,10 +1,9 @@
+using System.Text.Json;
 using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Api.Setup.Seeds;
-using AzureOpsCrew.Domain.AgentServices;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using Serilog;
 
 #pragma warning disable ASP0013
@@ -63,17 +62,11 @@ try
     if (app.Environment.IsDevelopment())
     {
         var provider = builder.Configuration["DatabaseProvider"];
-        if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
-        {
-            var sqliteSettings = app.Services.GetRequiredService<IOptions<SQLiteSettings>>().Value;
-            Log.Information("Database Provider: Sqlite");
-            Log.Information("SQLite Settings: {SqliteSettings}", JsonConvert.SerializeObject(sqliteSettings));
-        }
-        else if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
         {
             var sqlServerSettings = app.Services.GetRequiredService<IOptions<SqlServerSettings>>().Value;
             Log.Information("Database Provider: SqlServer");
-            Log.Information("SQL Server Settings: {SqlServerSettings}", JsonConvert.SerializeObject(sqlServerSettings));
+            Log.Information("SQL Server Settings: {SqlServerSettings}", JsonSerializer.Serialize(sqlServerSettings));
         }
         else
         {
@@ -101,6 +94,7 @@ try
     app.MapAgentEndpoints();
     app.MapChannelEndpoints();
     app.MapProviderEndpoints();
+    app.MapChatHistoryEndpoints();
 
     app.MapAllAgUi();
 

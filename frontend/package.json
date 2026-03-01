@@ -9,11 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@ag-ui/client": "^0.0.44",
     "@ag-ui/core": "^0.0.44",
-    "@copilotkit/react-core": "^1.51.3",
-    "@copilotkit/react-ui": "^1.51.3",
-    "@copilotkit/runtime": "^1.51.3",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
@@ -65,6 +61,7 @@
     "ai": "^6.0.0",
     "@ai-sdk/react": "^3.0.0",
     "react-markdown": "^9.0.1",
+    "remark-gfm": "^4.0.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

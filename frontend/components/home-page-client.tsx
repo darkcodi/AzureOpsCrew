@@ -13,13 +13,14 @@ import {
   setCachedHumans,
   type HumanMember,
 } from "@/lib/humans"
+import { fetchWithErrorHandling } from "@/lib/fetch"
 
 interface HomePageClientProps {
   initialHumans: HumanMember[]
 }
 
 export default function HomePageClient({ initialHumans }: HomePageClientProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>("channels")
+  const [viewMode, setViewMode] = useState<ViewMode>("direct-messages")
   const [agents, setAgents] = useState<Agent[]>([])
   const [isLoadingAgents, setIsLoadingAgents] = useState(true)
   const [channels, setChannels] = useState<Channel[]>([])
@@ -29,7 +30,6 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
   )
   const [activeChannelId, setActiveChannelId] = useState<string>("")
   const [activeDMId, setActiveDMId] = useState<string | null>(null)
-  const [pendingDMMessage, setPendingDMMessage] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState(() =>
     typeof window !== "undefined" ? getDisplayNameFromStorage() : "User"
   )
@@ -51,18 +51,15 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
 
     async function ensureAuthenticated() {
       try {
-        const response = await fetch("/api/auth/me")
-        if (!response.ok && !isCancelled) {
+        const response = await fetchWithErrorHandling("/api/auth/me")
+        // Only log out on 401 Unauthorized, not on 500 server errors
+        if (response.status === 401 && !isCancelled) {
           clearCachedHumans()
           await fetch("/api/auth/logout", { method: "POST" })
           window.location.href = "/login"
         }
       } catch {
-        if (!isCancelled) {
-          clearCachedHumans()
-          await fetch("/api/auth/logout", { method: "POST" }).catch(() => {})
-          window.location.href = "/login"
-        }
+        // Network errors (user offline, etc.) don't warrant logout
       }
     }
 
@@ -77,7 +74,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     async function loadAgents() {
       try {
         setIsLoadingAgents(true)
-        const response = await fetch("/api/agents")
+        const response = await fetchWithErrorHandling("/api/agents")
         if (response.ok) {
           const backendAgents: Agent[] = await response.json()
           if (backendAgents.length > 0) {
@@ -98,7 +95,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     async function loadChannels() {
       try {
         setIsLoadingChannels(true)
-        const response = await fetch("/api/channels")
+        const response = await fetchWithErrorHandling("/api/channels")
         if (response.ok) {
           const backendChannels: Channel[] = await response.json()
           if (backendChannels.length > 0) {
@@ -122,7 +119,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
 
     async function loadHumans() {
       try {
-        const response = await fetch("/api/users")
+        const response = await fetchWithErrorHandling("/api/users")
         if (!response.ok) return
 
         const users: HumanMember[] = await response.json()
@@ -148,7 +145,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
 
   const handleCreateChannel = useCallback(async (name: string) => {
     try {
-      const response = await fetch("/api/channels/create", {
+      const response = await fetchWithErrorHandling("/api/channels/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, agentIds: [] }),
@@ -183,7 +180,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
 
   const handleDeleteChannel = useCallback(async (channelId: string) => {
     try {
-      const response = await fetch(`/api/channels/${channelId}`, {
+      const response = await fetchWithErrorHandling(`/api/channels/${channelId}`, {
         method: "DELETE",
       })
       if (!response.ok) {
@@ -207,7 +204,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
   const handleAddAgent = useCallback(async (agent: Agent) => {
     // Reload agents from backend after creation to ensure consistency
     try {
-      const response = await fetch("/api/agents")
+      const response = await fetchWithErrorHandling("/api/agents")
       if (response.ok) {
         const backendAgents: Agent[] = await response.json()
         if (backendAgents.length > 0) {
@@ -228,7 +225,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
   }, [])
 
   const handleDeleteAgent = useCallback(async (agentId: string) => {
-    const response = await fetch(`/api/agents/${agentId}`, {
+    const response = await fetchWithErrorHandling(`/api/agents/${agentId}`, {
       method: "DELETE",
     })
     if (!response.ok) {
@@ -244,10 +241,9 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     )
   }, [])
 
-  const handleOpenAgentInDM = useCallback((agentId: string, message?: string) => {
+  const handleOpenAgentInDM = useCallback((agentId: string) => {
     setViewMode("direct-messages")
     setActiveDMId(agentId)
-    setPendingDMMessage(message ?? null)
   }, [])
 
   const handleLogout = useCallback(async () => {
@@ -309,8 +305,6 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
           setActiveDMId={setActiveDMId}
           agents={agents}
           humans={humans}
-          pendingDMMessage={pendingDMMessage}
-          onClearPendingDMMessage={() => setPendingDMMessage(null)}
         />
       )}
       {viewMode === "settings" && (

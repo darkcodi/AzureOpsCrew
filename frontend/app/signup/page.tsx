@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { fetchWithErrorHandling } from "@/lib/fetch"
 
 type SignupStep = "details" | "verify"
 
@@ -99,7 +100,7 @@ export default function SignupPage() {
 
     setIsSubmitting(true)
     try {
-      const response = await fetch("/api/auth/register", {
+      const response = await fetchWithErrorHandling("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -145,7 +146,7 @@ export default function SignupPage() {
 
     setIsSubmitting(true)
     try {
-      const response = await fetch("/api/auth/register/verify", {
+      const response = await fetchWithErrorHandling("/api/auth/register/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -174,7 +175,7 @@ export default function SignupPage() {
     setIsResending(true)
 
     try {
-      const response = await fetch("/api/auth/register/resend", {
+      const response = await fetchWithErrorHandling("/api/auth/register/resend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

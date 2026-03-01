@@ -14,6 +14,8 @@ namespace AzureOpsCrew.Api.Endpoints;
 
 public static class AuthEndpoints
 {
+    const string DefaultVerificationCode = "000000";
+
     public static void MapAuthEndpoints(this IEndpointRouteBuilder routeBuilder)
     {
         var group = routeBuilder.MapGroup("/api/auth")
@@ -70,7 +72,7 @@ public static class AuthEndpoints
                 ? email
                 : body.DisplayName.Trim();
 
-            var verificationCode = GenerateVerificationCode(settings.CodeLength);
+            var verificationCode = settings.IsEnabled ? GenerateVerificationCode(settings.CodeLength) : DefaultVerificationCode;
             var passwordHash = pendingRegistrationHasher.HashPassword(pendingRegistration, body.Password);
             var verificationCodeHash = pendingRegistrationHasher.HashPassword(pendingRegistration, verificationCode);
             var expiresAtUtc = now.AddMinutes(settings.CodeTtlMinutes);
@@ -148,7 +150,7 @@ public static class AuthEndpoints
                     statusCode: StatusCodes.Status429TooManyRequests);
             }
 
-            var verificationCode = GenerateVerificationCode(settings.CodeLength);
+            var verificationCode = settings.IsEnabled ? GenerateVerificationCode(settings.CodeLength) : DefaultVerificationCode;
             var verificationCodeHash = pendingRegistrationHasher.HashPassword(pendingRegistration, verificationCode);
             var expiresAtUtc = now.AddMinutes(settings.CodeTtlMinutes);
 

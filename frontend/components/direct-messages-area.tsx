@@ -1,89 +1,39 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import { useCopilotChatInternal } from "@copilotkit/react-core"
-import { CopilotChat } from "@copilotkit/react-ui"
 import { PanelRightClose, PanelRightOpen } from "lucide-react"
-import { CopilotActions } from "@/components/copilot-actions"
-import { DMMessages } from "@/components/dm-messages"
-import { MessageInputAdapter } from "@/components/message-input"
+import { ManualChatContainer } from "@/components/manual-chat-container"
 import type { Agent } from "@/lib/agents"
-
-const DEFAULT_INSTRUCTIONS =
-  "You are a helpful AI assistant for AzureOpsCrew. Respond in a direct, conversational way."
 
 interface DirectMessagesAreaProps {
   activeDMId: string | null
   agents: Agent[]
-  pendingDMMessage?: string | null
-  onClearPendingDMMessage?: () => void
   showRightPane?: boolean
   onToggleRightPane?: () => void
-}
-
-function SendPendingMessage({
-  pendingDMMessage,
-  activeDMId,
-  onClear,
-}: {
-  pendingDMMessage: string
-  activeDMId: string
-  onClear: () => void
-}) {
-  const { sendMessage } = useCopilotChatInternal()
-  const sentRef = useRef(false)
-
-  useEffect(() => {
-    if (sentRef.current || !pendingDMMessage || !activeDMId) return
-    sentRef.current = true
-    const id = crypto.randomUUID()
-    const timer = setTimeout(() => {
-      sendMessage({
-        id,
-        role: "user",
-        content: pendingDMMessage,
-      })
-        .then(() => onClear())
-        .catch(() => {})
-        .finally(() => {
-          sentRef.current = false
-        })
-    }, 250)
-    return () => clearTimeout(timer)
-  }, [pendingDMMessage, activeDMId, sendMessage, onClear])
-
-  return null
 }
 
 export function DirectMessagesArea({
   activeDMId,
   agents,
-  pendingDMMessage = null,
-  onClearPendingDMMessage,
   showRightPane = true,
   onToggleRightPane,
 }: DirectMessagesAreaProps) {
-  const threadId = activeDMId ?? "assistant"
-  const selectedAgent = agents.find((a) => a.id === activeDMId)
-  const instructions = selectedAgent
-    ? selectedAgent.systemPrompt
-    : DEFAULT_INSTRUCTIONS
-  const placeholder = selectedAgent
-    ? `Message @${selectedAgent.name}...`
-    : "Message @AzureOpsCrew Assistant..."
+  // Show empty state if no agent selected
+  if (!activeDMId) {
+    return (
+      <div
+        className="direct-messages-area flex flex-1 flex-col items-center justify-center"
+        style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
+      >
+        <div style={{ color: "hsl(0, 0%, 100%)" }}>Select an agent to start messaging</div>
+      </div>
+    )
+  }
 
   return (
     <div
       className="direct-messages-area flex flex-1 flex-col overflow-hidden"
       style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
     >
-      {pendingDMMessage && activeDMId && onClearPendingDMMessage && (
-        <SendPendingMessage
-          pendingDMMessage={pendingDMMessage}
-          activeDMId={activeDMId}
-          onClear={onClearPendingDMMessage}
-        />
-      )}
       {/* Header */}
       <header
         className="flex h-12 shrink-0 items-center gap-2 border-b px-4 shadow-sm"
@@ -115,25 +65,8 @@ export function DirectMessagesArea({
         )}
       </header>
 
-      {/* Register dynamic UI actions (pipeline, work items, resources, etc.) */}
-      <CopilotActions />
-
-      {/* Chat: key forces remount when switching DM so messages/context switch */}
-      <div className="flex min-h-0 flex-1 flex-col">
-        <CopilotChat
-          key={threadId}
-          instructions={instructions}
-          labels={{
-            title: "Direct Messages",
-            placeholder,
-          }}
-          className="h-full min-h-0 flex-1"
-          Messages={DMMessages}
-          Input={(props) => (
-            <MessageInputAdapter {...props} placeholder={placeholder} />
-          )}
-        />
-      </div>
+      {/* Manual chat container - NO CopilotKit */}
+      <ManualChatContainer activeDMId={activeDMId} agents={agents} />
     </div>
   )
 }

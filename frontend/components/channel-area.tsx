@@ -9,6 +9,7 @@ import { MemberList } from "@/components/member-list"
 import type { AGUIEvent } from "@ag-ui/core"
 import { EventType } from "@ag-ui/core"
 import type { HumanMember } from "@/lib/humans"
+import { fetchWithErrorHandling } from "@/lib/fetch"
 
 interface ChannelAreaProps {
   channel: Channel
@@ -36,7 +37,6 @@ export function ChannelArea({
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [streamingAgentId, setStreamingAgentId] = useState<string | null>(null)
   const [streamingContent, setStreamingContent] = useState("")
-  const [isProcessing, setIsProcessing] = useState(false)
   const [showMembers, setShowMembers] = useState(true)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -48,7 +48,7 @@ export function ChannelArea({
       ? `/api/channels/${channel.id}/add-agent`
       : `/api/channels/${channel.id}/remove-agent`
 
-    const response = await fetch(endpoint, {
+    const response = await fetchWithErrorHandling(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ agentId }),
@@ -67,7 +67,7 @@ export function ChannelArea({
 
   const handleKickMember = useCallback(
     async (agentId: string) => {
-      const response = await fetch(
+      const response = await fetchWithErrorHandling(
         `/api/channels/${channel.id}/remove-agent`,
         {
           method: "POST",
@@ -89,9 +89,7 @@ export function ChannelArea({
 
   const handleSend = useCallback(
     async (text: string) => {
-      if (isProcessing || activeAgents.length === 0) return
-
-      setIsProcessing(true)
+      if (activeAgents.length === 0) return
 
       const userMsg: ChatMessage = {
         id: "user-" + Date.now(),
@@ -224,10 +222,9 @@ export function ChannelArea({
       } finally {
         setStreamingAgentId(null)
         setStreamingContent("")
-        setIsProcessing(false)
       }
     },
-    [isProcessing, activeAgents, messages, channel.id, channel.name]
+    [activeAgents, messages, channel.id, channel.name]
   )
 
   return (
@@ -253,7 +250,7 @@ export function ChannelArea({
         <MessageInput
           channelName={channel.name}
           onSend={handleSend}
-          disabled={isProcessing}
+          disabled
         />
       </div>
 

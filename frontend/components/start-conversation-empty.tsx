@@ -1,14 +1,18 @@
 "use client"
 
 interface StartConversationEmptyProps {
-  /** Subtitle below "Start a conversation". Defaults to the Groups/Chats copy. */
+  /** Heading text. Defaults to channel "not implemented" message; pass e.g. "Start a conversation" for DMs. */
+  title?: string
+  /** Subtitle below the main message. Defaults to text that mentions DMs are available. */
   subtitle?: string
 }
 
+const DEFAULT_TITLE = "Sorry, not yet implemented"
 const DEFAULT_SUBTITLE =
-  "Send a message and all active agents in this room will respond."
+  "This feature (Channels) is not available yet. You can use direct messages (DMs) to chat with agents."
 
 export function StartConversationEmpty({
+  title = DEFAULT_TITLE,
   subtitle = DEFAULT_SUBTITLE,
 }: StartConversationEmptyProps) {
   return (
@@ -24,7 +28,7 @@ export function StartConversationEmpty({
           className="text-xl font-bold"
           style={{ color: "hsl(0, 0%, 100%)" }}
         >
-          Start a conversation
+          {title}
         </h2>
         <p
           className="mt-1 text-sm"
