@@ -1,6 +1,4 @@
-namespace AzureOpsCrew.Api.Chat;
-
-using AzureOpsCrew.Domain.Chats;
+namespace AzureOpsCrew.Domain.Chats;
 
 public interface IChatServerClient
 {

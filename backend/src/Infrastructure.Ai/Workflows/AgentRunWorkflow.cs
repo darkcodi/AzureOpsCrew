@@ -88,7 +88,7 @@ public class AgentRunWorkflow
                     var toolCallResult = toolDeclaration.ToolType switch
                     {
                         // For back-end tools, we execute the tool and get the result to return to the LLM.
-                        ToolType.BackEnd => await Workflow.ExecuteActivityAsync((McpActivities a) => a.CallMcpAsync(toolCall), Options),
+                        ToolType.BackEnd => await Workflow.ExecuteActivityAsync((McpActivities a) => a.CallMcpAsync(toolCall, agentId), Options),
 
                         // For front-end tools, we can return an empty JSON object as the result since the front-end will handle the rendering based on the tool declaration.
                         ToolType.FrontEnd => new ToolCallResult(SerializedResult: JsonDocument.Parse("{}").RootElement.ToString(), IsError: false),
