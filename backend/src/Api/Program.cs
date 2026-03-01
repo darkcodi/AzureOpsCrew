@@ -98,8 +98,6 @@ try
     app.MapDmEndpoints();
     app.MapProviderEndpoints();
 
-    app.MapAllAgUi();
-
     await app.Services.RunDbSetup();
     await app.Services.RunLongTermMemorySetup();
     await app.Services.RunSeeding(builder.Configuration);
