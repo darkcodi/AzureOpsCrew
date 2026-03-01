@@ -1,0 +1,96 @@
+using System.Text.Json;
+using Chat.Endpoints;
+using Chat.Extensions;
+using Chat.Settings;
+using Microsoft.Extensions.Options;
+using Serilog;
+
+#pragma warning disable ASP0013
+
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateLogger();
+
+try
+{
+    Log.Information("Starting web application");
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Configure app settings with environment variables as highest priority
+    builder.Host.ConfigureAppConfiguration((context, config) =>
+    {
+        // Clear default sources
+        config.Sources.Clear();
+
+        // Add sources in order of increasing priority (environment variables win)
+        config
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json",
+                optional: true, reloadOnChange: true)
+            .AddUserSecrets(typeof(Program).Assembly)
+            .AddEnvironmentVariables();
+    });
+
+    // Use Serilog
+    builder.Host.UseSerilog();
+
+    // Enable OpenAPI/Swagger
+    builder.Services.AddOpenApi();
+    builder.Services.AddSwaggerGen();
+
+    // Configure settings and database
+    builder.Services.AddDatabase(builder.Configuration);
+    builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
+
+    // Enable Application Insights
+    if (bool.TryParse(builder.Configuration["ApplicationInsights:Enable"], out var enableApplicationInsights)
+        && enableApplicationInsights)
+        builder.Services.AddApplicationInsightsTelemetry();
+
+    var app = builder.Build();
+
+    // Log configuration settings at startup
+    if (app.Environment.IsDevelopment())
+    {
+        var provider = builder.Configuration["DatabaseProvider"];
+        if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            var sqlServerSettings = app.Services.GetRequiredService<IOptions<SqlServerSettings>>().Value;
+            Log.Information("Database Provider: SqlServer");
+            Log.Information("SQL Server Settings: {SqlServerSettings}", JsonSerializer.Serialize(sqlServerSettings));
+        }
+        else
+        {
+            Log.Warning("Unknown DatabaseProvider value: {Provider}", provider);
+        }
+    }
+
+    // Configure the HTTP request pipeline.
+    if (app.Environment.IsDevelopment())
+    {
+        app.MapOpenApi();
+        app.MapSwagger();
+        app.UseSwaggerUI();
+        app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+    }
+
+    app.UseHttpsRedirection();
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    // Map endpoints
+    app.MapChatEndpoints();
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
