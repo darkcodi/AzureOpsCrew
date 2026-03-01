@@ -59,7 +59,7 @@ using var worker = new TemporalWorker(
     new TemporalWorkerOptions(WorkflowConstants.QueueName)
         .AddActivity(databaseActivities.LoadAgent)
         .AddActivity(databaseActivities.LoadProvider)
-        .AddActivity(databaseActivities.LoadChatHistory)
+        .AddActivity(databaseActivities.LoadAgentThoughts)
         .AddActivity(databaseActivities.UpsertAgentThougth)
         .AddActivity(databaseActivities.InsertRawLlmHttpCall)
         .AddActivity(llmActivities.LlmThinkAsync)

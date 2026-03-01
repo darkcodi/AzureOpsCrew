@@ -48,7 +48,7 @@ public class DatabaseActivities
     }
 
     [Activity]
-    public async Task<List<AgentThought>> LoadChatHistory(Guid agentId)
+    public async Task<List<AgentThought>> LoadAgentThoughts(Guid agentId)
     {
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();

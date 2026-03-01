@@ -27,9 +27,9 @@ public class AgentRunWorkflow
         var agent = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadAgent(agentId), Options);
         var provider = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadProvider(agent.ProviderId), Options);
 
-        var domainMessages = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadChatHistory(agentId), Options);
-        domainMessages = domainMessages.Where(m => !m.IsHidden).ToList();
-        var messages = domainMessages.Select(AocAgentThought.FromDomain).ToList();
+        var agentThoughts = await Workflow.ExecuteActivityAsync((DatabaseActivities a) => a.LoadAgentThoughts(agentId), Options);
+        agentThoughts = agentThoughts.Where(m => !m.IsHidden).ToList();
+        var messages = agentThoughts.Select(AocAgentThought.FromDomain).ToList();
 
         // ToDo: Load tools based on agent configuration. For now we just return a hardcoded tool list for testing.
         var backendTools = BackEndTools.GetDeclarations();
