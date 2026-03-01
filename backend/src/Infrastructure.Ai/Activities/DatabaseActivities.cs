@@ -3,23 +3,29 @@ using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Temporalio.Activities;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Activities;
 
 public class DatabaseActivities
 {
-    private readonly AzureOpsCrewContext _context;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public DatabaseActivities(AzureOpsCrewContext context)
+    public DatabaseActivities(IServiceScopeFactory scopeFactory)
     {
-        _context = context;
+        _scopeFactory = scopeFactory;
     }
 
     [Activity]
     public async Task<Agent> LoadAgent(Guid agentId)
     {
-        var agent = await _context.Agents.FirstOrDefaultAsync(a => a.Id == agentId);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
+
+        var agent = await context.Agents
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == agentId);
         if (agent is null)
             throw new Exception($"Agent not found: {agentId}");
 
@@ -29,7 +35,12 @@ public class DatabaseActivities
     [Activity]
     public async Task<Provider> LoadProvider(Guid providerId)
     {
-        var provider = await _context.Providers.FirstOrDefaultAsync(p => p.Id == providerId);
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
+
+        var provider = await context.Providers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == providerId);
         if (provider is null)
             throw new Exception($"Provider not found: {providerId}");
 
@@ -39,7 +50,11 @@ public class DatabaseActivities
     [Activity]
     public async Task<List<LlmChatMessage>> LoadChatHistory(Guid agentId)
     {
-        var messages = await _context.LlmChatMessages
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
+
+        var messages = await context.LlmChatMessages
+            .AsNoTracking()
             .Where(m => m.AgentId == agentId)
             .OrderBy(m => m.CreatedAt)
             .ToListAsync();
@@ -49,37 +64,33 @@ public class DatabaseActivities
     [Activity]
     public async Task UpsertLlmChatMessage(LlmChatMessage chatMessage)
     {
-        // Check if the entity is already being tracked and detach it
-        var trackedEntry = _context.ChangeTracker.Entries<LlmChatMessage>()
-            .FirstOrDefault(e => e.Entity.Id == chatMessage.Id);
-
-        if (trackedEntry != null)
-        {
-            // Detach the tracked entry so we can handle the upsert cleanly
-            trackedEntry.State = EntityState.Detached;
-        }
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
 
         // Query database to determine if entity exists
-        var existingMessage = await _context.LlmChatMessages
+        var existingMessage = await context.LlmChatMessages
             .AsNoTracking()
             .FirstOrDefaultAsync(m => m.Id == chatMessage.Id);
 
         if (existingMessage is null)
         {
-            await _context.LlmChatMessages.AddAsync(chatMessage);
+            await context.LlmChatMessages.AddAsync(chatMessage);
         }
         else
         {
-            _context.LlmChatMessages.Update(chatMessage);
+            context.LlmChatMessages.Update(chatMessage);
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     [Activity]
     public async Task InsertRawLlmHttpCall(RawLlmHttpCall rawCall)
     {
-        await _context.RawLlmHttpCalls.AddAsync(rawCall);
-        await _context.SaveChangesAsync();
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
+
+        await context.RawLlmHttpCalls.AddAsync(rawCall);
+        await context.SaveChangesAsync();
     }
 }

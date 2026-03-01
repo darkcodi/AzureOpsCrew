@@ -27,7 +27,7 @@ var services = new ServiceCollection();
 services.AddSingleton(configuration);
 services.AddDatabase(configuration);
 services.AddProviderFacades();
-services.AddTransient<DatabaseActivities>();
+services.AddSingleton<DatabaseActivities>();
 services.AddTransient<LlmActivities>();
 services.AddTransient<McpActivities>();
 
