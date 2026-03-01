@@ -11,8 +11,6 @@ public sealed class UserEntityTypeConfiguration : IEntityTypeConfiguration<User>
         builder.ToTable("Users");
 
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id)
-            .ValueGeneratedOnAdd();
 
         builder.Property(x => x.Email)
             .IsRequired()

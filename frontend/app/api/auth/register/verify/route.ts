@@ -7,7 +7,7 @@ interface BackendAuthResponse {
   accessToken: string
   expiresAtUtc: string
   user: {
-    id: number
+    id: string
     email: string
     displayName: string
   }
@@ -25,7 +25,7 @@ function isValidBackendAuthResponse(value: unknown): value is BackendAuthRespons
 
   const typedUser = user as Record<string, unknown>
   return (
-    typeof typedUser.id === "number" &&
+    typeof typedUser.id === "string" &&
     typeof typedUser.email === "string" &&
     typedUser.email.length > 0 &&
     typeof typedUser.displayName === "string"

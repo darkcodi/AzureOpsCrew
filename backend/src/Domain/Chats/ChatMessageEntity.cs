@@ -18,12 +18,12 @@ public sealed class ChatMessageEntity
     public string Content { get; private set; }
 
     // Sender: exactly one of SenderUserId or SenderAgentId should be set
-    public int? SenderUserId { get; private set; }
+    public Guid? SenderUserId { get; private set; }
     public Guid? SenderAgentId { get; private set; }
 
     public DateTime PostedAt { get; private set; } = DateTime.UtcNow;
 
-    public void SetSenderUser(int userId)
+    public void SetSenderUser(Guid userId)
     {
         SenderUserId = userId;
         SenderAgentId = null;

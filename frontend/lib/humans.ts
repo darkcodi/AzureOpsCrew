@@ -2,16 +2,16 @@ export type HumanStatus = "Online" | "Offline"
 
 export interface HumanMember {
   id: string
-  userId: number
+  userId: string
   name: string
   status: HumanStatus
   isCurrentUser: boolean
 }
 
 const HUMAN_ID_PREFIX = "human:"
-const HUMANS_CACHE_KEY = "aoc_humans_cache_v1"
+const HUMANS_CACHE_KEY = "aoc_humans_cache_v2"
 
-export function toHumanCardId(userId: number): string {
+export function toHumanCardId(userId: string): string {
   return `${HUMAN_ID_PREFIX}${userId}`
 }
 
@@ -33,7 +33,7 @@ export function getCachedHumans(): HumanMember[] {
       (item): item is HumanMember =>
         item &&
         typeof item.id === "string" &&
-        typeof item.userId === "number" &&
+        typeof item.userId === "string" &&
         typeof item.name === "string" &&
         (item.status === "Online" || item.status === "Offline") &&
         typeof item.isCurrentUser === "boolean"

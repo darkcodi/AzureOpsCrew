@@ -14,7 +14,7 @@ public sealed class ChatEntity
 
     public Guid Id { get; private set; }
     public string Title { get; private set; }
-    public int[] ParticipantUserIds { get; private set; } = [];
+    public Guid[] ParticipantUserIds { get; private set; } = [];
     public Guid[] ParticipantAgentIds { get; private set; } = [];
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
     public DateTime? DateModified { get; private set; }
@@ -25,13 +25,13 @@ public sealed class ChatEntity
         DateModified = DateTime.UtcNow;
     }
 
-    public void AddParticipantUser(int userId)
+    public void AddParticipantUser(Guid userId)
     {
         ParticipantUserIds = ParticipantUserIds.Concat([userId]).ToArray();
         DateModified = DateTime.UtcNow;
     }
 
-    public void RemoveParticipantUser(int userId)
+    public void RemoveParticipantUser(Guid userId)
     {
         ParticipantUserIds = ParticipantUserIds.Except([userId]).ToArray();
         DateModified = DateTime.UtcNow;

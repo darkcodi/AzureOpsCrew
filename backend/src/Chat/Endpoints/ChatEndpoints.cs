@@ -151,9 +151,9 @@ namespace Chat.Endpoints
             .Produces(StatusCodes.Status404NotFound);
 
             // POST: Add a participant user to a chat
-            group.MapPost("/chats/{id:guid}/participants/users/{userId:int}", async (
+            group.MapPost("/chats/{id:guid}/participants/users/{userId:guid}", async (
                 Guid id,
-                int userId,
+                Guid userId,
                 AzureOpsCrewContext context,
                 CancellationToken cancellationToken) =>
             {
@@ -172,9 +172,9 @@ namespace Chat.Endpoints
             .Produces(StatusCodes.Status404NotFound);
 
             // DELETE: Remove a participant user from a chat
-            group.MapDelete("/chats/{id:guid}/participants/users/{userId:int}", async (
+            group.MapDelete("/chats/{id:guid}/participants/users/{userId:guid}", async (
                 Guid id,
-                int userId,
+                Guid userId,
                 AzureOpsCrewContext context,
                 CancellationToken cancellationToken) =>
             {

@@ -20,8 +20,8 @@ public sealed class ChatEntityTypeConfiguration : IEntityTypeConfiguration<ChatE
 
         builder.Property(c => c.ParticipantUserIds)
                .HasConversion(
-                   v => v == null ? null : string.Join(',', v),
-                   s => string.IsNullOrEmpty(s) ? Array.Empty<int>() : s.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToArray());
+                   v => v == null ? null : string.Join(',', v.Select(g => g.ToString())),
+                   s => string.IsNullOrEmpty(s) ? Array.Empty<Guid>() : s.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(Guid.Parse).ToArray());
 
         builder.Property(c => c.ParticipantAgentIds)
                .HasConversion(
