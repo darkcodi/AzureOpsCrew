@@ -1,5 +1,4 @@
-﻿using FluentMigrator.Runner;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Temporalio.Client;
@@ -34,15 +33,6 @@ services.AddTransient<McpActivities>();
 
 // Build the service provider
 var serviceProvider = services.BuildServiceProvider();
-
-// Run migrations
-using (var scope = serviceProvider.CreateScope())
-{
-    var migrator = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
-    Log.Information("Running database migrations...");
-    migrator.MigrateUp();
-    Log.Information("Database migrations completed.");
-}
 
 // Create a client to localhost on "default" namespace
 var client = await TemporalClient.ConnectAsync(new("localhost:7233"));
