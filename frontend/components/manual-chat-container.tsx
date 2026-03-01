@@ -204,42 +204,28 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
 
     setExpandedReasoningIds(new Set())
     setIsLoading(true)
-    fetchWithErrorHandling(`/api/agents/${activeDMId}/mind`)
-      .then(async (res) => {
-        if (res.ok) {
-          const data = (await res.json()) as {
-            events: Array<{
-              id: string
-              role: "user" | "assistant"
-              content: string | null
-              reasoning?: string | null
-              widget?: {
-                toolName: string
-                callId: string
-                args?: Record<string, unknown>
-                result?: Record<string, unknown>
-              }
-            }>
-          }
-          const chatMessages: ChatMessage[] = data.events.map((m) => {
-            const base: ChatMessage = {
-              id: m.id,
-              role: m.role,
-              content: m.content ?? "",
-              ...(m.reasoning != null && { reasoning: m.reasoning }),
-            }
-            if (!m.widget) return base
-            const w = m.widget
-            return {
-              ...base,
-              widget: {
-                toolName: w.toolName,
-                callId: w.callId,
-                args: w.args ?? {},
-                result: w.result ?? {},
-              },
-            }
-          })
+
+    // Fetch both user info and messages in parallel
+    Promise.all([
+      fetchWithErrorHandling('/api/auth/me'),
+      fetchWithErrorHandling(`/api/dms/agents/${activeDMId}/messages`)
+    ])
+      .then(async ([userRes, messagesRes]) => {
+        if (userRes.ok && messagesRes.ok) {
+          const user = await userRes.json()
+          const messages = await messagesRes.json()
+
+          const chatMessages: ChatMessage[] = messages.map((m: {
+            id: string
+            chatId: string
+            content: string
+            senderId: string
+            postedAt: string
+          }) => ({
+            id: m.id,
+            role: m.senderId === user.id ? 'user' : 'assistant',
+            content: m.content,
+          }))
           setMessages(chatMessages)
         } else {
           setMessages([])
