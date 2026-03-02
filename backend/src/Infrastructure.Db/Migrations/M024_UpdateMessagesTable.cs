@@ -3,7 +3,7 @@ using FluentMigrator;
 namespace AzureOpsCrew.Infrastructure.Db.Migrations;
 
 [Migration(2026_03_04_11_00_00, "Update Messages table schema")]
-public class M025_UpdateMessagesTable : Migration
+public class M024_UpdateMessagesTable : Migration
 {
     public override void Up()
     {
