@@ -17,6 +17,7 @@ public interface IChannelEventBroadcaster
     Task BroadcastToolCallStartAsync(Guid channelId, Guid agentId, string agentName, string toolName, string toolCallId);
     Task BroadcastToolCallEndAsync(Guid channelId, Guid agentId, string agentName, string toolName, string toolCallId, bool success = true, string? errorMessage = null);
     Task BroadcastTypingIndicatorAsync(Guid channelId, Guid agentId, string agentName, bool isTyping);
+    Task BroadcastUserPresenceAsync(Guid userId, string username, bool isOnline);
 }
 
 /// <summary>
@@ -136,6 +137,21 @@ public class ChannelEventBroadcaster : IChannelEventBroadcaster
         _logger.LogTrace("Broadcasting TYPING_INDICATOR to channel {ChannelId} for agent {AgentName}: {IsTyping}", channelId, agentName, isTyping);
 
         return _hubContext.Clients.Group(groupName).SendAsync("event", eventMessage);
+    }
+
+    public Task BroadcastUserPresenceAsync(Guid userId, string username, bool isOnline)
+    {
+        var eventMessage = new UserPresenceEvent
+        {
+            UserId = userId,
+            Username = username,
+            IsOnline = isOnline
+        };
+
+        _logger.LogDebug("Broadcasting USER_PRESENCE for user {Username}: {IsOnline}", username, isOnline);
+
+        // Broadcast to ALL connected clients (not channel-specific)
+        return _hubContext.Clients.All.SendAsync("event", eventMessage);
     }
 
     private static string GetChannelGroupName(Guid channelId) => $"channel_{channelId}";

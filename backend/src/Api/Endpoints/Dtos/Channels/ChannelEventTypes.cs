@@ -39,4 +39,9 @@ public static class ChannelEventTypes
     /// Typing indicator status update for an agent.
     /// </summary>
     public const string TypingIndicator = "TYPING_INDICATOR";
+
+    /// <summary>
+    /// User presence status update (online/offline).
+    /// </summary>
+    public const string UserPresence = "USER_PRESENCE";
 }

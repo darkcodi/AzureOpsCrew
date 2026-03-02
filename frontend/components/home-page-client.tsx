@@ -14,6 +14,7 @@ import {
   type HumanMember,
 } from "@/lib/humans"
 import { fetchWithErrorHandling } from "@/lib/fetch"
+import { ChannelEventsClient } from "@/lib/signalr-client"
 
 interface HomePageClientProps {
   initialHumans: HumanMember[]
@@ -113,7 +114,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     loadChannels()
   }, [])
 
-  // Load registered users and refresh presence periodically.
+  // Load registered users on mount (no polling)
   useEffect(() => {
     let isCancelled = false
 
@@ -133,13 +134,38 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     }
 
     void loadHumans()
-    const interval = window.setInterval(() => {
-      void loadHumans()
-    }, 30000)
-
     return () => {
       isCancelled = true
-      window.clearInterval(interval)
+    }
+  }, [])
+
+  // Listen for user presence updates via SignalR
+  useEffect(() => {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL ?? "http://localhost:5000"
+    const hubUrl = `${backendUrl}/channels/global/events`
+
+    const presenceClient = new ChannelEventsClient("global")
+    let mounted = true
+
+    presenceClient.start().then(() => {
+      if (!mounted) return
+
+      presenceClient.onUserPresence((event) => {
+        setHumans((prev) =>
+          prev.map((h) =>
+            h.userId === event.userId
+              ? { ...h, status: event.isOnline ? ("Online" as const) : ("Offline" as const) }
+              : h
+          )
+        )
+      })
+    }).catch((err) => {
+      console.error("Failed to connect to presence hub:", err)
+    })
+
+    return () => {
+      mounted = false
+      presenceClient.stop()
     }
   }, [])
 

@@ -103,6 +103,13 @@ export interface TypingIndicatorEvent extends ChannelEvent {
   isTyping: boolean
 }
 
+export interface UserPresenceEvent extends ChannelEvent {
+  type: "USER_PRESENCE"
+  userId: string
+  username: string
+  isOnline: boolean
+}
+
 export type ChannelEventHandler = (event: ChannelEvent) => void
 
 /**
@@ -283,6 +290,13 @@ export class ChannelEventsClient {
    */
   onTypingIndicator(handler: (event: TypingIndicatorEvent) => void): void {
     this.on("TYPING_INDICATOR", handler as ChannelEventHandler)
+  }
+
+  /**
+   * Register a handler for user presence events.
+   */
+  onUserPresence(handler: (event: UserPresenceEvent) => void): void {
+    this.on("USER_PRESENCE", handler as ChannelEventHandler)
   }
 
   /**
