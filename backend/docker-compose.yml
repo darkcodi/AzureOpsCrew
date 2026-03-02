@@ -10,7 +10,6 @@ services:
       - ASPNETCORE_URLS=http://*:80
       - DatabaseProvider=Sqlite
       - Sqlite__DataSource=Data Source=/app/data/azureopscrew.db
-      - SqlServer__ConnectionString=Server=sqlserver;Database=AzureOpsCrew;User Id=sa;Password=YourStrong@Password;TrustServerCertificate=True;
 
       - LongTermMemory__Type=Cypher
       - LongTermMemory__Neo4j__Uri=bolt://neo4j:7687
@@ -18,18 +17,27 @@ services:
       - LongTermMemory__Neo4j__Password=${NEO4J_PASSWORD:-azureopscrew}
       - Jwt__Issuer=${JWT_ISSUER:-AzureOpsCrew}
       - Jwt__Audience=${JWT_AUDIENCE:-AzureOpsCrewFrontend}
-      - Jwt__SigningKey=${JWT_SIGNING_KEY:-ChangeThisDevelopmentOnlySigningKeyWithAtLeast32Chars!}
-      - EmailVerification__CodeLength=${EMAIL_VERIFICATION_CODE_LENGTH:-6}
-      - EmailVerification__CodeTtlMinutes=${EMAIL_VERIFICATION_CODE_TTL_MINUTES:-10}
-      - EmailVerification__ResendCooldownSeconds=${EMAIL_VERIFICATION_RESEND_COOLDOWN_SECONDS:-30}
-      - EmailVerification__MaxVerificationAttempts=${EMAIL_VERIFICATION_MAX_ATTEMPTS:-5}
-      - Brevo__ApiBaseUrl=${BREVO_API_BASE_URL:-https://api.brevo.com}
-      - Brevo__ApiKey=${BREVO_API_KEY:-}
-      - Brevo__SenderEmail=${BREVO_SENDER_EMAIL:-azureopscrew@aoc-app.com}
-      - Brevo__SenderName=${BREVO_SENDER_NAME:-Azure Ops Crew}
-      - Seeding__IsEnabled=${SEEDING_ENABLED:-false}
-      - Seeding__AzureFoundrySeed__ApiEndpoint=${AZURE_OPENAI_API_ENDPOINT:-}
-      - Seeding__AzureFoundrySeed__Key=${AZURE_OPENAI_API_KEY:-}
+      - Jwt__SigningKey=${JWT_SIGNING_KEY:-AzureOpsCrewHackathon2025SecureSigningKey!}
+
+      # OpenAI
+      - OpenAI__ApiKey=${OPENAI_API_KEY:-}
+
+      # MCP Servers
+      - Mcp__Azure__ServerUrl=${MCP_AZURE_URL:-}
+      - Mcp__Azure__TenantId=${MCP_AZURE_TENANT_ID:-}
+      - Mcp__Azure__ClientId=${MCP_AZURE_CLIENT_ID:-}
+      - Mcp__Azure__ClientSecret=${MCP_AZURE_CLIENT_SECRET:-}
+      - Mcp__Azure__TokenUrl=${MCP_AZURE_TOKEN_URL:-}
+      - Mcp__Azure__Scope=${MCP_AZURE_SCOPE:-https://management.azure.com/.default}
+      - Mcp__AzureDevOps__ServerUrl=${MCP_ADO_URL:-}
+      - Mcp__AzureDevOps__TenantId=${MCP_ADO_TENANT_ID:-}
+      - Mcp__AzureDevOps__ClientId=${MCP_ADO_CLIENT_ID:-}
+      - Mcp__AzureDevOps__ClientSecret=${MCP_ADO_CLIENT_SECRET:-}
+      - Mcp__AzureDevOps__TokenUrl=${MCP_ADO_TOKEN_URL:-}
+      - Mcp__AzureDevOps__Scope=${MCP_ADO_SCOPE:-499b84ac-1321-427f-aa17-267ca6975798/.default}
+
+      # Seeding
+      - Seeding__IsEnabled=${SEEDING_ENABLED:-true}
     volumes:
       - ./data:/app/data
     ports:
@@ -38,6 +46,19 @@ services:
     depends_on:
       neo4j:
         condition: service_healthy
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    environment:
+      - BACKEND_API_URL=http://api:80
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: on-failure
 
   neo4j:
     image: neo4j:5
@@ -56,16 +77,6 @@ services:
       retries: 10
       start_period: 30s
     restart: unless-stopped
-
-  # sqlserver:
-  #   image: mcr.microsoft.com/mssql/server:2022-latest
-  #   container_name: sqlserver
-  #   environment:
-  #     - ACCEPT_EULA=Y
-  #     - SA_PASSWORD=YourStrong@Password
-  #   ports:
-  #     - "1433:1433"
-  #   restart: unless-stopped
 
 volumes:
   neo4j_data:

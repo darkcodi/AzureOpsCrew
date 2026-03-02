@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { ACCESS_TOKEN_COOKIE_NAME } from "@/lib/server/auth"
 
-const PUBLIC_ROUTES = new Set(["/login", "/signup"])
-
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   if (
@@ -14,7 +12,8 @@ export function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  if (pathname.startsWith("/api/auth")) {
+  // Let all auth routes through (includes auto-login)
+  if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) {
     return NextResponse.next()
   }
 
@@ -27,22 +26,6 @@ export function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  if (PUBLIC_ROUTES.has(pathname)) {
-    if (hasToken) {
-      return NextResponse.redirect(new URL("/", req.url))
-    }
-    return NextResponse.next()
-  }
-
-  if (!hasToken) {
-    const loginUrl = new URL("/login", req.url)
-    loginUrl.searchParams.set("next", pathname + req.nextUrl.search)
-    return NextResponse.redirect(loginUrl)
-  }
-
+  // Allow root page through even without token — auto-login handles auth
   return NextResponse.next()
-}
-
-export const config = {
-  matcher: ["/((?!_next/static|_next/image).*)"],
 }

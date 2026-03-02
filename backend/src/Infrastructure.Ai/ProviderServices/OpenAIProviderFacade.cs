@@ -115,12 +115,23 @@ public sealed class OpenAIProviderFacade : IProviderFacade
 
     public IChatClient CreateChatClient(Provider config, string model, CancellationToken cancellationToken)
     {
+        // If no custom endpoint or endpoint is standard OpenAI — use the OpenAI SDK directly.
+        var isStandardOpenAi = string.IsNullOrWhiteSpace(config.ApiEndpoint)
+            || config.ApiEndpoint.Contains("api.openai.com", StringComparison.OrdinalIgnoreCase);
+
+        if (isStandardOpenAi)
+        {
+            var client = new OpenAI.OpenAIClient(new ApiKeyCredential(config.ApiKey!));
+            return client.GetChatClient(model).AsIChatClient();
+        }
+
+        // Azure OpenAI endpoint
         var options = new AzureOpenAIClientOptions(AzureOpenAIClientOptions.ServiceVersion.V2024_06_01);
-        var chatClient = new AzureOpenAIClient(
+        var azureClient = new AzureOpenAIClient(
                 new Uri(config.ApiEndpoint!),
                 new ApiKeyCredential(config.ApiKey!),
                 options)
             .GetChatClient(model);
-        return chatClient.AsIChatClient();
+        return azureClient.AsIChatClient();
     }
 }

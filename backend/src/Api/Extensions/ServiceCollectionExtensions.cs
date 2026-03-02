@@ -1,5 +1,5 @@
 using AzureOpsCrew.Api.Auth;
-using AzureOpsCrew.Api.Email;
+using AzureOpsCrew.Api.Mcp;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.Providers;
@@ -164,53 +164,26 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
     }
 
-    public static void AddEmailVerification(this IServiceCollection services, IConfiguration configuration)
+    public static void AddOpenAIAndMcp(this IServiceCollection services, IConfiguration configuration)
     {
-        var brevoSettings = configuration.GetSection("Brevo").Get<BrevoSettings>() ?? new BrevoSettings();
-        var emailVerificationSettings = configuration.GetSection("EmailVerification").Get<EmailVerificationSettings>()
-            ?? new EmailVerificationSettings();
+        var openAISettings = configuration.GetSection("OpenAI").Get<OpenAISettings>() ?? new OpenAISettings();
+        if (string.IsNullOrWhiteSpace(openAISettings.ApiKey))
+            Log.Warning("OpenAI__ApiKey is not configured. Agents will not work without it.");
 
-        if (string.IsNullOrWhiteSpace(brevoSettings.ApiBaseUrl))
-            throw new InvalidOperationException("Brevo__ApiBaseUrl is required.");
+        services.Configure<OpenAISettings>(configuration.GetSection("OpenAI"));
+        services.AddOptions<OpenAISettings>();
 
-        if (string.IsNullOrWhiteSpace(brevoSettings.ApiKey))
-            throw new InvalidOperationException("Brevo__ApiKey is required.");
+        var mcpSettings = configuration.GetSection("Mcp").Get<McpSettings>() ?? new McpSettings();
+        services.Configure<McpSettings>(configuration.GetSection("Mcp"));
+        services.AddOptions<McpSettings>();
 
-        if (brevoSettings.ApiKey.Contains("CHANGEME", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("A real Brevo API key must be configured.");
+        if (!string.IsNullOrWhiteSpace(mcpSettings.Azure.ServerUrl))
+            Log.Information("Azure MCP Server configured: {Url}", mcpSettings.Azure.ServerUrl);
+        if (!string.IsNullOrWhiteSpace(mcpSettings.AzureDevOps.ServerUrl))
+            Log.Information("Azure DevOps MCP Server configured: {Url}", mcpSettings.AzureDevOps.ServerUrl);
 
-        if (string.IsNullOrWhiteSpace(brevoSettings.SenderEmail))
-            throw new InvalidOperationException("Brevo__SenderEmail is required.");
-
-        if (string.IsNullOrWhiteSpace(brevoSettings.SenderName))
-            throw new InvalidOperationException("Brevo__SenderName is required.");
-
-        if (emailVerificationSettings.CodeLength is < 4 or > 8)
-            throw new InvalidOperationException("EmailVerification__CodeLength must be between 4 and 8.");
-
-        if (emailVerificationSettings.CodeTtlMinutes <= 0)
-            throw new InvalidOperationException("EmailVerification__CodeTtlMinutes must be greater than zero.");
-
-        if (emailVerificationSettings.ResendCooldownSeconds < 0)
-            throw new InvalidOperationException("EmailVerification__ResendCooldownSeconds must be zero or greater.");
-
-        if (emailVerificationSettings.MaxVerificationAttempts <= 0)
-            throw new InvalidOperationException("EmailVerification__MaxVerificationAttempts must be greater than zero.");
-
-        services.Configure<BrevoSettings>(configuration.GetSection("Brevo"));
-        services.AddOptions<BrevoSettings>();
-
-        services.Configure<EmailVerificationSettings>(configuration.GetSection("EmailVerification"));
-        services.AddOptions<EmailVerificationSettings>();
-
-        services.AddHttpClient<IRegistrationEmailSender, BrevoRegistrationEmailSender>((sp, client) =>
-        {
-            var settings = sp.GetRequiredService<IOptions<BrevoSettings>>().Value;
-            client.BaseAddress = new Uri(settings.ApiBaseUrl);
-            client.Timeout = TimeSpan.FromSeconds(15);
-        });
-
-        services.AddScoped<IPasswordHasher<PendingRegistration>, PasswordHasher<PendingRegistration>>();
+        // Register MCP tool provider as singleton (caches tools + tokens)
+        services.AddSingleton<McpToolProvider>();
     }
 
     public static void AddAgentFactory(this IServiceCollection services, IConfiguration configuration)

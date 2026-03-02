@@ -1,6 +1,7 @@
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
 using AzureOpsCrew.Api.Extensions;
+using AzureOpsCrew.Api.Mcp;
 using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Db;
@@ -106,6 +107,7 @@ public static class ChannelAgUiEndpoints
             IProviderFacadeResolver providerFactory,
             AzureOpsCrewContext dbContext,
             IAiAgentFactory agentFactory,
+            McpToolProvider mcpToolProvider,
             HttpContext http,
             CancellationToken cancellationToken) =>
         {
@@ -145,30 +147,40 @@ public static class ChannelAgUiEndpoints
 
             // 2) Create internal agents
             //WARNING: ChatClientAgentRunOptions are ignored from input !!! We should keep the context to ourselves
-            var internalAgents = agents
-                .Select(a =>
+            var internalAgents = new List<AIAgent>();
+            foreach (var a in agents)
+            {
+                var provider = providers.Single(p => p.Id == a.ProviderId);
+                var providerService = providerFactory.GetService(provider.ProviderType);
+                var chatClient = providerService.CreateChatClient(provider, a.Info.Model, cancellationToken);
+
+                // Get MCP tools for this specific agent role
+                IReadOnlyList<AITool> mcpTools;
+                try
                 {
-                    var provider = providers.Single(p => p.Id == a.ProviderId);
-                    var providerService = providerFactory.GetService(provider.ProviderType);
-                    var chatClient = providerService.CreateChatClient(provider, a.Info.Model, cancellationToken);
-                    return ChannelAgUiFactory.CreateChannelAgent(agentFactory, chatClient, a, clientTools, input);
-                })
-                .ToList();
+                    mcpTools = await mcpToolProvider.GetToolsForAgentAsync(a.ProviderAgentId, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to load MCP tools for agent {AgentName}, continuing without them", a.Info.Name);
+                    mcpTools = [];
+                }
+
+                // Merge client tools (from AG-UI) with MCP tools
+                var allTools = new List<AITool>();
+                if (clientTools is not null) allTools.AddRange(clientTools);
+                allTools.AddRange(mcpTools);
+
+                var agent = ChannelAgUiFactory.CreateChannelAgent(agentFactory, chatClient, a, allTools, input);
+                internalAgents.Add(agent);
+            }
 
             // 3) Build workflow -> workflow agent
             var workflow = ChannelAgUiFactory.BuildWorkflow(internalAgents);
             var workflowAgent = ChannelAgUiFactory.BuildWorkflowAgent(workflow, channelId);
 
-            // 4) Restore/create session
-            AgentSession session;
-            if (false)//(channel.ConversationId is not null) // Use SerializedSession or dedicated aggregate root related to ConversationId JsonElement? or string
-            {
-                session = await workflowAgent.DeserializeSessionAsync(JsonElement.Parse(channel.ConversationId));
-            }
-            else
-            {
-                session = await workflowAgent.CreateSessionAsync();
-            }
+            // 4) Create session
+            var session = await workflowAgent.CreateSessionAsync();
 
             // 5) Run streaming
             var updates = workflowAgent
@@ -218,7 +230,7 @@ public static class ChannelAgUiFactory
         return AgentWorkflowBuilder
         .CreateGroupChatBuilderWith(chatAgents => new RoundRobinGroupChatManager(agents)
         {
-            MaximumIterationCount = 3
+            MaximumIterationCount = 6
         })
         .AddParticipants(agents)
         .Build();
@@ -238,7 +250,7 @@ public static class ChannelAgUiFactory
         IAiAgentFactory factory,
         IChatClient chatClient,
         Domain.Agents.Agent agentEntity,
-        IReadOnlyList<AITool>? clientTools,
+        IReadOnlyList<AITool> tools,
         RunAgentInput input)
     {
         var additionalPropertiesDictionary = new AdditionalPropertiesDictionary
@@ -252,6 +264,6 @@ public static class ChannelAgUiFactory
             ["ag_ui_run_id"] = input.RunId
         };
 
-        return factory.Create(chatClient, agentEntity, clientTools?.ToList() ?? [], additionalPropertiesDictionary);
+        return factory.Create(chatClient, agentEntity, tools, additionalPropertiesDictionary);
     }
 }

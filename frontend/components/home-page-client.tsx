@@ -5,8 +5,6 @@ import { type Agent, type Channel } from "@/lib/agents"
 import { IconSidebar, type ViewMode } from "@/components/icon-sidebar"
 import { ChannelSidebar } from "@/components/channel-sidebar"
 import { ChannelArea } from "@/components/channel-area"
-import { DirectMessagesView } from "@/components/direct-messages-view"
-import { SettingsView, getDisplayNameFromStorage } from "@/components/settings/settings-view"
 import {
   clearCachedHumans,
   getCachedHumans,
@@ -28,17 +26,9 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     initialHumans.length > 0 ? initialHumans : getCachedHumans()
   )
   const [activeChannelId, setActiveChannelId] = useState<string>("")
-  const [activeDMId, setActiveDMId] = useState<string | null>(null)
-  const [pendingDMMessage, setPendingDMMessage] = useState<string | null>(null)
-  const [displayName, setDisplayName] = useState(() =>
-    typeof window !== "undefined" ? getDisplayNameFromStorage() : "User"
-  )
+  const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(true)
+  const [displayName, setDisplayName] = useState("Demo User")
   const activeChannel = channels.find((c) => c.id === activeChannelId) ?? channels[0]
-
-  // Refresh display name from persisted settings when returning from Settings
-  useEffect(() => {
-    if (viewMode !== "settings") setDisplayName(getDisplayNameFromStorage())
-  }, [viewMode])
 
   useEffect(() => {
     if (humans.length > 0) {
@@ -46,34 +36,49 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     }
   }, [humans])
 
+  // Auto-login on mount: call auto-login, then check /me
   useEffect(() => {
     let isCancelled = false
 
-    async function ensureAuthenticated() {
+    async function autoLogin() {
       try {
-        const response = await fetch("/api/auth/me")
-        if (!response.ok && !isCancelled) {
-          clearCachedHumans()
-          await fetch("/api/auth/logout", { method: "POST" })
-          window.location.href = "/login"
+        // Try /me first — maybe already logged in
+        const meResp = await fetch("/api/auth/me")
+        if (meResp.ok) {
+          const meData = await meResp.json()
+          if (!isCancelled) {
+            setDisplayName(meData.displayName ?? "Demo User")
+            setIsAutoLoggingIn(false)
+          }
+          return
         }
-      } catch {
+
+        // Not authenticated — auto-login
+        const loginResp = await fetch("/api/auth/auto-login", { method: "POST" })
+        if (!loginResp.ok && !isCancelled) {
+          console.error("Auto-login failed:", loginResp.status)
+          setIsAutoLoggingIn(false)
+          return
+        }
+
+        const loginData = await loginResp.json()
         if (!isCancelled) {
-          clearCachedHumans()
-          await fetch("/api/auth/logout", { method: "POST" }).catch(() => {})
-          window.location.href = "/login"
+          setDisplayName(loginData.user?.displayName ?? "Demo User")
+          setIsAutoLoggingIn(false)
         }
+      } catch (err) {
+        console.error("Auto-login error:", err)
+        if (!isCancelled) setIsAutoLoggingIn(false)
       }
     }
 
-    void ensureAuthenticated()
-    return () => {
-      isCancelled = true
-    }
+    void autoLogin()
+    return () => { isCancelled = true }
   }, [])
 
-  // Load agents from backend on mount
+  // Load agents from backend after auto-login completes
   useEffect(() => {
+    if (isAutoLoggingIn) return
     async function loadAgents() {
       try {
         setIsLoadingAgents(true)
@@ -91,10 +96,11 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
       }
     }
     loadAgents()
-  }, [])
+  }, [isAutoLoggingIn])
 
-  // Load channels from backend on mount
+  // Load channels from backend after auto-login completes
   useEffect(() => {
+    if (isAutoLoggingIn) return
     async function loadChannels() {
       try {
         setIsLoadingChannels(true)
@@ -114,10 +120,11 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
       }
     }
     loadChannels()
-  }, [])
+  }, [isAutoLoggingIn])
 
   // Load registered users and refresh presence periodically.
   useEffect(() => {
+    if (isAutoLoggingIn) return
     let isCancelled = false
 
     async function loadHumans() {
@@ -144,7 +151,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
       isCancelled = true
       window.clearInterval(interval)
     }
-  }, [])
+  }, [isAutoLoggingIn])
 
   const handleCreateChannel = useCallback(async (name: string) => {
     try {
@@ -244,17 +251,22 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     )
   }, [])
 
-  const handleOpenAgentInDM = useCallback((agentId: string, message?: string) => {
-    setViewMode("direct-messages")
-    setActiveDMId(agentId)
-    setPendingDMMessage(message ?? null)
-  }, [])
-
   const handleLogout = useCallback(async () => {
     clearCachedHumans()
     await fetch("/api/auth/logout", { method: "POST" })
-    window.location.href = "/login"
+    window.location.reload()
   }, [])
+
+  if (isAutoLoggingIn) {
+    return (
+      <main className="flex h-dvh w-full items-center justify-center" style={{ backgroundColor: "hsl(228, 6%, 15%)" }}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          <p style={{ color: "hsl(214, 5%, 55%)" }}>Connecting to Azure Ops Crew...</p>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="flex h-dvh w-full">
@@ -264,62 +276,40 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
         onLogout={handleLogout}
       />
 
-      {viewMode === "channels" && (
-        <>
-          <ChannelSidebar
-            channels={channels}
-            activeChannelId={activeChannelId}
-            onChannelSelect={setActiveChannelId}
-            onCreateChannel={handleCreateChannel}
-            onChannelDelete={handleDeleteChannel}
-          />
-          {activeChannel ? (
-            <ChannelArea
-              key={activeChannel.id}
-              channel={activeChannel}
-              allAgents={agents}
-              humans={humans}
-              displayName={displayName}
-              onUpdateChannel={handleUpdateChannel}
-              onAddAgent={handleAddAgent}
-              onUpdateAgent={handleUpdateAgent}
-              onDeleteAgent={handleDeleteAgent}
-              onOpenInDM={handleOpenAgentInDM}
-            />
-          ) : isLoadingChannels ? (
-            <div
-              className="flex flex-1 items-center justify-center"
-              style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
-            >
-              <div style={{ color: "hsl(214, 5%, 55%)" }}>Loading channels...</div>
-            </div>
-          ) : (
-            <div
-              className="flex flex-1 items-center justify-center"
-              style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
-            >
-              <div style={{ color: "hsl(214, 5%, 55%)" }}>No channels found</div>
-            </div>
-          )}
-        </>
-      )}
-      {viewMode === "direct-messages" && (
-        <DirectMessagesView
-          activeDMId={activeDMId}
-          setActiveDMId={setActiveDMId}
-          agents={agents}
-          humans={humans}
-          pendingDMMessage={pendingDMMessage}
-          onClearPendingDMMessage={() => setPendingDMMessage(null)}
-        />
-      )}
-      {viewMode === "settings" && (
-        <SettingsView
+      <ChannelSidebar
+        channels={channels}
+        activeChannelId={activeChannelId}
+        onChannelSelect={setActiveChannelId}
+        onCreateChannel={handleCreateChannel}
+        onChannelDelete={handleDeleteChannel}
+      />
+      {activeChannel ? (
+        <ChannelArea
+          key={activeChannel.id}
+          channel={activeChannel}
           allAgents={agents}
+          humans={humans}
+          displayName={displayName}
+          onUpdateChannel={handleUpdateChannel}
           onAddAgent={handleAddAgent}
           onUpdateAgent={handleUpdateAgent}
           onDeleteAgent={handleDeleteAgent}
+          onOpenInDM={() => { }}
         />
+      ) : isLoadingChannels ? (
+        <div
+          className="flex flex-1 items-center justify-center"
+          style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
+        >
+          <div style={{ color: "hsl(214, 5%, 55%)" }}>Loading channels...</div>
+        </div>
+      ) : (
+        <div
+          className="flex flex-1 items-center justify-center"
+          style={{ backgroundColor: "hsl(228, 6%, 22%)" }}
+        >
+          <div style={{ color: "hsl(214, 5%, 55%)" }}>No channels found</div>
+        </div>
       )}
     </main>
   )

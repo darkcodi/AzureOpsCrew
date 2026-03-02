@@ -5,6 +5,9 @@
     <Project Path="src/Infrastructure.Ai/Infrastructure.Ai.csproj" />
     <Project Path="src/Infrastructure.Db/Infrastructure.Db.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Api.IntegrationTests/Api.IntegrationTests.csproj" />
+  </Folder>
   <Project Path="docker-compose.dcproj">
     <Build />
   </Project>

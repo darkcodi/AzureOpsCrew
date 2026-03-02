@@ -45,7 +45,7 @@ try
     builder.Services.AddDatabase(builder.Configuration);
     builder.Services.AddProviderFacades();
     builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
-    builder.Services.AddEmailVerification(builder.Configuration);
+    builder.Services.AddOpenAIAndMcp(builder.Configuration);
     builder.Services.AddAgentFactory(builder.Configuration);
 
     // Configure AG-UI
@@ -97,7 +97,6 @@ try
     // Map endpoints
     app.MapAuthEndpoints();
     app.MapUsersEndpoints();
-    app.MapTestEndpoints();
     app.MapAgentEndpoints();
     app.MapChannelEndpoints();
     app.MapProviderEndpoints();

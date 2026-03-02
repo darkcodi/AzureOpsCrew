@@ -1,4 +1,6 @@
+using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Db;
+using Microsoft.AspNetCore.Identity;
 using Serilog;
 
 namespace AzureOpsCrew.Api.Setup.Seeds;
@@ -15,12 +17,19 @@ public static class ServiceProviderExtensions
             return;
         }
 
+        // Pass OpenAI key from config if not already set
+        if (string.IsNullOrWhiteSpace(options.OpenAiApiKey))
+        {
+            options.OpenAiApiKey = configuration["OpenAI:ApiKey"];
+        }
+
         Log.Information("Running seeding default entities.");
 
         using (var scope = provider.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
-            var seeder = new Seeder(context, options);
+            var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>();
+            var seeder = new Seeder(context, options, passwordHasher);
 
             await seeder.Seed();
         }
