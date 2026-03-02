@@ -171,7 +171,7 @@ public static class DmEndpoints
             await context.Messages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
-            agentTriggerQueue.Enqueue(agentId, userId);
+            agentTriggerQueue.Enqueue(agentId, dm.Id);
 
             return Results.Created($"/api/users/{userId}/dms/agents/{agentId}/messages/{message.Id}", message);
         })

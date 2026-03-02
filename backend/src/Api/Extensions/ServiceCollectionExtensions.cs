@@ -18,6 +18,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using AzureOpsCrew.Api.Background;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 
 namespace AzureOpsCrew.Api.Extensions;
@@ -222,5 +223,12 @@ public static class ServiceCollectionExtensions
         {
             throw new InvalidOperationException($"Unknown LongTermMemory type '{memoryType}'. Supported providers: InMemory, Cypher");
         }
+    }
+
+    public static void AddBackgroundTasks(this IServiceCollection services)
+    {
+        services.AddHostedService<AgentScheduler>();
+        services.AddSingleton<AgentTriggerQueue>();
+        services.AddScoped<ToolExecutor>();
     }
 }

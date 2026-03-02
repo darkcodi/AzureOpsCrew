@@ -25,7 +25,7 @@ public class AgentScheduler : BackgroundService
             var agentRunService = scope.ServiceProvider.GetRequiredService<AgentRunService>();
             try
             {
-                await agentRunService.Run(cts.Token);
+                await agentRunService.Run(agentId, chatId, cts.Token);
             }
             finally
             {

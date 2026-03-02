@@ -20,4 +20,15 @@ public class ToolDeclaration
             jsonSchema: JsonElement.Parse(JsonSchema),
             returnJsonSchema: JsonElement.Parse(ReturnJsonSchema));
     }
+
+    public string FormatToolDeclaration()
+    {
+        return $"""
+Tool Name: {Name}
+Tool Description: {Description}
+Tool Type: {ToolType.ToString()}
+Tool JSON Schema: {JsonSchema}
+Tool Return JSON Schema: {ReturnJsonSchema}
+""";
+    }
 }
