@@ -48,6 +48,7 @@ try
     builder.Services.AddEmailVerification(builder.Configuration);
     builder.Services.AddAgentFactory(builder.Configuration);
     builder.Services.AddHostedService<AgentScheduler>();
+    builder.Services.AddSingleton<AgentTriggerQueue>();
 
     // Configure AG-UI
     builder.Services.AddHttpClient();

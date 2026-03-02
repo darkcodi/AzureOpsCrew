@@ -134,7 +134,7 @@ public static class DmEndpoints
             Guid agentId,
             CreateDirectMessageDto dto,
             AzureOpsCrewContext context,
-            AgentScheduler agentScheduler,
+            AgentTriggerQueue agentTriggerQueue,
             CancellationToken cancellationToken) =>
         {
             var userId = httpContext.User.GetRequiredUserId();
@@ -171,7 +171,7 @@ public static class DmEndpoints
             await context.Messages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
-            agentScheduler.StartAgent(agentId, userId);
+            agentTriggerQueue.Enqueue(agentId, userId);
 
             return Results.Created($"/api/users/{userId}/dms/agents/{agentId}/messages/{message.Id}", message);
         })

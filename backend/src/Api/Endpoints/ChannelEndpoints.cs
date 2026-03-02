@@ -168,7 +168,7 @@ public static class ChannelEndpoints
             CreateDirectMessageDto dto,
             HttpContext httpContext,
             AzureOpsCrewContext context,
-            AgentScheduler agentScheduler,
+            AgentTriggerQueue agentTriggerQueue,
             CancellationToken cancellationToken) =>
         {
             var channel = await context.Set<Channel>()
@@ -194,7 +194,7 @@ public static class ChannelEndpoints
             {
                 if (Guid.TryParse(agentIdString, out var agentId))
                 {
-                    agentScheduler.StartAgent(agentId, channel.Id);
+                    agentTriggerQueue.Enqueue(agentId, channel.Id);
                 }
             }
 
