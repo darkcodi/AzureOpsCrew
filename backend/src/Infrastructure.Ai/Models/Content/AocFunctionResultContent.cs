@@ -12,7 +12,7 @@ public sealed class AocFunctionResultContent : AocAiContent
         return new AocFunctionResultContent
         {
             CallId = callId,
-            Result = new ToolCallResult(SerializedResult: JsonDocument.Parse("{\"ErrorMessage\":\"Tool does not exist\"}").RootElement.ToString(), IsError: true),
+            Result = new ToolCallResult(SerializedResult: "{\"ErrorMessage\":\"Tool does not exist\"}", IsError: true),
         };
     }
 
@@ -21,7 +21,7 @@ public sealed class AocFunctionResultContent : AocAiContent
         return new AocFunctionResultContent
         {
             CallId = callId,
-            Result = new ToolCallResult(SerializedResult: JsonDocument.Parse("{}").RootElement.ToString(), IsError: false),
+            Result = new ToolCallResult(SerializedResult: "{}", IsError: false),
         };
     }
 }
