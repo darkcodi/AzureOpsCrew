@@ -186,7 +186,11 @@ export class ChannelEventsClient {
     })
 
     this.connection.onclose((error?: Error) => {
-      console.error(`SignalR connection closed for channel ${this.channelId}:`, error)
+      if (error) {
+        console.error(`SignalR connection closed for channel ${this.channelId}:`, error)
+      } else {
+        console.log(`SignalR connection closed for channel ${this.channelId}`)
+      }
     })
 
     try {
