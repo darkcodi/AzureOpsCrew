@@ -217,14 +217,15 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
 
           const chatMessages: ChatMessage[] = messages.map((m: {
             id: string
-            chatId: string
-            content: string
-            senderId: string
-            postedAt: string
+            text?: string
+            content?: string
+            userId?: string
+            agentId?: string
+            senderId?: string
           }) => ({
             id: m.id,
-            role: m.senderId === user.id ? 'user' : 'assistant',
-            content: m.content,
+            role: m.agentId ? 'assistant' : 'user',
+            content: m.text ?? m.content ?? '',
           }))
           setMessages(chatMessages)
         } else {
@@ -248,11 +249,11 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
 
     if (response.ok) {
       const message = await response.json()
-      // Add user message to state
+      // Add user message to state (backend returns Text, not content)
       const userMessage: ChatMessage = {
         id: message.id,
         role: "user",
-        content: message.content,
+        content: message.text ?? message.content ?? "",
       }
       setMessages((prev) => [...prev, userMessage])
     }
