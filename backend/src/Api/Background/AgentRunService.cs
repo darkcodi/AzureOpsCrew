@@ -78,6 +78,7 @@ public class AgentRunService
                         Text = lastTextContent.Text,
                         PostedAt = DateTime.UtcNow,
                         AgentId = agentId,
+                        AuthorName = data.Agent.Info.Name,
                     };
 
                     if (data.Channel != null)
