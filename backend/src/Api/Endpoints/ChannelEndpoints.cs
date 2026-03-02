@@ -153,7 +153,7 @@ public static class ChannelEndpoints
                 .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
 
             if (channel is null)
-                return Results.Ok(new List<AocMessage>());
+                return Results.Ok(new List<Message>());
 
             var messages = await context.Messages
                 .Where(m => m.ChatId == channel.Id)
@@ -161,7 +161,7 @@ public static class ChannelEndpoints
                 .ToListAsync(cancellationToken);
             return Results.Ok(messages);
         })
-        .Produces<List<AocMessage>>(StatusCodes.Status200OK);
+        .Produces<List<Message>>(StatusCodes.Status200OK);
 
         group.MapPost("/{id}/messages", async (
             Guid id,
@@ -178,7 +178,7 @@ public static class ChannelEndpoints
                 return Results.NotFound();
 
             var senderId = httpContext.User.GetRequiredUserId();
-            var message = new AocMessage
+            var message = new Message
             {
                 Id = Guid.NewGuid(),
                 ChatId = channel.Id,
@@ -201,7 +201,7 @@ public static class ChannelEndpoints
 
             return Results.Created($"/api/channels/{id}/messages/{message.Id}", message);
         })
-        .Produces<AocMessage>(StatusCodes.Status201Created)
+        .Produces<Message>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status404NotFound);
     }
 }

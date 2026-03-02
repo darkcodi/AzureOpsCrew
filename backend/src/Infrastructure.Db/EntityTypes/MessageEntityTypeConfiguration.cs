@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes;
 
-public sealed class AocMessageEntityTypeConfiguration : IEntityTypeConfiguration<AocMessage>
+public sealed class MessageEntityTypeConfiguration : IEntityTypeConfiguration<Message>
 {
-    public void Configure(EntityTypeBuilder<AocMessage> builder)
+    public void Configure(EntityTypeBuilder<Message> builder)
     {
         builder.ToTable("Messages");
 

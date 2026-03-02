@@ -9,5 +9,5 @@ public class DirectMessageChannel
     public Guid? Agent2Id { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    public List<AocMessage> Messages { get; set; } = [];
+    public List<Message> Messages { get; set; } = [];
 }
