@@ -49,7 +49,7 @@ public class AgentRunService
                 newAgentThoughts.Add(agentThought);
             }
 
-            await SaveRawLlmHttpCall(agentId, newAgentThoughts, ct);
+            await SaveRawLlmHttpCall(agentId, chatId, newAgentThoughts, ct);
             ConcatTextContent(newAgentThoughts);
             await SaveAgentThoughts(agentId, chatId, newAgentThoughts, ct);
 
@@ -245,7 +245,7 @@ User prompt:
         }
     }
 
-    private async Task SaveRawLlmHttpCall(Guid agentId, List<AocAgentThought> newMessages, CancellationToken ct)
+    private async Task SaveRawLlmHttpCall(Guid agentId, Guid chatId, List<AocAgentThought> newMessages, CancellationToken ct)
     {
         // Separate out messages related to HTTP client calls
         const string httpClientRole = "HTTP_CLIENT";
@@ -261,7 +261,7 @@ User prompt:
         {
             Id = Guid.NewGuid(),
             AgentId = agentId,
-            ThreadId = agentId,
+            ThreadId = chatId,
             RunId = _runId,
             HttpRequest = (httpRequestMessage?.ContentDto?.ToAocAiContent() as AocTextContent)?.Text ?? "<empty>",
             HttpResponse = (httpResponseMessage?.ContentDto?.ToAocAiContent() as AocTextContent)?.Text ?? "<empty>",
