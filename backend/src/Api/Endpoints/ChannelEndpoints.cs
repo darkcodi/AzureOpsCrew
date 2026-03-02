@@ -156,7 +156,7 @@ public static class ChannelEndpoints
                 return Results.Ok(new List<Message>());
 
             var messages = await context.Messages
-                .Where(m => m.ChatId == channel.Id)
+                .Where(m => m.ChannelId == channel.Id)
                 .OrderBy(m => m.PostedAt)
                 .ToListAsync(cancellationToken);
             return Results.Ok(messages);
@@ -181,10 +181,9 @@ public static class ChannelEndpoints
             var message = new Message
             {
                 Id = Guid.NewGuid(),
-                ChatId = channel.Id,
                 Text = dto.Content,
                 PostedAt = DateTime.UtcNow,
-                UserId = senderId.ToString(),
+                UserId = senderId,
                 ChannelId = channel.Id,
             };
             await context.Messages.AddAsync(message, cancellationToken);

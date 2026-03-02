@@ -47,7 +47,7 @@ public static class DmEndpoints
                 return Results.Ok(new List<Message>());
 
             var messages = await context.Messages
-                .Where(m => m.ChatId == dm.Id)
+                .Where(m => m.DmId == dm.Id)
                 .OrderBy(m => m.PostedAt)
                 .ToListAsync(cancellationToken);
             return Results.Ok(messages);
@@ -73,7 +73,7 @@ public static class DmEndpoints
                 return Results.Ok(new List<Message>());
 
             var messages = await context.Messages
-                .Where(m => m.ChatId == dm.Id)
+                .Where(m => m.DmId == dm.Id)
                 .OrderBy(m => m.PostedAt)
                 .ToListAsync(cancellationToken);
             return Results.Ok(messages);
@@ -111,10 +111,9 @@ public static class DmEndpoints
             var message = new Message
             {
                 Id = Guid.NewGuid(),
-                ChatId = dm.Id,
                 Text = dto.Content,
                 PostedAt = DateTime.UtcNow,
-                UserId = userId.ToString(),
+                UserId = userId,
                 DmId = dm.Id,
             };
             await context.Messages.AddAsync(message, cancellationToken);
@@ -158,10 +157,9 @@ public static class DmEndpoints
             var message = new Message
             {
                 Id = Guid.NewGuid(),
-                ChatId = dm.Id,
                 Text = dto.Content,
                 PostedAt = DateTime.UtcNow,
-                UserId = userId.ToString(),
+                UserId = userId,
                 DmId = dm.Id,
             };
             await context.Messages.AddAsync(message, cancellationToken);

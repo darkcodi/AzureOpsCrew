@@ -14,13 +14,6 @@ public sealed class MessageEntityTypeConfiguration : IEntityTypeConfiguration<Me
         builder.Property(m => m.Id)
                .ValueGeneratedOnAdd();
 
-        builder.Property(m => m.ChatId)
-               .IsRequired();
-
-        builder.Property(m => m.AuthorName)
-               .IsRequired()
-               .HasMaxLength(256);
-
         builder.Property(m => m.Text)
                .IsRequired();
 
@@ -28,21 +21,16 @@ public sealed class MessageEntityTypeConfiguration : IEntityTypeConfiguration<Me
                .IsRequired();
 
         // Sender: exactly one of AgentId or UserId should be set
-        builder.Property(m => m.AgentId)
-               .IsRequired(false);
+        builder.Property(m => m.AgentId);
 
-        builder.Property(m => m.UserId)
-               .IsRequired(false);
+        builder.Property(m => m.UserId);
 
         // Destination: exactly one of ChannelId or DmId should be set
-        builder.Property(m => m.ChannelId)
-               .IsRequired(false);
+        builder.Property(m => m.ChannelId);
 
-        builder.Property(m => m.DmId)
-               .IsRequired(false);
+        builder.Property(m => m.DmId);
 
         builder.HasIndex(m => m.PostedAt);
-        builder.HasIndex(m => m.ChatId);
         builder.HasIndex(m => m.AgentId);
         builder.HasIndex(m => m.UserId);
         builder.HasIndex(m => m.ChannelId);
