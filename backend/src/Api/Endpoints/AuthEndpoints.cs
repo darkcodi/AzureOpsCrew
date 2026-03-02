@@ -259,6 +259,7 @@ public static class AuthEndpoints
             try
             {
                 var user = new User(
+                    id: Guid.NewGuid(),
                     email: pendingRegistration.Email,
                     normalizedEmail: pendingRegistration.NormalizedEmail,
                     passwordHash: pendingRegistration.PasswordHash,

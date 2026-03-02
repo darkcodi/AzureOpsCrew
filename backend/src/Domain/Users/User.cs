@@ -8,16 +8,16 @@ public sealed class User
     {
     }
 
-    public User(string email, string normalizedEmail, string passwordHash, string displayName)
+    public User(Guid id, string email, string normalizedEmail, string passwordHash, string displayName)
     {
-        Id = Guid.NewGuid();
+        Id = id;
         Email = email;
         NormalizedEmail = normalizedEmail;
         PasswordHash = passwordHash;
         DisplayName = displayName;
     }
 
-    public Guid Id { get; set; }
+    public Guid Id { get; private set; }
     public string Email { get; private set; }
     public string NormalizedEmail { get; private set; }
     public string PasswordHash { get; private set; }

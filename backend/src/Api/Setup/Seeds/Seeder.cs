@@ -85,11 +85,11 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             await AddChannelWithChatIfNotExists(generalChannel, agents.Select(a => a.Id).ToArray());
 
             var defaultUser = new User(
+                Guid.Parse("EBB8CF5F-CA75-49C0-BED2-91C2DCCAB415"),
                 "AzureOpsCrew@mail.xyz",
                 "AZUREOPSCREW@MAIL.XYZ",
                 "AQAAAAIAAYagAAAAEHds/S4gmNc0Cf04kSQ5E+g2anSh8VUU/xSrmiNqJiq4APpch0OhtXvIWF9wsTf+Rg==", // Pass1234
                 "AzureOpsCrew");
-            defaultUser.Id = Guid.Parse("EBB8CF5F-CA75-49C0-BED2-91C2DCCAB415");
             await AddUserIfNotExists(defaultUser);
 
             // Seed DM channels for all agents
