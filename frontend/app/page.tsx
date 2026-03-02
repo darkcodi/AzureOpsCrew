@@ -6,7 +6,7 @@ import { ACCESS_TOKEN_COOKIE_NAME } from "@/lib/server/auth"
 const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
 interface BackendUserPresence {
-  id: number
+  id: string
   displayName: string
   isOnline: boolean
   isCurrentUser: boolean

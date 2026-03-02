@@ -2,7 +2,6 @@ using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Email;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.AgentServices;
-using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
@@ -19,6 +18,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using AzureOpsCrew.Api.Background;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 
 namespace AzureOpsCrew.Api.Extensions;
@@ -225,11 +225,11 @@ public static class ServiceCollectionExtensions
         }
     }
 
-    public static void AddTemporalSettings(this IServiceCollection services, IConfiguration configuration)
+    public static void AddAgentSchedulerBackgroundService(this IServiceCollection services)
     {
-        var settings = configuration.GetSection("Temporal").Get<TemporalSettings>() ?? new TemporalSettings();
-
-        services.Configure<TemporalSettings>(configuration.GetSection("Temporal"));
-        services.AddOptions<TemporalSettings>();
+        services.AddHostedService<AgentScheduler>();
+        services.AddSingleton<AgentTriggerQueue>();
+        services.AddScoped<AgentRunService>();
+        services.AddScoped<ToolExecutor>();
     }
 }

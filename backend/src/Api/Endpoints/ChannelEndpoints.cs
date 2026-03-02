@@ -1,9 +1,14 @@
 using AzureOpsCrew.Api.Auth;
+using AzureOpsCrew.Api.Background;
 using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
+using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
+using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Infrastructure.Ai.Models;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -137,6 +142,67 @@ public static class ChannelEndpoints
             return Results.NoContent();
         })
         .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status404NotFound);
+
+        group.MapGet("/{id}/messages", async (
+            Guid id,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Channels
+                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+            if (channel is null)
+                return Results.Ok(new List<Message>());
+
+            var messages = await context.Messages
+                .Where(m => m.ChannelId == channel.Id)
+                .OrderBy(m => m.PostedAt)
+                .ToListAsync(cancellationToken);
+            return Results.Ok(messages);
+        })
+        .Produces<List<Message>>(StatusCodes.Status200OK);
+
+        group.MapPost("/{id}/messages", async (
+            Guid id,
+            CreateDirectMessageDto dto,
+            HttpContext httpContext,
+            AzureOpsCrewContext context,
+            AgentTriggerQueue agentTriggerQueue,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+            if (channel is null)
+                return Results.NotFound();
+
+            var senderId = httpContext.User.GetRequiredUserId();
+            var user = await context.Users.SingleOrDefaultAsync(u => u.Id == senderId, cancellationToken);
+            var message = new Message
+            {
+                Id = Guid.NewGuid(),
+                Text = dto.Content,
+                PostedAt = DateTime.UtcNow,
+                UserId = senderId,
+                ChannelId = channel.Id,
+                AuthorName = user?.DisplayName,
+            };
+            await context.Messages.AddAsync(message, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+
+            // Trigger all agents in the channel
+            foreach (var agentIdString in channel.AgentIds)
+            {
+                if (Guid.TryParse(agentIdString, out var agentId))
+                {
+                    agentTriggerQueue.Enqueue(agentId, channel.Id);
+                }
+            }
+
+            return Results.Created($"/api/channels/{id}/messages/{message.Id}", message);
+        })
+        .Produces<Message>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status404NotFound);
     }
 }

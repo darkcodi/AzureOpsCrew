@@ -6,10 +6,6 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { StartConversationEmpty } from "@/components/start-conversation-empty"
 
-function formatTime(date: Date) {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-}
-
 function normalizeMarkdownBlockNewlines(content: string): string {
   if (!content || typeof content !== "string") return content
   let out = content.replace(/(#{1,6}\s[^\n]*?)(\s+)(?=[A-Z*_`-])/g, "$1\n\n$2")
@@ -58,12 +54,6 @@ export function MessageList({
             >
               <div className="flex flex-col items-end">
                 <div className="mb-1 flex items-center gap-2">
-                  <span
-                    className="text-xs"
-                    style={{ color: "hsl(214, 5%, 55%)" }}
-                  >
-                    {formatTime(message.timestamp)}
-                  </span>
                   <span
                     className="text-sm font-medium"
                     style={{ color: "hsl(0, 0%, 100%)" }}
@@ -116,12 +106,6 @@ export function MessageList({
                   style={{ color: "hsl(0, 0%, 100%)" }}
                 >
                   {agent?.name ?? "Agent"}
-                </span>
-                <span
-                  className="text-xs"
-                  style={{ color: "hsl(214, 5%, 55%)" }}
-                >
-                  {formatTime(message.timestamp)}
                 </span>
               </div>
               <div
@@ -253,12 +237,6 @@ export function MessageList({
                 style={{ color: "hsl(0, 0%, 100%)" }}
               >
                 {agentMap.get(streamingAgentId)?.name ?? "Agent"}
-              </span>
-              <span
-                className="text-xs"
-                style={{ color: "hsl(214, 5%, 55%)" }}
-              >
-                {formatTime(new Date())}
               </span>
             </div>
             <div

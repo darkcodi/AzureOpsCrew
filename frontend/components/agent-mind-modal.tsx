@@ -41,13 +41,13 @@ export function AgentMindModal({
       return
     }
     setIsLoading(true)
-    fetchWithErrorHandling(`/api/chat-history/agents/${agentId}`)
+    fetchWithErrorHandling(`/api/agents/${agentId}/mind`)
       .then(async (res) => {
         if (res.ok) {
           const data = (await res.json()) as {
-            messages: Array<{
+            events: Array<{
               id: string
-              role: "user" | "assistant"
+              role: "user" | "assistant" | "system"
               content: string
               widget?: {
                 toolName: string
@@ -57,7 +57,7 @@ export function AgentMindModal({
               }
             }>
           }
-          const chatMessages: ChatMessage[] = data.messages.map((m) => {
+          const chatMessages: ChatMessage[] = data.events.map((m) => {
             const base: ChatMessage = { id: m.id, role: m.role, content: m.content }
             if (!m.widget) return base
             const w = m.widget
@@ -152,6 +152,29 @@ export function AgentMindModal({
                         }}
                       >
                         U
+                      </div>
+                    </div>
+                  )
+                }
+
+                if (msg.role === "system") {
+                  return (
+                    <div key={msg.id} className="mb-4 flex justify-center">
+                      <div
+                        className="systemMessage max-w-2xl rounded-lg px-3 py-2 text-sm"
+                        style={{
+                          color: "hsl(214, 12%, 70%)",
+                          backgroundColor: "hsl(228, 12%, 14%)",
+                          border: "1px solid hsl(228, 8%, 24%)",
+                        }}
+                      >
+                        <span
+                          className="mb-1 block text-xs font-semibold uppercase tracking-wide"
+                          style={{ color: "hsl(214, 12%, 55%)" }}
+                        >
+                          System
+                        </span>
+                        {msg.content}
                       </div>
                     </div>
                   )

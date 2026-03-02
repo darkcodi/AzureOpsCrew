@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AzureOpsCrew.Api.Background;
 using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
@@ -46,7 +47,7 @@ try
     builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddEmailVerification(builder.Configuration);
     builder.Services.AddAgentFactory(builder.Configuration);
-    builder.Services.AddTemporalSettings(builder.Configuration);
+    builder.Services.AddAgentSchedulerBackgroundService();
 
     // Configure AG-UI
     builder.Services.AddHttpClient();
@@ -91,13 +92,10 @@ try
     // Map endpoints
     app.MapAuthEndpoints();
     app.MapUsersEndpoints();
-    app.MapTestEndpoints();
     app.MapAgentEndpoints();
     app.MapChannelEndpoints();
+    app.MapDmEndpoints();
     app.MapProviderEndpoints();
-    app.MapChatHistoryEndpoints();
-
-    app.MapAllAgUi();
 
     await app.Services.RunDbSetup();
     await app.Services.RunLongTermMemorySetup();

@@ -28,7 +28,7 @@ export async function GET(
     }
 
     const { agentId } = await params
-    const response = await fetch(`${BACKEND_API_URL}/api/chat-history/agents/${agentId}`, {
+    const response = await fetch(`${BACKEND_API_URL}/api/agents/${agentId}/mind`, {
       method: "GET",
       headers: buildBackendHeaders(req),
     })
@@ -41,8 +41,7 @@ export async function GET(
       )
     }
 
-    // Return the chat history response as-is
-    return NextResponse.json(data as ChatHistoryResponse)
+    return NextResponse.json(data)
   } catch (error) {
     console.error("Error fetching chat history:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

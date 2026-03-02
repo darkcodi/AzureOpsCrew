@@ -7,7 +7,7 @@ interface BackendAuthResponse {
   accessToken: string
   expiresAtUtc: string
   user: {
-    id: number
+    id: string
     email: string
     displayName: string
   }

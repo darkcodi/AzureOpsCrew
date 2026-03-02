@@ -2,8 +2,9 @@
 
 import * as React from "react"
 import { useState } from "react"
-import { UserPlus, MoreHorizontal, Moon, Send } from "lucide-react"
+import { UserPlus, MoreHorizontal, Moon, Send, Brain } from "lucide-react"
 import type { Agent } from "@/lib/agents"
+import { AgentMindModal } from "@/components/agent-mind-modal"
 import {
   Popover,
   PopoverContent,
@@ -24,6 +25,7 @@ export const AgentProfilePopover = React.forwardRef<
 >(function AgentProfilePopover({ agent, children, onOpenInDM }, ref) {
   const [message, setMessage] = useState("")
   const [open, setOpen] = useState(false)
+  const [showAgentMindModal, setShowAgentMindModal] = useState(false)
 
   const bio =
     agent.systemPrompt.length > 120
@@ -158,6 +160,22 @@ export const AgentProfilePopover = React.forwardRef<
           </div>
         </div>
 
+        {/* View Agent Mind */}
+        <div className="px-4 pb-3">
+          <button
+            type="button"
+            onClick={() => setShowAgentMindModal(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:opacity-90"
+            style={{
+              backgroundColor: "hsl(228, 6%, 22%)",
+              color: "hsl(210, 3%, 98%)",
+            }}
+          >
+            <Brain className="h-4 w-4 shrink-0" />
+            View Agent Mind
+          </button>
+        </div>
+
         {/* Message input */}
         <div
           className="flex items-center gap-2 border-t px-4 py-3"
@@ -187,6 +205,12 @@ export const AgentProfilePopover = React.forwardRef<
           </button>
         </div>
       </PopoverContent>
+      <AgentMindModal
+        open={showAgentMindModal}
+        onOpenChange={setShowAgentMindModal}
+        agentId={agent.id}
+        agent={agent}
+      />
     </Popover>
   )
 })

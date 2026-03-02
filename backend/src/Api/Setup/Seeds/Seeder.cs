@@ -1,5 +1,6 @@
 ﻿using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
+using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Db;
@@ -73,23 +74,64 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             foreach (var agent in agents)
                 await AddAgentIfNotExists(agent);
 
-            var channel = new Channel(generalChatId, "General")
+            // Create the General channel with its corresponding chat
+            var generalChannel = new Channel(generalChatId, "General")
             {
                 Description = "General discussion and collaboration",
                 ConversationId = null,
                 AgentIds = agents.Select(a => a.Id.ToString()).ToArray(),
                 DateCreated = DateTime.UtcNow
             };
-            await AddChannelIfNotExists(channel);
+            await AddChannelWithChatIfNotExists(generalChannel, agents.Select(a => a.Id).ToArray());
 
             var defaultUser = new User(
+                Guid.Parse("EBB8CF5F-CA75-49C0-BED2-91C2DCCAB415"),
                 "AzureOpsCrew@mail.xyz",
                 "AZUREOPSCREW@MAIL.XYZ",
                 "AQAAAAIAAYagAAAAEHds/S4gmNc0Cf04kSQ5E+g2anSh8VUU/xSrmiNqJiq4APpch0OhtXvIWF9wsTf+Rg==", // Pass1234
                 "AzureOpsCrew");
             await AddUserIfNotExists(defaultUser);
 
+            // Seed DM channels for all agents
+            await SeedDmChannels(defaultUser.Id, new[] { managerId, azDevOpsId, azDevId });
+
             await _context.SaveChangesAsync();
+        }
+
+        private async Task SeedDmChannels(Guid userId, Guid[] agentIds)
+        {
+            // User-to-Agent DMs for each agent
+            var dmIdBase = Guid.Parse("b1c2d3e4-5678-90ab-cdef-123456789012");
+
+            foreach (var (agentId, index) in agentIds.Select((id, i) => (id, i)))
+            {
+                var dmId = CreateDmId(dmIdBase, index);
+
+                var existingDm = await _context.Dms
+                    .AsNoTracking()
+                    .AnyAsync(dm =>
+                        dm.User1Id == userId &&
+                        dm.Agent1Id == agentId);
+
+                if (!existingDm)
+                {
+                    var userAgentDm = new DirectMessageChannel
+                    {
+                        Id = dmId,
+                        User1Id = userId,
+                        Agent1Id = agentId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Dms.Add(userAgentDm);
+                }
+            }
+        }
+
+        private static Guid CreateDmId(Guid baseId, int index)
+        {
+            var bytes = baseId.ToByteArray();
+            bytes[15] = (byte)index; // Modify last byte to create unique IDs
+            return new Guid(bytes);
         }
 
         private async Task AddProviderIfNotExists(Provider provider)
@@ -120,6 +162,18 @@ namespace AzureOpsCrew.Api.Setup.Seeds
 
             if (!exists)
                 _context.Add(channel);
+        }
+
+        private async Task AddChannelWithChatIfNotExists(Channel channel, Guid[] participantIds)
+        {
+            var channelExists = await _context.Set<Channel>()
+                .AsNoTracking()
+                .AnyAsync(c => c.Id == channel.Id);
+
+            if (!channelExists)
+            {
+                await _context.Set<Channel>().AddAsync(channel);
+            }
         }
 
         private async Task AddUserIfNotExists(User user)
