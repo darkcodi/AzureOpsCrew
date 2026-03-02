@@ -41,6 +41,8 @@ export function ChannelArea({
 
   // Track the SignalR client connection
   const signalRClientRef = useRef<ChannelEventsClient | null>(null)
+  // Track the current channel ID to guard against stale async operations
+  const currentChannelIdRef = useRef(channel.id)
 
   const activeAgents = allAgents.filter((a) => channel.agentIds.includes(a.id))
 
@@ -66,8 +68,12 @@ export function ChannelArea({
 
   // Set up SignalR connection when channel changes
   useEffect(() => {
-    // Clean up previous connection
-    const cleanup = async () => {
+    // Capture channel ID for this effect instance
+    const channelIdForEffect = channel.id
+    currentChannelIdRef.current = channelIdForEffect
+
+    const setupConnection = async () => {
+      // Stop previous connection
       if (signalRClientRef.current) {
         try {
           await signalRClientRef.current.stop()
@@ -76,15 +82,17 @@ export function ChannelArea({
         }
         signalRClientRef.current = null
       }
-      // Reset streaming state
+
+      // Guard: only proceed if we haven't switched channels again
+      if (currentChannelIdRef.current !== channelIdForEffect) {
+        console.log("Channel changed during setup, aborting connection")
+        return
+      }
+
+      // Reset state and create new connection
       setStreamingAgentId(null)
       setStreamingContent("")
       setTypingAgentIds(new Set())
-    }
-
-    // Create new connection
-    const setupConnection = async () => {
-      await cleanup()
 
       const client = new ChannelEventsClient(channel.id)
       signalRClientRef.current = client
@@ -135,6 +143,12 @@ export function ChannelArea({
         }
       })
 
+      // Final guard before starting connection
+      if (currentChannelIdRef.current !== channelIdForEffect) {
+        console.log("Channel changed before start, aborting connection")
+        return
+      }
+
       // Start the connection
       try {
         await client.start()
@@ -146,11 +160,15 @@ export function ChannelArea({
 
     setupConnection()
 
-    // Cleanup on unmount or channel change
+    // Cleanup on unmount or channel change - synchronous cleanup
     return () => {
-      cleanup()
+      if (signalRClientRef.current) {
+        signalRClientRef.current.stop().catch(err =>
+          console.error("Error stopping SignalR connection:", err)
+        )
+      }
     }
-  }, [channel.id, toChatMessage, streamingAgentId])
+  }, [channel.id, toChatMessage])
 
   // Load messages when channel changes
   useEffect(() => {
