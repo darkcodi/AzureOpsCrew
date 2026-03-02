@@ -178,11 +178,11 @@ export class ChannelEventsClient {
       console.warn(`SignalR reconnecting for channel ${this.channelId}:`, error)
     })
 
-    this.connection.onreconnected((connectionId?: string) => {
+    this.connection.onreconnected(async (connectionId?: string) => {
       console.log(`SignalR reconnected for channel ${this.channelId} with connection ID: ${connectionId}`)
       this.reconnectAttempts = 0
       // Re-join the channel group after reconnection
-      this.joinChannel()
+      await this.joinChannel()
     })
 
     this.connection.onclose((error?: Error) => {
@@ -319,12 +319,23 @@ export class ChannelEventsClient {
     return this.connection?.state === "Connected"
   }
 
+  private isValidGuid(str: string): boolean {
+    const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    return guidRegex.test(str)
+  }
+
   private async joinChannel(): Promise<void> {
     if (this.isStub || !this.connection) {
       return
     }
 
     if (this.connection.state === "Connected") {
+      // Only call JoinChannel if the channelId is a valid GUID format
+      if (!this.isValidGuid(this.channelId)) {
+        console.warn(`Skipping JoinChannel for invalid GUID format: ${this.channelId}`)
+        return
+      }
+
       try {
         await this.connection.invoke("JoinChannel", this.channelId)
         console.log(`Joined channel group: ${this.channelId}`)

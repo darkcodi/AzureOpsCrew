@@ -142,9 +142,11 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
   // Listen for user presence updates via SignalR
   useEffect(() => {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL ?? "http://localhost:5000"
-    const hubUrl = `${backendUrl}/channels/global/events`
+    // Use empty GUID as a convention for the global presence channel
+    const globalChannelId = "00000000-0000-0000-0000-000000000000"
+    const hubUrl = `${backendUrl}/channels/${globalChannelId}/events`
 
-    const presenceClient = new ChannelEventsClient("global")
+    const presenceClient = new ChannelEventsClient(globalChannelId)
     let mounted = true
 
     presenceClient.start().then(() => {
