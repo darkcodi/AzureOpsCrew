@@ -13,7 +13,7 @@ public class AgentScheduler : BackgroundService
         _serviceProvider = serviceProvider;
     }
 
-    public bool StartAgent(Guid agentId, Guid chatId)
+    public async Task<bool> StartAgent(Guid agentId, Guid chatId)
     {
         var cts = new CancellationTokenSource();
 
@@ -25,7 +25,7 @@ public class AgentScheduler : BackgroundService
 
         Log.Information("[BACKGROUND] Starting agent {AgentId} for chat {ChatId}", agentId, chatId);
 
-        _ = Task.Run(async () =>
+        await Task.Run(async () =>
         {
             try
             {
@@ -77,7 +77,7 @@ public class AgentScheduler : BackgroundService
 
             foreach (var (agentId, chatId) in triggers)
             {
-                StartAgent(agentId, chatId);
+                await StartAgent(agentId, chatId);
             }
 
             await Task.Delay(1000, stoppingToken);

@@ -225,7 +225,7 @@ public static class ServiceCollectionExtensions
         }
     }
 
-    public static void AddBackgroundTasks(this IServiceCollection services)
+    public static void AddAgentSchedulerBackgroundService(this IServiceCollection services)
     {
         services.AddHostedService<AgentScheduler>();
         services.AddSingleton<AgentTriggerQueue>();
