@@ -214,9 +214,11 @@ User prompt:
             Instructions = prompt,
             Tools = data.Tools.Select(x => (AITool)x.ToAiFunctionDeclaration()).ToArray(),
         };
-        var chatMessages = data.LlmThoughts.Select(x => AocAgentThought.FromDomain(x).ToChatMessage()).ToList();
+        var chatMessages = data.ChatMessages.Select(m => m.ToChatMessage()).ToList();
+        var thoughts = data.LlmThoughts.Select(x => AocAgentThought.FromDomain(x).ToChatMessage()).ToList();
+        var allMessages = chatMessages.Concat(thoughts).OrderBy(x => x.CreatedAt).ToList();
 
-        await foreach (ChatResponseUpdate update in fClient.GetStreamingResponseAsync(chatMessages, chatOptions, ct))
+        await foreach (ChatResponseUpdate update in fClient.GetStreamingResponseAsync(allMessages, chatOptions, ct))
         {
             var contents = update.Contents;
             foreach (var content in contents)
