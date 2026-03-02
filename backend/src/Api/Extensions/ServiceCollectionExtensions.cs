@@ -229,6 +229,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddHostedService<AgentScheduler>();
         services.AddSingleton<AgentTriggerQueue>();
+        services.AddScoped<AgentRunService>();
         services.AddScoped<ToolExecutor>();
     }
 }
