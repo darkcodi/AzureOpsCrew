@@ -109,7 +109,9 @@ namespace AzureOpsCrew.Api.Setup.Seeds
 
                 var existingDm = await _context.Dms
                     .AsNoTracking()
-                    .AnyAsync(dm => dm.Id == dmId);
+                    .AnyAsync(dm =>
+                        dm.User1Id == userId &&
+                        dm.Agent1Id == agentId);
 
                 if (!existingDm)
                 {
