@@ -152,7 +152,7 @@ namespace AzureOpsCrew.Api.Endpoints
                 var historyMessages = new List<AgentMindEventDto>();
 
                 // First pass: collect tool result content by CallId (from tool-role messages)
-                var toolResultsByCallId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                var toolResultsByCallId = new Dictionary<(Guid threadId, Guid runId, string callId), string>();
                 foreach (var msg in messages)
                 {
                     if (msg.Role.ToString() != "tool")
@@ -172,7 +172,7 @@ namespace AzureOpsCrew.Api.Endpoints
                             JsonElement el => el.GetRawText(),
                             _ => JsonSerializer.Serialize(functionResult.Result)
                         };
-                        toolResultsByCallId[functionResult.CallId] = resultStr ?? "";
+                        toolResultsByCallId[(msg.ThreadId, msg.RunId, functionResult.CallId)] = resultStr ?? "";
                     }
                 }
 
@@ -212,7 +212,7 @@ namespace AzureOpsCrew.Api.Endpoints
                         });
                     }
                     else if (aiContent is AocFunctionCallContent functionCallContent
-                        && toolResultsByCallId.TryGetValue(functionCallContent.CallId, out var resultStr))
+                             && toolResultsByCallId.TryGetValue((msg.ThreadId, msg.RunId, functionCallContent.CallId), out var resultStr))
                     {
                         object? resultObj;
                         try
