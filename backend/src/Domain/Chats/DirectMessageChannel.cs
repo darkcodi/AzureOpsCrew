@@ -8,6 +8,4 @@ public class DirectMessageChannel
     public Guid? Agent1Id { get; set; }
     public Guid? Agent2Id { get; set; }
     public DateTime CreatedAt { get; set; }
-
-    public List<Message> Messages { get; set; } = [];
 }
