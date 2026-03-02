@@ -49,7 +49,20 @@ public class AgentScheduler : BackgroundService
         return false;
     }
 
-    protected override Task ExecuteAsync(CancellationToken stoppingToken) => Task.CompletedTask;
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var triggerQueue = _serviceProvider.GetRequiredService<AgentTriggerQueue>();
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            var triggers = triggerQueue.DequeueAll();
+            foreach (var (agentId, chatId) in triggers)
+            {
+                StartAgent(agentId, chatId);
+            }
+
+            await Task.Delay(1000, stoppingToken);
+        }
+    }
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
