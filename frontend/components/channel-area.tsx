@@ -44,23 +44,21 @@ export function ChannelArea({
         const response = await fetchWithErrorHandling(`/api/channels/${channel.id}/messages`)
         if (response.ok) {
           const data = await response.json()
-          // Transform backend messages to frontend ChatMessage format
-          const meResponse = await fetchWithErrorHandling('/api/auth/me')
-          const user = meResponse.ok ? await meResponse.json() : null
-
+          // Transform backend messages to frontend ChatMessage format (backend uses text, userId/agentId)
           const chatMessages: ChatMessage[] = data.map((m: {
             id: string
-            chatId: string
-            content: string
-            senderId: string
-            postedAt: string
+            text?: string
+            content?: string
+            userId?: string
+            agentId?: string
+            senderId?: string
           }) => {
-            const isUser = m.senderId === user?.id
+            const isUser = !m.agentId
             return {
               id: m.id,
               role: isUser ? 'user' : 'assistant',
-              content: m.content,
-              ...(isUser ? {} : { agentId: m.senderId }),
+              content: m.text ?? m.content ?? '',
+              ...(isUser ? {} : { agentId: m.agentId }),
             }
           })
           setMessages(chatMessages)
