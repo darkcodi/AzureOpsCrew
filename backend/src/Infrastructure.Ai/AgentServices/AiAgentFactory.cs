@@ -35,14 +35,14 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices
             var prompt = @$"
                     {SystemPrompt}
 
-                    Your name is {agent.Info.Name}
+                    Your username is {agent.Info.Username}
 
                     {ToolHint}
                 ";
 
             var options = new ChatClientAgentOptions
             {
-                Name = agent.Info.Name,
+                Name = agent.Info.Username,
                 ChatOptions = new ChatOptions
                 {
                     Instructions = prompt,

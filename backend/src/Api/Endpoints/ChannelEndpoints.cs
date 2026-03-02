@@ -188,7 +188,7 @@ public static class ChannelEndpoints
                 PostedAt = DateTime.UtcNow,
                 UserId = senderId,
                 ChannelId = channel.Id,
-                AuthorName = user?.DisplayName,
+                AuthorName = user?.Username,
             };
             await context.Messages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);

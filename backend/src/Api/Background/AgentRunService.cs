@@ -37,7 +37,7 @@ public class AgentRunService
         Log.Information("[BACKGROUND] Starting agent run: {AgentId}, chat: {ChatId}", agentId, chatId);
 
         var data = await LoadAgentRunData(agentId, chatId, ct);
-        var agentName = data.Agent.Info.Name;
+        var agentName = data.Agent.Info.Username;
 
         // Broadcast agent thinking start for channels
         if (data.Channel != null && _channelEventBroadcaster != null)
@@ -71,7 +71,7 @@ public class AgentRunService
                 var toolCallResults = new List<AocAgentThought>();
                 await foreach (var toolCallResult in ExecuteToolCalls(data, newAgentThoughts, ct))
                 {
-                    var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Name, DateTime.UtcNow);
+                    var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow);
                     toolCallResults.Add(toolResultMessage);
                 }
                 await SaveAgentThoughts(agentId, chatId, toolCallResults, ct);
@@ -93,7 +93,7 @@ public class AgentRunService
                             Text = lastTextContent.Text,
                             PostedAt = DateTime.UtcNow,
                             AgentId = agentId,
-                            AuthorName = data.Agent.Info.Name,
+                            AuthorName = data.Agent.Info.Username,
                         };
 
                         if (data.Channel != null)
@@ -227,8 +227,8 @@ Available backend tools:
 Available frontend tools:
 {feTools}
 
-Your name is:
-{data.Agent.Info.Name}
+Your username is:
+{data.Agent.Info.Username}
 
 Your description is:
 {data.Agent.Info.Description}
@@ -269,7 +269,7 @@ User prompt:
                     await Task.Delay(TimeSpan.FromMilliseconds(1));
                     var now = DateTime.UtcNow;
 
-                    var newMessage = AocAgentThought.FromContent(parsedContent, update.Role ?? ChatRole.Assistant, data.Agent.Info.Name, now);
+                    var newMessage = AocAgentThought.FromContent(parsedContent, update.Role ?? ChatRole.Assistant, data.Agent.Info.Username, now);
                     Log.Verbose("[BACKGROUND] LLM response: {Role} - {ContentType}", update.Role ?? ChatRole.Assistant, parsedContent.GetType().Name);
 
                     // Broadcast text content for channels
@@ -278,7 +278,7 @@ User prompt:
                         await _channelEventBroadcaster.BroadcastAgentTextContentAsync(
                             data.Channel.Id,
                             data.Agent.Id,
-                            data.Agent.Info.Name,
+                            data.Agent.Info.Username,
                             textContent.Text,
                             isDelta: true);
                     }
@@ -382,9 +382,9 @@ User prompt:
                 if (data.Channel != null && _channelEventBroadcaster != null)
                 {
                     await _channelEventBroadcaster.BroadcastToolCallStartAsync(
-                        data.Channel.Id, data.Agent.Id, data.Agent.Info.Name, toolName, toolCall.CallId);
+                        data.Channel.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId);
                     await _channelEventBroadcaster.BroadcastToolCallEndAsync(
-                        data.Channel.Id, data.Agent.Id, data.Agent.Info.Name, toolName, toolCall.CallId,
+                        data.Channel.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId,
                         success: false, errorMessage: "Tool not found in declarations");
                 }
 
@@ -400,9 +400,9 @@ User prompt:
                 if (data.Channel != null && _channelEventBroadcaster != null)
                 {
                     await _channelEventBroadcaster.BroadcastToolCallStartAsync(
-                        data.Channel.Id, data.Agent.Id, data.Agent.Info.Name, toolName, toolCall.CallId);
+                        data.Channel.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId);
                     await _channelEventBroadcaster.BroadcastToolCallEndAsync(
-                        data.Channel.Id, data.Agent.Id, data.Agent.Info.Name, toolName, toolCall.CallId,
+                        data.Channel.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId,
                         success: true);
                 }
 
@@ -415,7 +415,7 @@ User prompt:
             if (data.Channel != null && _channelEventBroadcaster != null)
             {
                 await _channelEventBroadcaster.BroadcastToolCallStartAsync(
-                    data.Channel.Id, data.Agent.Id, data.Agent.Info.Name, toolName, toolCall.CallId);
+                    data.Channel.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId);
             }
 
             Log.Debug("[BACKGROUND] Executing tool {ToolName}", toolName);
@@ -436,7 +436,7 @@ User prompt:
             if (data.Channel != null && _channelEventBroadcaster != null)
             {
                 await _channelEventBroadcaster.BroadcastToolCallEndAsync(
-                    data.Channel.Id, data.Agent.Id, data.Agent.Info.Name, toolName, toolCall.CallId,
+                    data.Channel.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId,
                     success: toolError == null, errorMessage: toolError?.Message);
             }
 

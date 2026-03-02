@@ -40,7 +40,7 @@ export default function SignupPage() {
   const router = useRouter()
   const [step, setStep] = useState<SignupStep>("details")
 
-  const [displayName, setDisplayName] = useState("")
+  const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -106,7 +106,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           email,
           password,
-          displayName: displayName.trim() || undefined,
+          username: username.trim(),
         }),
       })
 
@@ -228,13 +228,17 @@ export default function SignupPage() {
         {step === "details" ? (
           <form onSubmit={handleRequestCode} className="space-y-4">
             <label className="block">
-              <span className="mb-1 block text-sm text-slate-300">Display name (optional)</span>
+              <span className="mb-1 block text-sm text-slate-300">Username</span>
               <input
                 type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                maxLength={120}
-                autoComplete="name"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                minLength={2}
+                maxLength={30}
+                pattern="[a-zA-Z0-9]+"
+                title="Letters and numbers only"
+                autoComplete="username"
                 className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white outline-none focus:border-sky-500"
               />
             </label>

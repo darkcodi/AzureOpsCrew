@@ -40,10 +40,10 @@ public static class UsersEndpoints
             var users = await context.Users
                 .AsNoTracking()
                 .Where(u => u.IsActive)
-                .OrderBy(u => u.DisplayName)
+                .OrderBy(u => u.Username)
                 .Select(u => new UserPresenceDto(
                     u.Id,
-                    u.DisplayName,
+                    u.Username,
                     u.LastLoginAt.HasValue && now - u.LastLoginAt.Value <= OnlineWindow,
                     u.Id == currentUserId,
                     u.LastLoginAt))

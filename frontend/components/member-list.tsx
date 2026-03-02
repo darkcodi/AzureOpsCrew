@@ -30,14 +30,14 @@ import { Search, User, Plus, Loader2 } from "lucide-react"
 
 function MemberContextMenu({
   userId,
-  displayName,
+  username,
   onCopyId,
   onKickClick,
   onOpenInDM,
   children,
 }: {
   userId: string
-  displayName?: string
+  username?: string
   onCopyId: (id: string) => void
   onKickClick?: (id: string, name: string) => void
   onOpenInDM?: (dmId: string) => void
@@ -61,7 +61,7 @@ function MemberContextMenu({
         {onKickClick != null && (
           <ContextMenuItem
             className="cursor-pointer rounded px-2 py-1.5 text-sm text-red-500 focus:bg-white/10 focus:text-red-500"
-            onSelect={() => onKickClick(userId, displayName ?? userId)}
+            onSelect={() => onKickClick(userId, username ?? userId)}
           >
             Kick
           </ContextMenuItem>
@@ -83,7 +83,7 @@ interface MemberListProps {
   humans: HumanMember[]
   activeAgentIds: string[]
   streamingAgentId?: string | null
-  displayName: string
+  username: string
   onToggleAgent: (agentId: string) => void | Promise<void>
   onOpenInDM?: (agentId: string, message?: string) => void
   onKickMember?: (agentId: string) => void | Promise<void>
@@ -163,7 +163,7 @@ function AgentRow({
   return (
     <MemberContextMenu
       userId={agent.id}
-      displayName={agent.name}
+      username={agent.name}
       onCopyId={onCopyId}
       onKickClick={onKickClick}
       onOpenInDM={onOpenInDM}
@@ -178,7 +178,7 @@ export function MemberList({
   humans,
   activeAgentIds,
   streamingAgentId = null,
-  displayName,
+  username,
   onToggleAgent,
   onOpenInDM,
   onKickMember,
@@ -217,7 +217,7 @@ export function MemberList({
     !query || agent.name.toLowerCase().includes(query)
   const filteredWorking = workingAgents.filter(matchesSearch)
   const filteredAvailable = availableAgents.filter(matchesSearch)
-  const currentUserName = displayName || "You"
+  const currentUserName = username || "You"
   const filteredHumans = humans.filter((h) => {
     if (!query) return true
     const name = h.isCurrentUser ? currentUserName : h.name

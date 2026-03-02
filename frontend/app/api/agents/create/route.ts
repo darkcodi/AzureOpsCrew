@@ -10,7 +10,7 @@ interface BackendAgent {
   clientId: number
   providerId: string
   info: {
-    name: string
+    username: string
     prompt: string
     model: string
     description: string | null
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     const backendBody = {
       info: {
-        name: name.trim(),
+        username: name.trim(),
         prompt: systemPrompt?.trim() || `You are ${name.trim()}, a helpful AI assistant.`,
         model,
       },
@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
 
     const frontendAgent: Agent = {
       id: backendAgent.id,
-      name: backendAgent.info.name,
-      avatar: backendAgent.info.name[0].toUpperCase(),
+      name: backendAgent.info.username,
+      avatar: backendAgent.info.username[0].toUpperCase(),
       color: backendAgent.color,
       systemPrompt: backendAgent.info.prompt,
       model: backendAgent.info.model,

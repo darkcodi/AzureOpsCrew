@@ -16,11 +16,16 @@ function loadPersistedSettings(): SettingsState {
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY)
     if (!raw) return defaultSettings
-    const loaded = JSON.parse(raw) as Partial<SettingsState>
+    const loaded = JSON.parse(raw) as Partial<SettingsState> & { account?: { displayName?: string } }
+    const account = { ...defaultSettings.account, ...loaded.account }
+    // Migrate legacy displayName to username (when username was not explicitly set)
+    if (loaded.account && !("username" in loaded.account) && "displayName" in loaded.account) {
+      account.username = (loaded.account as { displayName?: string }).displayName || account.username
+    }
     return {
       ...defaultSettings,
       ...loaded,
-      account: { ...defaultSettings.account, ...loaded.account },
+      account,
       appearance: { ...defaultSettings.appearance, ...loaded.appearance },
       notifications: { ...defaultSettings.notifications, ...loaded.notifications },
       routing: { ...defaultSettings.routing, ...loaded.routing },
@@ -40,9 +45,9 @@ function persistSettings(state: SettingsState) {
   }
 }
 
-/** Current user display name from persisted settings (for use outside Settings). */
-export function getDisplayNameFromStorage(): string {
-  return loadPersistedSettings().account.displayName || "User"
+/** Current user username from persisted settings (for use outside Settings). */
+export function getUsernameFromStorage(): string {
+  return loadPersistedSettings().account.username || "User"
 }
 
 interface SettingsViewProps {

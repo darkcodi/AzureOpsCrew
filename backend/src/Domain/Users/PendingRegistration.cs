@@ -8,16 +8,19 @@ public sealed class PendingRegistration
     {
     }
 
-    public PendingRegistration(string email, string normalizedEmail)
+    public PendingRegistration(string email, string normalizedEmail, string username, string normalizedUsername)
     {
         Email = email;
         NormalizedEmail = normalizedEmail;
+        Username = username;
+        NormalizedUsername = normalizedUsername;
     }
 
     public int Id { get; private set; }
     public string Email { get; private set; }
     public string NormalizedEmail { get; private set; }
-    public string DisplayName { get; private set; } = string.Empty;
+    public string Username { get; private set; } = string.Empty;
+    public string NormalizedUsername { get; private set; } = string.Empty;
     public string PasswordHash { get; private set; } = string.Empty;
     public string VerificationCodeHash { get; private set; } = string.Empty;
     public DateTime VerificationCodeExpiresAt { get; private set; }
@@ -28,14 +31,16 @@ public sealed class PendingRegistration
 
     public void Refresh(
         string email,
-        string displayName,
+        string username,
+        string normalizedUsername,
         string passwordHash,
         string verificationCodeHash,
         DateTime codeExpiresAtUtc,
         DateTime codeSentAtUtc)
     {
         Email = email;
-        DisplayName = displayName;
+        Username = username;
+        NormalizedUsername = normalizedUsername;
         PasswordHash = passwordHash;
         VerificationCodeHash = verificationCodeHash;
         VerificationCodeExpiresAt = codeExpiresAtUtc;

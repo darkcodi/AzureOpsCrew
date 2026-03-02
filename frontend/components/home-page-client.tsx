@@ -6,7 +6,7 @@ import { IconSidebar, type ViewMode } from "@/components/icon-sidebar"
 import { ChannelSidebar } from "@/components/channel-sidebar"
 import { ChannelArea } from "@/components/channel-area"
 import { DirectMessagesView } from "@/components/direct-messages-view"
-import { SettingsView, getDisplayNameFromStorage } from "@/components/settings/settings-view"
+import { SettingsView, getUsernameFromStorage } from "@/components/settings/settings-view"
 import {
   clearCachedHumans,
   getCachedHumans,
@@ -30,14 +30,14 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
   )
   const [activeChannelId, setActiveChannelId] = useState<string>("")
   const [activeDMId, setActiveDMId] = useState<string | null>(null)
-  const [displayName, setDisplayName] = useState(() =>
-    typeof window !== "undefined" ? getDisplayNameFromStorage() : "User"
+  const [username, setUsername] = useState(() =>
+    typeof window !== "undefined" ? getUsernameFromStorage() : "User"
   )
   const activeChannel = channels.find((c) => c.id === activeChannelId) ?? channels[0]
 
-  // Refresh display name from persisted settings when returning from Settings
+  // Refresh username from persisted settings when returning from Settings
   useEffect(() => {
-    if (viewMode !== "settings") setDisplayName(getDisplayNameFromStorage())
+    if (viewMode !== "settings") setUsername(getUsernameFromStorage())
   }, [viewMode])
 
   useEffect(() => {
@@ -275,7 +275,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
               channel={activeChannel}
               allAgents={agents}
               humans={humans}
-              displayName={displayName}
+              username={username}
               onUpdateChannel={handleUpdateChannel}
               onAddAgent={handleAddAgent}
               onUpdateAgent={handleUpdateAgent}

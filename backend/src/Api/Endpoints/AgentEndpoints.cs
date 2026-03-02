@@ -25,8 +25,20 @@ namespace AzureOpsCrew.Api.Endpoints
             {
                 var userId = httpContext.User.GetRequiredUserId();
 
-                if (body.Info is null)
-                    return Results.BadRequest("Info is required");
+                var normalizedUsername = body.Username.Trim().ToLowerInvariant();
+
+                // Check username uniqueness across both Users and Agents
+                var userUsernameExists = await context.Users
+                    .AnyAsync(u => u.NormalizedUsername == normalizedUsername, cancellationToken);
+
+                if (userUsernameExists)
+                    return Results.Conflict(new { error = "Username is already taken." });
+
+                var agentUsernameExists = await context.Agents
+                    .AnyAsync(a => a.Info.Username.ToLowerInvariant() == normalizedUsername, cancellationToken);
+
+                if (agentUsernameExists)
+                    return Results.Conflict(new { error = "Username is already taken." });
 
                 var providerExists = await context.Providers
                     .AnyAsync(p => p.Id == body.ProviderId, cancellationToken);
@@ -35,10 +47,11 @@ namespace AzureOpsCrew.Api.Endpoints
                     return Results.BadRequest("Provider not found.");
 
                 var providerAgentId = Guid.NewGuid().ToString("D");
+                var agentInfo = body.ToAgentInfo();
 
                 var agent = new Agent(
                     Guid.NewGuid(),
-                    body.Info!,
+                    agentInfo,
                     body.ProviderId,
                     providerAgentId,
                     body.Color
@@ -50,7 +63,8 @@ namespace AzureOpsCrew.Api.Endpoints
                 return Results.Created($"/api/agents/{agent.Id}", agent);
             })
             .Produces<Agent>(StatusCodes.Status201Created)
-            .Produces(StatusCodes.Status400BadRequest);
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status409Conflict);
 
             group.MapGet("", async (
                 HttpContext httpContext,
@@ -90,8 +104,23 @@ namespace AzureOpsCrew.Api.Endpoints
                 if (found is null)
                     return Results.NotFound();
 
-                if (body.Info is null)
-                    return Results.BadRequest("Info is required");
+                var normalizedUsername = body.Username.Trim().ToLowerInvariant();
+
+                // Check username uniqueness if it's being changed
+                if (found.Info.Username.ToLowerInvariant() != normalizedUsername)
+                {
+                    var userUsernameExists = await context.Users
+                        .AnyAsync(u => u.NormalizedUsername == normalizedUsername, cancellationToken);
+
+                    if (userUsernameExists)
+                        return Results.Conflict(new { error = "Username is already taken." });
+
+                    var agentUsernameExists = await context.Agents
+                        .AnyAsync(a => a.Id != id && a.Info.Username.ToLowerInvariant() == normalizedUsername, cancellationToken);
+
+                    if (agentUsernameExists)
+                        return Results.Conflict(new { error = "Username is already taken." });
+                }
 
                 var providerExists = await context.Providers
                     .AnyAsync(p => p.Id == body.ProviderId, cancellationToken);
@@ -99,14 +128,16 @@ namespace AzureOpsCrew.Api.Endpoints
                 if (!providerExists)
                     return Results.BadRequest("Provider not found.");
 
-                found.Update(body.Info, body.ProviderId, body.Color);
+                var agentInfo = body.ToAgentInfo();
+                found.Update(agentInfo, body.ProviderId, body.Color);
                 await context.SaveChangesAsync(cancellationToken);
 
                 return Results.Ok(found);
             })
             .Produces<Agent>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status409Conflict);
 
             group.MapDelete("/{id}", async (
                 Guid id,

@@ -41,7 +41,7 @@ public sealed class JwtTokenService
             new(JwtRegisteredClaimNames.Email, user.Email),
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Email, user.Email),
-            new(ClaimTypes.Name, user.DisplayName),
+            new(ClaimTypes.Name, user.Username),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
         };
 

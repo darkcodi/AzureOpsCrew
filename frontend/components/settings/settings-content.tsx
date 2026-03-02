@@ -1492,7 +1492,7 @@ function AccountSection({
   account: AccountConfig
   onAccountChange: (account: AccountConfig) => void
 }) {
-  const initial = (account.displayName || "U").trim().toUpperCase().slice(0, 1) || "U"
+  const initial = (account.username || "U").trim().toUpperCase().slice(0, 1) || "U"
   return (
     <div>
       <SectionHeader
@@ -1518,7 +1518,7 @@ function AccountSection({
             className="text-base font-semibold"
             style={{ color: "hsl(210, 3%, 95%)" }}
           >
-            {account.displayName || "User"}
+            {account.username || "User"}
           </div>
           <div className="text-sm" style={{ color: "hsl(214, 5%, 55%)" }}>
             Local account
@@ -1527,11 +1527,11 @@ function AccountSection({
       </div>
 
       <div className="mt-6">
-        <FormField label="Display name">
+        <FormField label="Username">
           <TextInput
-            value={account.displayName ?? ""}
-            onChange={(v) => onAccountChange({ ...account, displayName: v })}
-            placeholder="Your display name"
+            value={account.username ?? ""}
+            onChange={(v) => onAccountChange({ ...account, username: v })}
+            placeholder="Your username"
           />
         </FormField>
       </div>

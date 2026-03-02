@@ -9,7 +9,7 @@ interface BackendAuthResponse {
   user: {
     id: string
     email: string
-    displayName: string
+    username: string
   }
 }
 
@@ -28,7 +28,7 @@ function isValidBackendAuthResponse(value: unknown): value is BackendAuthRespons
     typeof typedUser.id === "string" &&
     typeof typedUser.email === "string" &&
     typedUser.email.length > 0 &&
-    typeof typedUser.displayName === "string"
+    typeof typedUser.username === "string"
   )
 }
 

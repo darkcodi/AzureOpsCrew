@@ -14,7 +14,7 @@ interface ChannelAreaProps {
   channel: Channel
   allAgents: Agent[]
   humans: HumanMember[]
-  displayName: string
+  username: string
   onUpdateChannel: (channel: Channel) => void
   onAddAgent: (agent: Agent) => void
   onUpdateAgent: (agent: Agent) => void
@@ -26,7 +26,7 @@ export function ChannelArea({
   channel,
   allAgents,
   humans,
-  displayName,
+  username,
   onUpdateChannel,
   onAddAgent,
   onUpdateAgent,
@@ -292,7 +292,7 @@ export function ChannelArea({
           humans={humans}
           activeAgentIds={channel.agentIds}
           streamingAgentId={typingAgentIds.size > 0 ? Array.from(typingAgentIds)[0] : null}
-          displayName={displayName}
+          username={username}
           onToggleAgent={handleToggleAgent}
           onOpenInDM={onOpenInDM}
           onKickMember={handleKickMember}

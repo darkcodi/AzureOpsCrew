@@ -9,7 +9,7 @@ interface BackendAgent {
   providerAgentId: string
   clientId: number
   info: {
-    name: string
+    username: string
     prompt: string
     model: string
     description: string | null
@@ -43,8 +43,8 @@ export async function GET(req: NextRequest) {
 
     const frontendAgents: Agent[] = backendAgents.map((backendAgent) => ({
       id: backendAgent.id,
-      name: backendAgent.info.name,
-      avatar: backendAgent.info.name[0].toUpperCase(),
+      name: backendAgent.info.username,
+      avatar: backendAgent.info.username[0].toUpperCase(),
       color: backendAgent.color,
       systemPrompt: backendAgent.info.prompt,
       model: backendAgent.info.model,
