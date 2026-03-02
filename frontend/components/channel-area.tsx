@@ -64,11 +64,6 @@ export function ChannelArea({
     }
   }, [])
 
-  // Check if message already exists in state
-  const messageExists = useCallback((messageId: string) => {
-    return messages.some(m => m.id === messageId)
-  }, [messages])
-
   // Set up SignalR connection when channel changes
   useEffect(() => {
     // Clean up previous connection
@@ -94,13 +89,13 @@ export function ChannelArea({
       const client = new ChannelEventsClient(channel.id)
       signalRClientRef.current = client
 
-      // Register event handlers
+      // Register event handlers - use functional update to avoid stale closures and deduplicate
       client.onMessageAdded((event: MessageAddedEvent) => {
-        // Don't add if message already exists (could happen due to optimistic update)
-        if (!messageExists(event.message.id)) {
-          const chatMessage = toChatMessage(event.message)
-          setMessages(prev => [...prev, chatMessage])
-        }
+        const chatMessage = toChatMessage(event.message)
+        setMessages(prev => {
+          if (prev.some(m => m.id === chatMessage.id)) return prev
+          return [...prev, chatMessage]
+        })
       })
 
       client.onAgentThinkingStart((event: AgentThinkingStartEvent) => {
@@ -155,7 +150,7 @@ export function ChannelArea({
     return () => {
       cleanup()
     }
-  }, [channel.id, toChatMessage, messageExists, streamingAgentId])
+  }, [channel.id, toChatMessage, streamingAgentId])
 
   // Load messages when channel changes
   useEffect(() => {
@@ -241,12 +236,14 @@ export function ChannelArea({
 
         if (response.ok) {
           const message = await response.json()
-          // Update the optimistic message with the real ID
-          setMessages((prev) =>
-            prev.map((m) =>
+          // Update the optimistic message with the real ID, and remove any duplicate
+          // that SignalR may have already added (race condition)
+          setMessages((prev) => {
+            const withoutDuplicate = prev.filter((m) => m.id !== message.id)
+            return withoutDuplicate.map((m) =>
               m.id === userMsg.id ? { ...m, id: message.id } : m
             )
-          )
+          })
         } else {
           // Remove optimistic message on failure
           setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
