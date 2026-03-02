@@ -43,6 +43,8 @@ export function ChannelArea({
   const signalRClientRef = useRef<ChannelEventsClient | null>(null)
   // Track the current channel ID to guard against stale async operations
   const currentChannelIdRef = useRef(channel.id)
+  // Track whether messages are currently being loaded to prevent duplicate requests
+  const isLoadingMessagesRef = useRef(false)
 
   const activeAgents = allAgents.filter((a) => channel.agentIds.includes(a.id))
 
@@ -172,9 +174,33 @@ export function ChannelArea({
 
   // Load messages when channel changes
   useEffect(() => {
+    // Capture channel ID for this effect instance
+    const channelIdForEffect = channel.id
+
     const loadMessages = async () => {
+      // Guard: don't start a new load if one is already in progress for this channel
+      if (isLoadingMessagesRef.current) {
+        console.log("Messages already loading, skipping duplicate request")
+        return
+      }
+
+      isLoadingMessagesRef.current = true
+
+      // Guard: only proceed if we haven't switched channels again
+      if (currentChannelIdRef.current !== channelIdForEffect) {
+        isLoadingMessagesRef.current = false
+        return
+      }
+
       try {
         const response = await fetchWithErrorHandling(`/api/channels/${channel.id}/messages`)
+
+        // Guard again after async fetch completes
+        if (currentChannelIdRef.current !== channelIdForEffect) {
+          isLoadingMessagesRef.current = false
+          return
+        }
+
         if (response.ok) {
           const data = await response.json()
           // Transform backend messages to frontend ChatMessage format
@@ -183,6 +209,8 @@ export function ChannelArea({
         }
       } catch (err) {
         console.error("Failed to load channel messages:", err)
+      } finally {
+        isLoadingMessagesRef.current = false
       }
     }
 
