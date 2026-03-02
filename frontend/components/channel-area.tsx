@@ -381,7 +381,6 @@ export function ChannelArea({
           allAgents={allAgents}
           humans={humans}
           activeAgentIds={channel.agentIds}
-          streamingAgentId={typingAgentIds.size > 0 ? Array.from(typingAgentIds)[0] : null}
           username={username}
           onToggleAgent={handleToggleAgent}
           onOpenInDM={onOpenInDM}
