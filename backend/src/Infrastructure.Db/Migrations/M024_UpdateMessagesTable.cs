@@ -8,12 +8,10 @@ public class M024_UpdateMessagesTable : Migration
     public override void Up()
     {
         // Drop indexes for columns that will be modified
-        Delete.Index("IX_Messages_ChatId").OnTable("Messages");
         Delete.Index("IX_Messages_AgentId").OnTable("Messages");
         Delete.Index("IX_Messages_UserId").OnTable("Messages");
 
         // Remove columns
-        Delete.Column("ChatId").FromTable("Messages");
         Delete.Column("AuthorName").FromTable("Messages");
         Delete.Column("AgentId").FromTable("Messages");
         Delete.Column("UserId").FromTable("Messages");
@@ -40,13 +38,11 @@ public class M024_UpdateMessagesTable : Migration
 
         // Add back columns as they were
         Alter.Table("Messages")
-            .AddColumn("ChatId").AsGuid().NotNullable()
             .AddColumn("AuthorName").AsString(256).NotNullable()
             .AddColumn("AgentId").AsString().Nullable()
             .AddColumn("UserId").AsString().Nullable();
 
         // Recreate indexes
-        Create.Index("IX_Messages_ChatId").OnTable("Messages").OnColumn("ChatId");
         Create.Index("IX_Messages_AgentId").OnTable("Messages").OnColumn("AgentId");
         Create.Index("IX_Messages_UserId").OnTable("Messages").OnColumn("UserId");
     }
