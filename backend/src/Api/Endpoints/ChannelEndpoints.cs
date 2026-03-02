@@ -153,15 +153,15 @@ public static class ChannelEndpoints
                 .SingleOrDefaultAsync(c => c.Id == id, cancellationToken);
 
             if (channel is null)
-                return Results.Ok(new List<ChatMessageEntity>());
+                return Results.Ok(new List<AocMessage>());
 
-            var messages = await context.ChatMessages
+            var messages = await context.Messages
                 .Where(m => m.ChatId == channel.Id)
                 .OrderBy(m => m.PostedAt)
                 .ToListAsync(cancellationToken);
             return Results.Ok(messages);
         })
-        .Produces<List<ChatMessageEntity>>(StatusCodes.Status200OK);
+        .Produces<List<AocMessage>>(StatusCodes.Status200OK);
 
         group.MapPost("/{id}/messages", async (
             Guid id,
@@ -178,15 +178,16 @@ public static class ChannelEndpoints
                 return Results.NotFound();
 
             var senderId = httpContext.User.GetRequiredUserId();
-            var message = new ChatMessageEntity
+            var message = new AocMessage
             {
                 Id = Guid.NewGuid(),
                 ChatId = channel.Id,
-                Content = dto.Content,
-                SenderId = senderId,
-                PostedAt = DateTime.UtcNow
+                Text = dto.Content,
+                PostedAt = DateTime.UtcNow,
+                UserId = senderId.ToString(),
+                ChannelId = channel.Id,
             };
-            await context.ChatMessages.AddAsync(message, cancellationToken);
+            await context.Messages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
             // Trigger all agents in the channel
@@ -200,7 +201,7 @@ public static class ChannelEndpoints
 
             return Results.Created($"/api/channels/{id}/messages/{message.Id}", message);
         })
-        .Produces<ChatMessageEntity>(StatusCodes.Status201Created)
+        .Produces<AocMessage>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status404NotFound);
     }
 }

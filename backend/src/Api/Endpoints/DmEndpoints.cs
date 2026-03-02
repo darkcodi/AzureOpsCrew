@@ -44,15 +44,15 @@ public static class DmEndpoints
                     cancellationToken);
 
             if (dm is null)
-                return Results.Ok(new List<ChatMessageEntity>());
+                return Results.Ok(new List<AocMessage>());
 
-            var messages = await context.ChatMessages
+            var messages = await context.Messages
                 .Where(m => m.ChatId == dm.Id)
                 .OrderBy(m => m.PostedAt)
                 .ToListAsync(cancellationToken);
             return Results.Ok(messages);
         })
-        .Produces<List<ChatMessageEntity>>(StatusCodes.Status200OK);
+        .Produces<List<AocMessage>>(StatusCodes.Status200OK);
 
         // GET: /api/users/{userId}/dms/agents/{agentId}/messages - Returns messages between a user and an agent
         group.MapGet("/agents/{agentId}/messages", async (
@@ -70,15 +70,15 @@ public static class DmEndpoints
                     cancellationToken);
 
             if (dm is null)
-                return Results.Ok(new List<ChatMessageEntity>());
+                return Results.Ok(new List<AocMessage>());
 
-            var messages = await context.ChatMessages
+            var messages = await context.Messages
                 .Where(m => m.ChatId == dm.Id)
                 .OrderBy(m => m.PostedAt)
                 .ToListAsync(cancellationToken);
             return Results.Ok(messages);
         })
-        .Produces<List<ChatMessageEntity>>(StatusCodes.Status200OK);
+        .Produces<List<AocMessage>>(StatusCodes.Status200OK);
 
         // POST: /api/users/{userId}/dms/users/{otherUserId}/messages - Posts a message between two users
         group.MapPost("/users/{otherUserId}/messages", async (
@@ -108,20 +108,21 @@ public static class DmEndpoints
                 await context.SaveChangesAsync(cancellationToken);
             }
 
-            var message = new ChatMessageEntity
+            var message = new AocMessage
             {
                 Id = Guid.NewGuid(),
                 ChatId = dm.Id,
-                Content = dto.Content,
-                SenderId = userId,
-                PostedAt = DateTime.UtcNow
+                Text = dto.Content,
+                PostedAt = DateTime.UtcNow,
+                UserId = userId.ToString(),
+                DmId = dm.Id,
             };
-            await context.ChatMessages.AddAsync(message, cancellationToken);
+            await context.Messages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
             return Results.Created($"/api/users/{userId}/dms/users/{otherUserId}/messages/{message.Id}", message);
         })
-        .Produces<ChatMessageEntity>(StatusCodes.Status201Created);
+        .Produces<AocMessage>(StatusCodes.Status201Created);
 
         // POST: /api/users/{userId}/dms/agents/{agentId}/messages - Posts a message between a user and an agent
         group.MapPost("/agents/{agentId}/messages", async (
@@ -154,21 +155,22 @@ public static class DmEndpoints
                 await context.SaveChangesAsync(cancellationToken);
             }
 
-            var message = new ChatMessageEntity
+            var message = new AocMessage
             {
                 Id = Guid.NewGuid(),
                 ChatId = dm.Id,
-                Content = dto.Content,
-                SenderId = userId,
-                PostedAt = DateTime.UtcNow
+                Text = dto.Content,
+                PostedAt = DateTime.UtcNow,
+                UserId = userId.ToString(),
+                DmId = dm.Id,
             };
-            await context.ChatMessages.AddAsync(message, cancellationToken);
+            await context.Messages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
             agentScheduler.StartAgent(agentId, userId);
 
             return Results.Created($"/api/users/{userId}/dms/agents/{agentId}/messages/{message.Id}", message);
         })
-        .Produces<ChatMessageEntity>(StatusCodes.Status201Created);
+        .Produces<AocMessage>(StatusCodes.Status201Created);
     }
 }

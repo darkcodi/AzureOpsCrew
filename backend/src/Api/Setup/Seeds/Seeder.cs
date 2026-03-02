@@ -106,13 +106,6 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             foreach (var (agentId, index) in agentIds.Select((id, i) => (id, i)))
             {
                 var dmId = CreateDmId(dmIdBase, index);
-                var agentName = index switch
-                {
-                    0 => "Manager",
-                    1 => "AzureDevOps",
-                    2 => "AzureDev",
-                    _ => $"Agent{index}"
-                };
 
                 var existingDm = await _context.Dms
                     .AsNoTracking()
@@ -120,12 +113,6 @@ namespace AzureOpsCrew.Api.Setup.Seeds
 
                 if (!existingDm)
                 {
-                    // Create corresponding chat in database with participants
-                    var chat = new ChatEntity(dmId, $"DM_User_{agentName}");
-                    chat.AddParticipant(userId);
-                    chat.AddParticipant(agentId);
-                    await _context.Chats.AddAsync(chat);
-
                     var userAgentDm = new DirectMessageChannel
                     {
                         Id = dmId,
@@ -183,15 +170,6 @@ namespace AzureOpsCrew.Api.Setup.Seeds
 
             if (!channelExists)
             {
-                // Create corresponding chat with participants
-                var chat = new ChatEntity(channel.Id, channel.Name);
-                foreach (var participantId in participantIds)
-                {
-                    chat.AddParticipant(participantId);
-                }
-                await _context.Chats.AddAsync(chat);
-
-                // Add the channel
                 await _context.Set<Channel>().AddAsync(channel);
             }
         }
