@@ -7,12 +7,6 @@ public class M022_ChangeUserIdToGuid : Migration
 {
     public override void Up()
     {
-        // Drop ChatMessages table (references Users via SenderUserId)
-        Delete.Table("ChatMessages");
-
-        // Drop Chats table (ParticipantUserIds contains user IDs)
-        Delete.Table("Chats");
-
         // Drop Users table
         Delete.Table("Users");
 
@@ -32,36 +26,11 @@ public class M022_ChangeUserIdToGuid : Migration
             .OnTable("Users")
             .OnColumn("NormalizedEmail")
             .Unique();
-
-        // Recreate Chats table
-        Create.Table("Chats")
-            .WithColumn("Id").AsGuid().NotNullable().PrimaryKey()
-            .WithColumn("Title").AsString(256).NotNullable()
-            .WithColumn("ParticipantUserIds").AsString().Nullable()
-            .WithColumn("ParticipantAgentIds").AsString().Nullable()
-            .WithColumn("CreatedAt").AsDateTime().NotNullable()
-            .WithColumn("DateModified").AsDateTime().Nullable();
-
-        // Recreate ChatMessages table with SenderUserId as Guid
-        Create.Table("ChatMessages")
-            .WithColumn("Id").AsGuid().NotNullable().PrimaryKey()
-            .WithColumn("ChatId").AsGuid().NotNullable()
-            .WithColumn("Content").AsString(30000).NotNullable()
-            .WithColumn("SenderUserId").AsGuid().Nullable()
-            .WithColumn("SenderAgentId").AsGuid().Nullable()
-            .WithColumn("PostedAt").AsDateTime().NotNullable();
-
-        Create.Index("IX_ChatMessages_PostedAt").OnTable("ChatMessages").OnColumn("PostedAt");
-        Create.Index("IX_ChatMessages_ChatId").OnTable("ChatMessages").OnColumn("ChatId");
-        Create.Index("IX_ChatMessages_SenderUserId").OnTable("ChatMessages").OnColumn("SenderUserId");
-        Create.Index("IX_ChatMessages_SenderAgentId").OnTable("ChatMessages").OnColumn("SenderAgentId");
     }
 
     public override void Down()
     {
         // Rollback - drop and recreate with int Id
-        Delete.Table("ChatMessages");
-        Delete.Table("Chats");
         Delete.Table("Users");
 
         Create.Table("Users")
@@ -79,26 +48,5 @@ public class M022_ChangeUserIdToGuid : Migration
             .OnTable("Users")
             .OnColumn("NormalizedEmail")
             .Unique();
-
-        Create.Table("Chats")
-            .WithColumn("Id").AsGuid().NotNullable().PrimaryKey()
-            .WithColumn("Title").AsString(256).NotNullable()
-            .WithColumn("ParticipantUserIds").AsString().Nullable()
-            .WithColumn("ParticipantAgentIds").AsString().Nullable()
-            .WithColumn("CreatedAt").AsDateTime().NotNullable()
-            .WithColumn("DateModified").AsDateTime().Nullable();
-
-        Create.Table("ChatMessages")
-            .WithColumn("Id").AsGuid().NotNullable().PrimaryKey()
-            .WithColumn("ChatId").AsGuid().NotNullable()
-            .WithColumn("Content").AsString(30000).NotNullable()
-            .WithColumn("SenderUserId").AsInt32().Nullable()
-            .WithColumn("SenderAgentId").AsGuid().Nullable()
-            .WithColumn("PostedAt").AsDateTime().NotNullable();
-
-        Create.Index("IX_ChatMessages_PostedAt").OnTable("ChatMessages").OnColumn("PostedAt");
-        Create.Index("IX_ChatMessages_ChatId").OnTable("ChatMessages").OnColumn("ChatId");
-        Create.Index("IX_ChatMessages_SenderUserId").OnTable("ChatMessages").OnColumn("SenderUserId");
-        Create.Index("IX_ChatMessages_SenderAgentId").OnTable("ChatMessages").OnColumn("SenderAgentId");
     }
 }
