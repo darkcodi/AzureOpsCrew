@@ -1,3 +1,4 @@
+using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Background;
 using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
 using AzureOpsCrew.Domain.Chats;
@@ -10,16 +11,17 @@ public static class DmEndpoints
 {
     public static void MapDmEndpoints(this IEndpointRouteBuilder routeBuilder)
     {
-        var group = routeBuilder.MapGroup("/api/users/{userId}/dms")
+        var group = routeBuilder.MapGroup("/api/dms")
             .WithTags("DirectMessages")
             .RequireAuthorization();
 
-        // GET: /api/users/{userId}/dms - Returns all DM channels where the specified user/agent is a participant
+        // GET: /api/dms - Returns all DM channels where the specified user is a participant
         group.MapGet("", async (
-            Guid userId,
+            HttpContext httpContext,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
             var dms = await context.Dms
                 .Where(dm => dm.User1Id == userId
                           || dm.User2Id == userId)
@@ -30,13 +32,14 @@ public static class DmEndpoints
         })
         .Produces<DirectMessageChannel[]>(StatusCodes.Status200OK);
 
-        // GET: /api/users/{userId}/dms/users/{otherUserId}/messages - Returns messages between two users
+        // GET: /api/dms/users/{otherUserId}/messages - Returns messages between two users
         group.MapGet("/users/{otherUserId}/messages", async (
-            Guid userId,
+            HttpContext httpContext,
             Guid otherUserId,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
             var dm = await context.Dms
                 .FirstOrDefaultAsync(dm =>
                     (dm.User1Id == userId && dm.User2Id == otherUserId) ||
@@ -54,13 +57,14 @@ public static class DmEndpoints
         })
         .Produces<List<Message>>(StatusCodes.Status200OK);
 
-        // GET: /api/users/{userId}/dms/agents/{agentId}/messages - Returns messages between a user and an agent
+        // GET: /api/dms/agents/{agentId}/messages - Returns messages between a user and an agent
         group.MapGet("/agents/{agentId}/messages", async (
-            Guid userId,
+            HttpContext httpContext,
             Guid agentId,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
             var dm = await context.Dms
                 .FirstOrDefaultAsync(dm =>
                     (dm.User1Id == userId && dm.Agent1Id == agentId) ||
@@ -80,14 +84,15 @@ public static class DmEndpoints
         })
         .Produces<List<Message>>(StatusCodes.Status200OK);
 
-        // POST: /api/users/{userId}/dms/users/{otherUserId}/messages - Posts a message between two users
+        // POST: /api/dms/users/{otherUserId}/messages - Posts a message between two users
         group.MapPost("/users/{otherUserId}/messages", async (
-            Guid userId,
+            HttpContext httpContext,
             Guid otherUserId,
             CreateDirectMessageDto dto,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
             var dm = await context.Dms
                 .FirstOrDefaultAsync(dm =>
                     (dm.User1Id == userId && dm.User2Id == otherUserId) ||
@@ -123,15 +128,16 @@ public static class DmEndpoints
         })
         .Produces<Message>(StatusCodes.Status201Created);
 
-        // POST: /api/users/{userId}/dms/agents/{agentId}/messages - Posts a message between a user and an agent
+        // POST: /api/dms/agents/{agentId}/messages - Posts a message between a user and an agent
         group.MapPost("/agents/{agentId}/messages", async (
-            Guid userId,
+            HttpContext httpContext,
             Guid agentId,
             CreateDirectMessageDto dto,
             AzureOpsCrewContext context,
             AgentScheduler agentScheduler,
             CancellationToken cancellationToken) =>
         {
+            var userId = httpContext.User.GetRequiredUserId();
             var dm = await context.Dms
                 .FirstOrDefaultAsync(dm =>
                     (dm.User1Id == userId && dm.Agent1Id == agentId) ||

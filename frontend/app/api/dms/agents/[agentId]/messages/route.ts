@@ -14,26 +14,9 @@ export async function GET(
 
     const { agentId } = await params
 
-    // Get current user's ID
-    const meResponse = await fetch(`${BACKEND_API_URL}/api/auth/me`, {
-      method: "GET",
-      headers: buildBackendHeaders(req),
-    })
-
-    if (!meResponse.ok) {
-      return NextResponse.json({ error: "Failed to get current user" }, { status: meResponse.status })
-    }
-
-    const meData = await meResponse.json().catch(() => ({}))
-    const userId = meData.id || meData.userId
-
-    if (!userId) {
-      return NextResponse.json({ error: "User ID not found" }, { status: 400 })
-    }
-
     // Proxy to backend DM messages endpoint
     const response = await fetch(
-      `${BACKEND_API_URL}/api/users/${userId}/dms/agents/${agentId}/messages`,
+      `${BACKEND_API_URL}/api/dms/agents/${agentId}/messages`,
       {
         method: "GET",
         headers: buildBackendHeaders(req),
@@ -67,26 +50,9 @@ export async function POST(
     const { agentId } = await params
     const body = await req.json()
 
-    // Get current user's ID
-    const meResponse = await fetch(`${BACKEND_API_URL}/api/auth/me`, {
-      method: "GET",
-      headers: buildBackendHeaders(req),
-    })
-
-    if (!meResponse.ok) {
-      return NextResponse.json({ error: "Failed to get current user" }, { status: meResponse.status })
-    }
-
-    const meData = await meResponse.json().catch(() => ({}))
-    const userId = meData.id || meData.userId
-
-    if (!userId) {
-      return NextResponse.json({ error: "User ID not found" }, { status: 400 })
-    }
-
     // Proxy to backend DM messages endpoint
     const response = await fetch(
-      `${BACKEND_API_URL}/api/users/${userId}/dms/agents/${agentId}/messages`,
+      `${BACKEND_API_URL}/api/dms/agents/${agentId}/messages`,
       {
         method: "POST",
         headers: buildBackendHeaders(req),
