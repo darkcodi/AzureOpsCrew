@@ -33,8 +33,9 @@ public class AgentRunService
         Log.Information("[BACKGROUND] Starting agent run: {AgentId}, chat: {ChatId}", agentId, chatId);
 
         var iteration = 0;
+        const int maxIterations = 50;
         // multiple iterations for one run, stops when outputted a final text content
-        while (!ct.IsCancellationRequested)
+        while (!ct.IsCancellationRequested && iteration < maxIterations)
         {
             iteration++;
             Log.Debug("[BACKGROUND] Agent {AgentId} iteration {Iteration}", agentId, iteration);
@@ -94,6 +95,11 @@ public class AgentRunService
 
                 break;
             }
+        }
+
+        if (iteration >= maxIterations)
+        {
+            Log.Warning("[BACKGROUND] Agent run hit max iterations: {AgentId}, chat: {ChatId}", agentId, chatId);
         }
 
         Log.Information("[BACKGROUND] Agent run completed: {AgentId}, chat: {ChatId}, iterations: {Iteration}", agentId, chatId, iteration);
