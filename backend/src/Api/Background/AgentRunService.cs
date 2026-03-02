@@ -10,6 +10,7 @@ using AzureOpsCrew.Infrastructure.Ai.Tools;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace AzureOpsCrew.Api.Background;
 
@@ -29,9 +30,15 @@ public class AgentRunService
 
     public async Task Run(Guid agentId, Guid chatId, CancellationToken ct)
     {
+        Log.Information("[BACKGROUND] Starting agent run: {AgentId}, chat: {ChatId}", agentId, chatId);
+
+        var iteration = 0;
         // multiple iterations for one run, stops when outputted a final text content
         while (!ct.IsCancellationRequested)
         {
+            iteration++;
+            Log.Debug("[BACKGROUND] Agent {AgentId} iteration {Iteration}", agentId, iteration);
+
             var data = await LoadAgentRunData(agentId, chatId, ct);
             var prompt = await PreparePrompt(data);
 
@@ -82,24 +89,35 @@ public class AgentRunService
                     }
                     _dbContext.Messages.Add(message);
                     await _dbContext.SaveChangesAsync(ct);
+                    Log.Debug("[BACKGROUND] Saved message for agent {AgentId} to {ChatType}", agentId, data.Channel != null ? "channel" : "DM");
                 }
 
                 break;
             }
         }
+
+        Log.Information("[BACKGROUND] Agent run completed: {AgentId}, chat: {ChatId}, iterations: {Iteration}", agentId, chatId, iteration);
     }
 
     private async Task<AgentRunData> LoadAgentRunData(Guid agentId, Guid chatId, CancellationToken ct)
     {
+        Log.Debug("[BACKGROUND] Loading data for agent {AgentId}, chat {ChatId}", agentId, chatId);
+
         // load agent
         var agent = await _dbContext.Agents.FirstOrDefaultAsync(a => a.Id == agentId, ct);
         if (agent is null)
+        {
+            Log.Error("[BACKGROUND] Agent {AgentId} not found", agentId);
             throw new InvalidOperationException($"Agent with id {agentId} not found.");
+        }
 
         // load provider
         var provider = await _dbContext.Providers.FirstOrDefaultAsync(p => p.Id == agent.ProviderId, ct);
         if (provider is null)
+        {
+            Log.Error("[BACKGROUND] Provider {ProviderId} not found for agent {AgentId}", agent.ProviderId, agentId);
             throw new InvalidOperationException($"Provider with id {agent.ProviderId} not found.");
+        }
 
         // determine chat type & load chat
         var channel = await _dbContext.Channels.FirstOrDefaultAsync(c => c.Id == chatId, ct);
@@ -107,7 +125,10 @@ public class AgentRunService
         var isChannel = channel != null;
         var isDm = dm != null;
         if (!isChannel && !isDm)
+        {
+            Log.Error("[BACKGROUND] Chat {ChatId} not found", chatId);
             throw new InvalidOperationException($"Chat with id {chatId} not found.");
+        }
 
         // load all messages in the chat for context
         var chatMessages = isChannel
@@ -126,6 +147,9 @@ public class AgentRunService
         var tools = backendTools
             .Concat(frontEndTools)
             .ToList();
+
+        Log.Debug("[BACKGROUND] Loaded data for agent {AgentId}: {MessageCount} messages, {ThoughtCount} thoughts, {ToolCount} tools",
+            agentId, chatMessages.Count, llmThoughts.Count, tools.Count);
 
         return new AgentRunData
         {
@@ -180,6 +204,8 @@ User prompt:
 
     private async IAsyncEnumerable<AocAgentThought> CallLlm(AgentRunData data, string prompt, [EnumeratorCancellation] CancellationToken ct)
     {
+        Log.Debug("[BACKGROUND] Calling LLM for agent {AgentId} with model {Model}", data.Agent.Id, data.Agent.Info.Model);
+
         var providerFacade = _providerFactory.GetService(data.Provider.ProviderType);
         var chatClient = providerFacade.CreateChatClient(data.Provider, data.Agent.Info.Model, CancellationToken.None);
         var fClient = new FunctionInvokingChatClient(chatClient);
@@ -204,6 +230,7 @@ User prompt:
                     var now = DateTime.UtcNow;
 
                     var newMessage = AocAgentThought.FromContent(parsedContent, update.Role ?? ChatRole.Assistant, data.Agent.Info.Name, now);
+                    Log.Verbose("[BACKGROUND] LLM response: {Role} - {ContentType}", update.Role ?? ChatRole.Assistant, parsedContent.GetType().Name);
                     yield return newMessage;
                 }
             }
@@ -280,6 +307,11 @@ User prompt:
             .OfType<AocFunctionCallContent>()
             .ToList();
 
+        if (toolCalls.Count > 0)
+        {
+            Log.Debug("[BACKGROUND] Executing {ToolCount} tool calls for agent {AgentId}", toolCalls.Count, data.Agent.Id);
+        }
+
         // ToDo: Add support for parallel tool calls if needed. For now we execute them sequentially for simplicity.
         foreach (var toolCall in toolCalls)
         {
@@ -292,16 +324,19 @@ User prompt:
             {
                 // If the tool declaration is not found, we return an error result for this tool call.
                 // This can happen if the LLM calls a tool that is not declared in the prompt or if there is a typo in the tool name.
+                Log.Warning("[BACKGROUND] Tool {ToolName} not found in declarations", toolName);
                 yield return AocFunctionResultContent.ToolDoesNotExist(toolCall.CallId);
                 continue;
             }
 
             if (toolDeclaration.ToolType == ToolType.FrontEnd)
             {
+                Log.Debug("[BACKGROUND] Front-end tool {ToolName} called, returning empty result", toolName);
                 // For front-end tools, we can return an empty result immediately since the front-end will handle the rendering based on the tool declaration.
                 yield return AocFunctionResultContent.Empty(toolCall.CallId);
             }
 
+            Log.Debug("[BACKGROUND] Executing tool {ToolName}", toolName);
             var toolCallResult = await _toolExecutor.ExecuteTool(toolDeclaration, toolCall);
             yield return toolCallResult;
         }
