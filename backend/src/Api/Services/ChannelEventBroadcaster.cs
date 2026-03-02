@@ -18,6 +18,7 @@ public interface IChannelEventBroadcaster
     Task BroadcastToolCallEndAsync(Guid channelId, Guid agentId, string agentName, string toolName, string toolCallId, bool success = true, string? errorMessage = null);
     Task BroadcastTypingIndicatorAsync(Guid channelId, Guid agentId, string agentName, bool isTyping);
     Task BroadcastUserPresenceAsync(Guid userId, string username, bool isOnline);
+    Task BroadcastAgentStatusAsync(Guid channelId, Guid agentId, string agentName, string status);
 }
 
 /// <summary>
@@ -152,6 +153,21 @@ public class ChannelEventBroadcaster : IChannelEventBroadcaster
 
         // Broadcast to ALL connected clients (not channel-specific)
         return _hubContext.Clients.All.SendAsync("event", eventMessage);
+    }
+
+    public Task BroadcastAgentStatusAsync(Guid channelId, Guid agentId, string agentName, string status)
+    {
+        var eventMessage = new AgentStatusEvent
+        {
+            AgentId = agentId,
+            AgentName = agentName,
+            Status = status
+        };
+        var groupName = GetChannelGroupName(channelId);
+
+        _logger.LogDebug("Broadcasting AGENT_STATUS to channel {ChannelId} for agent {AgentName}: {Status}", channelId, agentName, status);
+
+        return _hubContext.Clients.Group(groupName).SendAsync("event", eventMessage);
     }
 
     private static string GetChannelGroupName(Guid channelId) => $"channel_{channelId}";

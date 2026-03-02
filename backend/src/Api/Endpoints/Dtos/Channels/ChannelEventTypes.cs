@@ -44,4 +44,9 @@ public static class ChannelEventTypes
     /// User presence status update (online/offline).
     /// </summary>
     public const string UserPresence = "USER_PRESENCE";
+
+    /// <summary>
+    /// Agent status update (Idle, Running, Paused, Failed).
+    /// </summary>
+    public const string AgentStatus = "AGENT_STATUS";
 }

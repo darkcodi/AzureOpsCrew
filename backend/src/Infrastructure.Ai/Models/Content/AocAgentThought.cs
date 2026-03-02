@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using AzureOpsCrew.Domain.Chats;
 using Microsoft.Extensions.AI;
 

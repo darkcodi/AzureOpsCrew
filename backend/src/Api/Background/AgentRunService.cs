@@ -44,6 +44,8 @@ public class AgentRunService
         {
             await _channelEventBroadcaster.BroadcastAgentThinkingStartAsync(data.Channel.Id, agentId, agentName);
             await _channelEventBroadcaster.BroadcastTypingIndicatorAsync(data.Channel.Id, agentId, agentName, isTyping: true);
+            // Broadcast "Running" status when agent starts processing
+            await _channelEventBroadcaster.BroadcastAgentStatusAsync(data.Channel.Id, agentId, agentName, "Running");
         }
 
         try
@@ -124,6 +126,16 @@ public class AgentRunService
                 Log.Warning("[BACKGROUND] Agent run hit max iterations: {AgentId}, chat: {ChatId}", agentId, chatId);
             }
         }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[BACKGROUND] Agent run failed: {AgentId}, chat: {ChatId}", agentId, chatId);
+            // Broadcast "Failed" status for channels
+            if (data.Channel != null && _channelEventBroadcaster != null)
+            {
+                await _channelEventBroadcaster.BroadcastAgentStatusAsync(data.Channel.Id, agentId, agentName, "Failed");
+            }
+            throw;
+        }
         finally
         {
             // Broadcast agent thinking end for channels
@@ -131,6 +143,8 @@ public class AgentRunService
             {
                 await _channelEventBroadcaster.BroadcastAgentThinkingEndAsync(data.Channel.Id, agentId, agentName);
                 await _channelEventBroadcaster.BroadcastTypingIndicatorAsync(data.Channel.Id, agentId, agentName, isTyping: false);
+                // Broadcast "Idle" status when agent completes
+                await _channelEventBroadcaster.BroadcastAgentStatusAsync(data.Channel.Id, agentId, agentName, "Idle");
             }
         }
 

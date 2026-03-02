@@ -110,6 +110,13 @@ export interface UserPresenceEvent extends ChannelEvent {
   isOnline: boolean
 }
 
+export interface AgentStatusEvent extends ChannelEvent {
+  type: "AGENT_STATUS"
+  agentId: string
+  agentName: string
+  status: "Idle" | "Running" | "Paused" | "Failed"
+}
+
 export type ChannelEventHandler = (event: ChannelEvent) => void
 
 /**
@@ -301,6 +308,13 @@ export class ChannelEventsClient {
    */
   onUserPresence(handler: (event: UserPresenceEvent) => void): void {
     this.on("USER_PRESENCE", handler as ChannelEventHandler)
+  }
+
+  /**
+   * Register a handler for agent status events.
+   */
+  onAgentStatus(handler: (event: AgentStatusEvent) => void): void {
+    this.on("AGENT_STATUS", handler as ChannelEventHandler)
   }
 
   /**

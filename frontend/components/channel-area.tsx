@@ -8,7 +8,7 @@ import { MessageInput } from "@/components/message-input"
 import { MemberList } from "@/components/member-list"
 import type { HumanMember } from "@/lib/humans"
 import { fetchWithErrorHandling } from "@/lib/fetch"
-import { ChannelEventsClient, type MessageAddedEvent, type AgentThinkingStartEvent, type AgentThinkingEndEvent, type AgentTextContentEvent, type TypingIndicatorEvent } from "@/lib/signalr-client"
+import { ChannelEventsClient, type MessageAddedEvent, type AgentThinkingStartEvent, type AgentThinkingEndEvent, type AgentTextContentEvent, type TypingIndicatorEvent, type AgentStatusEvent } from "@/lib/signalr-client"
 
 interface ChannelAreaProps {
   channel: Channel
@@ -38,6 +38,7 @@ export function ChannelArea({
   const [streamingAgentId, setStreamingAgentId] = useState<string | null>(null)
   const [streamingContent, setStreamingContent] = useState("")
   const [typingAgentIds, setTypingAgentIds] = useState<Set<string>>(new Set())
+  const [agentStatuses, setAgentStatuses] = useState<Map<string, string>>(new Map())
 
   // Track the SignalR client connection
   const signalRClientRef = useRef<ChannelEventsClient | null>(null)
@@ -122,6 +123,7 @@ export function ChannelArea({
       setStreamingAgentId(null)
       setStreamingContent("")
       setTypingAgentIds(new Set())
+      setAgentStatuses(new Map())
 
       // Create client but DON'T set ref yet - wait for start() to succeed first
       // This prevents cleanups from stopping a connection that's still negotiating
@@ -167,6 +169,15 @@ export function ChannelArea({
             return next
           })
         }
+      })
+
+      client.onAgentStatus((event: AgentStatusEvent) => {
+        console.log(`Agent ${event.agentName} status: ${event.status}`)
+        setAgentStatuses(prev => {
+          const next = new Map(prev)
+          next.set(event.agentId, event.status)
+          return next
+        })
       })
 
       // Final guard before starting connection
@@ -385,6 +396,7 @@ export function ChannelArea({
           onToggleAgent={handleToggleAgent}
           onOpenInDM={onOpenInDM}
           onKickMember={handleKickMember}
+          agentStatuses={agentStatuses}
         />
       )}
     </div>

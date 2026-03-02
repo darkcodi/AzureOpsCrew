@@ -86,6 +86,7 @@ interface MemberListProps {
   onToggleAgent: (agentId: string) => void | Promise<void>
   onOpenInDM?: (agentId: string, message?: string) => void
   onKickMember?: (agentId: string) => void | Promise<void>
+  agentStatuses?: Map<string, string>
 }
 
 function AgentRow({
@@ -95,6 +96,7 @@ function AgentRow({
   onOpenInDM,
   onCopyId,
   onKickClick,
+  agentStatuses,
 }: {
   agent: Agent
   isInRoom: boolean
@@ -102,6 +104,7 @@ function AgentRow({
   onOpenInDM?: (agentId: string, message?: string) => void
   onCopyId: (id: string) => void
   onKickClick?: (id: string, name: string) => void
+  agentStatuses?: Map<string, string>
 }) {
   const handleClick = () => {
     if (!onOpenInDM) onToggle()
@@ -132,7 +135,7 @@ function AgentRow({
           className="text-xs"
           style={{ color: "hsl(214, 5%, 55%)" }}
         >
-          {agent.status ?? "Idle"}
+          {agentStatuses?.get(agent.id) ?? agent.status ?? "Idle"}
         </span>
       </div>
     </div>
@@ -180,6 +183,7 @@ export function MemberList({
   onToggleAgent,
   onOpenInDM,
   onKickMember,
+  agentStatuses,
 }: MemberListProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [addAgentsOpen, setAddAgentsOpen] = useState(false)
@@ -268,6 +272,7 @@ export function MemberList({
                 onOpenInDM={onOpenInDM}
                 onCopyId={handleCopyId}
                 onKickClick={onKickMember ? handleKickClick : undefined}
+                agentStatuses={agentStatuses}
               />
             ))}
             {filteredAgents.length === 0 && agentsInRoom.length === 0 && (

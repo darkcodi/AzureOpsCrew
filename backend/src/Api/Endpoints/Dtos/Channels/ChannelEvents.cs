@@ -181,6 +181,26 @@ public class UserPresenceEvent : ChannelEvent
 }
 
 /// <summary>
+/// Event fired to update agent status.
+/// </summary>
+public class AgentStatusEvent : ChannelEvent
+{
+    public AgentStatusEvent()
+    {
+        Type = ChannelEventTypes.AgentStatus;
+    }
+
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
+
+    [JsonPropertyName("agentName")]
+    public string AgentName { get; set; } = string.Empty;
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+}
+
+/// <summary>
 /// JSON converter for channel event polymorphic deserialization.
 /// </summary>
 public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
@@ -215,6 +235,7 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
             ChannelEventTypes.ToolCallEnd => jsonElement.Deserialize(options.GetTypeInfo(typeof(ToolCallEndEvent))) as ToolCallEndEvent,
             ChannelEventTypes.TypingIndicator => jsonElement.Deserialize(options.GetTypeInfo(typeof(TypingIndicatorEvent))) as TypingIndicatorEvent,
             ChannelEventTypes.UserPresence => jsonElement.Deserialize(options.GetTypeInfo(typeof(UserPresenceEvent))) as UserPresenceEvent,
+            ChannelEventTypes.AgentStatus => jsonElement.Deserialize(options.GetTypeInfo(typeof(AgentStatusEvent))) as AgentStatusEvent,
             _ => throw new JsonException($"Unknown ChannelEvent type discriminator: '{discriminator}'")
         };
 
@@ -256,6 +277,9 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
                 break;
             case UserPresenceEvent userPresence:
                 JsonSerializer.Serialize(writer, userPresence, options.GetTypeInfo(typeof(UserPresenceEvent)));
+                break;
+            case AgentStatusEvent agentStatus:
+                JsonSerializer.Serialize(writer, agentStatus, options.GetTypeInfo(typeof(AgentStatusEvent)));
                 break;
             default:
                 throw new InvalidOperationException($"Unknown channel event type: {value.GetType().Name}");
