@@ -1,16 +1,14 @@
 using AzureOpsCrew.Api.Auth;
+using AzureOpsCrew.Api.Background;
 using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
 using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
-using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Infrastructure.Ai.Models;
-using AzureOpsCrew.Infrastructure.Ai.Workflows;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Temporalio.Client;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -170,7 +168,7 @@ public static class ChannelEndpoints
             CreateDirectMessageDto dto,
             HttpContext httpContext,
             AzureOpsCrewContext context,
-            IOptions<TemporalSettings> temporalSettings,
+            AgentScheduler agentScheduler,
             CancellationToken cancellationToken) =>
         {
             var channel = await context.Set<Channel>()
@@ -192,22 +190,11 @@ public static class ChannelEndpoints
             await context.SaveChangesAsync(cancellationToken);
 
             // Trigger all agents in the channel
-            var client = await TemporalClient.ConnectAsync(new(temporalSettings.Value.GetTarget()));
             foreach (var agentIdString in channel.AgentIds)
             {
                 if (Guid.TryParse(agentIdString, out var agentId))
                 {
-                    await AgentCoordinatorWorkflow.EnsureCoordinatorStartedAsync(client, agentId);
-                    var trigger = new TriggerEvent(
-                        TriggerId: Guid.NewGuid(),
-                        Source: TriggerSource.ChannelMessage,
-                        CreatedAt: DateTime.UtcNow,
-                        ThreadId: agentId,
-                        RunId: Guid.NewGuid(),
-                        Text: $"New message in channel '{channel.Name}'. Please check the message and respond accordingly. Use tool read_chat_messages to read the message content. ChatId: {channel.Id}, MessageId: {message.Id}"
-                    );
-                    var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.WorkflowId(agentId));
-                    await handle.SignalAsync(wf => wf.EnqueueAsync(trigger));
+                    agentScheduler.StartAgent(agentId, channel.Id);
                 }
             }
 

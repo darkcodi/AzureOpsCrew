@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AzureOpsCrew.Api.Background;
 using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
@@ -46,7 +47,7 @@ try
     builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddEmailVerification(builder.Configuration);
     builder.Services.AddAgentFactory(builder.Configuration);
-    builder.Services.AddTemporalSettings(builder.Configuration);
+    builder.Services.AddHostedService<AgentScheduler>();
 
     // Configure AG-UI
     builder.Services.AddHttpClient();

@@ -1,12 +1,8 @@
+using AzureOpsCrew.Api.Background;
 using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
-using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.Chats;
-using AzureOpsCrew.Infrastructure.Ai.Models;
-using AzureOpsCrew.Infrastructure.Ai.Workflows;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Temporalio.Client;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -133,7 +129,7 @@ public static class DmEndpoints
             Guid agentId,
             CreateDirectMessageDto dto,
             AzureOpsCrewContext context,
-            IOptions<TemporalSettings> temporalSettings,
+            AgentScheduler agentScheduler,
             CancellationToken cancellationToken) =>
         {
             var dm = await context.Dms
@@ -169,24 +165,7 @@ public static class DmEndpoints
             await context.ChatMessages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
-            var threadId = agentId;
-            var runId = Guid.NewGuid();
-            var client = await TemporalClient.ConnectAsync(new(temporalSettings.Value.GetTarget()));
-
-            await AgentCoordinatorWorkflow.EnsureCoordinatorStartedAsync(client, agentId);
-            // await CronTriggerWorkflow.EnsureCronScheduleAsync(client, agentId);
-
-            var trigger = new TriggerEvent(
-                TriggerId: Guid.NewGuid(),
-                Source: TriggerSource.DirectMessage,
-                CreatedAt: DateTime.UtcNow,
-                ThreadId: threadId,
-                RunId: runId,
-                Text: "You have a new DM (direct message) from the user. Please check the message and respond accordingly. Use tool read_chat_messages to read the message content and details. ChatId: " + dm.Id + ", MessageId: " + message.Id
-            );
-
-            var handle = client.GetWorkflowHandle<AgentCoordinatorWorkflow>(AgentCoordinatorWorkflow.WorkflowId(agentId));
-            await handle.SignalAsync(wf => wf.EnqueueAsync(trigger));
+            agentScheduler.StartAgent(agentId, userId);
 
             return Results.Created($"/api/users/{userId}/dms/agents/{agentId}/messages/{message.Id}", message);
         })

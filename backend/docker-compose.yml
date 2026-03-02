@@ -30,16 +30,12 @@ services:
       - Seeding__IsEnabled=${SEEDING_ENABLED:-true}
       - Seeding__AzureFoundrySeed__ApiEndpoint=${AZURE_OPENAI_API_ENDPOINT:-}
       - Seeding__AzureFoundrySeed__Key=${AZURE_OPENAI_API_KEY:-}
-      - Temporal__Host=temporal
-      - Temporal__Port=7233
     ports:
       - "45000:80"
     restart: on-failure
     depends_on:
       sqlserver:
         condition: service_healthy
-      temporal:
-        condition: service_started
 
   frontend:
     image: ${DOCKER_REGISTRY-}frontend
@@ -53,15 +49,6 @@ services:
     restart: on-failure
     depends_on:
       - api
-
-  temporal:
-    image: temporalio/temporal:1.5.1
-    container_name: temporal
-    command: ["server", "start-dev", "--ip", "0.0.0.0", "--ui-port", "8080"]
-    ports:
-      - "48080:8080" # Temporal Web UI port
-      - "47233:7233" # Temporal gRPC port
-    restart: on-failure
 
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
