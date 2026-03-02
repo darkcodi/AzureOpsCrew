@@ -142,7 +142,8 @@ export class ChannelEventsClient {
     }
 
     // Build the connection URL
-    const hubUrl = `/api/channels/${this.channelId}/events`
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL ?? "http://localhost:5000"
+    const hubUrl = `${backendUrl}/channels/${this.channelId}/events`
 
     this.connection = new signalR!.HubConnectionBuilder()
       .withUrl(hubUrl, {

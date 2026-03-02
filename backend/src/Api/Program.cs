@@ -57,6 +57,18 @@ try
     // Configure SignalR
     builder.Services.AddSignalR();
 
+    // Configure CORS for SignalR
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowFrontend", policy =>
+        {
+            policy.SetIsOriginAllowed(_ => true)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        });
+    });
+
     // Enable Application Insights
     if (bool.TryParse(builder.Configuration["ApplicationInsights:Enable"], out var enableApplicationInsights)
         && enableApplicationInsights)
@@ -90,6 +102,7 @@ try
     }
 
     app.UseHttpsRedirection();
+    app.UseCors("AllowFrontend");
     app.UseAuthentication();
     app.UseAuthorization();
 
