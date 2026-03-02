@@ -3,7 +3,7 @@ using FluentMigrator;
 namespace AzureOpsCrew.Infrastructure.Db.Migrations;
 
 [Migration(2026_03_02_10_00_00, "ChangeUserIdToGuid")]
-public class M024_ChangeUserIdToGuid : Migration
+public class M022_ChangeUserIdToGuid : Migration
 {
     public override void Up()
     {

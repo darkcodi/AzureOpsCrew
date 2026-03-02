@@ -3,7 +3,7 @@ using FluentMigrator;
 namespace AzureOpsCrew.Infrastructure.Db.Migrations;
 
 [Migration(2026_03_03_10_00_00, "UnifyParticipantId")]
-public class M025_UnifyParticipantId : Migration
+public class M023_UnifyParticipantId : Migration
 {
     public override void Up()
     {
