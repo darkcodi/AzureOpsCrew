@@ -113,6 +113,7 @@ public static class DmEndpoints
                 await context.SaveChangesAsync(cancellationToken);
             }
 
+            var user = await context.Users.SingleOrDefaultAsync(u => u.Id == userId, cancellationToken);
             var message = new Message
             {
                 Id = Guid.NewGuid(),
@@ -120,6 +121,7 @@ public static class DmEndpoints
                 PostedAt = DateTime.UtcNow,
                 UserId = userId,
                 DmId = dm.Id,
+                AuthorName = user?.DisplayName,
             };
             await context.Messages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
@@ -160,6 +162,7 @@ public static class DmEndpoints
                 await context.SaveChangesAsync(cancellationToken);
             }
 
+            var user = await context.Users.SingleOrDefaultAsync(u => u.Id == userId, cancellationToken);
             var message = new Message
             {
                 Id = Guid.NewGuid(),
@@ -167,6 +170,7 @@ public static class DmEndpoints
                 PostedAt = DateTime.UtcNow,
                 UserId = userId,
                 DmId = dm.Id,
+                AuthorName = user?.DisplayName,
             };
             await context.Messages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);

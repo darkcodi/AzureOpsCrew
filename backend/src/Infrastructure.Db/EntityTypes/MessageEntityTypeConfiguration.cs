@@ -20,6 +20,8 @@ public sealed class MessageEntityTypeConfiguration : IEntityTypeConfiguration<Me
         builder.Property(m => m.PostedAt)
                .IsRequired();
 
+        builder.Property(m => m.AuthorName);
+
         // Sender: exactly one of AgentId or UserId should be set
         builder.Property(m => m.AgentId);
 

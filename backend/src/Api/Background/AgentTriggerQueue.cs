@@ -9,7 +9,10 @@ public class AgentTriggerQueue
     {
         lock (_lock)
         {
-            _pendingTriggers.Add((agentId, chatId));
+            if (!_pendingTriggers.Contains((agentId, chatId)))
+            {
+                _pendingTriggers.Add((agentId, chatId));
+            }
         }
     }
 

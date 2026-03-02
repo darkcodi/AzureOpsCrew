@@ -178,6 +178,7 @@ public static class ChannelEndpoints
                 return Results.NotFound();
 
             var senderId = httpContext.User.GetRequiredUserId();
+            var user = await context.Users.SingleOrDefaultAsync(u => u.Id == senderId, cancellationToken);
             var message = new Message
             {
                 Id = Guid.NewGuid(),
@@ -185,6 +186,7 @@ public static class ChannelEndpoints
                 PostedAt = DateTime.UtcNow,
                 UserId = senderId,
                 ChannelId = channel.Id,
+                AuthorName = user?.DisplayName,
             };
             await context.Messages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);

@@ -33,8 +33,9 @@ public class AgentRunService
         Log.Information("[BACKGROUND] Starting agent run: {AgentId}, chat: {ChatId}", agentId, chatId);
 
         var iteration = 0;
+        const int maxIterations = 50;
         // multiple iterations for one run, stops when outputted a final text content
-        while (!ct.IsCancellationRequested)
+        while (!ct.IsCancellationRequested && iteration < maxIterations)
         {
             iteration++;
             Log.Debug("[BACKGROUND] Agent {AgentId} iteration {Iteration}", agentId, iteration);
@@ -48,7 +49,7 @@ public class AgentRunService
                 newAgentThoughts.Add(agentThought);
             }
 
-            await SaveRawLlmHttpCall(agentId, newAgentThoughts, ct);
+            await SaveRawLlmHttpCall(agentId, chatId, newAgentThoughts, ct);
             ConcatTextContent(newAgentThoughts);
             await SaveAgentThoughts(agentId, chatId, newAgentThoughts, ct);
 
@@ -77,6 +78,7 @@ public class AgentRunService
                         Text = lastTextContent.Text,
                         PostedAt = DateTime.UtcNow,
                         AgentId = agentId,
+                        AuthorName = data.Agent.Info.Name,
                     };
 
                     if (data.Channel != null)
@@ -94,6 +96,11 @@ public class AgentRunService
 
                 break;
             }
+        }
+
+        if (iteration >= maxIterations)
+        {
+            Log.Warning("[BACKGROUND] Agent run hit max iterations: {AgentId}, chat: {ChatId}", agentId, chatId);
         }
 
         Log.Information("[BACKGROUND] Agent run completed: {AgentId}, chat: {ChatId}, iterations: {Iteration}", agentId, chatId, iteration);
@@ -239,7 +246,7 @@ User prompt:
         }
     }
 
-    private async Task SaveRawLlmHttpCall(Guid agentId, List<AocAgentThought> newMessages, CancellationToken ct)
+    private async Task SaveRawLlmHttpCall(Guid agentId, Guid chatId, List<AocAgentThought> newMessages, CancellationToken ct)
     {
         // Separate out messages related to HTTP client calls
         const string httpClientRole = "HTTP_CLIENT";
@@ -255,7 +262,7 @@ User prompt:
         {
             Id = Guid.NewGuid(),
             AgentId = agentId,
-            ThreadId = agentId,
+            ThreadId = chatId,
             RunId = _runId,
             HttpRequest = (httpRequestMessage?.ContentDto?.ToAocAiContent() as AocTextContent)?.Text ?? "<empty>",
             HttpResponse = (httpResponseMessage?.ContentDto?.ToAocAiContent() as AocTextContent)?.Text ?? "<empty>",

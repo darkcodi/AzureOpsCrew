@@ -92,7 +92,6 @@ try
     // Map endpoints
     app.MapAuthEndpoints();
     app.MapUsersEndpoints();
-    app.MapTestEndpoints();
     app.MapAgentEndpoints();
     app.MapChannelEndpoints();
     app.MapDmEndpoints();
