@@ -45,6 +45,10 @@ export function ChannelArea({
   const currentChannelIdRef = useRef(channel.id)
   // Track whether messages are currently being loaded to prevent duplicate requests
   const isLoadingMessagesRef = useRef(false)
+  // Track when a teardown is in progress to prevent race conditions with new connections
+  const isTearingDownRef = useRef(false)
+  // Track the current connection instance ID to prevent stale cleanups from stopping new connections
+  const connectionInstanceIdRef = useRef(0)
 
   const activeAgents = allAgents.filter((a) => channel.agentIds.includes(a.id))
 
@@ -70,12 +74,29 @@ export function ChannelArea({
 
   // Set up SignalR connection when channel changes
   useEffect(() => {
-    // Capture channel ID for this effect instance
+    // Local variable for THIS setup attempt - each mount has its own closure
+    // This is key for handling React StrictMode's double-mount correctly
+    let isCancelled = false
+
     const channelIdForEffect = channel.id
     currentChannelIdRef.current = channelIdForEffect
 
+    // Generate a unique instance ID for this effect run
+    const instanceId = ++connectionInstanceIdRef.current
+
     const setupConnection = async () => {
-      // Stop previous connection
+      // Wait for any ongoing teardown to complete before starting new connection
+      while (isTearingDownRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      }
+
+      // Abort guard: check if THIS setup was cancelled while waiting for teardown
+      if (isCancelled) {
+        console.log("Connection setup cancelled during teardown wait")
+        return
+      }
+
+      // Stop previous connection (using ref for shared state)
       if (signalRClientRef.current) {
         try {
           await signalRClientRef.current.stop()
@@ -83,6 +104,12 @@ export function ChannelArea({
           console.error("Error stopping SignalR connection:", err)
         }
         signalRClientRef.current = null
+      }
+
+      // Abort guard: check if THIS setup was cancelled during stop
+      if (isCancelled) {
+        console.log("Connection setup aborted, returning early")
+        return
       }
 
       // Guard: only proceed if we haven't switched channels again
@@ -96,8 +123,9 @@ export function ChannelArea({
       setStreamingContent("")
       setTypingAgentIds(new Set())
 
+      // Create client but DON'T set ref yet - wait for start() to succeed first
+      // This prevents cleanups from stopping a connection that's still negotiating
       const client = new ChannelEventsClient(channel.id)
-      signalRClientRef.current = client
 
       // Register event handlers - use functional update to avoid stale closures and deduplicate
       client.onMessageAdded((event: MessageAddedEvent) => {
@@ -120,11 +148,7 @@ export function ChannelArea({
           next.delete(event.agentId)
           return next
         })
-        // Clear streaming state when agent finishes thinking
-        if (streamingAgentId === event.agentId) {
-          setStreamingAgentId(null)
-          setStreamingContent("")
-        }
+        // Note: streaming state resets are handled elsewhere when the final message arrives
       })
 
       client.onAgentTextContent((event: AgentTextContentEvent) => {
@@ -146,8 +170,8 @@ export function ChannelArea({
       })
 
       // Final guard before starting connection
-      if (currentChannelIdRef.current !== channelIdForEffect) {
-        console.log("Channel changed before start, aborting connection")
+      if (isCancelled || currentChannelIdRef.current !== channelIdForEffect) {
+        console.log("Connection setup aborted before start")
         return
       }
 
@@ -155,19 +179,42 @@ export function ChannelArea({
       try {
         await client.start()
         console.log(`SignalR connected to channel ${channel.id}`)
+
+        // Only set the ref AFTER start() succeeds and we're still the current instance
+        // This prevents cleanups from stopping a connection that's still negotiating
+        if (isCancelled || connectionInstanceIdRef.current !== instanceId) {
+          // We were cancelled or a newer instance started while we were connecting
+          client.stop().catch(err => console.error("Error stopping cancelled connection:", err))
+          return
+        }
+        signalRClientRef.current = client
       } catch (err) {
-        console.error(`Failed to connect SignalR for channel ${channel.id}:`, err)
+        // Only log error if this wasn't an expected abort
+        if (!isCancelled) {
+          console.error(`Failed to connect SignalR for channel ${channel.id}:`, err)
+        }
       }
     }
 
     setupConnection()
 
-    // Cleanup on unmount or channel change - synchronous cleanup
+    // Cleanup on unmount or channel change
     return () => {
-      if (signalRClientRef.current) {
-        signalRClientRef.current.stop().catch(err =>
-          console.error("Error stopping SignalR connection:", err)
-        )
+      // Set the local variable - cancels THIS setup attempt
+      isCancelled = true
+      isTearingDownRef.current = true
+
+      // Only stop the connection if it's still the one we created (check instance ID)
+      // This prevents newer instances from being stopped by older cleanups
+      if (signalRClientRef.current && connectionInstanceIdRef.current === instanceId) {
+        signalRClientRef.current.stop()
+          .catch(err => console.error("Error stopping SignalR connection:", err))
+          .finally(() => {
+            isTearingDownRef.current = false
+          })
+      } else {
+        // Not our connection anymore, just clear the teardown flag
+        isTearingDownRef.current = false
       }
     }
   }, [channel.id, toChatMessage])
