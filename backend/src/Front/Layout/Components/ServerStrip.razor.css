@@ -70,6 +70,16 @@
     color: #fff;
 }
 
+.server-icon.logout-icon {
+    background-color: hsl(228, 6%, 22%);
+    color: hsl(210, 3%, 80%);
+}
+
+.server-icon.logout-icon .logout-icon-svg {
+    display: block;
+    flex-shrink: 0;
+}
+
 .server-separator {
     width: 24px;
     height: 2px;
