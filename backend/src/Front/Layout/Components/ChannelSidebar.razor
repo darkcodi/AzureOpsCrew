@@ -2,9 +2,8 @@
 @inject NavigationManager NavigationManager
 
 <div class="channel-sidebar">
-    <div class="channel-header" @onclick="ToggleServerMenu">
-        <span class="server-name">@GetServerName()</span>
-        <span class="dropdown-icon">▼</span>
+    <div class="channel-header">
+        <span class="server-name">Main</span>
     </div>
 
     <div class="channel-list">
@@ -69,11 +68,6 @@
     private bool textChannelsExpanded = true;
     private bool voiceChannelsExpanded = true;
 
-    private string GetServerName()
-    {
-        return ChatState.SelectedServer?.Name ?? "Select a Server";
-    }
-
     private string IsChannelSelected(ChannelDto channel) => ChatState.SelectedChannel?.Id == channel.Id ? "active" : "";
 
     private void SelectChannel(ChannelDto channel)
@@ -84,11 +78,6 @@
     private void ToggleTextChannels() => textChannelsExpanded = !textChannelsExpanded;
 
     private void ToggleVoiceChannels() => voiceChannelsExpanded = !voiceChannelsExpanded;
-
-    private void ToggleServerMenu()
-    {
-        // TODO: Show server menu
-    }
 
     private string GetUserInitials()
     {
