@@ -3,7 +3,6 @@
 @layout SimpleLayout
 @inject AuthenticationService AuthService
 @inject AuthState AuthState
-@inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 
 <main class="login-container">
@@ -13,41 +12,41 @@
             <a href="/signup" class="signup-button">Sign up</a>
         </div>
 
-        <EditForm Model="@loginModel" OnValidSubmit="@HandleLoginSubmit">
+        <EditForm Model="@_loginModel" OnValidSubmit="@HandleLoginSubmit">
             <DataAnnotationsValidator />
 
             <div class="form-group">
                 <label for="email">
                     <span class="label-text">Email</span>
                 </label>
-                <InputText Id="email" @bind-Value="loginModel.Email" class="form-input" autocomplete="email" />
-                <ValidationMessage For="() => loginModel.Email" />
+                <InputText Id="email" @bind-Value="_loginModel.Email" class="form-input" autocomplete="email" />
+                <ValidationMessage For="() => _loginModel.Email" />
             </div>
 
             <div class="form-group">
                 <label for="password">
                     <span class="label-text">Password</span>
                 </label>
-                <InputText Id="password" type="password" @bind-Value="loginModel.Password" class="form-input" autocomplete="current-password" />
-                <ValidationMessage For="() => loginModel.Password" />
+                <InputText Id="password" type="password" @bind-Value="_loginModel.Password" class="form-input" autocomplete="current-password" />
+                <ValidationMessage For="() => _loginModel.Password" />
             </div>
 
-            @if (!string.IsNullOrEmpty(errorMessage))
+            @if (!string.IsNullOrEmpty(_errorMessage))
             {
-                <p class="error-message">@errorMessage</p>
+                <p class="error-message">@_errorMessage</p>
             }
 
-            <button type="submit" disabled="@isSubmitting" class="submit-button">
-                @(isSubmitting ? "Signing in..." : "Sign in")
+            <button type="submit" disabled="@_isSubmitting" class="submit-button">
+                @(_isSubmitting ? "Signing in..." : "Sign in")
             </button>
         </EditForm>
     </section>
 </main>
 
 @code {
-    private LoginModel loginModel = new();
-    private bool isSubmitting = false;
-    private string? errorMessage = null;
+    private LoginModel _loginModel = new();
+    private bool _isSubmitting = false;
+    private string? _errorMessage = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -69,22 +68,22 @@
 
     private async Task HandleLoginSubmit()
     {
-        if (isSubmitting) return;
+        if (_isSubmitting) return;
 
-        isSubmitting = true;
-        errorMessage = null;
+        _isSubmitting = true;
+        _errorMessage = null;
 
-        Log.Information("Login attempt started for email: {Email}", loginModel.Email);
+        Log.Information("Login attempt started for email: {Email}", _loginModel.Email);
 
         try
         {
-            var response = await AuthService.LoginAsync(loginModel.Email, loginModel.Password);
+            var response = await AuthService.LoginAsync(_loginModel.Email, _loginModel.Password);
 
             if (response != null && response.Error == null && response.User != null && !string.IsNullOrEmpty(response.AccessToken))
             {
                 // Successful login
                 Log.Information("Login successful for email: {Email}, UserId: {UserId}, ExpiresAt: {ExpiresAtUtc}",
-                    loginModel.Email, response.User?.Id.ToString() ?? "unknown", response.ExpiresAtUtc);
+                    _loginModel.Email, response.User?.Id.ToString() ?? "unknown", response.ExpiresAtUtc);
 
                 await AuthState.LoginAsync(response.AccessToken, response.ExpiresAtUtc, response.User!);
 
@@ -96,19 +95,19 @@
             else
             {
                 var error = response?.Error ?? "Login failed";
-                errorMessage = error;
-                Log.Warning("Login failed for email: {Email}, Reason: {Error}", loginModel.Email, error);
+                _errorMessage = error;
+                Log.Warning("Login failed for email: {Email}, Reason: {Error}", _loginModel.Email, error);
             }
         }
         catch (Exception ex)
         {
-            errorMessage = "Unable to login. Please try again.";
-            Log.Error(ex, "Login exception for email: {Email}", loginModel.Email);
+            _errorMessage = "Unable to login. Please try again.";
+            Log.Error(ex, "Login exception for email: {Email}", _loginModel.Email);
         }
         finally
         {
-            isSubmitting = false;
-            Log.Information("Login flow completed for email: {Email}, IsSubmitting: {IsSubmitting}", loginModel.Email, isSubmitting);
+            _isSubmitting = false;
+            Log.Information("Login flow completed for email: {Email}, IsSubmitting: {IsSubmitting}", _loginModel.Email, _isSubmitting);
         }
     }
 
