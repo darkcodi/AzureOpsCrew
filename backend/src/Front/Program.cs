@@ -24,7 +24,7 @@ try
     });
 
     // Configure HttpClient with API base URL
-    var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:5000";
+    var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5000";
     builder.Services.AddScoped(sp => new HttpClient
     {
         BaseAddress = new Uri(apiBaseUrl)

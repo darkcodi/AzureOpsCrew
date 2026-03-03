@@ -41,7 +41,7 @@ public class SignalRService : IAsyncDisposable
             return;
         }
 
-        var baseUrl = _configuration["ApiBaseUrl"] ?? "https://localhost:5282";
+        var baseUrl = _configuration["ApiBaseUrl"] ?? "http://localhost:5000";
         var hubUrl = $"{baseUrl}/channels/events";
 
         _hubConnection = new HubConnectionBuilder()
