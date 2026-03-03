@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Front.Models;
+using Serilog;
 
 namespace Front.Services;
 
@@ -21,7 +22,7 @@ public class AgentService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching agents: {ex.Message}");
+            Log.Error($"Error fetching agents: {ex.Message}");
             return [];
         }
     }
@@ -34,7 +35,7 @@ public class AgentService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching agent {id}: {ex.Message}");
+            Log.Error($"Error fetching agent {id}: {ex.Message}");
             return null;
         }
     }
@@ -63,7 +64,7 @@ public class AgentService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error creating agent: {ex.Message}");
+            Log.Error($"Error creating agent: {ex.Message}");
             return null;
         }
     }
@@ -92,7 +93,7 @@ public class AgentService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error updating agent: {ex.Message}");
+            Log.Error($"Error updating agent: {ex.Message}");
             return null;
         }
     }
@@ -106,7 +107,7 @@ public class AgentService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error deleting agent {id}: {ex.Message}");
+            Log.Error($"Error deleting agent {id}: {ex.Message}");
             return false;
         }
     }

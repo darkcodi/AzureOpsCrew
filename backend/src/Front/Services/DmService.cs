@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Front.Models;
+using Serilog;
 
 namespace Front.Services;
 
@@ -21,7 +22,7 @@ public class DmService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching DMs: {ex.Message}");
+            Log.Error($"Error fetching DMs: {ex.Message}");
             return [];
         }
     }
@@ -35,7 +36,7 @@ public class DmService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching messages for DM {dmId}: {ex.Message}");
+            Log.Error($"Error fetching messages for DM {dmId}: {ex.Message}");
             return [];
         }
     }
@@ -49,7 +50,7 @@ public class DmService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching messages for user DM {otherUserId}: {ex.Message}");
+            Log.Error($"Error fetching messages for user DM {otherUserId}: {ex.Message}");
             return [];
         }
     }
@@ -63,7 +64,7 @@ public class DmService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching messages for agent DM {agentId}: {ex.Message}");
+            Log.Error($"Error fetching messages for agent DM {agentId}: {ex.Message}");
             return [];
         }
     }
@@ -84,7 +85,7 @@ public class DmService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error posting user DM message: {ex.Message}");
+            Log.Error($"Error posting user DM message: {ex.Message}");
             return null;
         }
     }
@@ -105,7 +106,7 @@ public class DmService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error posting agent DM message: {ex.Message}");
+            Log.Error($"Error posting agent DM message: {ex.Message}");
             return null;
         }
     }

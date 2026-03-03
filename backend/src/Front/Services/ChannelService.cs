@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Front.Models;
+using Serilog;
 
 namespace Front.Services;
 
@@ -21,7 +22,7 @@ public class ChannelService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching channels: {ex.Message}");
+            Log.Error($"Error fetching channels: {ex.Message}");
             return [];
         }
     }
@@ -34,7 +35,7 @@ public class ChannelService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching channel {id}: {ex.Message}");
+            Log.Error($"Error fetching channel {id}: {ex.Message}");
             return null;
         }
     }
@@ -48,7 +49,7 @@ public class ChannelService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching messages for channel {channelId}: {ex.Message}");
+            Log.Error($"Error fetching messages for channel {channelId}: {ex.Message}");
             return [];
         }
     }
@@ -69,7 +70,7 @@ public class ChannelService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error posting message to channel {channelId}: {ex.Message}");
+            Log.Error($"Error posting message to channel {channelId}: {ex.Message}");
             return null;
         }
     }
@@ -85,7 +86,7 @@ public class ChannelService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error creating channel: {ex.Message}");
+            Log.Error($"Error creating channel: {ex.Message}");
             return false;
         }
     }
@@ -99,7 +100,7 @@ public class ChannelService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error deleting channel {id}: {ex.Message}");
+            Log.Error($"Error deleting channel {id}: {ex.Message}");
             return false;
         }
     }

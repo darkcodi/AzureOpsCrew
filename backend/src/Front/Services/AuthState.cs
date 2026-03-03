@@ -1,5 +1,6 @@
 using Microsoft.JSInterop;
 using Front.Models;
+using Serilog;
 
 namespace Front.Services;
 
@@ -107,7 +108,7 @@ public class AuthState
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error persisting auth state to localStorage: {ex.Message}");
+            Log.Error($"Error persisting auth state to localStorage: {ex.Message}");
         }
     }
 
@@ -126,7 +127,7 @@ public class AuthState
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error clearing auth state from localStorage: {ex.Message}");
+            Log.Error($"Error clearing auth state from localStorage: {ex.Message}");
         }
     }
 
@@ -166,7 +167,7 @@ public class AuthState
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading auth state from localStorage: {ex.Message}");
+            Log.Error($"Error loading auth state from localStorage: {ex.Message}");
         }
     }
 }

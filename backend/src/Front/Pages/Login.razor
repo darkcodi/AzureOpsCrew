@@ -1,4 +1,5 @@
 @page "/login"
+@using Serilog
 @layout SimpleLayout
 @inject AuthenticationService AuthService
 @inject AuthState AuthState
@@ -89,7 +90,7 @@
         catch (Exception ex)
         {
             errorMessage = "Unable to login. Please try again.";
-            Console.WriteLine($"Login error: {ex.Message}");
+            Log.Error($"Login error: {ex.Message}");
         }
         finally
         {

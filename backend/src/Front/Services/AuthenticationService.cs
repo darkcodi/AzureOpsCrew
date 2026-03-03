@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Front.Models;
+using Serilog;
 
 namespace Front.Services;
 
@@ -45,12 +46,12 @@ public class AuthenticationService
         }
         catch (HttpRequestException ex)
         {
-            Console.WriteLine($"HTTP error during login: {ex.Message}");
+            Log.Error($"HTTP error during login: {ex.Message}");
             return new LoginResponse { Error = "Unable to connect to server" };
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error during login: {ex.Message}");
+            Log.Error($"Error during login: {ex.Message}");
             return new LoginResponse { Error = "An unexpected error occurred" };
         }
     }

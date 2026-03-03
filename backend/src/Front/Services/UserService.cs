@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Front.Models;
+using Serilog;
 
 namespace Front.Services;
 
@@ -35,7 +36,7 @@ public class UserService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching users: {ex.Message}");
+            Log.Error($"Error fetching users: {ex.Message}");
             return [];
         }
     }
@@ -48,7 +49,7 @@ public class UserService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching user {id}: {ex.Message}");
+            Log.Error($"Error fetching user {id}: {ex.Message}");
             return null;
         }
     }
