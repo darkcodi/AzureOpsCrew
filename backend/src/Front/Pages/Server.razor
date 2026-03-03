@@ -35,9 +35,10 @@
     [Parameter]
     public string? ServerId { get; set; }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         SetServerFromRoute();
+        await ChatState.LoadChannels(ChannelService);
         ChatState.OnChange += OnStateChanged;
     }
 

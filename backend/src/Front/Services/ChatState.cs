@@ -9,10 +9,11 @@ public class ChatState
 {
     private UserDto? _currentUser;
     private ServerInfoDto? _selectedServer = ServerInfoDto.GetDefaultServers().LastOrDefault();
-    private ChannelDto? _selectedChannel = ChannelDto.GetDefaultChannels().FirstOrDefault();
+    private ChannelDto? _selectedChannel = null;
     private DmChannelDto? _selectedDm;
     private List<ServerInfoDto> _servers = ServerInfoDto.GetDefaultServers();
-    private List<ChannelDto> _channels = ChannelDto.GetDefaultChannels();
+    private List<ChannelDto> _channels = [];
+    private bool _channelsLoaded = false;
     private List<DmChannelDto> _dms = [];
     private List<AgentDto> _agents = [];
     private Dictionary<Guid, List<ChatMessageDto>> _channelMessages = [];
@@ -184,4 +185,21 @@ public class ChatState
 
     // Get online users (placeholder for now)
     public List<UserDto> GetOnlineUsers() => []; // TODO: Implement when presence is available
+
+    // Initialize channels from backend
+    public async Task LoadChannels(ChannelService channelService)
+    {
+        if (_channelsLoaded) return;
+
+        var channels = await channelService.GetChannelsAsync();
+        _channels = channels;
+
+        if (_channels.Any())
+        {
+            _selectedChannel = _channels.First();
+        }
+
+        _channelsLoaded = true;
+        OnStateChanged();
+    }
 }
