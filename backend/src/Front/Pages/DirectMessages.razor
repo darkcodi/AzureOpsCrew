@@ -1,0 +1,64 @@
+@page "/dm"
+@page "/dm/{dmId}"
+
+@using Front.Layout
+@using Front.Layout.Components
+@inject ChatState ChatState
+@inject NavigationManager Navigation
+
+<MainLayout>
+    <ServerStrip>
+        <Front.Layout.Components.ServerStrip />
+    </ServerStrip>
+    <LeftSidebar>
+        <Front.Layout.Components.LeftSidebar Title="Direct Messages">
+            <DmList />
+        </Front.Layout.Components.LeftSidebar>
+    </LeftSidebar>
+    <MainArea>
+        <ChatArea />
+    </MainArea>
+    <RightSidebar>
+        <Front.Layout.Components.RightSidebar Title="Members">
+            <MembersList />
+        </Front.Layout.Components.RightSidebar>
+    </RightSidebar>
+</MainLayout>
+
+@code {
+    [Parameter]
+    public string? DmId { get; set; }
+
+    private readonly Guid _dmServerId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+    protected override void OnInitialized()
+    {
+        // Set the DM server when navigating to /dm
+        SetDmServer();
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Handle dmId from route if provided
+        SetDmServer();
+    }
+
+    private void SetDmServer()
+    {
+        var dmServer = ChatState.Servers.FirstOrDefault(s => s.Id == _dmServerId);
+        if (dmServer != null)
+        {
+            ChatState.SelectedServer = dmServer;
+        }
+
+        // If dmId is provided, select that DM
+        if (!string.IsNullOrEmpty(DmId) && Guid.TryParse(DmId, out var parsedDmId))
+        {
+            var dm = ChatState.Dms.FirstOrDefault(d => d.Id == parsedDmId);
+            if (dm != null)
+            {
+                ChatState.SelectedDm = dm;
+            }
+        }
+    }
+}

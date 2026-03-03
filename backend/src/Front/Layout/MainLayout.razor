@@ -1,146 +1,27 @@
 @inherits LayoutComponentBase
-@inject ChatState ChatState
-@inject SignalRService SignalRService
-@inject UserService UserService
-@inject ChannelService ChannelService
-@inject AgentService AgentService
-@implements IAsyncDisposable
 
 <div class="discord-layout">
-    <ServerStrip />
-    @if (ChatState.SelectedServer != null && ChatState.SelectedServer.Name == "Direct Messages")
+    @if (ServerStrip != null)
     {
-        <LeftSidebar Title="Direct Messages">
-            <DmList />
-        </LeftSidebar>
+        @ServerStrip
     }
-    else
+    @if (LeftSidebar != null)
     {
-        <LeftSidebar Title="Main">
-            <ChannelsList />
-            <UserPanel />
-        </LeftSidebar>
+        @LeftSidebar
     }
-    <ChatArea />
-    <RightSidebar Title="Members">
-        <MembersList />
-    </RightSidebar>
+    @if (MainArea != null)
+    {
+        @MainArea
+    }
+    @if (RightSidebar != null)
+    {
+        @RightSidebar
+    }
 </div>
 
 @code {
-    private bool _isInitialized = false;
-
-    protected override async Task OnInitializedAsync()
-    {
-        if (_isInitialized) return;
-
-        // Load current user
-        var currentUser = await UserService.GetCurrentUserAsync();
-        if (currentUser != null)
-        {
-            ChatState.CurrentUser = currentUser;
-        }
-
-        // Load channels and agents
-        await LoadDataAsync();
-
-        // Connect to SignalR
-        await SignalRService.StartAsync();
-
-        // Subscribe to SignalR events
-        SignalRService.MessageAdded += OnMessageAdded;
-        SignalRService.AgentThinkingStart += OnAgentThinkingStart;
-        SignalRService.AgentThinkingEnd += OnAgentThinkingEnd;
-        SignalRService.AgentTextContent += OnAgentTextContent;
-        SignalRService.TypingIndicator += OnTypingIndicator;
-
-        _isInitialized = true;
-    }
-
-    private async Task LoadDataAsync()
-    {
-        var channels = await ChannelService.GetChannelsAsync();
-        ChatState.Channels = channels;
-
-        var agents = await AgentService.GetAgentsAsync();
-        ChatState.Agents = agents;
-
-        // Populate agents in channels
-        foreach (var channel in ChatState.Channels)
-        {
-            var agentIds = channel.AgentIds
-                .Select(id => Guid.TryParse(id, out var guid) ? guid : (Guid?)null)
-                .Where(g => g.HasValue)
-                .Select(g => g!.Value)
-                .ToHashSet();
-
-            channel.Agents = ChatState.Agents.Where(a => agentIds.Contains(a.Id)).ToList();
-        }
-
-        // Select first channel if none selected
-        if (ChatState.SelectedChannel == null && ChatState.Channels.Count > 0)
-        {
-            ChatState.SelectedChannel = ChatState.Channels[0];
-        }
-    }
-
-    private Task OnMessageAdded(ChatMessageDto message)
-    {
-        if (message.ChannelId.HasValue)
-        {
-            ChatState.AddMessage(message.ChannelId.Value, message, isDm: false);
-        }
-        else if (message.DmId.HasValue)
-        {
-            ChatState.AddMessage(message.DmId.Value, message, isDm: true);
-        }
-        return Task.CompletedTask;
-    }
-
-    private Task OnAgentThinkingStart(Guid agentId, string agentName)
-    {
-        var agent = ChatState.Agents.FirstOrDefault(a => a.Id == agentId);
-        if (agent != null)
-        {
-            agent.Status = "Thinking";
-        }
-        return Task.CompletedTask;
-    }
-
-    private Task OnAgentThinkingEnd(Guid agentId, string agentName)
-    {
-        var agent = ChatState.Agents.FirstOrDefault(a => a.Id == agentId);
-        if (agent != null)
-        {
-            agent.Status = "Idle";
-        }
-        return Task.CompletedTask;
-    }
-
-    private Task OnAgentTextContent(Guid agentId, string agentName, string content, bool isDelta)
-    {
-        // Handle streaming content
-        return Task.CompletedTask;
-    }
-
-    private Task OnTypingIndicator(Guid agentId, string agentName, bool isTyping)
-    {
-        var agent = ChatState.Agents.FirstOrDefault(a => a.Id == agentId);
-        if (agent != null)
-        {
-            agent.IsTyping = isTyping;
-            ChatState.UpdateAgentTyping(agentId, agent, isTyping);
-        }
-        return Task.CompletedTask;
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        SignalRService.MessageAdded -= OnMessageAdded;
-        SignalRService.AgentThinkingStart -= OnAgentThinkingStart;
-        SignalRService.AgentThinkingEnd -= OnAgentThinkingEnd;
-        SignalRService.AgentTextContent -= OnAgentTextContent;
-        SignalRService.TypingIndicator -= OnTypingIndicator;
-        await SignalRService.StopAsync();
-    }
+    [Parameter] public RenderFragment? ServerStrip { get; set; }
+    [Parameter] public RenderFragment? LeftSidebar { get; set; }
+    [Parameter] public RenderFragment? MainArea { get; set; }
+    [Parameter] public RenderFragment? RightSidebar { get; set; }
 }

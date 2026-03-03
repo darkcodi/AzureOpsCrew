@@ -1,5 +1,10 @@
 @page "/"
+@inject NavigationManager Navigation
 
-@using Front.Layout
-
-<MainLayout />
+@code {
+    protected override void OnInitialized()
+    {
+        // Redirect to the default server page
+        Navigation.NavigateTo("/server", forceLoad: true);
+    }
+}

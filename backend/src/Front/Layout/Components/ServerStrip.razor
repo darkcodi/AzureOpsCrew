@@ -1,8 +1,9 @@
 @inject ChatState ChatState
+@inject NavigationManager Navigation
 
 <div class="server-strip">
     <div class="server-strip-top">
-        <div class="server-icon home-icon @IsServerSelected(null)" @onclick="SelectHome" title="Direct Messages">
+        <div class="server-icon home-icon @IsServerSelected(null)" @onclick="NavigateToDm" title="Direct Messages">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="home-icon-svg">
                 <line x1="4" y1="9" x2="20" y2="9"/>
                 <line x1="4" y1="15" x2="20" y2="15"/>
@@ -15,7 +16,7 @@
 
         @foreach (var server in ChatState.Servers.Where(s => s.Id != Guid.Parse("00000000-0000-0000-0000-000000000001")))
         {
-            <div class="server-icon @IsServerSelected(server)" @onclick="() => SelectServer(server)" title="@server.Name">
+            <div class="server-icon @IsServerSelected(server)" @onclick="() => NavigateToServer(server)" title="@server.Name">
                 @server.Icon
             </div>
         }
@@ -47,23 +48,25 @@
 </div>
 
 @code {
+    private readonly Guid _dmServerId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
     private string IsServerSelected(ServerInfoDto? server)
     {
+        var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath;
         if (server == null)
         {
-            return ChatState.SelectedServer?.Id == Guid.Parse("00000000-0000-0000-0000-000000000001") ? "active" : "";
+            return path.StartsWith("/dm") ? "active" : "";
         }
-        return ChatState.SelectedServer?.Id == server.Id ? "active" : "";
+        return path.StartsWith($"/server/{server.Id}") ? "active" : "";
     }
 
-    private void SelectHome()
+    private void NavigateToDm()
     {
-        var dmServer = ChatState.Servers.FirstOrDefault(s => s.Id == Guid.Parse("00000000-0000-0000-0000-000000000001"));
-        ChatState.SelectedServer = dmServer;
+        Navigation.NavigateTo("/dm");
     }
 
-    private void SelectServer(ServerInfoDto server)
+    private void NavigateToServer(ServerInfoDto server)
     {
-        ChatState.SelectedServer = server;
+        Navigation.NavigateTo($"/server/{server.Id}");
     }
 }

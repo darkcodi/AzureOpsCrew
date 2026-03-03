@@ -1,0 +1,67 @@
+@page "/server"
+@page "/server/{serverId}"
+
+@using Front.Layout
+@using Front.Layout.Components
+@inject ChatState ChatState
+@inject NavigationManager Navigation
+
+<MainLayout>
+    <ServerStrip>
+        <Front.Layout.Components.ServerStrip />
+    </ServerStrip>
+    <LeftSidebar>
+        <Front.Layout.Components.LeftSidebar Title="Main">
+            <ChannelsList />
+            <UserPanel />
+        </Front.Layout.Components.LeftSidebar>
+    </LeftSidebar>
+    <MainArea>
+        <ChatArea />
+    </MainArea>
+    <RightSidebar>
+        <Front.Layout.Components.RightSidebar Title="Members">
+            <MembersList />
+        </Front.Layout.Components.RightSidebar>
+    </RightSidebar>
+</MainLayout>
+
+@code {
+    [Parameter]
+    public string? ServerId { get; set; }
+
+    private readonly Guid _defaultServerId = Guid.Parse("00000000-0000-0000-0000-000000000002");
+
+    protected override void OnInitialized()
+    {
+        // Set the default server if navigating to /server without an ID
+        SetServerFromRoute();
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Update server when route parameter changes
+        SetServerFromRoute();
+    }
+
+    private void SetServerFromRoute()
+    {
+        Guid? targetServerId = null;
+
+        if (!string.IsNullOrEmpty(ServerId) && Guid.TryParse(ServerId, out var parsedServerId))
+        {
+            targetServerId = parsedServerId;
+        }
+        else
+        {
+            // Use default server ID when navigating to /server without ID
+            targetServerId = _defaultServerId;
+        }
+
+        var server = ChatState.Servers.FirstOrDefault(s => s.Id == targetServerId);
+        if (server != null)
+        {
+            ChatState.SelectedServer = server;
+        }
+    }
+}
