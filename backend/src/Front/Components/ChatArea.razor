@@ -21,7 +21,7 @@
 
     @if (TypingAgents.Count > 0)
     {
-        <TypingIndicator Agents="TypingAgents" />
+        <TypingIndicator Usernames="TypingAgents.Select(a => a.Username).ToList()" />
     }
 
     @if (ShowInput)

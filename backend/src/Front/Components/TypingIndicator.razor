@@ -1,4 +1,4 @@
-@if (Agents.Count > 0)
+@if (Usernames.Count > 0)
 {
     <div class="typing-indicator">
         <div class="typing-dots">
@@ -13,17 +13,17 @@
 }
 
 @code {
-    [Parameter] public List<AgentDto> Agents { get; set; } = [];
+    [Parameter] public List<string> Usernames { get; set; } = [];
 
     private string GetTypingText()
     {
-        if (Agents.Count == 1)
+        if (Usernames.Count == 1)
         {
-            return $"{Agents[0].Username} is typing...";
+            return $"{Usernames[0]} is typing...";
         }
-        else if (Agents.Count == 2)
+        else if (Usernames.Count == 2)
         {
-            return $"{Agents[0].Username} and {Agents[1].Username} are typing...";
+            return $"{Usernames[0]} and {Usernames[1]} are typing...";
         }
         else
         {
