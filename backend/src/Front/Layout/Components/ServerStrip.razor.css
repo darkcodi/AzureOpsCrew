@@ -7,74 +7,61 @@
     gap: 8px;
     overflow-y: auto;
     flex-shrink: 0;
-    width: 72px;
+    width: 52px;
 }
 
 .server-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    border-radius: 1rem;
     background-color: hsl(228, 6%, 22%);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    position: relative;
-    color: hsl(210, 3%, 90%);
+    color: hsl(210, 3%, 80%);
     font-weight: 600;
-    font-size: 18px;
+    font-size: 20px;
     user-select: none;
 }
 
 .server-icon:hover {
-    border-radius: 35%;
-    background-color: #5865F2;
-    color: white;
+    border-radius: 0.75rem;
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
 }
 
 .server-icon.active {
-    border-radius: 35%;
-    background-color: #5865F2;
-    color: white;
-}
-
-.server-icon.active::before {
-    content: '';
-    position: absolute;
-    left: -16px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 8px;
-    height: 40px;
-    background-color: white;
-    border-radius: 0 4px 4px 0;
+    border-radius: 0.75rem;
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
 }
 
 .server-icon.home-icon {
     background-color: hsl(228, 6%, 22%);
-    color: hsl(210, 3%, 90%);
+    color: hsl(210, 3%, 80%);
 }
 
 .server-icon.home-icon:hover,
 .server-icon.home-icon.active {
-    background-color: #5865F2;
-    color: white;
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
 }
 
 .server-icon.settings-icon {
     background-color: hsl(228, 6%, 22%);
-    color: hsl(214, 5%, 55%);
+    color: hsl(210, 3%, 80%);
     font-size: 20px;
 }
 
 .server-icon.settings-icon:hover {
-    background-color: #5865F2;
-    color: white;
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
 }
 
 .server-separator {
-    width: 32px;
+    width: 24px;
     height: 2px;
     background-color: hsl(228, 6%, 28%);
     border-radius: 1px;

@@ -79,7 +79,7 @@ body {
 /* Discord Layout Grid */
 .discord-layout {
     display: grid;
-    grid-template-columns: 72px 240px 1fr 280px;
+    grid-template-columns: 52px 220px 1fr 280px;
     height: 100vh;
     width: 100vw;
     overflow: hidden;
@@ -606,7 +606,7 @@ body {
 /* Responsive design */
 @media (max-width: 1200px) {
     .discord-layout {
-        grid-template-columns: 72px 240px 1fr;
+        grid-template-columns: 52px 220px 1fr;
     }
 
     .member-sidebar {
@@ -616,7 +616,7 @@ body {
 
 @media (max-width: 768px) {
     .discord-layout {
-        grid-template-columns: 72px 1fr;
+        grid-template-columns: 52px 1fr;
     }
 
     .channel-sidebar {
@@ -626,10 +626,10 @@ body {
     .channel-sidebar.mobile-open {
         display: flex;
         position: absolute;
-        left: 72px;
+        left: 52px;
         top: 0;
         bottom: 0;
-        width: 240px;
+        width: 220px;
         z-index: 100;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
     }
