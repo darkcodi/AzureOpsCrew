@@ -1,16 +1,5 @@
-/* Login Page Styles - Matching Tailwind Slate/Sky Palette */
-
-:root {
-    --slate-950: #020617;
-    --slate-900: #0f172a;
-    --slate-800: #1e293b;
-    --slate-700: #334155;
-    --slate-300: #cbd5e1;
-    --sky-600: #0284c7;
-    --sky-500: #0ea5e9;
-    --sky-400: #38bdf8;
-    --red-400: #f87171;
-}
+/* Login Page Styles - Matching Next.js Tailwind Slate/Sky Palette */
+/* Colors inlined because Blazor CSS isolation scopes :root, preventing var() resolution */
 
 .login-container {
     display: flex;
@@ -18,7 +7,7 @@
     width: 100%;
     align-items: center;
     justify-content: center;
-    background-color: var(--slate-950);
+    background-color: #020617;
     padding: 1rem;
 }
 
@@ -26,10 +15,10 @@
     width: 100%;
     max-width: 28rem;
     border-radius: 0.75rem;
-    border: 1px solid var(--slate-700);
-    background-color: var(--slate-900);
+    border: 1px solid #1e293b;
+    background-color: #0f172a;
     padding: 1.5rem;
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 }
 
 .login-header {
@@ -41,6 +30,7 @@
 
 .login-header h1 {
     font-size: 1.5rem;
+    line-height: 2rem;
     font-weight: 600;
     color: white;
     margin: 0;
@@ -48,16 +38,17 @@
 
 .signup-button {
     border-radius: 0.375rem;
-    border: 1px solid var(--slate-700);
+    border: 1px solid #334155;
     padding: 0.375rem 0.75rem;
     font-size: 0.875rem;
+    line-height: 1.25rem;
     color: #e2e8f0;
     text-decoration: none;
     transition: background-color 0.15s ease;
 }
 
 .signup-button:hover {
-    background-color: var(--slate-800);
+    background-color: #1e293b;
 }
 
 /* Form Styles */
@@ -74,50 +65,50 @@
     display: block;
     margin-bottom: 0.25rem;
     font-size: 0.875rem;
-    color: var(--slate-300);
+    line-height: 1.25rem;
+    color: #cbd5e1;
 }
 
-.form-input {
+::deep .form-input {
     width: 100%;
     border-radius: 0.375rem;
-    border: 1px solid var(--slate-700);
-    background-color: var(--slate-800);
+    border: 1px solid #334155;
+    background-color: #1e293b;
     padding: 0.5rem 0.75rem;
     color: white;
     outline: none;
     transition: border-color 0.15s ease;
     font-size: 0.875rem;
+    line-height: 1.25rem;
     box-sizing: border-box;
 }
 
-.form-input:focus {
-    border-color: var(--sky-400);
+::deep .form-input:focus {
+    border-color: #0ea5e9;
 }
 
-.form-input::placeholder {
-    color: var(--slate-700);
+::deep .form-input::placeholder {
+    color: #334155;
 }
 
-/* Validation Message */
 ::deep .validation-message {
     display: block;
     margin-top: 0.25rem;
     font-size: 0.75rem;
-    color: var(--red-400);
+    color: #f87171;
 }
 
-/* Error Message */
 .error-message {
     margin: 0;
     font-size: 0.875rem;
-    color: var(--red-400);
+    line-height: 1.25rem;
+    color: #f87171;
 }
 
-/* Submit Button */
 .submit-button {
     width: 100%;
     border-radius: 0.375rem;
-    background-color: var(--sky-600);
+    background-color: #0284c7;
     padding: 0.5rem 0.75rem;
     font-weight: 500;
     color: white;
@@ -125,10 +116,11 @@
     cursor: pointer;
     transition: background-color 0.15s ease;
     font-size: 0.875rem;
+    line-height: 1.25rem;
 }
 
 .submit-button:hover {
-    background-color: var(--sky-500);
+    background-color: #0ea5e9;
 }
 
 .submit-button:disabled {
@@ -136,13 +128,11 @@
     opacity: 0.6;
 }
 
-/* Simple Layout */
 .simple-layout {
     width: 100%;
     height: 100%;
 }
 
-/* Mobile Responsive */
 @media (max-width: 640px) {
     .login-card {
         padding: 1rem;
