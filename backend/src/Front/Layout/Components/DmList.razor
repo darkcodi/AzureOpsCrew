@@ -1,0 +1,45 @@
+@inject ChatState ChatState
+
+<div class="channels-list">
+    <div class="channels-section">
+        @foreach (var dm in ChatState.Dms)
+        {
+            <div class="channels-item @IsDmSelected(dm)" @onclick="() => SelectDm(dm)">
+                @if (dm.OtherAgent != null)
+                {
+                    <span class="agent-icon">🤖</span>
+                }
+                else
+                {
+                    <span class="dm-icon">@GetInitials(dm.OtherUser?.Username ?? "User")</span>
+                }
+                <span class="dm-name">@GetDmDisplayName(dm)</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string IsDmSelected(DmChannelDto dm) => ChatState.SelectedDm?.Id == dm.Id ? "active" : "";
+
+    private void SelectDm(DmChannelDto dm)
+    {
+        ChatState.SelectedDm = dm;
+    }
+
+    private string GetDmDisplayName(DmChannelDto dm)
+    {
+        return dm.OtherAgent?.Username ?? dm.OtherUser?.Username ?? "Unknown";
+    }
+
+    private string GetInitials(string username)
+    {
+        if (string.IsNullOrEmpty(username)) return "?";
+        var parts = username.Split(' ');
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        }
+        return username.Length >= 2 ? username.Substring(0, 2).ToUpper() : username.ToUpper();
+    }
+}

@@ -1,0 +1,26 @@
+.agent-icon {
+    margin-right: 8px;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.dm-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    margin-right: 8px;
+    background-color: hsl(210, 5%, 30%);
+    color: hsl(210, 3%, 90%);
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.dm-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
