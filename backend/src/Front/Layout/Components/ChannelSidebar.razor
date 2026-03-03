@@ -29,25 +29,6 @@
                 }
             }
         </div>
-
-        <div class="channel-section">
-            <div class="channel-section-header" @onclick="ToggleVoiceChannels">
-                <span class="collapse-icon@(voiceChannelsExpanded ? "" : " collapsed")">▼</span>
-                <span>Voice Channels</span>
-            </div>
-
-            @if (voiceChannelsExpanded)
-            {
-                <div class="channel-item disabled">
-                    <span class="voice-icon">🔊</span>
-                    <span class="channel-name">General Voice</span>
-                </div>
-                <div class="channel-item disabled">
-                    <span class="voice-icon">🔊</span>
-                    <span class="channel-name">Lounge</span>
-                </div>
-            }
-        </div>
     </div>
 
     <div class="user-panel">
@@ -66,7 +47,6 @@
 
 @code {
     private bool textChannelsExpanded = true;
-    private bool voiceChannelsExpanded = true;
 
     private string IsChannelSelected(ChannelDto channel) => ChatState.SelectedChannel?.Id == channel.Id ? "active" : "";
 
@@ -76,8 +56,6 @@
     }
 
     private void ToggleTextChannels() => textChannelsExpanded = !textChannelsExpanded;
-
-    private void ToggleVoiceChannels() => voiceChannelsExpanded = !voiceChannelsExpanded;
 
     private string GetUserInitials()
     {
