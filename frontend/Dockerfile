@@ -13,6 +13,13 @@ COPY . .
 
 # Build the Next.js application
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# NEXT_PUBLIC_* vars are inlined at build time, so we need a build arg.
+# This is the URL the BROWSER uses to reach the backend (e.g. SignalR).
+# For docker-compose: http://localhost:45000 (the host-exposed API port).
+ARG NEXT_PUBLIC_BACKEND_API_URL
+ENV NEXT_PUBLIC_BACKEND_API_URL=$NEXT_PUBLIC_BACKEND_API_URL
+
 RUN pnpm run build
 
 # Production stage

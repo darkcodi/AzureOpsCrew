@@ -42,9 +42,12 @@ services:
     build:
       context: ../frontend
       dockerfile: Dockerfile
+      args:
+        # Browser-accessible backend URL (baked at build time for NEXT_PUBLIC_*)
+        NEXT_PUBLIC_BACKEND_API_URL: http://localhost:45000
     environment:
+      # Server-side backend URL (read at runtime by Next.js API routes)
       - BACKEND_API_URL=http://api:80
-      - NEXT_PUBLIC_BACKEND_API_URL=http://api:80
     ports:
       - "43000:3000"
     restart: on-failure

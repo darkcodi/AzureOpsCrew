@@ -102,8 +102,8 @@ try
     }
 
     app.UseHttpsRedirection();
-    app.UseCors("AllowFrontend");
     app.UseAuthentication();
+    app.UseCors("AllowFrontend");
     app.UseAuthorization();
 
     // Map endpoints
