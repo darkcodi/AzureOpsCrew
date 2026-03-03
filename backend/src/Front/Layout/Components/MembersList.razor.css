@@ -1,34 +1,15 @@
-.member-sidebar {
-    background-color: hsl(228, 7%, 14%);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.member-header {
-    height: 48px;
-    padding: 0 16px;
-    display: flex;
-    align-items: center;
-    border-bottom: 2px solid hsl(228, 6%, 10%);
-    font-weight: 700;
-    font-size: 16px;
-    text-transform: uppercase;
-    flex-shrink: 0;
-}
-
-.member-list {
+.members-list {
     flex: 1;
     overflow-y: auto;
     padding: 12px 0;
     background-color: hsl(228, 7%, 14%);
 }
 
-.member-section {
+.members-section {
     margin-bottom: 16px;
 }
 
-.member-section-header {
+.members-section-header {
     padding: 0 16px;
     margin-bottom: 4px;
     font-size: 12px;
@@ -37,7 +18,7 @@
     color: hsl(214, 5%, 55%);
 }
 
-.member-item {
+.members-item {
     display: flex;
     align-items: center;
     padding: 6px 8px;
@@ -47,11 +28,11 @@
     transition: background-color 0.1s ease;
 }
 
-.member-item:hover {
+.members-item:hover {
     background-color: hsl(228, 6%, 18%);
 }
 
-.member-avatar {
+.members-avatar {
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -67,7 +48,7 @@
     color: white;
 }
 
-.member-status {
+.members-status {
     position: absolute;
     bottom: -2px;
     right: -2px;
@@ -77,28 +58,28 @@
     border: 3px solid hsl(228, 7%, 14%);
 }
 
-.member-status.online {
+.members-status.online {
     background-color: #3ba55c;
 }
 
-.member-status.idle {
+.members-status.idle {
     background-color: #faa61a;
 }
 
-.member-status.dnd {
+.members-status.dnd {
     background-color: #ed4245;
 }
 
-.member-status.offline {
+.members-status.offline {
     background-color: #747f8d;
 }
 
-.member-info {
+.members-info {
     flex: 1;
     min-width: 0;
 }
 
-.member-name {
+.members-name {
     font-weight: 600;
     font-size: 14px;
     white-space: nowrap;
@@ -107,11 +88,11 @@
     color: white;
 }
 
-.member-name.bot-name {
+.members-name.bot-name {
     color: #5865F2;
 }
 
-.member-status-text {
+.members-status-text {
     font-size: 12px;
     color: hsl(214, 5%, 55%);
     white-space: nowrap;
@@ -136,10 +117,4 @@
     text-align: center;
     color: hsl(214, 5%, 55%);
     font-size: 14px;
-}
-
-@media (max-width: 1200px) {
-    .member-sidebar {
-        display: none;
-    }
 }

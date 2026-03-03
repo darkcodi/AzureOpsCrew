@@ -450,15 +450,15 @@ body {
     color: var(--discord-muted);
 }
 
-/* Member Sidebar */
-.member-sidebar {
+/* Right Sidebar */
+.right-sidebar {
     background-color: var(--discord-not-black);
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
-.member-header {
+.right-sidebar-header {
     height: 48px;
     padding: 0 var(--discord-spacing-lg);
     display: flex;
@@ -469,17 +469,17 @@ body {
     text-transform: uppercase;
 }
 
-.member-list {
+.members-list {
     flex: 1;
     overflow-y: auto;
     padding: var(--discord-spacing-md) 0;
 }
 
-.member-section {
+.members-section {
     margin-bottom: var(--discord-spacing-lg);
 }
 
-.member-section-header {
+.members-section-header {
     padding: 0 var(--discord-spacing-lg);
     margin-bottom: var(--discord-spacing-sm);
     font-size: 12px;
@@ -488,7 +488,7 @@ body {
     color: var(--discord-muted);
 }
 
-.member-item {
+.members-item {
     display: flex;
     align-items: center;
     padding: 6px var(--discord-spacing-lg);
@@ -497,11 +497,11 @@ body {
     transition: background-color 0.1s ease;
 }
 
-.member-item:hover {
+.members-item:hover {
     background-color: var(--discord-bg-hover);
 }
 
-.member-avatar {
+.members-avatar {
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -516,7 +516,7 @@ body {
     flex-shrink: 0;
 }
 
-.member-status {
+.members-status {
     position: absolute;
     bottom: -2px;
     right: -2px;
@@ -526,28 +526,28 @@ body {
     border: 3px solid var(--discord-not-black);
 }
 
-.member-status.online {
+.members-status.online {
     background-color: var(--discord-status-online);
 }
 
-.member-status.idle {
+.members-status.idle {
     background-color: var(--discord-status-idle);
 }
 
-.member-status.dnd {
+.members-status.dnd {
     background-color: var(--discord-status-dnd);
 }
 
-.member-status.offline {
+.members-status.offline {
     background-color: var(--discord-status-offline);
 }
 
-.member-info {
+.members-info {
     flex: 1;
     min-width: 0;
 }
 
-.member-name {
+.members-name {
     font-weight: 600;
     font-size: 14px;
     white-space: nowrap;
@@ -555,7 +555,7 @@ body {
     text-overflow: ellipsis;
 }
 
-.member-name.bot-name {
+.members-name.bot-name {
     color: var(--discord-blurple);
 }
 
@@ -609,7 +609,7 @@ body {
         grid-template-columns: 52px 220px 1fr;
     }
 
-    .member-sidebar {
+    .right-sidebar {
         display: none;
     }
 }
