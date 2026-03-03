@@ -32,11 +32,13 @@ try
 
     // Register application services
     builder.Services.AddSingleton<ChatState>();
+    builder.Services.AddSingleton<AuthState>();
     builder.Services.AddSingleton<SignalRService>();
     builder.Services.AddScoped<ChannelService>();
     builder.Services.AddScoped<DmService>();
     builder.Services.AddScoped<UserService>();
     builder.Services.AddScoped<AgentService>();
+    builder.Services.AddScoped<AuthenticationService>();
 
     await builder.Build().RunAsync();
 }

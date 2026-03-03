@@ -1,0 +1,136 @@
+@page "/login"
+@layout SimpleLayout
+@inject AuthenticationService AuthService
+@inject AuthState AuthState
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+
+<main class="login-container">
+    <section class="login-card">
+        <div class="login-header">
+            <h1>Login</h1>
+            <a href="/signup" class="signup-button">Sign up</a>
+        </div>
+
+        <EditForm Model="@loginModel" OnValidSubmit="@HandleLogin">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label for="email">
+                    <span class="label-text">Email</span>
+                </label>
+                <InputText Id="email" @bind-Value="loginModel.Email" class="form-input" autocomplete="email" />
+                <ValidationMessage For="() => loginModel.Email" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">
+                    <span class="label-text">Password</span>
+                </label>
+                <InputText Id="password" type="password" @bind-Value="loginModel.Password" class="form-input" autocomplete="current-password" />
+                <ValidationMessage For="() => loginModel.Password" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <p class="error-message">@errorMessage</p>
+            }
+
+            <button type="submit" disabled="isSubmitting" class="submit-button">
+                @(isSubmitting ? "Signing in..." : "Sign in")
+            </button>
+        </EditForm>
+    </section>
+</main>
+
+@code {
+    private LoginModel loginModel = new();
+    private bool isSubmitting = false;
+    private string? errorMessage = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Set JSRuntime for AuthState
+        AuthState.SetJSRuntime(JSRuntime);
+        await AuthState.LoadFromLocalStorageAsync();
+
+        // If already authenticated, redirect to home
+        if (AuthState.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        if (isSubmitting) return;
+
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            var response = await AuthService.LoginAsync(loginModel.Email, loginModel.Password);
+
+            if (response != null && response.Error == null)
+            {
+                // Successful login
+                AuthState.Login(response.AccessToken, response.ExpiresAtUtc, response.User);
+
+                // Get next parameter or default to home
+                var nextPath = GetNextPath();
+                NavigationManager.NavigateTo(nextPath);
+            }
+            else
+            {
+                errorMessage = response?.Error ?? "Login failed";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Unable to login. Please try again.";
+            Console.WriteLine($"Login error: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private string GetNextPath()
+    {
+        try
+        {
+            var uri = new Uri(NavigationManager.Uri);
+            var query = uri.Query;
+            var nextParam = System.Text.RegularExpressions.Regex.Match(query, "[?&]next=([^&]*)").Groups[1].Value;
+
+            if (string.IsNullOrEmpty(nextParam))
+            {
+                return "/";
+            }
+
+            if (!nextParam.StartsWith("/") || nextParam.StartsWith("//"))
+            {
+                return "/";
+            }
+
+            return Uri.UnescapeDataString(nextParam);
+        }
+        catch
+        {
+            return "/";
+        }
+    }
+
+    public class LoginModel
+    {
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Please enter a valid email")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required")]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters")]
+        public string Password { get; set; } = string.Empty;
+    }
+}
