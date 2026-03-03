@@ -1,6 +1,17 @@
 <div class="right-sidebar">
-    <div class="right-sidebar-header">
-        Members
-    </div>
-    <MembersList />
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <div class="right-sidebar-header">
+            @Title
+        </div>
+    }
+    @ChildContent
 </div>
+
+@code {
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}
