@@ -22,15 +22,8 @@ public class ServerInfo
         new()
         {
             Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
-            Name = "General",
-            Icon = "G",
-            ChannelIds = []
-        },
-        new()
-        {
-            Id = Guid.Parse("00000000-0000-0000-0000-000000000003"),
-            Name = "Projects",
-            Icon = "P",
+            Name = "Main",
+            Icon = "M",
             ChannelIds = []
         }
     ];

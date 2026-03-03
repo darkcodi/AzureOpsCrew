@@ -103,6 +103,22 @@
     flex-shrink: 0;
 }
 
+.server-icon.add-server-icon {
+    background-color: hsl(228, 6%, 22%);
+    color: hsl(210, 3%, 80%);
+}
+
+.server-icon.add-server-icon .add-server-svg {
+    display: block;
+    flex-shrink: 0;
+}
+
+.server-icon.add-server-icon:hover {
+    border-radius: 0.75rem;
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
+}
+
 .server-separator {
     width: 24px;
     height: 2px;
