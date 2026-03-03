@@ -1,8 +1,6 @@
-@page "/server"
 @page "/server/{serverId}"
 
 @inject ChatState ChatState
-@inject NavigationManager Navigation
 
 <MainLayout>
     <ServerStrip>
@@ -28,11 +26,8 @@
     [Parameter]
     public string? ServerId { get; set; }
 
-    private readonly Guid _defaultServerId = Guid.Parse("00000000-0000-0000-0000-000000000002");
-
     protected override void OnInitialized()
     {
-        // Set the default server if navigating to /server without an ID
         SetServerFromRoute();
     }
 
@@ -44,22 +39,13 @@
 
     private void SetServerFromRoute()
     {
-        Guid? targetServerId = null;
-
         if (!string.IsNullOrEmpty(ServerId) && Guid.TryParse(ServerId, out var parsedServerId))
         {
-            targetServerId = parsedServerId;
-        }
-        else
-        {
-            // Use default server ID when navigating to /server without ID
-            targetServerId = _defaultServerId;
-        }
-
-        var server = ChatState.Servers.FirstOrDefault(s => s.Id == targetServerId);
-        if (server != null)
-        {
-            ChatState.SelectedServer = server;
+            var server = ChatState.Servers.FirstOrDefault(s => s.Id == parsedServerId);
+            if (server != null)
+            {
+                ChatState.SelectedServer = server;
+            }
         }
     }
 }

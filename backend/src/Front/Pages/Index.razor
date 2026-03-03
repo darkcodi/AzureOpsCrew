@@ -2,9 +2,10 @@
 @inject NavigationManager Navigation
 
 @code {
+    private readonly Guid _defaultServerId = Guid.Parse("00000000-0000-0000-0000-000000000002");
+
     protected override void OnInitialized()
     {
-        // Redirect to the default server page
-        Navigation.NavigateTo("/server", forceLoad: true);
+        Navigation.NavigateTo($"/server/{_defaultServerId}", forceLoad: true);
     }
 }
