@@ -157,15 +157,15 @@ body {
     margin: var(--discord-spacing-xs) 0;
 }
 
-/* Channel Sidebar */
-.channel-sidebar {
+/* Left Sidebar */
+.left-sidebar {
     background-color: var(--discord-not-black);
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
-.channel-header {
+.left-sidebar-header {
     height: 48px;
     padding: 0 var(--discord-spacing-lg);
     display: flex;
@@ -178,21 +178,21 @@ body {
     transition: background-color 0.1s ease;
 }
 
-.channel-header:hover {
+.left-sidebar-header:hover {
     background-color: var(--discord-bg-hover);
 }
 
-.channel-list {
+.channels-list {
     flex: 1;
     overflow-y: auto;
     padding: var(--discord-spacing-md) 0;
 }
 
-.channel-section {
+.channels-section {
     margin-bottom: var(--discord-spacing-lg);
 }
 
-.channel-section-header {
+.channels-section-header {
     display: flex;
     align-items: center;
     padding: 0 var(--discord-spacing-lg);
@@ -205,11 +205,11 @@ body {
     user-select: none;
 }
 
-.channel-section-header:hover {
+.channels-section-header:hover {
     color: var(--discord-text);
 }
 
-.channel-item {
+.channels-item {
     display: flex;
     align-items: center;
     padding: 6px var(--discord-spacing-lg);
@@ -221,25 +221,25 @@ body {
     transition: background-color 0.1s ease;
 }
 
-.channel-item:hover {
+.channels-item:hover {
     background-color: var(--discord-bg-hover);
     color: var(--discord-text);
 }
 
-.channel-item.active {
+.channels-item.active {
     background-color: var(--discord-bg-active);
     color: white;
 }
 
-.channel-item .hash {
+.channels-item .hash {
     color: var(--discord-muted);
     margin-right: var(--discord-spacing-sm);
     font-size: 20px;
     font-weight: 400;
 }
 
-.channel-item:hover .hash,
-.channel-item.active .hash {
+.channels-item:hover .hash,
+.channels-item.active .hash {
     color: var(--discord-text);
 }
 
@@ -619,11 +619,11 @@ body {
         grid-template-columns: 52px 1fr;
     }
 
-    .channel-sidebar {
+    .left-sidebar {
         display: none;
     }
 
-    .channel-sidebar.mobile-open {
+    .left-sidebar.mobile-open {
         display: flex;
         position: absolute;
         left: 52px;

@@ -10,15 +10,15 @@
     <ServerStrip />
     @if (ChatState.SelectedServer != null && ChatState.SelectedServer.Name == "Direct Messages")
     {
-        <div class="channel-sidebar dm-sidebar">
-            <div class="channel-header">
+        <div class="left-sidebar dm-sidebar">
+            <div class="left-sidebar-header">
                 <span>Direct Messages</span>
             </div>
-            <div class="channel-list">
-                <div class="channel-section">
+            <div class="channels-list">
+                <div class="channels-section">
                     @foreach (var dm in ChatState.Dms)
                     {
-                        <div class="channel-item @IsDmSelected(dm)" @onclick="() => SelectDm(dm)">
+                        <div class="channels-item @IsDmSelected(dm)" @onclick="() => SelectDm(dm)">
                             @if (dm.OtherAgent != null)
                             {
                                 <span class="agent-icon">🤖</span>
@@ -36,7 +36,7 @@
     }
     else
     {
-        <ChannelSidebar />
+        <LeftSidebar />
     }
     <ChatArea />
     <RightSidebar />

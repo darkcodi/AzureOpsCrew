@@ -1,0 +1,27 @@
+@inject ChatState ChatState
+@inject NavigationManager NavigationManager
+
+<div class="channels-list">
+    <div class="channels-section">
+        @foreach (var channel in ChatState.GetVisibleChannels())
+        {
+            <div class="channels-item @IsChannelSelected(channel)" @onclick="() => SelectChannel(channel)">
+                <span class="hash">#</span>
+                <span class="channels-name">@channel.Name</span>
+                @if (channel.Description != null)
+                {
+                    <span class="channels-tooltip">@channel.Description</span>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string IsChannelSelected(ChannelDto channel) => ChatState.SelectedChannel?.Id == channel.Id ? "active" : "";
+
+    private void SelectChannel(ChannelDto channel)
+    {
+        ChatState.SelectedChannel = channel;
+    }
+}

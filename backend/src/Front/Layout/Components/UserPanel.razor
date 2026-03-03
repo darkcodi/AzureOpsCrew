@@ -1,0 +1,33 @@
+@inject ChatState ChatState
+
+<div class="user-panel">
+    <div class="user-avatar">@GetUserInitials()</div>
+    <div class="user-info">
+        <div class="username">@GetUserName()</div>
+        <div class="user-status">Online</div>
+    </div>
+    <div class="user-actions">
+        <button class="icon-button" title="Mute">🎤</button>
+        <button class="icon-button" title="Deafen">🎧</button>
+        <button class="icon-button" title="Settings">⚙️</button>
+    </div>
+</div>
+
+@code {
+    private string GetUserInitials()
+    {
+        var username = GetUserName();
+        if (string.IsNullOrEmpty(username)) return "?";
+        var parts = username.Split(' ');
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        }
+        return username.Length >= 2 ? username.Substring(0, 2).ToUpper() : username.ToUpper();
+    }
+
+    private string GetUserName()
+    {
+        return ChatState.CurrentUser?.Username ?? "User";
+    }
+}
