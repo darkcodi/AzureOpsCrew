@@ -19,6 +19,11 @@ public class AuthHeaderHandler : DelegatingHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
+        // Ensure auth state is initialized before accessing the token.
+        // This prevents race conditions where HTTP requests are made before
+        // the token is loaded from localStorage.
+        await _authState.EnsureInitializedAsync();
+
         // Add Authorization header if a token exists
         if (_authState.AccessToken != null)
         {

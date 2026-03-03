@@ -12,11 +12,18 @@ public class AuthState
 {
     private readonly IJSRuntime _jsRuntime;
     private LoginInfo? _loginInfo;
+    private readonly TaskCompletionSource<bool> _initializationTcs = new();
 
     public AuthState(IJSRuntime jsRuntime)
     {
         _jsRuntime = jsRuntime;
     }
+
+    /// <summary>
+    /// Ensures the auth state has been initialized from localStorage before accessing the token.
+    /// This prevents race conditions where HTTP requests are made before the token is loaded.
+    /// </summary>
+    public Task EnsureInitializedAsync() => _initializationTcs.Task;
 
     public UserDto? CurrentUser => _loginInfo?.User;
     public string? AccessToken => _loginInfo?.Token;
@@ -57,11 +64,13 @@ public class AuthState
         {
             _loginInfo = loginInfo;
             Log.Information("Auth state loaded from localStorage.");
+            _initializationTcs.TrySetResult(true);
             return true;
         }
         else
         {
             Log.Information("No auth state found in localStorage.");
+            _initializationTcs.TrySetResult(false);
             return false;
         }
     }
