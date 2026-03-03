@@ -2,24 +2,50 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Front;
 using Front.Services;
+using Serilog;
 
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
-builder.RootComponents.Add<App>("#app");
-builder.RootComponents.Add<HeadOutlet>("head::after");
+// Configure Serilog for Blazor WASM
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.BrowserConsole()
+    .CreateLogger();
 
-// Configure HttpClient with API base URL
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:5000";
-builder.Services.AddScoped(sp => new HttpClient
+try
 {
-    BaseAddress = new Uri(apiBaseUrl)
-});
+    Log.Information("Starting Blazor WebAssembly application");
 
-// Register application services
-builder.Services.AddSingleton<ChatState>();
-builder.Services.AddSingleton<SignalRService>();
-builder.Services.AddScoped<ChannelService>();
-builder.Services.AddScoped<DmService>();
-builder.Services.AddScoped<UserService>();
-builder.Services.AddScoped<AgentService>();
+    var builder = WebAssemblyHostBuilder.CreateDefault(args);
+    builder.RootComponents.Add<App>("#app");
+    builder.RootComponents.Add<HeadOutlet>("head::after");
 
-await builder.Build().RunAsync();
+    // Use Serilog
+    builder.Services.AddLogging(loggingBuilder =>
+    {
+        loggingBuilder.AddSerilog(dispose: true);
+    });
+
+    // Configure HttpClient with API base URL
+    var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:5000";
+    builder.Services.AddScoped(sp => new HttpClient
+    {
+        BaseAddress = new Uri(apiBaseUrl)
+    });
+
+    // Register application services
+    builder.Services.AddSingleton<ChatState>();
+    builder.Services.AddSingleton<SignalRService>();
+    builder.Services.AddScoped<ChannelService>();
+    builder.Services.AddScoped<DmService>();
+    builder.Services.AddScoped<UserService>();
+    builder.Services.AddScoped<AgentService>();
+
+    await builder.Build().RunAsync();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
