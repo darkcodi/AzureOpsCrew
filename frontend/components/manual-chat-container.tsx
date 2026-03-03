@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { useAgentRuntime } from "@/contexts/agent-runtime-context"
@@ -11,6 +11,7 @@ import { StartConversationEmpty } from "@/components/start-conversation-empty"
 import { DeploymentCard } from "@/components/deployment-card"
 import { MyIpCard, type IpInfo } from "@/components/my-ip-card"
 import { BackendToolCard } from "@/components/backend-tool-card"
+import { DmEventsClient, type MessageAddedEvent, type AgentThinkingStartEvent, type AgentThinkingEndEvent, type TypingIndicatorEvent, type AgentStatusEvent } from "@/lib/signalr-client"
 
 const KNOWN_FE_TOOL_NAMES = new Set(["showMyIp", "showDeployment"])
 const DM_EMPTY_SUBTITLE = "Send a message to get started."
@@ -177,7 +178,14 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [expandedReasoningIds, setExpandedReasoningIds] = useState<Set<string>>(new Set())
+  const [dmChannelId, setDmChannelId] = useState<string | null>(null)
+  const [typingAgentIds, setTypingAgentIds] = useState<Set<string>>(new Set())
+  const [agentStatuses, setAgentStatuses] = useState<Map<string, string>>(new Map())
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const signalRClientRef = useRef<DmEventsClient | null>(null)
+  const currentDmIdRef = useRef(activeDMId)
+  const isTearingDownRef = useRef(false)
+  const connectionInstanceIdRef = useRef(0)
 
   const selectedAgent = agents.find((a) => a.id === activeDMId)
   const placeholder = selectedAgent
@@ -194,6 +202,31 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     return () => cancelAnimationFrame(id)
   }, [messages])
 
+  // Ensure DM channel exists and get its ID (for SignalR)
+  useEffect(() => {
+    if (!activeDMId) {
+      setDmChannelId(null)
+      return
+    }
+
+    currentDmIdRef.current = activeDMId
+    setDmChannelId(null)
+
+    fetchWithErrorHandling(`/api/dms/agents/${activeDMId}/ensure-channel`, {
+      method: "POST",
+    })
+      .then(async (res) => {
+        if (currentDmIdRef.current !== activeDMId) return
+        if (res.ok) {
+          const channel = await res.json()
+          setDmChannelId(channel.id)
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to ensure DM channel:", err)
+      })
+  }, [activeDMId])
+
   // Load chat history when agent changes
   useEffect(() => {
     if (!activeDMId) {
@@ -205,17 +238,12 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
     setExpandedReasoningIds(new Set())
     setIsLoading(true)
 
-    // Fetch both user info and messages in parallel
-    Promise.all([
-      fetchWithErrorHandling('/api/auth/me'),
-      fetchWithErrorHandling(`/api/dms/agents/${activeDMId}/messages`)
-    ])
-      .then(async ([userRes, messagesRes]) => {
-        if (userRes.ok && messagesRes.ok) {
-          const user = await userRes.json()
-          const messages = await messagesRes.json()
-
-          const chatMessages: ChatMessage[] = messages.map((m: {
+    fetchWithErrorHandling(`/api/dms/agents/${activeDMId}/messages`)
+      .then(async (messagesRes) => {
+        if (currentDmIdRef.current !== activeDMId) return
+        if (messagesRes.ok) {
+          const msgs = await messagesRes.json()
+          const chatMessages: ChatMessage[] = msgs.map((m: {
             id: string
             text?: string
             content?: string
@@ -238,26 +266,149 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
       .finally(() => setIsLoading(false))
   }, [activeDMId])
 
-  const sendMessage = async (content: string) => {
+  // Set up SignalR connection when dmChannelId is available (same pattern as channel-area)
+  useEffect(() => {
+    if (!dmChannelId) return
+
+    let isCancelled = false
+    const instanceId = ++connectionInstanceIdRef.current
+
+    const setupConnection = async () => {
+      while (isTearingDownRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      }
+
+      if (isCancelled) return
+
+      if (signalRClientRef.current) {
+        try {
+          await signalRClientRef.current.stop()
+        } catch (err) {
+          console.error("Error stopping previous DM SignalR connection:", err)
+        }
+        signalRClientRef.current = null
+      }
+
+      if (isCancelled) return
+
+      setTypingAgentIds(new Set())
+      setAgentStatuses(new Map())
+
+      const client = new DmEventsClient(dmChannelId)
+
+      client.onMessageAdded((event: MessageAddedEvent) => {
+        const msg: ChatMessage = {
+          id: event.message.id,
+          role: event.message.agentId ? "assistant" : "user",
+          content: event.message.text ?? "",
+        }
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === msg.id)) return prev
+          return [...prev, msg]
+        })
+      })
+
+      client.onAgentThinkingStart(() => {
+        // Could show thinking indicator
+      })
+
+      client.onAgentThinkingEnd(() => {
+        // Could hide thinking indicator
+      })
+
+      client.onTypingIndicator((event) => {
+        if (event.isTyping) {
+          setTypingAgentIds(prev => new Set(prev).add(event.agentId))
+        } else {
+          setTypingAgentIds(prev => {
+            const next = new Set(prev)
+            next.delete(event.agentId)
+            return next
+          })
+        }
+      })
+
+      client.onAgentStatus((event) => {
+        setAgentStatuses(prev => {
+          const next = new Map(prev)
+          next.set(event.agentId, event.status)
+          return next
+        })
+      })
+
+      if (isCancelled) return
+
+      try {
+        await client.start()
+        console.log(`SignalR connected to DM ${dmChannelId}`)
+
+        if (isCancelled || connectionInstanceIdRef.current !== instanceId) {
+          client.stop().catch(err => console.error("Error stopping cancelled DM connection:", err))
+          return
+        }
+        signalRClientRef.current = client
+      } catch (err) {
+        if (!isCancelled) {
+          console.error(`Failed to connect SignalR for DM ${dmChannelId}:`, err)
+        }
+      }
+    }
+
+    setupConnection()
+
+    return () => {
+      isCancelled = true
+      isTearingDownRef.current = true
+
+      if (signalRClientRef.current && connectionInstanceIdRef.current === instanceId) {
+        signalRClientRef.current.stop()
+          .catch(err => console.error("Error stopping DM SignalR connection:", err))
+          .finally(() => {
+            isTearingDownRef.current = false
+          })
+      } else {
+        isTearingDownRef.current = false
+      }
+    }
+  }, [dmChannelId])
+
+  const sendMessage = useCallback(async (content: string) => {
     if (!activeDMId) return
 
-    const response = await fetchWithErrorHandling(`/api/dms/agents/${activeDMId}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ Content: content }),
-    })
-
-    if (response.ok) {
-      const message = await response.json()
-      // Add user message to state (backend returns Text, not content)
-      const userMessage: ChatMessage = {
-        id: message.id,
-        role: "user",
-        content: message.text ?? message.content ?? "",
-      }
-      setMessages((prev) => [...prev, userMessage])
+    // Optimistically add user message
+    const optimisticId = "user-" + Date.now()
+    const userMsg: ChatMessage = {
+      id: optimisticId,
+      role: "user",
+      content,
     }
-  }
+    setMessages((prev) => [...prev, userMsg])
+
+    try {
+      const response = await fetchWithErrorHandling(`/api/dms/agents/${activeDMId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Content: content }),
+      })
+
+      if (response.ok) {
+        const message = await response.json()
+        // Update the optimistic message with real ID, deduplicate against SignalR
+        setMessages((prev) => {
+          const withoutDuplicate = prev.filter((m) => m.id !== message.id)
+          return withoutDuplicate.map((m) =>
+            m.id === optimisticId ? { ...m, id: message.id } : m
+          )
+        })
+      } else {
+        // Remove optimistic message on failure
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
+      }
+    } catch (err) {
+      console.error("Error sending DM message:", err)
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId))
+    }
+  }, [activeDMId])
 
   const toggleReasoning = (messageId: string) => {
     setExpandedReasoningIds((prev) => {

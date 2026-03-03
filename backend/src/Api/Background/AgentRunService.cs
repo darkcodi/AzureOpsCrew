@@ -28,7 +28,7 @@ public class AgentRunService
         _dbContext = serviceProvider.GetRequiredService<AzureOpsCrewContext>();
         _providerFactory = serviceProvider.GetRequiredService<IProviderFacadeResolver>();
         _toolExecutor = serviceProvider.GetRequiredService<ToolExecutor>();
-        // Channel event broadcaster is optional - only available for channels, not DMs
+        // Event broadcaster is optional - used for both channels and DMs
         _channelEventBroadcaster = serviceProvider.GetService<IChannelEventBroadcaster>();
     }
 
@@ -39,13 +39,18 @@ public class AgentRunService
         var data = await LoadAgentRunData(agentId, chatId, ct);
         var agentName = data.Agent.Info.Username;
 
-        // Broadcast agent thinking start for channels
+        // Broadcast agent thinking start
         if (data.Channel != null && _channelEventBroadcaster != null)
         {
             await _channelEventBroadcaster.BroadcastAgentThinkingStartAsync(data.Channel.Id, agentId, agentName);
             await _channelEventBroadcaster.BroadcastTypingIndicatorAsync(data.Channel.Id, agentId, agentName, isTyping: true);
-            // Broadcast "Running" status when agent starts processing
             await _channelEventBroadcaster.BroadcastAgentStatusAsync(data.Channel.Id, agentId, agentName, "Running");
+        }
+        else if (data.Dm != null && _channelEventBroadcaster != null)
+        {
+            await _channelEventBroadcaster.BroadcastDmAgentThinkingStartAsync(data.Dm.Id, agentId, agentName);
+            await _channelEventBroadcaster.BroadcastDmTypingIndicatorAsync(data.Dm.Id, agentId, agentName, isTyping: true);
+            await _channelEventBroadcaster.BroadcastDmAgentStatusAsync(data.Dm.Id, agentId, agentName, "Running");
         }
 
         try
@@ -110,10 +115,14 @@ public class AgentRunService
                         await _dbContext.SaveChangesAsync(ct);
                         Log.Debug("[BACKGROUND] Saved message for agent {AgentId} to {ChatType}", agentId, data.Channel != null ? "channel" : "DM");
 
-                        // Broadcast the message for channels
+                        // Broadcast the message
                         if (data.Channel != null && _channelEventBroadcaster != null)
                         {
                             await _channelEventBroadcaster.BroadcastMessageAddedAsync(data.Channel.Id, message);
+                        }
+                        else if (data.Dm != null && _channelEventBroadcaster != null)
+                        {
+                            await _channelEventBroadcaster.BroadcastDmMessageAddedAsync(data.Dm.Id, message);
                         }
                     }
 
@@ -129,22 +138,30 @@ public class AgentRunService
         catch (Exception ex)
         {
             Log.Error(ex, "[BACKGROUND] Agent run failed: {AgentId}, chat: {ChatId}", agentId, chatId);
-            // Broadcast "Failed" status for channels
             if (data.Channel != null && _channelEventBroadcaster != null)
             {
                 await _channelEventBroadcaster.BroadcastAgentStatusAsync(data.Channel.Id, agentId, agentName, "Failed");
+            }
+            else if (data.Dm != null && _channelEventBroadcaster != null)
+            {
+                await _channelEventBroadcaster.BroadcastDmAgentStatusAsync(data.Dm.Id, agentId, agentName, "Failed");
             }
             throw;
         }
         finally
         {
-            // Broadcast agent thinking end for channels
+            // Broadcast agent thinking end
             if (data.Channel != null && _channelEventBroadcaster != null)
             {
                 await _channelEventBroadcaster.BroadcastAgentThinkingEndAsync(data.Channel.Id, agentId, agentName);
                 await _channelEventBroadcaster.BroadcastTypingIndicatorAsync(data.Channel.Id, agentId, agentName, isTyping: false);
-                // Broadcast "Idle" status when agent completes
                 await _channelEventBroadcaster.BroadcastAgentStatusAsync(data.Channel.Id, agentId, agentName, "Idle");
+            }
+            else if (data.Dm != null && _channelEventBroadcaster != null)
+            {
+                await _channelEventBroadcaster.BroadcastDmAgentThinkingEndAsync(data.Dm.Id, agentId, agentName);
+                await _channelEventBroadcaster.BroadcastDmTypingIndicatorAsync(data.Dm.Id, agentId, agentName, isTyping: false);
+                await _channelEventBroadcaster.BroadcastDmAgentStatusAsync(data.Dm.Id, agentId, agentName, "Idle");
             }
         }
 
@@ -286,15 +303,19 @@ User prompt:
                     var newMessage = AocAgentThought.FromContent(parsedContent, update.Role ?? ChatRole.Assistant, data.Agent.Info.Username, now);
                     Log.Verbose("[BACKGROUND] LLM response: {Role} - {ContentType}", update.Role ?? ChatRole.Assistant, parsedContent.GetType().Name);
 
-                    // Broadcast text content for channels
-                    if (data.Channel != null && _channelEventBroadcaster != null && parsedContent is AocTextContent textContent)
+                    // Broadcast text content streaming
+                    if (_channelEventBroadcaster != null && parsedContent is AocTextContent textContent)
                     {
-                        await _channelEventBroadcaster.BroadcastAgentTextContentAsync(
-                            data.Channel.Id,
-                            data.Agent.Id,
-                            data.Agent.Info.Username,
-                            textContent.Text,
-                            isDelta: true);
+                        if (data.Channel != null)
+                        {
+                            await _channelEventBroadcaster.BroadcastAgentTextContentAsync(
+                                data.Channel.Id, data.Agent.Id, data.Agent.Info.Username, textContent.Text, isDelta: true);
+                        }
+                        else if (data.Dm != null)
+                        {
+                            await _channelEventBroadcaster.BroadcastDmAgentTextContentAsync(
+                                data.Dm.Id, data.Agent.Id, data.Agent.Info.Username, textContent.Text, isDelta: true);
+                        }
                     }
 
                     yield return newMessage;
@@ -392,13 +413,21 @@ User prompt:
                 // This can happen if the LLM calls a tool that is not declared in the prompt or if there is a typo in the tool name.
                 Log.Warning("[BACKGROUND] Tool {ToolName} not found in declarations", toolName);
 
-                // Broadcast tool call error for channels
+                // Broadcast tool call error
                 if (data.Channel != null && _channelEventBroadcaster != null)
                 {
                     await _channelEventBroadcaster.BroadcastToolCallStartAsync(
                         data.Channel.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId);
                     await _channelEventBroadcaster.BroadcastToolCallEndAsync(
                         data.Channel.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId,
+                        success: false, errorMessage: "Tool not found in declarations");
+                }
+                else if (data.Dm != null && _channelEventBroadcaster != null)
+                {
+                    await _channelEventBroadcaster.BroadcastDmToolCallStartAsync(
+                        data.Dm.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId);
+                    await _channelEventBroadcaster.BroadcastDmToolCallEndAsync(
+                        data.Dm.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId,
                         success: false, errorMessage: "Tool not found in declarations");
                 }
 
@@ -410,7 +439,7 @@ User prompt:
             {
                 Log.Debug("[BACKGROUND] Front-end tool {ToolName} called, returning empty result", toolName);
 
-                // Broadcast tool call start/end for front-end tools (channels only)
+                // Broadcast tool call start/end for front-end tools
                 if (data.Channel != null && _channelEventBroadcaster != null)
                 {
                     await _channelEventBroadcaster.BroadcastToolCallStartAsync(
@@ -419,17 +448,30 @@ User prompt:
                         data.Channel.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId,
                         success: true);
                 }
+                else if (data.Dm != null && _channelEventBroadcaster != null)
+                {
+                    await _channelEventBroadcaster.BroadcastDmToolCallStartAsync(
+                        data.Dm.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId);
+                    await _channelEventBroadcaster.BroadcastDmToolCallEndAsync(
+                        data.Dm.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId,
+                        success: true);
+                }
 
                 // For front-end tools, we can return an empty result immediately since the front-end will handle the rendering based on the tool declaration.
                 yield return AocFunctionResultContent.Empty(toolCall.CallId);
                 continue;
             }
 
-            // Broadcast tool call start for backend tools (channels only)
+            // Broadcast tool call start for backend tools
             if (data.Channel != null && _channelEventBroadcaster != null)
             {
                 await _channelEventBroadcaster.BroadcastToolCallStartAsync(
                     data.Channel.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId);
+            }
+            else if (data.Dm != null && _channelEventBroadcaster != null)
+            {
+                await _channelEventBroadcaster.BroadcastDmToolCallStartAsync(
+                    data.Dm.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId);
             }
 
             Log.Debug("[BACKGROUND] Executing tool {ToolName}", toolName);
@@ -446,11 +488,17 @@ User prompt:
                 toolError = ex;
             }
 
-            // Broadcast tool call end for channels
+            // Broadcast tool call end
             if (data.Channel != null && _channelEventBroadcaster != null)
             {
                 await _channelEventBroadcaster.BroadcastToolCallEndAsync(
                     data.Channel.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId,
+                    success: toolError == null, errorMessage: toolError?.Message);
+            }
+            else if (data.Dm != null && _channelEventBroadcaster != null)
+            {
+                await _channelEventBroadcaster.BroadcastDmToolCallEndAsync(
+                    data.Dm.Id, data.Agent.Id, data.Agent.Info.Username, toolName, toolCall.CallId,
                     success: toolError == null, errorMessage: toolError?.Message);
             }
 

@@ -431,5 +431,244 @@ export function useChannelEvents(channelId: string | null) {
   return { client, isConnected }
 }
 
+/**
+ * SignalR client for real-time DM events.
+ * Connects to the DM events hub and receives real-time updates.
+ * Same event types as ChannelEventsClient, but for direct messages.
+ */
+export class DmEventsClient {
+  private connection: HubConnection | null = null
+  private dmId: string
+  private reconnectAttempts = 0
+  private maxReconnectAttempts = 5
+  private eventHandlers: Map<string, Set<ChannelEventHandler>> = new Map()
+  private isStub: boolean = false
+
+  constructor(dmId: string) {
+    this.dmId = dmId
+    this.isStub = !signalR
+    if (this.isStub) {
+      console.warn(`DmEventsClient created in stub mode (package not installed) for DM ${dmId}`)
+    }
+  }
+
+  async start(): Promise<void> {
+    if (this.isStub) {
+      console.warn("Cannot start SignalR connection: @microsoft/signalr package not installed")
+      return
+    }
+
+    if (this.connection?.state === "Connected") {
+      return
+    }
+
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL ?? "http://localhost:5000"
+    const hubUrl = `${backendUrl}/dms/${this.dmId}/events`
+
+    this.connection = new signalR!.HubConnectionBuilder()
+      .withUrl(hubUrl, {
+        skipNegotiation: false,
+        transport: signalR!.HttpTransportType.WebSockets | signalR!.HttpTransportType.ServerSentEvents
+      })
+      .withAutomaticReconnect({
+        nextRetryDelayInMilliseconds: (retryContext: RetryContext) => {
+          const delays = [0, 2000, 10000, 30000, 60000]
+          const index = Math.min(retryContext.previousRetryCount, delays.length - 1)
+          return delays[index]
+        }
+      })
+      .configureLogging(signalR!.LogLevel.Information)
+      .build() as HubConnection
+
+    this.connection.on("event", (event: ChannelEvent) => {
+      this.handleEvent(event)
+    })
+
+    this.connection.onreconnecting((error?: Error) => {
+      console.warn(`SignalR reconnecting for DM ${this.dmId}:`, error)
+    })
+
+    this.connection.onreconnected(async (connectionId?: string) => {
+      console.log(`SignalR reconnected for DM ${this.dmId} with connection ID: ${connectionId}`)
+      this.reconnectAttempts = 0
+      await this.joinDm()
+    })
+
+    this.connection.onclose((error?: Error) => {
+      if (error) {
+        console.error(`SignalR connection closed for DM ${this.dmId}:`, error)
+      } else {
+        console.log(`SignalR connection closed for DM ${this.dmId}`)
+      }
+    })
+
+    try {
+      await this.connection.start()
+      console.log(`SignalR connected to DM ${this.dmId}`)
+      await this.joinDm()
+    } catch (err) {
+      console.error(`Error starting SignalR connection for DM ${this.dmId}:`, err)
+      throw err
+    }
+  }
+
+  async stop(): Promise<void> {
+    if (this.isStub) {
+      return
+    }
+
+    if (this.connection) {
+      try {
+        await this.leaveDm()
+        await this.connection.stop()
+        console.log(`SignalR disconnected from DM ${this.dmId}`)
+      } catch (err) {
+        console.error(`Error stopping SignalR connection for DM ${this.dmId}:`, err)
+      }
+      this.connection = null
+    }
+  }
+
+  on(eventType: string, handler: ChannelEventHandler): void {
+    if (!this.eventHandlers.has(eventType)) {
+      this.eventHandlers.set(eventType, new Set())
+    }
+    this.eventHandlers.get(eventType)!.add(handler)
+  }
+
+  off(eventType: string, handler: ChannelEventHandler): void {
+    const handlers = this.eventHandlers.get(eventType)
+    if (handlers) {
+      handlers.delete(handler)
+      if (handlers.size === 0) {
+        this.eventHandlers.delete(eventType)
+      }
+    }
+  }
+
+  onMessageAdded(handler: (event: MessageAddedEvent) => void): void {
+    this.on("MESSAGE_ADDED", handler as ChannelEventHandler)
+  }
+
+  onAgentThinkingStart(handler: (event: AgentThinkingStartEvent) => void): void {
+    this.on("AGENT_THINKING_START", handler as ChannelEventHandler)
+  }
+
+  onAgentThinkingEnd(handler: (event: AgentThinkingEndEvent) => void): void {
+    this.on("AGENT_THINKING_END", handler as ChannelEventHandler)
+  }
+
+  onAgentTextContent(handler: (event: AgentTextContentEvent) => void): void {
+    this.on("AGENT_TEXT_CONTENT", handler as ChannelEventHandler)
+  }
+
+  onTypingIndicator(handler: (event: TypingIndicatorEvent) => void): void {
+    this.on("TYPING_INDICATOR", handler as ChannelEventHandler)
+  }
+
+  onAgentStatus(handler: (event: AgentStatusEvent) => void): void {
+    this.on("AGENT_STATUS", handler as ChannelEventHandler)
+  }
+
+  get isConnected(): boolean {
+    if (this.isStub || !this.connection) {
+      return false
+    }
+    return this.connection?.state === "Connected"
+  }
+
+  private isValidGuid(str: string): boolean {
+    const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    return guidRegex.test(str)
+  }
+
+  private async joinDm(): Promise<void> {
+    if (this.isStub || !this.connection) {
+      return
+    }
+
+    if (this.connection.state === "Connected") {
+      if (!this.isValidGuid(this.dmId)) {
+        console.warn(`Skipping JoinDm for invalid GUID format: ${this.dmId}`)
+        return
+      }
+
+      try {
+        await this.connection.invoke("JoinDm", this.dmId)
+        console.log(`Joined DM group: ${this.dmId}`)
+      } catch (err) {
+        console.error(`Error joining DM ${this.dmId}:`, err)
+      }
+    }
+  }
+
+  private async leaveDm(): Promise<void> {
+    if (this.isStub || !this.connection) {
+      return
+    }
+
+    if (this.connection.state === "Connected") {
+      try {
+        await this.connection.invoke("LeaveDm", this.dmId)
+        console.log(`Left DM group: ${this.dmId}`)
+      } catch (err) {
+        console.error(`Error leaving DM ${this.dmId}:`, err)
+      }
+    }
+  }
+
+  private handleEvent(event: ChannelEvent): void {
+    const handlers = this.eventHandlers.get(event.type)
+    if (handlers) {
+      handlers.forEach((handler) => {
+        try {
+          handler(event)
+        } catch (err) {
+          console.error(`Error handling DM event ${event.type}:`, err)
+        }
+      })
+    }
+  }
+}
+
+/**
+ * React hook for using the SignalR DM events client.
+ */
+export function useDmEvents(dmId: string | null) {
+  const [client, setClient] = React.useState<DmEventsClient | null>(null)
+  const [isConnected, setIsConnected] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!dmId) return
+
+    const eventsClient = new DmEventsClient(dmId)
+    setClient(eventsClient)
+
+    eventsClient.start()
+      .then(() => setIsConnected(true))
+      .catch((err) => {
+        console.error("Failed to connect to DM events:", err)
+        setIsConnected(false)
+      })
+
+    return () => {
+      eventsClient.stop()
+      setIsConnected(false)
+    }
+  }, [dmId])
+
+  React.useEffect(() => {
+    if (!client) return
+
+    const checkConnection = setInterval(() => {
+      setIsConnected(client.isConnected)
+    }, 1000)
+
+    return () => clearInterval(checkConnection)
+  }, [client])
+
+  return { client, isConnected }
+}
+
 // Import React for the hook
 import React from "react"

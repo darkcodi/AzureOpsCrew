@@ -116,6 +116,7 @@ try
 
     // Map SignalR hubs
     app.MapHub<ChannelEventsHub>("/channels/{id}/events");
+    app.MapHub<DmEventsHub>("/dms/{id}/events");
 
     await app.Services.RunDbSetup();
     await app.Services.RunLongTermMemorySetup();
