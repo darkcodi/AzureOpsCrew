@@ -13,7 +13,7 @@
             <a href="/signup" class="signup-button">Sign up</a>
         </div>
 
-        <EditForm Model="@loginModel" OnValidSubmit="@HandleLogin">
+        <EditForm Model="@loginModel" OnValidSubmit="@HandleLoginSubmit">
             <DataAnnotationsValidator />
 
             <div class="form-group">
@@ -54,7 +54,7 @@
         Log.Information("Login page initializing");
 
         // Set JSRuntime for AuthState
-        AuthState.SetJSRuntime(JSRuntime);
+        AuthState.SetJsRuntime(JSRuntime);
         await AuthState.LoadFromLocalStorageAsync();
 
         // If already authenticated, redirect to home
@@ -69,7 +69,7 @@
         }
     }
 
-    private async Task HandleLogin()
+    private async Task HandleLoginSubmit()
     {
         if (isSubmitting) return;
 
@@ -82,13 +82,13 @@
         {
             var response = await AuthService.LoginAsync(loginModel.Email, loginModel.Password);
 
-            if (response != null && response.Error == null)
+            if (response != null && response.Error == null && response.User != null && !string.IsNullOrEmpty(response.AccessToken))
             {
                 // Successful login
                 Log.Information("Login successful for email: {Email}, UserId: {UserId}, ExpiresAt: {ExpiresAtUtc}",
                     loginModel.Email, response.User?.Id.ToString() ?? "unknown", response.ExpiresAtUtc);
 
-                AuthState.Login(response.AccessToken, response.ExpiresAtUtc, response.User);
+                await AuthState.LoginAsync(response.AccessToken, response.ExpiresAtUtc, response.User!);
 
                 // Get next parameter or default to home
                 var nextPath = GetNextPath();

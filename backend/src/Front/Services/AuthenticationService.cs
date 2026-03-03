@@ -9,7 +9,7 @@ public class LoginResponse
 {
     public string AccessToken { get; set; } = string.Empty;
     public DateTime ExpiresAtUtc { get; set; }
-    public UserDto User { get; set; } = new();
+    public UserDto? User { get; set; }
     public string? Error { get; set; }
 }
 
@@ -35,13 +35,13 @@ public class AuthenticationService
 
             var content = await response.Content.ReadAsStringAsync();
             var result = JsonSerializer.Deserialize<LoginResponse>(content, _jsonOptions);
+            Log.Information($"Login response: {content}");
 
             if (response.IsSuccessStatusCode && result != null)
             {
                 return result;
             }
 
-            // Return error response
             return result ?? new LoginResponse { Error = "Login failed" };
         }
         catch (HttpRequestException ex)

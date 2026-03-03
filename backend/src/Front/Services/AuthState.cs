@@ -1,5 +1,6 @@
 using Microsoft.JSInterop;
 using Front.Models;
+using Front.Utils;
 using Serilog;
 
 namespace Front.Services;
@@ -9,177 +10,71 @@ namespace Front.Services;
 /// </summary>
 public class AuthState
 {
-    private UserDto? _currentUser;
-    private string? _accessToken;
-    private DateTime _tokenExpiry;
     private IJSRuntime? _jsRuntime;
+    private LoginInfo? _loginInfo;
+
+    public UserDto? CurrentUser => _loginInfo?.User;
+    public string? AccessToken => _loginInfo?.Token;
+    public DateTime? TokenExpiry => _loginInfo?.TokenExpiration;
 
     public bool IsAuthenticated => AccessToken != null && TokenExpiry > DateTime.UtcNow;
-
-    public UserDto? CurrentUser
-    {
-        get => _currentUser;
-        set
-        {
-            _currentUser = value;
-            OnStateChanged();
-        }
-    }
-
-    public string? AccessToken
-    {
-        get => _accessToken;
-        set
-        {
-            _accessToken = value;
-            OnStateChanged();
-        }
-    }
-
-    public DateTime TokenExpiry
-    {
-        get => _tokenExpiry;
-        set
-        {
-            _tokenExpiry = value;
-            OnStateChanged();
-        }
-    }
+    public bool IsTokenNullOrExpired => TokenExpiry == null || TokenExpiry <= DateTime.UtcNow;
 
     // Event for state changes
     public event Action? OnChange;
 
     private void OnStateChanged() => OnChange?.Invoke();
 
-    public void SetJSRuntime(IJSRuntime jsRuntime)
+    public void SetJsRuntime(IJSRuntime jsRuntime)
     {
         _jsRuntime = jsRuntime;
     }
 
-    public void Login(string accessToken, DateTime expiresAtUtc, UserDto user)
+    public async Task LoginAsync(string accessToken, DateTime expiresAtUtc, UserDto user)
     {
-        AccessToken = accessToken;
-        TokenExpiry = expiresAtUtc;
-        CurrentUser = user;
-
-        // Schedule persistence to run async after context is available
-        _ = Task.Run(async () =>
+        ThrowIfNoJsRuntime();
+        var loginInfo = new LoginInfo
         {
-            if (_jsRuntime != null)
-            {
-                await PersistToLocalStorageAsync();
-            }
-        });
+            Token = accessToken,
+            TokenExpiration = expiresAtUtc,
+            User = user,
+        };
+        await LocalStorageUtils.PersistLoginInfo(_jsRuntime!, loginInfo);
+        _loginInfo = loginInfo;
+        OnStateChanged();
     }
 
-    public void Logout()
+    public async Task LogoutAsync()
     {
-        AccessToken = null;
-        CurrentUser = null;
-        TokenExpiry = DateTime.MinValue;
-
-        // Schedule clearing to run async
-        _ = Task.Run(async () =>
-        {
-            if (_jsRuntime != null)
-            {
-                await ClearFromLocalStorageAsync();
-            }
-        });
+        ThrowIfNoJsRuntime();
+        await LocalStorageUtils.ClearLoginInfo(_jsRuntime!);
+        _loginInfo = null;
+        OnStateChanged();
     }
 
-    public bool IsTokenExpired()
+    public async Task<bool> LoadFromLocalStorageAsync()
     {
-        return TokenExpiry <= DateTime.UtcNow;
-    }
-
-    private async Task PersistToLocalStorageAsync()
-    {
-        try
+        ThrowIfNoJsRuntime();
+        var loginInfo = await LocalStorageUtils.LoadLoginInfo(_jsRuntime!);
+        if (loginInfo != null)
         {
-            Log.Information("Persisting auth state to localStorage for user {Email}.", CurrentUser?.Email);
-            if (_jsRuntime != null && AccessToken != null && CurrentUser != null)
-            {
-                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "auth_token", AccessToken);
-                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "auth_token_expiry", TokenExpiry.ToString("o"));
-                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "auth_user_id", CurrentUser.Id.ToString());
-                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "auth_user_email", CurrentUser.Email);
-                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "auth_user_username", CurrentUser.Username);
-                Log.Information("Auth state persisted to localStorage successfully.");
-            }
+            _loginInfo = loginInfo;
+            Log.Information("Auth state loaded from localStorage.");
+            return true;
         }
-        catch (Exception ex)
+        else
         {
-            Log.Error($"Error persisting auth state to localStorage: {ex.Message}");
+            Log.Information("No auth state found in localStorage.");
+            return false;
         }
     }
 
-    private async Task ClearFromLocalStorageAsync()
+    private void ThrowIfNoJsRuntime()
     {
-        try
+        if (_jsRuntime == null)
         {
-            Log.Information("Clearing auth state from localStorage.");
-            if (_jsRuntime != null)
-            {
-                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "auth_token");
-                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "auth_token_expiry");
-                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "auth_user_id");
-                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "auth_user_email");
-                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "auth_user_username");
-                Log.Information("Auth state cleared from localStorage.");
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error($"Error clearing auth state from localStorage: {ex.Message}");
-        }
-    }
-
-    public async Task LoadFromLocalStorageAsync()
-    {
-        try
-        {
-            Log.Information("Attempting to load auth state from localStorage.");
-            if (_jsRuntime == null) return;
-
-            var token = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "auth_token");
-            var expiryStr = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "auth_token_expiry");
-            var userIdStr = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "auth_user_id");
-            var email = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "auth_user_email");
-            var username = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "auth_user_username");
-
-            if (!string.IsNullOrEmpty(token) &&
-                DateTime.TryParse(expiryStr, out var expiry) &&
-                Guid.TryParse(userIdStr, out var userId))
-            {
-                Log.Information("Auth state found in localStorage, validating token expiry.");
-                if (expiry > DateTime.UtcNow)
-                {
-                    Log.Information("Auth token in localStorage is valid, loading user info.");
-                    AccessToken = token;
-                    TokenExpiry = expiry;
-                    CurrentUser = new UserDto
-                    {
-                        Id = userId,
-                        Email = email ?? string.Empty,
-                        Username = username ?? string.Empty
-                    };
-                    Log.Information("Loaded user with email {Email} from localStorage.", CurrentUser.Email);
-                }
-                else
-                {
-                    Log.Information("Auth token in localStorage has expired, clearing it.");
-                    await ClearFromLocalStorageAsync();
-                }
-            }
-            else
-            {
-                Log.Information("No valid auth state found in localStorage.");
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error($"Error loading auth state from localStorage: {ex.Message}");
+            Log.Error("JSRuntime is not set. Cannot perform localStorage operations.");
+            throw new InvalidOperationException("JSRuntime is not set. Please call SetJSRuntime before using localStorage features.");
         }
     }
 }
