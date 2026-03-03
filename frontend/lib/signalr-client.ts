@@ -27,7 +27,6 @@ interface HubConnectionBuilder {
 // Try to import SignalR, use a stub if not available
 let signalR: {
   HubConnectionBuilder: new () => HubConnectionBuilder
-  HubConnectionState: typeof HubConnectionState
   HttpTransportType: any
   LogLevel: any
 } | null = null

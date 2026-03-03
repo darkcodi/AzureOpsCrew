@@ -44,6 +44,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - BACKEND_API_URL=http://api:80
+      - NEXT_PUBLIC_BACKEND_API_URL=http://api:80
     ports:
       - "43000:3000"
     restart: on-failure
