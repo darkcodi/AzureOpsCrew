@@ -1,5 +1,5 @@
 .channel-sidebar {
-    background-color: #2f3136;
+    background-color: hsl(228, 7%, 14%);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -11,7 +11,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 2px solid #26272d;
+    border-bottom: 2px solid hsl(228, 6%, 10%);
     font-weight: 700;
     font-size: 16px;
     cursor: pointer;
@@ -20,7 +20,7 @@
 }
 
 .channel-header:hover {
-    background-color: #34373c;
+    background-color: hsl(228, 6%, 18%);
 }
 
 .server-name {
@@ -31,7 +31,7 @@
 }
 
 .dropdown-icon {
-    color: #b5bac1;
+    color: hsl(214, 5%, 55%);
     font-size: 12px;
 }
 
@@ -39,6 +39,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 12px 0;
+    background-color: hsl(228, 7%, 14%);
 }
 
 .channel-section {
@@ -53,14 +54,14 @@
     font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
-    color: #72767d;
+    color: hsl(214, 5%, 55%);
     cursor: pointer;
     user-select: none;
     gap: 4px;
 }
 
 .channel-section-header:hover {
-    color: #dcddde;
+    color: hsl(210, 3%, 90%);
 }
 
 .collapse-icon {
@@ -73,12 +74,12 @@
 
 .add-icon {
     margin-left: auto;
-    color: #72767d;
+    color: hsl(214, 5%, 55%);
     font-size: 16px;
 }
 
 .add-icon:hover {
-    color: #dcddde;
+    color: hsl(210, 3%, 90%);
 }
 
 .channel-item {
@@ -87,7 +88,7 @@
     padding: 6px 8px;
     margin: 1px 8px;
     cursor: pointer;
-    color: #72767d;
+    color: hsl(214, 5%, 55%);
     font-size: 15px;
     border-radius: 4px;
     transition: background-color 0.1s ease;
@@ -95,12 +96,12 @@
 }
 
 .channel-item:hover {
-    background-color: #34373c;
-    color: #dcddde;
+    background-color: hsl(228, 6%, 18%);
+    color: hsl(210, 3%, 90%);
 }
 
 .channel-item.active {
-    background-color: #393c43;
+    background-color: hsl(228, 6%, 22%);
     color: white;
 }
 
@@ -110,7 +111,7 @@
 }
 
 .channel-item .hash {
-    color: #72767d;
+    color: hsl(214, 5%, 55%);
     margin-right: 6px;
     font-size: 20px;
     font-weight: 400;
@@ -119,7 +120,7 @@
 
 .channel-item:hover .hash,
 .channel-item.active .hash {
-    color: #dcddde;
+    color: hsl(210, 3%, 90%);
 }
 
 .channel-item.active .hash {
@@ -144,7 +145,7 @@
     transform: translateY(-50%);
     margin-left: 8px;
     padding: 8px 12px;
-    background-color: #18191c;
+    background-color: hsl(228, 6%, 10%);
     border-radius: 4px;
     font-size: 14px;
     white-space: nowrap;
@@ -160,7 +161,7 @@
 /* User Panel at bottom */
 .user-panel {
     height: 52px;
-    background-color: #292b2f;
+    background-color: hsl(228, 6%, 10%);
     display: flex;
     align-items: center;
     padding: 0 8px;
@@ -197,7 +198,7 @@
 
 .user-status {
     font-size: 12px;
-    color: #b5bac1;
+    color: hsl(214, 5%, 55%);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -215,7 +216,7 @@
     border: none;
     background: transparent;
     cursor: pointer;
-    color: #b5bac1;
+    color: hsl(214, 5%, 55%);
     font-size: 14px;
     display: flex;
     align-items: center;
@@ -224,6 +225,6 @@
 }
 
 .icon-button:hover {
-    background-color: #34373c;
-    color: #dcddde;
+    background-color: hsl(228, 6%, 18%);
+    color: hsl(210, 3%, 90%);
 }

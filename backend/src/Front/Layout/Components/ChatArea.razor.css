@@ -65,6 +65,7 @@
     justify-content: center;
     padding: 16px;
     text-align: center;
+    background-color: hsl(228, 6%, 22%);
 }
 
 .welcome-icon {
@@ -88,7 +89,7 @@
 
 .no-messages p, .no-selection p {
     font-size: 16px;
-    color: #b5bac1;
+    color: hsl(214, 5%, 55%);
 }
 
 .message-input-container {

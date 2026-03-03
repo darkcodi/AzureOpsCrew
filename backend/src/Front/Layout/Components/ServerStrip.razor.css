@@ -1,5 +1,5 @@
 .server-strip {
-    background-color: #18191c;
+    background-color: hsl(228, 7%, 10%);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -14,14 +14,14 @@
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background-color: #313338;
+    background-color: hsl(228, 6%, 22%);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
-    color: #dcddde;
+    color: hsl(210, 3%, 90%);
     font-weight: 600;
     font-size: 18px;
     user-select: none;
@@ -52,8 +52,8 @@
 }
 
 .server-icon.home-icon {
-    background-color: #313338;
-    color: #dcddde;
+    background-color: hsl(228, 6%, 22%);
+    color: hsl(210, 3%, 90%);
 }
 
 .server-icon.home-icon:hover,
@@ -63,8 +63,8 @@
 }
 
 .server-icon.settings-icon {
-    background-color: #313338;
-    color: #b5bac1;
+    background-color: hsl(228, 6%, 22%);
+    color: hsl(214, 5%, 55%);
     font-size: 20px;
 }
 
@@ -76,7 +76,7 @@
 .server-separator {
     width: 32px;
     height: 2px;
-    background-color: #35363c;
+    background-color: hsl(228, 6%, 28%);
     border-radius: 1px;
     margin: 4px 0;
 }
