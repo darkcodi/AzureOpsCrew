@@ -33,7 +33,6 @@ try
     // Register application services
     builder.Services.AddSingleton<ChatState>();
     builder.Services.AddSingleton<AuthState>();
-    builder.Services.AddScoped<AppInitializationService>();
     builder.Services.AddScoped<SignalRService>();
     builder.Services.AddScoped<ChannelService>();
     builder.Services.AddScoped<DmService>();
