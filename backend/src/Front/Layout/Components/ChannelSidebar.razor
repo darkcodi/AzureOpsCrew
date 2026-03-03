@@ -8,25 +8,16 @@
 
     <div class="channel-list">
         <div class="channel-section">
-            <div class="channel-section-header" @onclick="ToggleTextChannels">
-                <span class="collapse-icon@(textChannelsExpanded ? "" : " collapsed")">▼</span>
-                <span>Text Channels</span>
-                <span class="add-icon">+</span>
-            </div>
-
-            @if (textChannelsExpanded)
+            @foreach (var channel in ChatState.GetVisibleChannels())
             {
-                @foreach (var channel in ChatState.GetVisibleChannels())
-                {
-                    <div class="channel-item @IsChannelSelected(channel)" @onclick="() => SelectChannel(channel)">
-                        <span class="hash">#</span>
-                        <span class="channel-name">@channel.Name</span>
-                        @if (channel.Description != null)
-                        {
-                            <span class="channel-tooltip">@channel.Description</span>
-                        }
-                    </div>
-                }
+                <div class="channel-item @IsChannelSelected(channel)" @onclick="() => SelectChannel(channel)">
+                    <span class="hash">#</span>
+                    <span class="channel-name">@channel.Name</span>
+                    @if (channel.Description != null)
+                    {
+                        <span class="channel-tooltip">@channel.Description</span>
+                    }
+                </div>
             }
         </div>
     </div>
@@ -46,16 +37,12 @@
 </div>
 
 @code {
-    private bool textChannelsExpanded = true;
-
     private string IsChannelSelected(ChannelDto channel) => ChatState.SelectedChannel?.Id == channel.Id ? "active" : "";
 
     private void SelectChannel(ChannelDto channel)
     {
         ChatState.SelectedChannel = channel;
     }
-
-    private void ToggleTextChannels() => textChannelsExpanded = !textChannelsExpanded;
 
     private string GetUserInitials()
     {

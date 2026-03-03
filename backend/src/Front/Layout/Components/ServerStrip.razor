@@ -47,7 +47,7 @@
 </div>
 
 @code {
-    private string IsServerSelected(ServerInfo? server)
+    private string IsServerSelected(ServerInfoDto? server)
     {
         if (server == null)
         {
@@ -62,7 +62,7 @@
         ChatState.SelectedServer = dmServer;
     }
 
-    private void SelectServer(ServerInfo server)
+    private void SelectServer(ServerInfoDto server)
     {
         ChatState.SelectedServer = server;
     }

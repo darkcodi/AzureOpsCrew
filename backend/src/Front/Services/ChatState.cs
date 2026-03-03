@@ -8,11 +8,11 @@ namespace Front.Services;
 public class ChatState
 {
     private UserDto? _currentUser;
-    private ServerInfo? _selectedServer;
-    private ChannelDto? _selectedChannel;
+    private ServerInfoDto? _selectedServer = ServerInfoDto.GetDefaultServers().LastOrDefault();
+    private ChannelDto? _selectedChannel = ChannelDto.GetDefaultChannels().FirstOrDefault();
     private DmChannelDto? _selectedDm;
-    private List<ServerInfo> _servers = ServerInfo.GetDefaultServers();
-    private List<ChannelDto> _channels = [];
+    private List<ServerInfoDto> _servers = ServerInfoDto.GetDefaultServers();
+    private List<ChannelDto> _channels = ChannelDto.GetDefaultChannels();
     private List<DmChannelDto> _dms = [];
     private List<AgentDto> _agents = [];
     private Dictionary<Guid, List<ChatMessageDto>> _channelMessages = [];
@@ -31,7 +31,7 @@ public class ChatState
     }
 
     // Server selection
-    public ServerInfo? SelectedServer
+    public ServerInfoDto? SelectedServer
     {
         get => _selectedServer;
         set
@@ -65,7 +65,7 @@ public class ChatState
     }
 
     // Data collections
-    public List<ServerInfo> Servers
+    public List<ServerInfoDto> Servers
     {
         get => _servers;
         set
