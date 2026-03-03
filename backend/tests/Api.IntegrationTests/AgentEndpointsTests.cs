@@ -63,8 +63,8 @@ public class AgentEndpointsTests
 
         // Assert
         names.Should().Contain("Manager");
-        names.Should().Contain("Azure DevOps");
-        names.Should().Contain("Azure Dev");
+        names.Should().Contain("DevOps");
+        names.Should().Contain("Developer");
     }
 
     [Fact]

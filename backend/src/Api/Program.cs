@@ -10,6 +10,7 @@ using Serilog;
 #pragma warning disable ASP0013
 
 Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
     .WriteTo.Console()
     .CreateLogger();
 
@@ -32,6 +33,56 @@ try
                 optional: true, reloadOnChange: true)
             .AddUserSecrets(typeof(Program).Assembly)
             .AddEnvironmentVariables();
+
+        // Map MCP_* env vars from .env to .NET config paths
+        // (.env uses MCP_AZURE_URL, MCP_ADO_URL etc.; .NET config expects Mcp:Azure:ServerUrl etc.)
+        var mcpOverrides = new Dictionary<string, string?>();
+
+        void MapEnv(string envVar, string configPath)
+        {
+            var value = Environment.GetEnvironmentVariable(envVar);
+            if (!string.IsNullOrWhiteSpace(value))
+                mcpOverrides[configPath] = value;
+        }
+
+        // Azure MCP Server
+        MapEnv("MCP_AZURE_URL", "Mcp:Azure:ServerUrl");
+        MapEnv("MCP_AZURE_TENANT_ID", "Mcp:Azure:TenantId");
+        MapEnv("MCP_AZURE_CLIENT_ID", "Mcp:Azure:ClientId");
+        MapEnv("MCP_AZURE_CLIENT_SECRET", "Mcp:Azure:ClientSecret");
+        MapEnv("MCP_AZURE_TOKEN_URL", "Mcp:Azure:TokenUrl");
+        MapEnv("MCP_AZURE_SCOPE", "Mcp:Azure:Scope");
+
+        // Azure DevOps MCP Server
+        MapEnv("MCP_ADO_URL", "Mcp:AzureDevOps:ServerUrl");
+        MapEnv("MCP_ADO_TENANT_ID", "Mcp:AzureDevOps:TenantId");
+        MapEnv("MCP_ADO_CLIENT_ID", "Mcp:AzureDevOps:ClientId");
+        MapEnv("MCP_ADO_CLIENT_SECRET", "Mcp:AzureDevOps:ClientSecret");
+        MapEnv("MCP_ADO_TOKEN_URL", "Mcp:AzureDevOps:TokenUrl");
+        MapEnv("MCP_ADO_SCOPE", "Mcp:AzureDevOps:Scope");
+
+        // Platform MCP Server
+        MapEnv("MCP_PLATFORM_URL", "Mcp:Platform:ServerUrl");
+        MapEnv("MCP_PLATFORM_TENANT_ID", "Mcp:Platform:TenantId");
+        MapEnv("MCP_PLATFORM_CLIENT_ID", "Mcp:Platform:ClientId");
+        MapEnv("MCP_PLATFORM_CLIENT_SECRET", "Mcp:Platform:ClientSecret");
+        MapEnv("MCP_PLATFORM_TOKEN_URL", "Mcp:Platform:TokenUrl");
+        MapEnv("MCP_PLATFORM_SCOPE", "Mcp:Platform:Scope");
+
+        // GitOps MCP Server (Azure DevOps GitOps — code write operations)
+        MapEnv("MCP_GITOPS_URL", "Mcp:GitOps:ServerUrl");
+        MapEnv("MCP_GITOPS_TENANT_ID", "Mcp:GitOps:TenantId");
+        MapEnv("MCP_GITOPS_CLIENT_ID", "Mcp:GitOps:ClientId");
+        MapEnv("MCP_GITOPS_CLIENT_SECRET", "Mcp:GitOps:ClientSecret");
+        MapEnv("MCP_GITOPS_TOKEN_URL", "Mcp:GitOps:TokenUrl");
+        MapEnv("MCP_GITOPS_SCOPE", "Mcp:GitOps:Scope");
+
+        // JWT & OpenAI mappings from .env (SCREAMING_SNAKE_CASE → .NET config paths)
+        MapEnv("JWT_SIGNING_KEY", "Jwt:SigningKey");
+        MapEnv("OPENAI_API_KEY", "OpenAI:ApiKey");
+
+        if (mcpOverrides.Count > 0)
+            config.AddInMemoryCollection(mcpOverrides);
     });
 
     // Use Serilog
@@ -46,7 +97,9 @@ try
     builder.Services.AddProviderFacades();
     builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddOpenAIAndMcp(builder.Configuration);
+    builder.Services.AddOrchestration(builder.Configuration);
     builder.Services.AddAgentFactory(builder.Configuration);
+    builder.Services.AddExecutionEngine(builder.Configuration);
 
     // Configure AG-UI
     builder.Services.AddHttpClient();
@@ -102,6 +155,7 @@ try
     app.MapProviderEndpoints();
 
     app.MapAllAgUi();
+    app.MapRunEndpoints();
 
     await app.Services.RunDbSetup();
     await app.Services.RunLongTermMemorySetup();

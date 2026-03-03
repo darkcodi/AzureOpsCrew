@@ -4,6 +4,8 @@ public record McpSettings
 {
     public McpServerSettings Azure { get; set; } = new();
     public McpServerSettings AzureDevOps { get; set; } = new();
+    public McpServerSettings Platform { get; set; } = new();
+    public McpServerSettings GitOps { get; set; } = new();
 }
 
 public record McpServerSettings

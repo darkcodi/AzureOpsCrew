@@ -108,3 +108,4 @@ docker-compose.override.yml
 ####################################
 
 .claude/
+MCP_SERVERS_ACCESS.txt

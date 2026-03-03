@@ -68,7 +68,7 @@ public class ChannelEndpointsTests
         opsRoom.ValueKind.Should().NotBe(JsonValueKind.Undefined, "Ops Room channel should exist");
 
         var agentIds = opsRoom.GetProperty("agentIds");
-        agentIds.GetArrayLength().Should().Be(3, "Ops Room should have 3 agents");
+        agentIds.GetArrayLength().Should().Be(3, "Ops Room should have 3 agents (Manager, DevOps, Developer)");
     }
 
     [Fact]

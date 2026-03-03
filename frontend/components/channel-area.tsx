@@ -1,11 +1,14 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import type { Channel, Agent, ChatMessage } from "@/lib/agents"
 import { ChannelHeader } from "@/components/channel-header"
 import { MessageList } from "@/components/message-list"
 import { MessageInput } from "@/components/message-input"
 import { MemberList } from "@/components/member-list"
+import { RunStatusBar, type RunPhase, type ToolCallInfo } from "@/components/run-status-bar"
+import { TaskTreePanel, type RunData } from "@/components/task-tree-panel"
+import { ApprovalDialog, type ApprovalRequest } from "@/components/approval-dialog"
 import type { AGUIEvent } from "@ag-ui/core"
 import { EventType } from "@ag-ui/core"
 import type { HumanMember } from "@/lib/humans"
@@ -38,7 +41,69 @@ export function ChannelArea({
   const [streamingContent, setStreamingContent] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [showMembers, setShowMembers] = useState(true)
+  const [runPhase, setRunPhase] = useState<RunPhase>("idle")
+  const [activeAgentName, setActiveAgentName] = useState<string | null>(null)
+  const [toolCalls, setToolCalls] = useState<ToolCallInfo[]>([])
+  const [runStartTime, setRunStartTime] = useState<number | null>(null)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
+  const messageCounterRef = useRef(0)
+
+  // Execution engine state
+  const [executionRunId, setExecutionRunId] = useState<string | null>(null)
+  const [executionRun, setExecutionRun] = useState<RunData | null>(null)
+  const [pendingApprovals, setPendingApprovals] = useState<ApprovalRequest[]>([])
+  const [showTaskTree, setShowTaskTree] = useState(false)
+
+  // Elapsed time counter
+  useEffect(() => {
+    if (!runStartTime) return
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - runStartTime) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [runStartTime])
+
+  // Poll execution run status
+  useEffect(() => {
+    if (!executionRunId) return
+    let cancelled = false
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/runs/${executionRunId}`)
+        if (!res.ok || cancelled) return
+        const data: RunData = await res.json()
+        setExecutionRun(data)
+        setShowTaskTree(data.tasks.length > 0)
+
+        // Fetch pending approvals
+        if (data.pendingApprovals.length > 0) {
+          const appRes = await fetch(`/api/runs/${executionRunId}/approvals`)
+          if (appRes.ok && !cancelled) {
+            const approvals: ApprovalRequest[] = await appRes.json()
+            setPendingApprovals(approvals.filter(a => a.status === "Pending"))
+          }
+        } else {
+          setPendingApprovals([])
+        }
+
+        // Stop polling if terminal
+        if (["Succeeded", "Failed", "BudgetExhausted", "Cancelled"].includes(data.status)) {
+          return
+        }
+      } catch {
+        // Ignore fetch errors
+      }
+    }
+
+    poll()
+    const interval = setInterval(poll, 3000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [executionRunId])
 
   const activeAgents = allAgents.filter((a) => channel.agentIds.includes(a.id))
 
@@ -92,6 +157,11 @@ export function ChannelArea({
       if (isProcessing || activeAgents.length === 0) return
 
       setIsProcessing(true)
+      setRunPhase("triaging")
+      setToolCalls([])
+      setRunStartTime(Date.now())
+      setElapsedSeconds(0)
+      setActiveAgentName(null)
 
       const userMsg: ChatMessage = {
         id: "user-" + Date.now(),
@@ -138,7 +208,6 @@ export function ChannelArea({
         let currentMessageId: string | null = null
         let currentContent = ""
         let currentAgentName: string | null = null
-        let messageIndex = 0
 
         while (true) {
           const { done, value } = await reader.read()
@@ -170,12 +239,20 @@ export function ChannelArea({
                     : null
                   setStreamingAgentId(agent?.id ?? "channel")
                   setStreamingContent("")
+                  setActiveAgentName(currentAgentName)
                 }
                 // TEXT_MESSAGE_CONTENT: Streaming content
                 else if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
                   if (event.messageId === currentMessageId) {
                     currentContent += event.delta
                     setStreamingContent(currentContent)
+
+                    // Detect run phase from structured markers in content
+                    if (currentContent.includes("[TRIAGE]")) setRunPhase("triaging")
+                    else if (currentContent.includes("[PLAN]")) setRunPhase("investigating")
+                    else if (currentContent.includes("[EVIDENCE]")) setRunPhase("investigating")
+                    else if (currentContent.includes("[APPROVAL REQUIRED]")) setRunPhase("waiting-approval")
+                    else if (currentContent.includes("[RESOLVED]")) setRunPhase("resolved")
                   }
                 }
                 // TEXT_MESSAGE_END: Message finished
@@ -186,7 +263,7 @@ export function ChannelArea({
                       ? activeAgents.find((a) => a.name === currentAgentName)
                       : null
                     const agentMsg: ChatMessage = {
-                      id: "channel-" + channel.id + "-" + messageIndex++,
+                      id: `channel-${channel.id}-${messageCounterRef.current++}`,
                       role: "assistant",
                       content: currentContent,
                       timestamp: new Date(),
@@ -202,14 +279,46 @@ export function ChannelArea({
                     setStreamingContent("")
                   }
                 }
+                // TOOL_CALL_START: Agent is calling a tool
+                else if (event.type === EventType.TOOL_CALL_START) {
+                  setRunPhase("executing-tools")
+                  const tcId = event.toolCallId ?? `tc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+                  const tc: ToolCallInfo = {
+                    id: tcId,
+                    name: event.toolCallName ?? "unknown",
+                    agentName: currentAgentName ?? "Agent",
+                    status: "running",
+                    timestamp: new Date(),
+                  }
+                  setToolCalls((prev) => {
+                    // Prevent duplicate entries with the same tool-call ID
+                    if (prev.some((t) => t.id === tcId)) return prev
+                    return [...prev, tc]
+                  })
+                }
+                // TOOL_CALL_END: Tool finished
+                else if (event.type === EventType.TOOL_CALL_END) {
+                  setToolCalls((prev) =>
+                    prev.map((tc) =>
+                      tc.id === event.toolCallId
+                        ? { ...tc, status: "completed" as const }
+                        : tc
+                    )
+                  )
+                  setRunPhase("investigating")
+                }
                 // RUN_FINISHED: All done
                 else if (event.type === EventType.RUN_FINISHED) {
                   setStreamingAgentId(null)
                   setStreamingContent("")
+                  setRunPhase("resolved")
+                  setRunStartTime(null)
                 }
                 // RUN_ERROR: Error occurred
                 else if (event.type === EventType.RUN_ERROR) {
                   console.error("AGUI run error:", event.message)
+                  setRunPhase("error")
+                  setRunStartTime(null)
                 }
               } catch {
                 /* skip invalid events */
@@ -225,9 +334,45 @@ export function ChannelArea({
         setStreamingAgentId(null)
         setStreamingContent("")
         setIsProcessing(false)
+        setActiveAgentName(null)
+        setRunStartTime(null)
       }
     },
     [isProcessing, activeAgents, messages, channel.id, channel.name]
+  )
+
+  const handleApprove = useCallback(
+    async (action: string) => {
+      // Send approval as a user message to continue the run
+      const approvalText = `[APPROVED] ${action}`
+      await handleSend(approvalText)
+    },
+    [handleSend]
+  )
+
+  const handleApprovalDecision = useCallback(
+    async (approvalId: string, approved: boolean, reason?: string) => {
+      if (!executionRunId) return
+      try {
+        const res = await fetch(`/api/runs/${executionRunId}/approve`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            approvalRequestId: approvalId,
+            approved,
+            reason,
+          }),
+        })
+        if (res.ok) {
+          const data: RunData = await res.json()
+          setExecutionRun(data)
+          setPendingApprovals(prev => prev.filter(a => a.id !== approvalId))
+        }
+      } catch (err) {
+        console.error("Failed to submit approval:", err)
+      }
+    },
+    [executionRunId]
   )
 
   return (
@@ -238,16 +383,48 @@ export function ChannelArea({
       >
         <ChannelHeader
           channel={channel}
-          onManageAgents={() => {/* gear icon in header - no-op for now, wrench handles it */}}
+          onManageAgents={() => {/* gear icon in header - no-op for now, wrench handles it */ }}
           showMembers={showMembers}
           onToggleMembers={() => setShowMembers((prev) => !prev)}
         />
+
+        <RunStatusBar
+          phase={runPhase}
+          activeAgentName={activeAgentName}
+          toolCalls={toolCalls}
+          elapsedSeconds={elapsedSeconds}
+        />
+
+        {/* Execution engine: task tree panel */}
+        {showTaskTree && executionRunId && (
+          <div className="mx-4 mt-2">
+            <TaskTreePanel
+              runId={executionRunId}
+              run={executionRun}
+              onRefresh={() => setExecutionRunId(prev => prev)}
+            />
+          </div>
+        )}
+
+        {/* Execution engine: approval dialogs */}
+        {pendingApprovals.map((approval) => (
+          <ApprovalDialog
+            key={approval.id}
+            runId={executionRunId!}
+            approval={approval}
+            onDecision={(approved, reason) =>
+              handleApprovalDecision(approval.id, approved, reason)
+            }
+            isProcessing={isProcessing}
+          />
+        ))}
 
         <MessageList
           messages={messages}
           agents={allAgents}
           streamingAgentId={streamingAgentId}
           streamingContent={streamingContent}
+          onApprove={handleApprove}
         />
 
         <MessageInput

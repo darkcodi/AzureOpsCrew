@@ -72,7 +72,7 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory
                 serializerOptions),
         };
 
-            // optional tool (не ламає збірку, якщо ти прибрав ListFacts)
+            // optional tool (won't break the build if ListFacts was removed)
             var listFacts = t.GetMethod("ListFacts", BindingFlags.Instance | BindingFlags.Public);
             if (listFacts is not null)
             {
@@ -120,7 +120,7 @@ You have long-term memory tools:
 
 ### When to RETRIEVE (search first)
 Run memory_search_facts proactively when:
-- user asks to recall/remember, references the past ("як я казав", "ти пам'ятаєш", "минулого разу")
+- user asks to recall/remember, references the past ("as I said", "do you remember?", "last time")
 - a preference/setting/constraint could change the best answer (language, tone, format, project conventions)
 - you are about to assume something about the user/project that might have been stated before
 
@@ -165,7 +165,7 @@ When you need memory:
 3) If still weak, search again using a compact keyword query (2–6 keywords):
    - memory_search_facts("keywords only", 8)
 4) If still weak:
-   - synonyms / alternative language (UA/EN),
+   - synonyms / alternative language,
    - likely tags (see below),
    - key entities (project name, feature name, tool names).
 Keep searches to 2–4 calls max per turn.
@@ -209,12 +209,11 @@ Store each fact in a **search-friendly** format:
   Tags should be:
   - short, stable keywords
   - preferably lowercase
-  - may include both UA and EN variants (helps bilingual search)
   - include domain keywords (project/tool/feature names) when relevant
 - If you set a category, also reflect it in tags (e.g., category=preference => tag "preference").
 
 Example fact text:
-`User prefers concise answers in Ukrainian; respond in Ukrainian; мова: українська. tags: preference, language, ukrainian, ua, concise`
+`User prefers concise answers; respond clearly and briefly. tags: preference, style, concise`
 
 Another example:
 `Project uses .NET 10; target framework net10.0; dotnet 10. tags: project, dotnet, net10, framework`

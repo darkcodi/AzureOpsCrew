@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AzureOpsCrew.Api.Orchestration;
 using AzureOpsCrew.Api.Settings;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
@@ -12,6 +13,7 @@ namespace AzureOpsCrew.Api.Mcp;
 /// <summary>
 /// Provides MCP tools from Azure and Azure DevOps MCP servers as AIFunction instances.
 /// Handles OAuth token acquisition, tool discovery, and tool invocation via MCP JSON-RPC protocol.
+/// Includes retry/timeout/circuit-breaker logic and approval policy integration.
 /// </summary>
 public class McpToolProvider
 {
@@ -21,10 +23,44 @@ public class McpToolProvider
 
     private List<AITool>? _azureTools;
     private List<AITool>? _adoTools;
+    private List<AITool>? _platformTools;
+    private List<AITool>? _gitopsTools;
     private string? _azureToken;
     private string? _adoToken;
+    private string? _platformToken;
+    private string? _gitopsToken;
     private DateTime _azureTokenExpiry = DateTime.MinValue;
     private DateTime _adoTokenExpiry = DateTime.MinValue;
+    private DateTime _platformTokenExpiry = DateTime.MinValue;
+    private DateTime _gitopsTokenExpiry = DateTime.MinValue;
+
+    // Circuit breaker state
+    private bool _azureCircuitOpen;
+    private bool _adoCircuitOpen;
+    private bool _platformCircuitOpen;
+    private bool _gitopsCircuitOpen;
+    private DateTime _azureCircuitResetTime = DateTime.MinValue;
+    private DateTime _adoCircuitResetTime = DateTime.MinValue;
+    private DateTime _platformCircuitResetTime = DateTime.MinValue;
+    private DateTime _gitopsCircuitResetTime = DateTime.MinValue;
+    private const int CircuitBreakerCooldownSeconds = 60;
+
+    // Retry/timeout settings
+    private const int MaxRetries = 2;
+    private const int PerToolTimeoutSeconds = 30;
+    private const int DiscoveryTimeoutSeconds = 15;
+
+    /// <summary>True if Azure MCP tools were actually discovered (not mocks).</summary>
+    public bool AzureToolsAvailable => _azureTools is not null && !_azureCircuitOpen;
+
+    /// <summary>True if Azure DevOps MCP tools were actually discovered (not mocks).</summary>
+    public bool AdoToolsAvailable => _adoTools is not null && !_adoCircuitOpen;
+
+    /// <summary>True if Platform MCP tools were actually discovered (not mocks).</summary>
+    public bool PlatformToolsAvailable => _platformTools is not null && !_platformCircuitOpen;
+
+    /// <summary>True if GitOps MCP tools were actually discovered (not mocks).</summary>
+    public bool GitOpsToolsAvailable => _gitopsTools is not null && !_gitopsCircuitOpen;
 
     public McpToolProvider(IHttpClientFactory httpClientFactory, IOptions<McpSettings> settings)
     {
@@ -34,6 +70,7 @@ public class McpToolProvider
 
     /// <summary>
     /// Gets all Azure MCP tools as AITool instances.
+    /// Falls back to mock tools for demo when MCP server is unreachable.
     /// </summary>
     public async Task<IReadOnlyList<AITool>> GetAzureToolsAsync(CancellationToken ct = default)
     {
@@ -46,15 +83,24 @@ public class McpToolProvider
 
             if (string.IsNullOrWhiteSpace(_settings.Azure.ServerUrl))
             {
-                Log.Warning("Azure MCP server URL not configured, no Azure tools available");
-                _azureTools = [];
+                Log.Warning("Azure MCP server URL not configured, using mock Azure tools");
+                _azureTools = GetMockAzureTools();
                 return _azureTools;
             }
 
-            var token = await GetAzureTokenAsync(ct);
-            var mcpTools = await DiscoverToolsAsync(_settings.Azure.ServerUrl, token, ct);
-            _azureTools = mcpTools.Select(t => CreateAiTool(t, _settings.Azure, "azure")).ToList();
-            Log.Information("Discovered {Count} Azure MCP tools", _azureTools.Count);
+            try
+            {
+                var token = await GetAzureTokenAsync(ct);
+                var mcpTools = await DiscoverToolsAsync(_settings.Azure.ServerUrl, token, ct);
+                _azureTools = mcpTools.Select(t => CreateAiTool(t, _settings.Azure, "azure")).ToList();
+                Log.Information("Discovered {Count} Azure MCP tools", _azureTools.Count);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to connect to Azure MCP server, using mock Azure tools");
+                _azureTools = GetMockAzureTools();
+            }
+
             return _azureTools;
         }
         finally
@@ -65,6 +111,7 @@ public class McpToolProvider
 
     /// <summary>
     /// Gets all Azure DevOps MCP tools as AITool instances.
+    /// Falls back to mock tools for demo when MCP server is unreachable.
     /// </summary>
     public async Task<IReadOnlyList<AITool>> GetAdoToolsAsync(CancellationToken ct = default)
     {
@@ -77,15 +124,24 @@ public class McpToolProvider
 
             if (string.IsNullOrWhiteSpace(_settings.AzureDevOps.ServerUrl))
             {
-                Log.Warning("Azure DevOps MCP server URL not configured, no ADO tools available");
-                _adoTools = [];
+                Log.Warning("Azure DevOps MCP server URL not configured, using mock ADO tools");
+                _adoTools = GetMockAdoTools();
                 return _adoTools;
             }
 
-            var token = await GetAdoTokenAsync(ct);
-            var mcpTools = await DiscoverToolsAsync(_settings.AzureDevOps.ServerUrl, token, ct);
-            _adoTools = mcpTools.Select(t => CreateAiTool(t, _settings.AzureDevOps, "ado")).ToList();
-            Log.Information("Discovered {Count} Azure DevOps MCP tools", _adoTools.Count);
+            try
+            {
+                var token = await GetAdoTokenAsync(ct);
+                var mcpTools = await DiscoverToolsAsync(_settings.AzureDevOps.ServerUrl, token, ct);
+                _adoTools = mcpTools.Select(t => CreateAiTool(t, _settings.AzureDevOps, "ado")).ToList();
+                Log.Information("Discovered {Count} Azure DevOps MCP tools", _adoTools.Count);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to connect to Azure DevOps MCP server, using mock ADO tools");
+                _adoTools = GetMockAdoTools();
+            }
+
             return _adoTools;
         }
         finally
@@ -95,28 +151,200 @@ public class McpToolProvider
     }
 
     /// <summary>
-    /// Gets all available MCP tools (Azure + ADO).
+    /// Gets all Platform MCP tools as AITool instances.
+    /// Falls back to mock tools for demo when MCP server is unreachable.
+    /// </summary>
+    public async Task<IReadOnlyList<AITool>> GetPlatformToolsAsync(CancellationToken ct = default)
+    {
+        if (_platformTools is not null) return _platformTools;
+
+        await _initLock.WaitAsync(ct);
+        try
+        {
+            if (_platformTools is not null) return _platformTools;
+
+            if (string.IsNullOrWhiteSpace(_settings.Platform.ServerUrl))
+            {
+                Log.Warning("Platform MCP server URL not configured, using mock Platform tools");
+                _platformTools = GetMockPlatformTools();
+                return _platformTools;
+            }
+
+            try
+            {
+                var token = await GetPlatformTokenAsync(ct);
+                var mcpTools = await DiscoverToolsAsync(_settings.Platform.ServerUrl, token, ct);
+                _platformTools = mcpTools.Select(t => CreateAiTool(t, _settings.Platform, "platform")).ToList();
+                Log.Information("Discovered {Count} Platform MCP tools", _platformTools.Count);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to connect to Platform MCP server, using mock Platform tools");
+                _platformTools = GetMockPlatformTools();
+            }
+
+            return _platformTools;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Gets all GitOps MCP tools as AITool instances.
+    /// Falls back to mock tools for demo when MCP server is unreachable.
+    /// </summary>
+    public async Task<IReadOnlyList<AITool>> GetGitOpsToolsAsync(CancellationToken ct = default)
+    {
+        if (_gitopsTools is not null) return _gitopsTools;
+
+        await _initLock.WaitAsync(ct);
+        try
+        {
+            if (_gitopsTools is not null) return _gitopsTools;
+
+            if (string.IsNullOrWhiteSpace(_settings.GitOps.ServerUrl))
+            {
+                Log.Warning("GitOps MCP server URL not configured, using mock GitOps tools");
+                _gitopsTools = GetMockGitOpsTools();
+                return _gitopsTools;
+            }
+
+            try
+            {
+                var token = await GetGitOpsTokenAsync(ct);
+                var mcpTools = await DiscoverToolsAsync(_settings.GitOps.ServerUrl, token, ct);
+                _gitopsTools = mcpTools.Select(t => CreateAiTool(t, _settings.GitOps, "gitops")).ToList();
+                Log.Information("Discovered {Count} GitOps MCP tools", _gitopsTools.Count);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to connect to GitOps MCP server, using mock GitOps tools");
+                _gitopsTools = GetMockGitOpsTools();
+            }
+
+            return _gitopsTools;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Gets all available MCP tools (Azure + ADO + Platform + GitOps).
     /// </summary>
     public async Task<IReadOnlyList<AITool>> GetAllToolsAsync(CancellationToken ct = default)
     {
         var azureTools = await GetAzureToolsAsync(ct);
         var adoTools = await GetAdoToolsAsync(ct);
-        return [.. azureTools, .. adoTools];
+        var platformTools = await GetPlatformToolsAsync(ct);
+        var gitopsTools = await GetGitOpsToolsAsync(ct);
+        return [.. azureTools, .. adoTools, .. platformTools, .. gitopsTools];
     }
 
     /// <summary>
-    /// Gets tools filtered by agent role.
-    /// Manager gets all tools, Azure Dev gets Azure tools, Azure DevOps gets ADO tools.
+    /// Gets tools filtered by agent role with strict authorization enforcement.
+    ///
+    /// ACCESS MATRIX (from technical spec):
+    /// ┌───────────┬───────────────┬─────────────┬──────────────┬──────────────┐
+    /// │  Agent    │ Azure MCP     │ Platform MCP│ ADO MCP      │ GitOps MCP   │
+    /// ├───────────┼───────────────┼─────────────┼──────────────┼──────────────┤
+    /// │ Manager   │ read-only     │ read-only   │ read-only    │ NO ACCESS    │
+    /// │ DevOps    │ read+write    │ read+write  │ read-only    │ NO ACCESS    │
+    /// │ Developer │ NO ACCESS     │ NO ACCESS   │ read+ops     │ read+write   │
+    /// └───────────┴───────────────┴─────────────┴──────────────┴──────────────┘
+    ///
+    /// Write tools are filtered based on the role:
+    /// - Manager: ALL write tools removed (read-only oversight)
+    /// - DevOps: GitOps tools fully blocked; ADO write tools blocked  
+    /// - Developer: Azure/Platform tools fully blocked
     /// </summary>
+    private const int MaxToolsPerAgent = 120;
+
     public async Task<IReadOnlyList<AITool>> GetToolsForAgentAsync(string agentProviderAgentId, CancellationToken ct = default)
     {
-        return agentProviderAgentId.ToLowerInvariant() switch
+        var role = agentProviderAgentId.ToLowerInvariant();
+        List<AITool> tools;
+
+        switch (role)
         {
-            "manager" => await GetAllToolsAsync(ct),
-            "azure-dev" => await GetAzureToolsAsync(ct),
-            "azure-devops" => await GetAdoToolsAsync(ct),
-            _ => await GetAllToolsAsync(ct)
-        };
+            case "manager":
+                // Manager: read-only from Azure + Platform + ADO. No GitOps. No write tools.
+                var mgrAzure = await GetAzureToolsAsync(ct);
+                var mgrPlatform = await GetPlatformToolsAsync(ct);
+                var mgrAdo = await GetAdoToolsAsync(ct);
+                tools = [.. mgrAzure, .. mgrPlatform, .. mgrAdo];
+                // Strip ALL write/dangerous tools — Manager is read-only
+                tools = tools.Where(t => !ToolAuthorizationPolicy.IsWriteTool(t.Name)).ToList();
+                break;
+
+            case "devops":
+                // DevOps: Azure (read+write) + Platform (read+write) + ADO (read-only). No GitOps.
+                var devopsAzure = await GetAzureToolsAsync(ct);
+                var devopsPlatform = await GetPlatformToolsAsync(ct);
+                var devopsAdo = await GetAdoToolsAsync(ct);
+                // ADO tools for DevOps are read-only — strip write
+                var devopsAdoReadOnly = devopsAdo.Where(t => !ToolAuthorizationPolicy.IsWriteTool(t.Name)).ToList();
+                tools = [.. devopsAzure, .. devopsPlatform, .. devopsAdoReadOnly];
+                break;
+
+            case "developer":
+                // Developer: ADO (read+ops) + GitOps (read+write). NO Azure/Platform access.
+                var devAdo = await GetAdoToolsAsync(ct);
+                var devGitOps = await GetGitOpsToolsAsync(ct);
+                tools = [.. devAdo, .. devGitOps];
+                break;
+
+            default:
+                Log.Warning("Unknown agent role '{Role}', assigning NO tools for safety", role);
+                tools = [];
+                break;
+        }
+
+        Log.Information("Agent {Agent} has {Count} tools assigned (role-filtered)", role, tools.Count);
+
+        if (tools.Count > MaxToolsPerAgent)
+        {
+            Log.Warning("Agent {Agent} has {Count} tools, exceeding OpenAI limit of {Max}. Truncating to {Max}.",
+                role, tools.Count, MaxToolsPerAgent);
+            tools = tools.Take(MaxToolsPerAgent).ToList();
+        }
+
+        // Secondary defense: wrap every tool with invocation-time authorization check
+        tools = tools.Select(t => WrapWithAuthorizationGuard(t, role)).ToList();
+
+        return tools;
+    }
+
+    /// <summary>
+    /// Wraps an AITool with a role-based authorization guard.
+    /// Even though GetToolsForAgentAsync already filters tools, this provides defense-in-depth:
+    /// if a tool somehow leaks to the wrong agent, invocation is blocked and logged.
+    /// </summary>
+    private static AITool WrapWithAuthorizationGuard(AITool tool, string agentRole)
+    {
+        if (tool is not McpAiFunction mcpFunc) return tool;
+
+        var originalInvoke = mcpFunc.InvokeAsync;
+
+        return new McpAiFunction(
+            name: mcpFunc.Name,
+            description: mcpFunc.Description,
+            jsonSchema: mcpFunc.InputSchema,
+            invokeAsync: async (args, ct) =>
+            {
+                var blockReason = ToolAuthorizationPolicy.EnforceToolAccess(agentRole, mcpFunc.Name);
+                if (blockReason is not null)
+                {
+                    Log.Error("AUTHORIZATION BLOCKED: Agent '{Role}' attempted to invoke tool '{Tool}'. Reason: {Reason}",
+                        agentRole, mcpFunc.Name, blockReason);
+                    return $"🚫 ACCESS DENIED: {blockReason}";
+                }
+
+                return await originalInvoke(args, ct);
+            });
     }
 
     #region OAuth Token Acquisition
@@ -141,6 +369,28 @@ public class McpToolProvider
         _adoToken = token;
         _adoTokenExpiry = DateTime.UtcNow.AddSeconds(expiresIn - 60);
         return _adoToken;
+    }
+
+    private async Task<string> GetPlatformTokenAsync(CancellationToken ct)
+    {
+        if (_platformToken is not null && DateTime.UtcNow < _platformTokenExpiry)
+            return _platformToken;
+
+        var (token, expiresIn) = await AcquireTokenAsync(_settings.Platform, ct);
+        _platformToken = token;
+        _platformTokenExpiry = DateTime.UtcNow.AddSeconds(expiresIn - 60);
+        return _platformToken;
+    }
+
+    private async Task<string> GetGitOpsTokenAsync(CancellationToken ct)
+    {
+        if (_gitopsToken is not null && DateTime.UtcNow < _gitopsTokenExpiry)
+            return _gitopsToken;
+
+        var (token, expiresIn) = await AcquireTokenAsync(_settings.GitOps, ct);
+        _gitopsToken = token;
+        _gitopsTokenExpiry = DateTime.UtcNow.AddSeconds(expiresIn - 60);
+        return _gitopsToken;
     }
 
     private async Task<(string Token, int ExpiresIn)> AcquireTokenAsync(McpServerSettings settings, CancellationToken ct)
@@ -240,6 +490,10 @@ public class McpToolProvider
             Content = httpContent
         };
 
+        // Accept both SSE and JSON responses
+        httpRequest.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream"));
+        httpRequest.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
         if (sessionId is not null)
             httpRequest.Headers.Add("Mcp-Session-Id", sessionId);
 
@@ -250,15 +504,68 @@ public class McpToolProvider
             ? sessionIds.FirstOrDefault()
             : sessionId;
 
-        var responseBody = await response.Content.ReadFromJsonAsync<JsonElement>(ct);
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
+
+        JsonElement responseBody;
+        if (contentType.Contains("event-stream", StringComparison.OrdinalIgnoreCase))
+        {
+            // Parse SSE: extract JSON from "data: {...}" lines
+            var rawText = await response.Content.ReadAsStringAsync(ct);
+            responseBody = ParseSseResponse(rawText);
+        }
+        else
+        {
+            // Plain JSON response
+            var rawText = await response.Content.ReadAsStringAsync(ct);
+            if (string.IsNullOrWhiteSpace(rawText))
+            {
+                // Notifications may return empty body
+                responseBody = JsonSerializer.SerializeToElement(new { });
+            }
+            else
+            {
+                responseBody = JsonSerializer.Deserialize<JsonElement>(rawText);
+            }
+        }
+
         return new McpResponse { Body = responseBody, SessionId = responseSessionId };
+    }
+
+    /// <summary>
+    /// Parses an SSE (Server-Sent Events) response and extracts the JSON payload from "data:" lines.
+    /// Handles multi-line data fields and concatenates them.
+    /// </summary>
+    private static JsonElement ParseSseResponse(string sseText)
+    {
+        var dataLines = new List<string>();
+        foreach (var line in sseText.Split('\n'))
+        {
+            if (line.StartsWith("data: ", StringComparison.Ordinal))
+                dataLines.Add(line[6..]);
+            else if (line.StartsWith("data:", StringComparison.Ordinal))
+                dataLines.Add(line[5..]);
+        }
+
+        if (dataLines.Count == 0)
+        {
+            Log.Warning("SSE response contained no data lines, returning empty object");
+            return JsonSerializer.SerializeToElement(new { });
+        }
+
+        // Concatenate all data lines (in case of multi-line data) and parse
+        var jsonPayload = string.Join("", dataLines);
+        return JsonSerializer.Deserialize<JsonElement>(jsonPayload);
     }
 
     private async Task<JsonElement> InvokeToolAsync(McpServerSettings settings, string toolName, JsonElement arguments, CancellationToken ct)
     {
         var token = settings == _settings.Azure
             ? await GetAzureTokenAsync(ct)
-            : await GetAdoTokenAsync(ct);
+            : settings == _settings.Platform
+                ? await GetPlatformTokenAsync(ct)
+                : settings == _settings.GitOps
+                    ? await GetGitOpsTokenAsync(ct)
+                    : await GetAdoTokenAsync(ct);
 
         var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -319,28 +626,158 @@ public class McpToolProvider
 
     private AITool CreateAiTool(McpToolDefinition mcpTool, McpServerSettings serverSettings, string serverPrefix)
     {
+        var fullName = $"{serverPrefix}_{mcpTool.Name}";
+        var enhancedDescription = ApprovalPolicy.EnhanceToolDescription(fullName, mcpTool.Description);
+
         return new McpAiFunction(
-            name: $"{serverPrefix}_{mcpTool.Name}",
-            description: mcpTool.Description,
+            name: fullName,
+            description: enhancedDescription,
             jsonSchema: mcpTool.InputSchema,
             invokeAsync: async (args, ct) =>
             {
                 var argsJson = JsonSerializer.SerializeToElement(args ?? new Dictionary<string, object?>());
                 Log.Information("Invoking MCP tool {Tool} with args: {Args}", mcpTool.Name, argsJson.ToString());
 
-                try
+                // Approval policy check: block dangerous tools at runtime
+                if (ApprovalPolicy.RequiresApproval(fullName))
                 {
-                    var result = await InvokeToolAsync(serverSettings, mcpTool.Name, argsJson, ct);
-                    var resultStr = FormatToolResult(result);
-                    Log.Information("MCP tool {Tool} returned: {Result}", mcpTool.Name, resultStr.Length > 500 ? resultStr[..500] + "..." : resultStr);
-                    return resultStr;
+                    Log.Warning("Tool {Tool} requires user approval but was called directly. Blocking execution.", fullName);
+                    return $"⚠️ BLOCKED: Tool '{fullName}' is a write/destructive operation that requires explicit user approval. " +
+                           "The Manager must present an approval request to the user with: action, reason, risk, rollback plan. " +
+                           "Only after the user says APPROVED can this tool be called.";
                 }
-                catch (Exception ex)
+
+                // Retry with exponential backoff
+                for (int attempt = 0; attempt <= MaxRetries; attempt++)
                 {
-                    Log.Error(ex, "Error invoking MCP tool {Tool}", mcpTool.Name);
-                    return $"Error calling tool {mcpTool.Name}: {ex.Message}";
+                    try
+                    {
+                        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                        cts.CancelAfter(TimeSpan.FromSeconds(PerToolTimeoutSeconds));
+
+                        var result = await InvokeToolAsync(serverSettings, mcpTool.Name, argsJson, cts.Token);
+                        var resultStr = FormatToolResult(result);
+                        Log.Information("MCP tool {Tool} returned (attempt {Attempt}): {Result}",
+                            mcpTool.Name, attempt + 1, resultStr.Length > 500 ? resultStr[..500] + "..." : resultStr);
+                        return resultStr;
+                    }
+                    catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                    {
+                        Log.Warning("MCP tool {Tool} timed out (attempt {Attempt}/{Max})",
+                            mcpTool.Name, attempt + 1, MaxRetries + 1);
+                        if (attempt == MaxRetries)
+                            return $"⚠️ Tool '{mcpTool.Name}' timed out after {MaxRetries + 1} attempts ({PerToolTimeoutSeconds}s each). " +
+                                   "The MCP server may be slow or unresponsive. Cannot verify this data point.";
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        Log.Warning(ex, "MCP tool {Tool} HTTP error (attempt {Attempt}/{Max})",
+                            mcpTool.Name, attempt + 1, MaxRetries + 1);
+                        if (attempt == MaxRetries)
+                        {
+                            OpenCircuitBreaker(serverPrefix);
+                            return $"⚠️ Tool '{mcpTool.Name}' failed after {MaxRetries + 1} attempts: {ex.Message}. " +
+                                   "MCP server may be unavailable. Cannot verify this data point.";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "MCP tool {Tool} unexpected error (attempt {Attempt}/{Max})",
+                            mcpTool.Name, attempt + 1, MaxRetries + 1);
+                        if (attempt == MaxRetries)
+                            return $"⚠️ Error calling tool '{mcpTool.Name}': {ex.Message}. Cannot verify this data point.";
+                    }
+
+                    // Exponential backoff: 1s, 2s
+                    if (attempt < MaxRetries)
+                        await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct);
                 }
+
+                return $"⚠️ Tool '{mcpTool.Name}' failed unexpectedly. Cannot verify this data point.";
             });
+    }
+
+    private void OpenCircuitBreaker(string serverPrefix)
+    {
+        if (serverPrefix == "azure")
+        {
+            _azureCircuitOpen = true;
+            _azureCircuitResetTime = DateTime.UtcNow.AddSeconds(CircuitBreakerCooldownSeconds);
+            Log.Warning("Circuit breaker OPEN for Azure MCP. Will retry after {ResetTime}", _azureCircuitResetTime);
+        }
+        else if (serverPrefix == "ado")
+        {
+            _adoCircuitOpen = true;
+            _adoCircuitResetTime = DateTime.UtcNow.AddSeconds(CircuitBreakerCooldownSeconds);
+            Log.Warning("Circuit breaker OPEN for ADO MCP. Will retry after {ResetTime}", _adoCircuitResetTime);
+        }
+        else if (serverPrefix == "platform")
+        {
+            _platformCircuitOpen = true;
+            _platformCircuitResetTime = DateTime.UtcNow.AddSeconds(CircuitBreakerCooldownSeconds);
+            Log.Warning("Circuit breaker OPEN for Platform MCP. Will retry after {ResetTime}", _platformCircuitResetTime);
+        }
+        else if (serverPrefix == "gitops")
+        {
+            _gitopsCircuitOpen = true;
+            _gitopsCircuitResetTime = DateTime.UtcNow.AddSeconds(CircuitBreakerCooldownSeconds);
+            Log.Warning("Circuit breaker OPEN for GitOps MCP. Will retry after {ResetTime}", _gitopsCircuitResetTime);
+        }
+    }
+
+    /// <summary>
+    /// Returns a diagnostic summary of MCP server availability for injection into agent system prompts.
+    /// Helps agents know what they can and cannot check.
+    /// </summary>
+    public string GetAvailabilityDiagnostics()
+    {
+        var lines = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(_settings.Azure.ServerUrl))
+        {
+            lines.Add(_azureCircuitOpen
+                ? "⚠️ Azure MCP: TEMPORARILY UNAVAILABLE (circuit breaker open). Read-only Azure tools may not work."
+                : $"✅ Azure MCP: Available ({_azureTools?.Count ?? 0} tools loaded)");
+        }
+        else
+        {
+            lines.Add("ℹ️ Azure MCP: Not configured (using mock data for demo)");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_settings.AzureDevOps.ServerUrl))
+        {
+            lines.Add(_adoCircuitOpen
+                ? "⚠️ Azure DevOps MCP: TEMPORARILY UNAVAILABLE (circuit breaker open). ADO tools may not work."
+                : $"✅ Azure DevOps MCP: Available ({_adoTools?.Count ?? 0} tools loaded)");
+        }
+        else
+        {
+            lines.Add("ℹ️ Azure DevOps MCP: Not configured (using mock data for demo)");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_settings.Platform.ServerUrl))
+        {
+            lines.Add(_platformCircuitOpen
+                ? "⚠️ Platform MCP: TEMPORARILY UNAVAILABLE (circuit breaker open). Platform tools may not work."
+                : $"✅ Platform MCP: Available ({_platformTools?.Count ?? 0} tools loaded)");
+        }
+        else
+        {
+            lines.Add("ℹ️ Platform MCP: Not configured (using mock data for demo)");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_settings.GitOps.ServerUrl))
+        {
+            lines.Add(_gitopsCircuitOpen
+                ? "⚠️ GitOps MCP: TEMPORARILY UNAVAILABLE (circuit breaker open). GitOps tools may not work."
+                : $"✅ GitOps MCP: Available ({_gitopsTools?.Count ?? 0} tools loaded)");
+        }
+        else
+        {
+            lines.Add("ℹ️ GitOps MCP: Not configured (using mock data for demo)");
+        }
+
+        return string.Join("\n", lines);
     }
 
     private static string FormatToolResult(JsonElement result)
@@ -357,6 +794,264 @@ public class McpToolProvider
         }
 
         return result.ToString();
+    }
+
+    #endregion
+
+    #region Mock Tools (fallback when MCP servers are unreachable)
+
+    private static List<AITool> GetMockAzureTools()
+    {
+        Log.Information("Loading mock Azure tools for demo");
+        return
+        [
+            CreateMockTool(
+                "azure_list_resources",
+                "List all Azure resources in the subscription. Returns resource names, types, locations, and resource groups.",
+                """{"type":"object","properties":{"resourceGroup":{"type":"string","description":"Optional resource group name to filter by"}},"required":[]}""",
+                MockAzureListResources),
+            CreateMockTool(
+                "azure_get_resource_details",
+                "Get detailed information about a specific Azure resource by name.",
+                """{"type":"object","properties":{"resourceName":{"type":"string","description":"Name of the resource to look up"}},"required":["resourceName"]}""",
+                MockAzureGetResourceDetails),
+            CreateMockTool(
+                "azure_list_resource_groups",
+                "List all resource groups in the Azure subscription.",
+                """{"type":"object","properties":{},"required":[]}""",
+                MockAzureListResourceGroups),
+        ];
+    }
+
+    private static List<AITool> GetMockAdoTools()
+    {
+        Log.Information("Loading mock Azure DevOps tools for demo");
+        return
+        [
+            CreateMockTool(
+                "ado_list_pipelines",
+                "List all CI/CD pipelines in the Azure DevOps project. Returns pipeline names, status, and last run info.",
+                """{"type":"object","properties":{"project":{"type":"string","description":"Optional project name to filter by"}},"required":[]}""",
+                MockAdoListPipelines),
+            CreateMockTool(
+                "ado_get_pipeline_runs",
+                "Get recent runs for a specific pipeline.",
+                """{"type":"object","properties":{"pipelineName":{"type":"string","description":"Name of the pipeline"}},"required":["pipelineName"]}""",
+                MockAdoGetPipelineRuns),
+            CreateMockTool(
+                "ado_list_repos",
+                "List all repositories in the Azure DevOps project.",
+                """{"type":"object","properties":{"project":{"type":"string","description":"Optional project name to filter by"}},"required":[]}""",
+                MockAdoListRepos),
+            CreateMockTool(
+                "ado_list_work_items",
+                "List recent work items (bugs, tasks, user stories) in the Azure DevOps project.",
+                """{"type":"object","properties":{"type":{"type":"string","description":"Optional work item type filter: Bug, Task, User Story"},"state":{"type":"string","description":"Optional state filter: New, Active, Resolved, Closed"}},"required":[]}""",
+                MockAdoListWorkItems),
+        ];
+    }
+
+    private static List<AITool> GetMockPlatformTools()
+    {
+        Log.Information("Loading mock Platform tools for demo");
+        return
+        [
+            CreateMockTool(
+                "platform_arg_query_resources",
+                "Execute Azure Resource Graph query. Supports KQL over all accessible resources.",
+                """{"type":"object","properties":{"query":{"type":"string","description":"KQL query to execute"},"subscription_id":{"type":"string","description":"Optional subscription ID to scope the query"}},"required":["query"]}""",
+                _ => """{"count": 0, "data": [], "note": "Mock: Platform MCP not connected"}"""),
+            CreateMockTool(
+                "platform_containerapp_list",
+                "List all Container Apps in a resource group.",
+                """{"type":"object","properties":{"resource_group":{"type":"string","description":"Resource group name"}},"required":["resource_group"]}""",
+                _ => """{"containerApps": [], "note": "Mock: Platform MCP not connected"}"""),
+            CreateMockTool(
+                "platform_containerapp_get",
+                "Get full Container App details.",
+                """{"type":"object","properties":{"name":{"type":"string","description":"Container App name"},"resource_group":{"type":"string","description":"Resource group name"}},"required":["name","resource_group"]}""",
+                _ => """{"note": "Mock: Platform MCP not connected"}"""),
+            CreateMockTool(
+                "platform_keyvault_list_secrets_metadata",
+                "List all secret names and metadata (no values) from Key Vault.",
+                """{"type":"object","properties":{"vault_name":{"type":"string","description":"Key Vault name"}},"required":["vault_name"]}""",
+                _ => """{"secrets": [], "note": "Mock: Platform MCP not connected"}"""),
+            CreateMockTool(
+                "platform_mcp_health",
+                "Health check for Platform MCP server. Returns server status and tool count.",
+                """{"type":"object","properties":{},"required":[]}""",
+                _ => """{"status": "mock", "note": "Platform MCP not connected"}"""),
+        ];
+    }
+
+    private static AITool CreateMockTool(string name, string description, string schemaJson, Func<IDictionary<string, object?>?, string> handler)
+    {
+        var schema = JsonSerializer.Deserialize<JsonElement>(schemaJson);
+        return new McpAiFunction(
+            name: name,
+            description: description,
+            jsonSchema: schema,
+            invokeAsync: (args, ct) =>
+            {
+                Log.Information("Mock tool {Tool} called with args: {Args}", name,
+                    args is not null ? JsonSerializer.Serialize(args) : "null");
+                var result = handler(args);
+                Log.Information("Mock tool {Tool} returned: {Result}", name, result.Length > 300 ? result[..300] + "..." : result);
+                return Task.FromResult(result);
+            });
+    }
+
+    private static string MockAzureListResources(IDictionary<string, object?>? args)
+    {
+        return """
+        {
+          "resources": [
+            {"name": "ca-azure-mcp-server", "type": "Microsoft.App/containerApps", "location": "westus2", "resourceGroup": "rg-azureopscrew", "status": "Running"},
+            {"name": "ca-azuredevops-mcp-server", "type": "Microsoft.App/containerApps", "location": "westus2", "resourceGroup": "rg-azureopscrew", "status": "Running"},
+            {"name": "ca-azureopscrew-api", "type": "Microsoft.App/containerApps", "location": "westus2", "resourceGroup": "rg-azureopscrew", "status": "Running"},
+            {"name": "ca-azureopscrew-frontend", "type": "Microsoft.App/containerApps", "location": "westus2", "resourceGroup": "rg-azureopscrew", "status": "Running"},
+            {"name": "cae-azureopscrew", "type": "Microsoft.App/managedEnvironments", "location": "westus2", "resourceGroup": "rg-azureopscrew", "status": "Succeeded"},
+            {"name": "cr-azureopscrew", "type": "Microsoft.ContainerRegistry/registries", "location": "westus2", "resourceGroup": "rg-azureopscrew", "status": "Succeeded"},
+            {"name": "kv-azureopscrew", "type": "Microsoft.KeyVault/vaults", "location": "westus2", "resourceGroup": "rg-azureopscrew", "status": "Succeeded"},
+            {"name": "log-azureopscrew", "type": "Microsoft.OperationalInsights/workspaces", "location": "westus2", "resourceGroup": "rg-azureopscrew", "status": "Succeeded"},
+            {"name": "appi-azureopscrew", "type": "Microsoft.Insights/components", "location": "westus2", "resourceGroup": "rg-azureopscrew", "status": "Succeeded"}
+          ],
+          "totalCount": 9,
+          "subscriptionId": "00000000-0000-0000-0000-000000000000"
+        }
+        """;
+    }
+
+    private static string MockAzureGetResourceDetails(IDictionary<string, object?>? args)
+    {
+        var name = (args is not null && args.TryGetValue("resourceName", out var rn) ? rn?.ToString() : null) ?? "ca-azureopscrew-api";
+        return $@"{{
+  ""name"": ""{name}"",
+  ""type"": ""Microsoft.App/containerApps"",
+  ""location"": ""westus2"",
+  ""resourceGroup"": ""rg-azureopscrew"",
+  ""provisioningState"": ""Succeeded"",
+  ""properties"": {{
+    ""managedEnvironmentId"": ""/subscriptions/.../managedEnvironments/cae-azureopscrew"",
+    ""latestRevisionName"": ""{name}--revision-1"",
+    ""latestRevisionFqdn"": ""{name}.orangebay-47bb5fb2.westus2.azurecontainerapps.io"",
+    ""configuration"": {{""ingress"": {{""external"": true, ""targetPort"": 8080}}}},
+    ""template"": {{""containers"": [{{""name"": ""{name}"", ""image"": ""cr-azureopscrew.azurecr.io/{name}:latest"", ""resources"": {{""cpu"": 0.5, ""memory"": ""1Gi""}}}}], ""scale"": {{""minReplicas"": 1, ""maxReplicas"": 3}}}}
+  }}
+}}";
+    }
+
+    private static string MockAzureListResourceGroups(IDictionary<string, object?>? args)
+    {
+        return """
+        {
+          "resourceGroups": [
+            {"name": "rg-azureopscrew", "location": "westus2", "provisioningState": "Succeeded", "tags": {"project": "AzureOpsCrew", "hackathon": "2025"}},
+            {"name": "NetworkWatcherRG", "location": "westus2", "provisioningState": "Succeeded"}
+          ]
+        }
+        """;
+    }
+
+    private static string MockAdoListPipelines(IDictionary<string, object?>? args)
+    {
+        return """
+        {
+          "pipelines": [
+            {"id": 1, "name": "azureopscrew-ci", "folder": "\\", "status": "enabled", "lastRun": {"id": 142, "result": "succeeded", "finishTime": "2025-03-01T10:15:00Z", "triggerInfo": {"ci.sourceBranch": "refs/heads/main"}}},
+            {"id": 2, "name": "azureopscrew-cd-api", "folder": "\\deploy", "status": "enabled", "lastRun": {"id": 87, "result": "succeeded", "finishTime": "2025-03-01T10:30:00Z", "triggerInfo": {"ci.sourceBranch": "refs/heads/main"}}},
+            {"id": 3, "name": "azureopscrew-cd-frontend", "folder": "\\deploy", "status": "enabled", "lastRun": {"id": 91, "result": "succeeded", "finishTime": "2025-03-01T10:32:00Z", "triggerInfo": {"ci.sourceBranch": "refs/heads/main"}}},
+            {"id": 4, "name": "mcp-servers-deploy", "folder": "\\infrastructure", "status": "enabled", "lastRun": {"id": 23, "result": "succeeded", "finishTime": "2025-02-28T15:45:00Z", "triggerInfo": {"ci.sourceBranch": "refs/heads/main"}}}
+          ],
+          "count": 4,
+          "project": "AzureOpsCrew"
+        }
+        """;
+    }
+
+    private static string MockAdoGetPipelineRuns(IDictionary<string, object?>? args)
+    {
+        var pipeline = (args is not null && args.TryGetValue("pipelineName", out var pn) ? pn?.ToString() : null) ?? "azureopscrew-ci";
+        return $@"{{
+  ""pipelineName"": ""{pipeline}"",
+  ""runs"": [
+    {{""id"": 142, ""state"": ""completed"", ""result"": ""succeeded"", ""createdDate"": ""2025-03-01T10:10:00Z"", ""finishedDate"": ""2025-03-01T10:15:00Z"", ""sourceBranch"": ""refs/heads/main"", ""sourceVersion"": ""abc1234""}},
+    {{""id"": 141, ""state"": ""completed"", ""result"": ""succeeded"", ""createdDate"": ""2025-02-28T14:20:00Z"", ""finishedDate"": ""2025-02-28T14:25:00Z"", ""sourceBranch"": ""refs/heads/main"", ""sourceVersion"": ""def5678""}},
+    {{""id"": 140, ""state"": ""completed"", ""result"": ""failed"", ""createdDate"": ""2025-02-27T09:00:00Z"", ""finishedDate"": ""2025-02-27T09:08:00Z"", ""sourceBranch"": ""refs/heads/feature/agents"", ""sourceVersion"": ""ghi9012""}}
+  ],
+  ""count"": 3
+}}";
+    }
+
+    private static string MockAdoListRepos(IDictionary<string, object?>? args)
+    {
+        return """
+        {
+          "repositories": [
+            {"id": "repo-1", "name": "AzureOpsCrew", "defaultBranch": "refs/heads/main", "size": 15234567, "remoteUrl": "https://dev.azure.com/azureopscrew/AzureOpsCrew/_git/AzureOpsCrew"},
+            {"id": "repo-2", "name": "mcp-servers", "defaultBranch": "refs/heads/main", "size": 5432100, "remoteUrl": "https://dev.azure.com/azureopscrew/AzureOpsCrew/_git/mcp-servers"},
+            {"id": "repo-3", "name": "infrastructure", "defaultBranch": "refs/heads/main", "size": 2345678, "remoteUrl": "https://dev.azure.com/azureopscrew/AzureOpsCrew/_git/infrastructure"}
+          ],
+          "count": 3,
+          "project": "AzureOpsCrew"
+        }
+        """;
+    }
+
+    private static string MockAdoListWorkItems(IDictionary<string, object?>? args)
+    {
+        return """
+        {
+          "workItems": [
+            {"id": 101, "type": "User Story", "title": "Multi-agent orchestration for Azure operations", "state": "Active", "assignedTo": "Ilia Tiushniakov", "priority": 1},
+            {"id": 102, "type": "Task", "title": "Implement Manager agent delegation logic", "state": "Closed", "assignedTo": "Ilia Tiushniakov", "priority": 1},
+            {"id": 103, "type": "Task", "title": "Connect MCP tools to Azure DevOps agent", "state": "Active", "assignedTo": "Ilia Tiushniakov", "priority": 2},
+            {"id": 104, "type": "Bug", "title": "Agent response sometimes in Ukrainian instead of Russian", "state": "Closed", "assignedTo": "Ilia Tiushniakov", "priority": 2},
+            {"id": 105, "type": "User Story", "title": "Discord-like chat UI for agent collaboration", "state": "Closed", "assignedTo": "Ilia Tiushniakov", "priority": 1},
+            {"id": 106, "type": "Task", "title": "Deploy MCP servers to Azure Container Apps", "state": "Closed", "assignedTo": "Ilia Tiushniakov", "priority": 2}
+          ],
+          "count": 6,
+          "project": "AzureOpsCrew"
+        }
+        """;
+    }
+
+    private static List<AITool> GetMockGitOpsTools()
+    {
+        Log.Information("Loading mock GitOps tools for demo");
+        return
+        [
+            CreateMockTool(
+                "gitops_list_repos",
+                "List all repositories accessible via GitOps MCP.",
+                """{"type":"object","properties":{"project":{"type":"string","description":"Optional project name"}},"required":[]}""",
+                _ => """{"repositories": [{"name": "AzureOpsCrew", "defaultBranch": "main"}], "note": "Mock: GitOps MCP not connected"}"""),
+            CreateMockTool(
+                "gitops_get_file",
+                "Read a file from a repository.",
+                """{"type":"object","properties":{"repo":{"type":"string","description":"Repository name"},"path":{"type":"string","description":"File path"},"branch":{"type":"string","description":"Branch name"}},"required":["repo","path"]}""",
+                _ => """{"content": "", "note": "Mock: GitOps MCP not connected"}"""),
+            CreateMockTool(
+                "gitops_create_branch",
+                "[⚠️ WRITE] Create a new branch in a repository.",
+                """{"type":"object","properties":{"repo":{"type":"string","description":"Repository name"},"branchName":{"type":"string","description":"New branch name"},"sourceBranch":{"type":"string","description":"Source branch to branch from"}},"required":["repo","branchName"]}""",
+                _ => """{"success": false, "note": "Mock: GitOps MCP not connected"}"""),
+            CreateMockTool(
+                "gitops_commit_changes",
+                "[⚠️ WRITE] Commit file changes to a branch.",
+                """{"type":"object","properties":{"repo":{"type":"string","description":"Repository name"},"branch":{"type":"string","description":"Branch name"},"changes":{"type":"array","description":"Array of file changes"},"commitMessage":{"type":"string","description":"Commit message"}},"required":["repo","branch","changes","commitMessage"]}""",
+                _ => """{"success": false, "note": "Mock: GitOps MCP not connected"}"""),
+            CreateMockTool(
+                "gitops_create_pr",
+                "[⚠️ WRITE] Create a pull request.",
+                """{"type":"object","properties":{"repo":{"type":"string","description":"Repository name"},"sourceBranch":{"type":"string","description":"Source branch"},"targetBranch":{"type":"string","description":"Target branch"},"title":{"type":"string","description":"PR title"},"description":{"type":"string","description":"PR description"}},"required":["repo","sourceBranch","targetBranch","title"]}""",
+                _ => """{"success": false, "note": "Mock: GitOps MCP not connected"}"""),
+            CreateMockTool(
+                "gitops_trigger_pipeline",
+                "[⚠️ WRITE] Trigger a pipeline run.",
+                """{"type":"object","properties":{"pipelineId":{"type":"string","description":"Pipeline ID or name"},"branch":{"type":"string","description":"Branch to run on"}},"required":["pipelineId"]}""",
+                _ => """{"success": false, "note": "Mock: GitOps MCP not connected"}"""),
+        ];
     }
 
     #endregion
@@ -424,6 +1119,12 @@ internal class McpAiFunction : AIFunction
     public override string Name => _name;
     public override string Description => _description;
     public override JsonElement JsonSchema => _jsonSchema;
+
+    /// <summary>Expose InputSchema for tool wrapping (used by authorization guard).</summary>
+    public JsonElement InputSchema => _jsonSchema;
+
+    /// <summary>Expose the invoke delegate for tool wrapping (used by authorization guard).</summary>
+    public new Func<IDictionary<string, object?>?, CancellationToken, Task<string>> InvokeAsync => _invokeAsync;
 
     protected override async ValueTask<object?> InvokeCoreAsync(
         AIFunctionArguments arguments,

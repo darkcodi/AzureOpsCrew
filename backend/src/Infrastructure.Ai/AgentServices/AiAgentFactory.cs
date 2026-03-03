@@ -8,12 +8,16 @@ namespace AzureOpsCrew.Domain.AgentServices
     public class AiAgentFactory : IAiAgentFactory
     {
         private const string SystemPrompt =
-            "You are one of the agents in the Azure Ops Crew — a multi-agent team in a group chat with a human operator.";
+            "You are one of the agents in the Azure Ops Crew — a disciplined 3-agent engineering team in a group chat with a human operator. " +
+            "The Manager orchestrates the team (read-only oversight), DevOps handles infrastructure (Azure/Platform), and Developer handles code (ADO/GitOps). " +
+            "Each agent has strict MCP access boundaries. Never attempt to use tools outside your assigned role.";
 
         private const string ToolHint =
             "When you have visual tools available (showPipelineStatus, showWorkItems, showResourceInfo, showDeployment, showMetrics), " +
             "use them proactively to present information as interactive cards instead of plain text. " +
-            "When you have MCP tools available, use them to fetch real data from Azure and Azure DevOps.";
+            "When you have MCP tools available, ALWAYS use them to fetch real data from Azure and Azure DevOps. " +
+            "NEVER make up or fabricate data — use tools or say you don't have access. " +
+            "If you attempt to call a tool and get ACCESS DENIED, stop and report to the Manager — do NOT retry.";
 
         private readonly AgentAIContextProviderFactory _agentAIContextProviderFactory;
 

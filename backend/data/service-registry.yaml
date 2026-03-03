@@ -1,0 +1,122 @@
+# AzureOpsCrew Service Registry
+# This file maps services to their Azure resources, monitoring, DevOps pipelines, and documentation.
+# Agents use this as their primary reference for where to look when investigating issues.
+# Format: YAML. Loaded at startup. Agents receive relevant entries in their system prompt context.
+
+services:
+  - name: azureopscrew-api
+    description: "Backend API service (.NET 10, ASP.NET Core Minimal API)"
+    environment: production
+    azure:
+      subscription: "00000000-0000-0000-0000-000000000000"
+      resource_group: "rg-azureopscrew"
+      resources:
+        - name: ca-azureopscrew-api
+          type: Microsoft.App/containerApps
+          role: main-api
+    observability:
+      logs_workspace: log-azureopscrew
+      app_insights: appi-azureopscrew
+      key_metrics:
+        - "requests/duration"
+        - "requests/failed"
+        - "exceptions/count"
+    devops:
+      project: AzureOpsCrew
+      repo: AzureOpsCrew
+      pipeline: azureopscrew-api-ci
+      branch_strategy: main
+    docs:
+      runbooks:
+        - "Check container app health: az containerapp show"
+        - "View logs: az containerapp logs show"
+        - "Restart: az containerapp revision restart"
+      architecture: "docs/ARCHITECTURE.md"
+    owners:
+      - team: platform
+
+  - name: azureopscrew-frontend
+    description: "Frontend Next.js application"
+    environment: production
+    azure:
+      subscription: "00000000-0000-0000-0000-000000000000"
+      resource_group: "rg-azureopscrew"
+      resources:
+        - name: ca-azureopscrew-frontend
+          type: Microsoft.App/containerApps
+          role: frontend
+    observability:
+      logs_workspace: log-azureopscrew
+      app_insights: appi-azureopscrew
+    devops:
+      project: AzureOpsCrew
+      repo: AzureOpsCrew
+      pipeline: azureopscrew-frontend-ci
+      branch_strategy: main
+    docs:
+      runbooks:
+        - "Check container app health: az containerapp show"
+        - "Check frontend build: pnpm build"
+    owners:
+      - team: platform
+
+  - name: azure-mcp-server
+    description: "Azure MCP Server (provides Azure resource tools)"
+    environment: production
+    azure:
+      subscription: "00000000-0000-0000-0000-000000000000"
+      resource_group: "rg-azureopscrew"
+      resources:
+        - name: ca-azure-mcp-server
+          type: Microsoft.App/containerApps
+          role: mcp-server
+    observability:
+      logs_workspace: log-azureopscrew
+    devops:
+      project: AzureOpsCrew
+      repo: azure-mcp-server
+    owners:
+      - team: platform
+
+  - name: azuredevops-mcp-server
+    description: "Azure DevOps MCP Server (provides ADO tools: pipelines, repos, work items)"
+    environment: production
+    azure:
+      subscription: "00000000-0000-0000-0000-000000000000"
+      resource_group: "rg-azureopscrew"
+      resources:
+        - name: ca-azuredevops-mcp-server
+          type: Microsoft.App/containerApps
+          role: mcp-server
+    observability:
+      logs_workspace: log-azureopscrew
+    devops:
+      project: AzureOpsCrew
+      repo: azuredevops-mcp-server
+    owners:
+      - team: platform
+
+  - name: shared-infrastructure
+    description: "Shared Azure infrastructure: Container Apps Environment, Container Registry, Key Vault, Log Analytics"
+    environment: production
+    azure:
+      subscription: "00000000-0000-0000-0000-000000000000"
+      resource_group: "rg-azureopscrew"
+      resources:
+        - name: cae-azureopscrew
+          type: Microsoft.App/managedEnvironments
+          role: container-apps-environment
+        - name: cr-azureopscrew
+          type: Microsoft.ContainerRegistry/registries
+          role: container-registry
+        - name: kv-azureopscrew
+          type: Microsoft.KeyVault/vaults
+          role: key-vault
+        - name: log-azureopscrew
+          type: Microsoft.OperationalInsights/workspaces
+          role: log-analytics
+        - name: appi-azureopscrew
+          type: Microsoft.Insights/components
+          role: application-insights
+    owners:
+      - team: platform

@@ -1,5 +1,6 @@
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Mcp;
+using AzureOpsCrew.Api.Orchestration.Engine;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.Providers;
@@ -181,9 +182,35 @@ public static class ServiceCollectionExtensions
             Log.Information("Azure MCP Server configured: {Url}", mcpSettings.Azure.ServerUrl);
         if (!string.IsNullOrWhiteSpace(mcpSettings.AzureDevOps.ServerUrl))
             Log.Information("Azure DevOps MCP Server configured: {Url}", mcpSettings.AzureDevOps.ServerUrl);
+        if (!string.IsNullOrWhiteSpace(mcpSettings.Platform.ServerUrl))
+            Log.Information("Platform MCP Server configured: {Url}", mcpSettings.Platform.ServerUrl);
+        if (!string.IsNullOrWhiteSpace(mcpSettings.GitOps.ServerUrl))
+            Log.Information("GitOps MCP Server configured: {Url}", mcpSettings.GitOps.ServerUrl);
 
         // Register MCP tool provider as singleton (caches tools + tokens)
         services.AddSingleton<McpToolProvider>();
+    }
+
+    public static void AddOrchestration(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<OrchestrationSettings>(configuration.GetSection("Orchestration"));
+        services.AddOptions<OrchestrationSettings>();
+
+        // Load service registry from YAML at startup
+        var orchSettings = configuration.GetSection("Orchestration").Get<OrchestrationSettings>() ?? new OrchestrationSettings();
+        var registryPath = orchSettings.ServiceRegistryPath;
+        if (!string.IsNullOrWhiteSpace(registryPath))
+        {
+            var fullPath = Path.GetFullPath(registryPath, AppContext.BaseDirectory);
+            var registry = ServiceRegistryProvider.Load(fullPath);
+            services.AddSingleton(registry);
+            Log.Information("Service registry loaded: {Count} services from {Path}", registry.GetAllServices().Count, fullPath);
+        }
+        else
+        {
+            services.AddSingleton(new ServiceRegistryProvider());
+            Log.Warning("No ServiceRegistryPath configured — using empty registry");
+        }
     }
 
     public static void AddAgentFactory(this IServiceCollection services, IConfiguration configuration)
@@ -212,5 +239,17 @@ public static class ServiceCollectionExtensions
         {
             throw new InvalidOperationException($"Unknown LongTermMemory type '{memoryType}'. Supported providers: InMemory, Cypher");
         }
+    }
+
+    public static void AddExecutionEngine(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<ExecutionEngineSettings>(configuration.GetSection("ExecutionEngine"));
+        services.AddOptions<ExecutionEngineSettings>();
+
+        services.AddScoped<TaskPlanner>();
+        services.AddScoped<TaskExecutor>();
+        services.AddScoped<TaskExecutionEngine>();
+
+        Log.Information("Execution engine registered");
     }
 }

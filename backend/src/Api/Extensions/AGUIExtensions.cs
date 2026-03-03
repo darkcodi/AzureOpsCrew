@@ -1,5 +1,6 @@
 using AzureOpsCrew.Api.Endpoints.Dtos.AGUI;
 using Microsoft.Extensions.AI;
+using Serilog;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -11,6 +12,46 @@ public static class AGUIExtensions
 {
     private static readonly MediaTypeHeaderValue? s_jsonPatchMediaType = new("application/json-patch+json");
     private static readonly MediaTypeHeaderValue? s_json = new("application/json");
+
+    /// <summary>
+    /// Debug interceptor: logs every ChatResponseUpdate flowing through the pipeline.
+    /// Insert between pipeline stages to trace where events are lost.
+    /// </summary>
+    public static async IAsyncEnumerable<ChatResponseUpdate> WithDebugLogging(
+        this IAsyncEnumerable<ChatResponseUpdate> updates,
+        string label,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        int count = 0;
+        await foreach (var update in updates.WithCancellation(cancellationToken))
+        {
+            count++;
+            var contentSummary = update.Contents?.Count > 0
+                ? string.Join(", ", update.Contents.Select(c => c.GetType().Name))
+                : "empty";
+            var textPreview = update.Contents?.OfType<TextContent>().FirstOrDefault()?.Text;
+            if (textPreview is { Length: > 80 })
+                textPreview = textPreview[..80] + "...";
+
+            // Capture ErrorContent details
+            var errorDetail = update.Contents?.OfType<Microsoft.Extensions.AI.ErrorContent>().FirstOrDefault();
+            if (errorDetail is not null)
+            {
+                Log.Error("[{Label}] ERROR in update #{Count}: Author={Author}, ErrorMessage={ErrorMsg}, Exception={Ex}",
+                    label, count, update.AuthorName ?? "(null)",
+                    errorDetail.Message ?? "(no message)",
+                    errorDetail.Details ?? "(no details)");
+            }
+
+            Log.Debug("[{Label}] Update #{Count}: Author={Author}, Role={Role}, MsgId={MsgId}, Finish={Finish}, Contents=[{Contents}], Text={Text}",
+                label, count, update.AuthorName ?? "(null)", update.Role?.Value ?? "(null)",
+                update.MessageId ?? "(null)", update.FinishReason?.ToString() ?? "(null)",
+                contentSummary, textPreview ?? "(none)");
+
+            yield return update;
+        }
+        Log.Information("[{Label}] Stream completed with {Count} total updates", label, count);
+    }
 
     public static async IAsyncEnumerable<ChatResponseUpdate> FilterServerToolsFromMixedToolInvocationsAsync(
         this IAsyncEnumerable<ChatResponseUpdate> updates,
@@ -216,6 +257,28 @@ public static class AGUIExtensions
                                 Delta = Encoding.UTF8.GetString(dataContent.Data.Span)
                             };
                         }
+                    }
+                    else if (content is ErrorContent errorContent)
+                    {
+                        // Surface errors as visible text messages so user sees what went wrong
+                        var errorMsgId = $"error|{chatResponse.MessageId ?? Guid.NewGuid().ToString("N")}";
+                        var errorText = $"⚠️ Error: {errorContent.Message ?? "Unknown error"}";
+                        Log.Warning("AGUI: Surfacing ErrorContent as message: {Error}", errorText);
+
+                        yield return new TextMessageStartEvent
+                        {
+                            MessageId = errorMsgId,
+                            Role = "assistant"
+                        };
+                        yield return new TextMessageContentEvent
+                        {
+                            MessageId = errorMsgId,
+                            Delta = errorText
+                        };
+                        yield return new TextMessageEndEvent
+                        {
+                            MessageId = errorMsgId
+                        };
                     }
                 }
             }

@@ -1,12 +1,142 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { Agent, ChatMessage } from "@/lib/agents"
 import ReactMarkdown from "react-markdown"
 import { StartConversationEmpty } from "@/components/start-conversation-empty"
+import { ChevronDown, ChevronUp, Shield, FileText, Lightbulb, AlertTriangle, CheckCircle2 } from "lucide-react"
 
 function formatTime(date: Date) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+}
+
+/** Structured block markers we detect in agent output */
+type BlockType = "triage" | "plan" | "evidence" | "interpretation" | "hypothesis" | "recommended-action" | "approval-required" | "resolved"
+
+interface StructuredBlock {
+  type: BlockType
+  content: string
+}
+
+function parseStructuredBlocks(content: string): { blocks: StructuredBlock[]; plainContent: string } {
+  const blocks: StructuredBlock[] = []
+  const markers: [string, BlockType][] = [
+    ["[TRIAGE]", "triage"],
+    ["[PLAN]", "plan"],
+    ["[EVIDENCE]", "evidence"],
+    ["[INTERPRETATION]", "interpretation"],
+    ["[HYPOTHESIS]", "hypothesis"],
+    ["[RECOMMENDED ACTION]", "recommended-action"],
+    ["[APPROVAL REQUIRED]", "approval-required"],
+    ["[RESOLVED]", "resolved"],
+  ]
+
+  let remaining = content
+  for (const [marker, type] of markers) {
+    const idx = remaining.indexOf(marker)
+    if (idx !== -1) {
+      // Find end of this block (next marker or end of string)
+      const afterMarker = idx + marker.length
+      let endIdx = remaining.length
+      for (const [nextMarker] of markers) {
+        if (nextMarker === marker) continue
+        const nextIdx = remaining.indexOf(nextMarker, afterMarker)
+        if (nextIdx !== -1 && nextIdx < endIdx) endIdx = nextIdx
+      }
+      blocks.push({ type, content: remaining.slice(afterMarker, endIdx).trim() })
+    }
+  }
+
+  // Plain content is everything before the first marker
+  const firstMarkerIdx = markers.reduce((minIdx, [marker]) => {
+    const idx = content.indexOf(marker)
+    return idx !== -1 && idx < minIdx ? idx : minIdx
+  }, content.length)
+  const plainContent = content.slice(0, firstMarkerIdx).trim()
+
+  return { blocks, plainContent }
+}
+
+const blockConfig: Record<BlockType, { label: string; color: string; icon: React.ReactNode; collapsible: boolean }> = {
+  triage: { label: "Triage", color: "hsl(45, 93%, 47%)", icon: <AlertTriangle className="h-3.5 w-3.5" />, collapsible: false },
+  plan: { label: "Plan", color: "hsl(200, 100%, 50%)", icon: <FileText className="h-3.5 w-3.5" />, collapsible: false },
+  evidence: { label: "Evidence", color: "hsl(142, 70%, 45%)", icon: <FileText className="h-3.5 w-3.5" />, collapsible: true },
+  interpretation: { label: "Interpretation", color: "hsl(210, 80%, 60%)", icon: <Lightbulb className="h-3.5 w-3.5" />, collapsible: true },
+  hypothesis: { label: "Hypothesis", color: "hsl(280, 70%, 60%)", icon: <Lightbulb className="h-3.5 w-3.5" />, collapsible: false },
+  "recommended-action": { label: "Recommended Action", color: "hsl(170, 70%, 45%)", icon: <CheckCircle2 className="h-3.5 w-3.5" />, collapsible: false },
+  "approval-required": { label: "Approval Required", color: "hsl(25, 95%, 53%)", icon: <Shield className="h-3.5 w-3.5" />, collapsible: false },
+  resolved: { label: "Resolved", color: "hsl(142, 70%, 45%)", icon: <CheckCircle2 className="h-3.5 w-3.5" />, collapsible: false },
+}
+
+function StructuredBlockCard({ block, onApprove }: { block: StructuredBlock; onApprove?: (action: string) => void }) {
+  const [collapsed, setCollapsed] = useState(false)
+  const config = blockConfig[block.type]
+
+  return (
+    <div
+      className="my-2 rounded-lg border"
+      style={{
+        borderColor: config.color + "40",
+        backgroundColor: config.color + "08",
+      }}
+    >
+      <div
+        className={`flex items-center gap-2 px-3 py-1.5 ${config.collapsible ? "cursor-pointer" : ""}`}
+        onClick={() => config.collapsible && setCollapsed((c) => !c)}
+      >
+        <span style={{ color: config.color }}>{config.icon}</span>
+        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: config.color }}>
+          {config.label}
+        </span>
+        {config.collapsible && (
+          <span style={{ color: config.color }} className="ml-auto">
+            {collapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+          </span>
+        )}
+      </div>
+      {!collapsed && (
+        <div className="px-3 pb-2 text-sm" style={{ color: "hsl(210, 3%, 83%)" }}>
+          <ReactMarkdown
+            components={{
+              p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+              strong: ({ children }) => <strong style={{ color: "hsl(0, 0%, 100%)" }}>{children}</strong>,
+              code: ({ children }) => (
+                <code className="rounded px-1 py-0.5 text-sm" style={{ backgroundColor: "hsl(228, 7%, 14%)", color: "hsl(210, 3%, 90%)" }}>
+                  {children}
+                </code>
+              ),
+            }}
+          >
+            {block.content}
+          </ReactMarkdown>
+          {block.type === "approval-required" && onApprove && (
+            <div className="mt-2 flex gap-2">
+              <button
+                onClick={() => onApprove(block.content)}
+                className="rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-90"
+                style={{
+                  backgroundColor: "hsl(142, 70%, 45%)",
+                  color: "#fff",
+                }}
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => onApprove("[REJECTED] " + block.content)}
+                className="rounded-md px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-90"
+                style={{
+                  backgroundColor: "hsl(0, 72%, 51%)",
+                  color: "#fff",
+                }}
+              >
+                Reject
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 interface MessageListProps {
@@ -14,6 +144,7 @@ interface MessageListProps {
   agents: Agent[]
   streamingAgentId: string | null
   streamingContent: string
+  onApprove?: (action: string) => void
 }
 
 export function MessageList({
@@ -21,6 +152,7 @@ export function MessageList({
   agents,
   streamingAgentId,
   streamingContent,
+  onApprove,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -90,6 +222,11 @@ export function MessageList({
         const agent = message.agentId
           ? agentMap.get(message.agentId)
           : undefined
+
+        // Parse structured blocks from agent output
+        const { blocks, plainContent } = parseStructuredBlocks(message.content)
+        const hasStructuredContent = blocks.length > 0
+
         return (
           <div key={message.id} className="mb-4 flex items-start gap-3">
             <div
@@ -120,65 +257,134 @@ export function MessageList({
                 className="max-w-2xl text-sm leading-relaxed"
                 style={{ color: "hsl(210, 3%, 83%)" }}
               >
-                <ReactMarkdown
-                  components={{
-                    p: ({ children }) => (
-                      <p className="mb-2 last:mb-0">{children}</p>
-                    ),
-                    code: ({ children, className }) => {
-                      const isBlock = className?.includes("language-")
-                      if (isBlock) {
+                {/* Plain text content (before any markers) */}
+                {plainContent && (
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => (
+                        <p className="mb-2 last:mb-0">{children}</p>
+                      ),
+                      code: ({ children, className }) => {
+                        const isBlock = className?.includes("language-")
+                        if (isBlock) {
+                          return (
+                            <pre
+                              className="my-2 overflow-x-auto rounded-md p-3 text-sm"
+                              style={{
+                                backgroundColor: "hsl(228, 7%, 12%)",
+                                border: "1px solid hsl(228, 6%, 20%)",
+                              }}
+                            >
+                              <code>{children}</code>
+                            </pre>
+                          )
+                        }
                         return (
-                          <pre
-                            className="my-2 overflow-x-auto rounded-md p-3 text-sm"
+                          <code
+                            className="rounded px-1 py-0.5 text-sm"
                             style={{
-                              backgroundColor: "hsl(228, 7%, 12%)",
-                              border: "1px solid hsl(228, 6%, 20%)",
+                              backgroundColor: "hsl(228, 7%, 14%)",
+                              color: "hsl(210, 3%, 90%)",
                             }}
                           >
-                            <code>{children}</code>
-                          </pre>
+                            {children}
+                          </code>
                         )
-                      }
-                      return (
-                        <code
-                          className="rounded px-1 py-0.5 text-sm"
-                          style={{
-                            backgroundColor: "hsl(228, 7%, 14%)",
-                            color: "hsl(210, 3%, 90%)",
-                          }}
+                      },
+                      pre: ({ children }) => <>{children}</>,
+                      ul: ({ children }) => (
+                        <ul className="mb-2 ml-4 list-disc">{children}</ul>
+                      ),
+                      ol: ({ children }) => (
+                        <ol className="mb-2 ml-4 list-decimal">{children}</ol>
+                      ),
+                      strong: ({ children }) => (
+                        <strong style={{ color: "hsl(0, 0%, 100%)" }}>
+                          {children}
+                        </strong>
+                      ),
+                      a: ({ children, href }) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "hsl(200, 100%, 60%)" }}
+                          className="hover:underline"
                         >
                           {children}
-                        </code>
-                      )
-                    },
-                    pre: ({ children }) => <>{children}</>,
-                    ul: ({ children }) => (
-                      <ul className="mb-2 ml-4 list-disc">{children}</ul>
-                    ),
-                    ol: ({ children }) => (
-                      <ol className="mb-2 ml-4 list-decimal">{children}</ol>
-                    ),
-                    strong: ({ children }) => (
-                      <strong style={{ color: "hsl(0, 0%, 100%)" }}>
-                        {children}
-                      </strong>
-                    ),
-                    a: ({ children, href }) => (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: "hsl(200, 100%, 60%)" }}
-                        className="hover:underline"
-                      >
-                        {children}
-                      </a>
-                    ),
-                  }}
-                >
-                  {message.content}
-                </ReactMarkdown>
+                        </a>
+                      ),
+                    }}
+                  >
+                    {plainContent}
+                  </ReactMarkdown>
+                )}
+                {/* Structured blocks rendered as cards */}
+                {hasStructuredContent && blocks.map((block, i) => (
+                  <StructuredBlockCard key={`${message.id}-block-${i}`} block={block} onApprove={onApprove} />
+                ))}
+                {/* Fallback: if no structured blocks, render full content */}
+                {!hasStructuredContent && !plainContent && (
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => (
+                        <p className="mb-2 last:mb-0">{children}</p>
+                      ),
+                      code: ({ children, className }) => {
+                        const isBlock = className?.includes("language-")
+                        if (isBlock) {
+                          return (
+                            <pre
+                              className="my-2 overflow-x-auto rounded-md p-3 text-sm"
+                              style={{
+                                backgroundColor: "hsl(228, 7%, 12%)",
+                                border: "1px solid hsl(228, 6%, 20%)",
+                              }}
+                            >
+                              <code>{children}</code>
+                            </pre>
+                          )
+                        }
+                        return (
+                          <code
+                            className="rounded px-1 py-0.5 text-sm"
+                            style={{
+                              backgroundColor: "hsl(228, 7%, 14%)",
+                              color: "hsl(210, 3%, 90%)",
+                            }}
+                          >
+                            {children}
+                          </code>
+                        )
+                      },
+                      pre: ({ children }) => <>{children}</>,
+                      ul: ({ children }) => (
+                        <ul className="mb-2 ml-4 list-disc">{children}</ul>
+                      ),
+                      ol: ({ children }) => (
+                        <ol className="mb-2 ml-4 list-decimal">{children}</ol>
+                      ),
+                      strong: ({ children }) => (
+                        <strong style={{ color: "hsl(0, 0%, 100%)" }}>
+                          {children}
+                        </strong>
+                      ),
+                      a: ({ children, href }) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "hsl(200, 100%, 60%)" }}
+                          className="hover:underline"
+                        >
+                          {children}
+                        </a>
+                      ),
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                )}
               </div>
             </div>
           </div>
