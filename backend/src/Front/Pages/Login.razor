@@ -51,6 +51,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Log.Information("Login page initializing");
+
         // Set JSRuntime for AuthState
         AuthState.SetJSRuntime(JSRuntime);
         await AuthState.LoadFromLocalStorageAsync();
@@ -58,7 +60,12 @@
         // If already authenticated, redirect to home
         if (AuthState.IsAuthenticated)
         {
+            Log.Information("User already authenticated, redirecting to home. UserId: {UserId}", AuthState.CurrentUser?.Id.ToString() ?? "unknown");
             NavigationManager.NavigateTo("/");
+        }
+        else
+        {
+            Log.Information("User not authenticated, showing login form");
         }
     }
 
@@ -69,6 +76,8 @@
         isSubmitting = true;
         errorMessage = null;
 
+        Log.Information("Login attempt started for email: {Email}", loginModel.Email);
+
         try
         {
             var response = await AuthService.LoginAsync(loginModel.Email, loginModel.Password);
@@ -76,25 +85,32 @@
             if (response != null && response.Error == null)
             {
                 // Successful login
+                Log.Information("Login successful for email: {Email}, UserId: {UserId}, ExpiresAt: {ExpiresAtUtc}",
+                    loginModel.Email, response.User?.Id.ToString() ?? "unknown", response.ExpiresAtUtc);
+
                 AuthState.Login(response.AccessToken, response.ExpiresAtUtc, response.User);
 
                 // Get next parameter or default to home
                 var nextPath = GetNextPath();
+                Log.Information("Navigating to: {NextPath}", nextPath);
                 NavigationManager.NavigateTo(nextPath);
             }
             else
             {
-                errorMessage = response?.Error ?? "Login failed";
+                var error = response?.Error ?? "Login failed";
+                errorMessage = error;
+                Log.Warning("Login failed for email: {Email}, Reason: {Error}", loginModel.Email, error);
             }
         }
         catch (Exception ex)
         {
             errorMessage = "Unable to login. Please try again.";
-            Log.Error($"Login error: {ex.Message}");
+            Log.Error(ex, "Login exception for email: {Email}", loginModel.Email);
         }
         finally
         {
             isSubmitting = false;
+            Log.Information("Login flow completed for email: {Email}, IsSubmitting: {IsSubmitting}", loginModel.Email, isSubmitting);
         }
     }
 
@@ -108,18 +124,23 @@
 
             if (string.IsNullOrEmpty(nextParam))
             {
+                Log.Information("No next parameter found, using default path: /");
                 return "/";
             }
 
             if (!nextParam.StartsWith("/") || nextParam.StartsWith("//"))
             {
+                Log.Warning("Invalid next parameter format: {NextParam}, using default path", nextParam);
                 return "/";
             }
 
-            return Uri.UnescapeDataString(nextParam);
+            var unescapedPath = Uri.UnescapeDataString(nextParam);
+            Log.Information("Next parameter found: {UnescapedPath}", unescapedPath);
+            return unescapedPath;
         }
-        catch
+        catch (Exception ex)
         {
+            Log.Error(ex, "Error parsing next parameter from URI: {Uri}", NavigationManager.Uri);
             return "/";
         }
     }

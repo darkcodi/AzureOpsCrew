@@ -97,6 +97,7 @@ public class AuthState
     {
         try
         {
+            Log.Information("Persisting auth state to localStorage for user {Email}.", CurrentUser?.Email);
             if (_jsRuntime != null && AccessToken != null && CurrentUser != null)
             {
                 await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "auth_token", AccessToken);
@@ -104,6 +105,7 @@ public class AuthState
                 await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "auth_user_id", CurrentUser.Id.ToString());
                 await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "auth_user_email", CurrentUser.Email);
                 await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "auth_user_username", CurrentUser.Username);
+                Log.Information("Auth state persisted to localStorage successfully.");
             }
         }
         catch (Exception ex)
@@ -116,6 +118,7 @@ public class AuthState
     {
         try
         {
+            Log.Information("Clearing auth state from localStorage.");
             if (_jsRuntime != null)
             {
                 await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "auth_token");
@@ -123,6 +126,7 @@ public class AuthState
                 await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "auth_user_id");
                 await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "auth_user_email");
                 await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "auth_user_username");
+                Log.Information("Auth state cleared from localStorage.");
             }
         }
         catch (Exception ex)
@@ -135,6 +139,7 @@ public class AuthState
     {
         try
         {
+            Log.Information("Attempting to load auth state from localStorage.");
             if (_jsRuntime == null) return;
 
             var token = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "auth_token");
@@ -147,8 +152,10 @@ public class AuthState
                 DateTime.TryParse(expiryStr, out var expiry) &&
                 Guid.TryParse(userIdStr, out var userId))
             {
+                Log.Information("Auth state found in localStorage, validating token expiry.");
                 if (expiry > DateTime.UtcNow)
                 {
+                    Log.Information("Auth token in localStorage is valid, loading user info.");
                     AccessToken = token;
                     TokenExpiry = expiry;
                     CurrentUser = new UserDto
@@ -157,12 +164,17 @@ public class AuthState
                         Email = email ?? string.Empty,
                         Username = username ?? string.Empty
                     };
+                    Log.Information("Loaded user with email {Email} from localStorage.", CurrentUser.Email);
                 }
                 else
                 {
-                    // Token expired, clear storage
+                    Log.Information("Auth token in localStorage has expired, clearing it.");
                     await ClearFromLocalStorageAsync();
                 }
+            }
+            else
+            {
+                Log.Information("No valid auth state found in localStorage.");
             }
         }
         catch (Exception ex)
