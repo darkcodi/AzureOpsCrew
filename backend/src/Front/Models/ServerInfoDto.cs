@@ -14,13 +14,6 @@ public class ServerInfoDto
     [
         new()
         {
-            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            Name = "Direct Messages",
-            Icon = "💬",
-            ChannelIds = []
-        },
-        new()
-        {
             Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
             Name = "Main",
             Icon = "M",

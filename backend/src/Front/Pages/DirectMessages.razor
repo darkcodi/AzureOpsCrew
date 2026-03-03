@@ -2,7 +2,6 @@
 @page "/dm/{dmId}"
 
 @inject ChatState ChatState
-@inject NavigationManager Navigation
 
 <MainLayout>
     <LeftSidebar>
@@ -25,14 +24,6 @@
     [Parameter]
     public string? DmId { get; set; }
 
-    private readonly Guid _dmServerId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-
-    protected override void OnInitialized()
-    {
-        // Set the DM server when navigating to /dm
-        SetDmServer();
-    }
-
     protected override void OnParametersSet()
     {
         // Handle dmId from route if provided
@@ -41,12 +32,6 @@
 
     private void SetDmServer()
     {
-        var dmServer = ChatState.Servers.FirstOrDefault(s => s.Id == _dmServerId);
-        if (dmServer != null)
-        {
-            ChatState.SelectedServer = dmServer;
-        }
-
         // If dmId is provided, select that DM
         if (!string.IsNullOrEmpty(DmId) && Guid.TryParse(DmId, out var parsedDmId))
         {
@@ -54,7 +39,11 @@
             if (dm != null)
             {
                 ChatState.SelectedDm = dm;
+                return;
             }
         }
+
+        // If no dmId or not found, clear selected DM
+        ChatState.SelectedDm = null;
     }
 }
