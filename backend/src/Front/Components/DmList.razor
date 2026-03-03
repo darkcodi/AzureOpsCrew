@@ -4,7 +4,7 @@
     <div class="channels-section">
         @foreach (var dm in ChatState.Dms)
         {
-            <div class="channels-item @IsDmSelected(dm)" @onclick="() => SelectDm(dm)">
+            <div class="channels-item @(IsDmSelected(dm) ? "active" : "")" @onclick="() => SelectDm(dm)">
                 @if (dm.OtherAgent != null)
                 {
                     <span class="agent-icon">🤖</span>
@@ -20,7 +20,7 @@
 </div>
 
 @code {
-    private string IsDmSelected(DmChannelDto dm) => ChatState.SelectedDm?.Id == dm.Id ? "active" : "";
+    private bool IsDmSelected(DmChannelDto dm) => ChatState.SelectedDm?.Id == dm.Id;
 
     private void SelectDm(DmChannelDto dm)
     {

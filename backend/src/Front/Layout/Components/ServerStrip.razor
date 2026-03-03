@@ -3,7 +3,7 @@
 
 <div class="server-strip">
     <div class="server-strip-top">
-        <div class="server-icon home-icon @IsDmSelected()" @onclick="NavigateToDm" title="Direct Messages">
+        <div class="server-icon home-icon @(IsDmSelected() ? "active" : "")" @onclick="NavigateToDm" title="Direct Messages">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="home-icon-svg">
                 <line x1="4" y1="9" x2="20" y2="9"/>
                 <line x1="4" y1="15" x2="20" y2="15"/>
@@ -16,7 +16,7 @@
 
         @foreach (var server in ChatState.Servers.Where(s => s.Id != Guid.Parse("00000000-0000-0000-0000-000000000001")))
         {
-            <div class="server-icon @IsServerSelected(server)" @onclick="() => NavigateToServer(server)" title="@server.Name">
+            <div class="server-icon @(IsServerSelected(server) ? "active" : "")" @onclick="() => NavigateToServer(server)" title="@server.Name">
                 @server.Icon
             </div>
         }
@@ -48,16 +48,16 @@
 </div>
 
 @code {
-    private string IsDmSelected()
+    private bool IsDmSelected()
     {
         var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath;
-        return path.StartsWith("/dm") ? "active" : string.Empty;
+        return path.StartsWith("/dm");
     }
 
-    private string IsServerSelected(ServerInfoDto server)
+    private bool IsServerSelected(ServerInfoDto server)
     {
         var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath;
-        return path.StartsWith($"/server/{server.Id}") ? "active" : string.Empty;
+        return path.StartsWith($"/server/{server.Id}");
     }
 
     private void NavigateToDm()

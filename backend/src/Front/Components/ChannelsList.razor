@@ -4,7 +4,7 @@
     <div class="channels-section">
         @foreach (var channel in ChatState.GetVisibleChannels())
         {
-            <div class="channels-item @IsChannelSelected(channel)" @onclick="() => SelectChannel(channel)">
+            <div class="channels-item @(IsChannelSelected(channel) ? "active" : "")" @onclick="() => SelectChannel(channel)">
                 <span class="hash">#</span>
                 <span class="channels-name">@channel.Name</span>
                 @if (channel.Description != null)
@@ -17,7 +17,7 @@
 </div>
 
 @code {
-    private string IsChannelSelected(ChannelDto channel) => ChatState.SelectedChannel?.Id == channel.Id ? "active" : "";
+    private bool IsChannelSelected(ChannelDto channel) => ChatState.SelectedChannel?.Id == channel.Id;
 
     private void SelectChannel(ChannelDto channel)
     {
