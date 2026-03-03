@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Front;
+using Front.Handlers;
 using Front.Services;
 using Serilog;
 
@@ -23,11 +24,17 @@ try
         loggingBuilder.AddSerilog(dispose: true);
     });
 
-    // Configure HttpClient with API base URL
+    // Configure HttpClient with API base URL and Authorization header handler
     var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5000";
-    builder.Services.AddScoped(sp => new HttpClient
+    builder.Services.AddScoped<AuthHeaderHandler>();
+    builder.Services.AddScoped(sp =>
     {
-        BaseAddress = new Uri(apiBaseUrl)
+        var handler = sp.GetRequiredService<AuthHeaderHandler>();
+        handler.InnerHandler = new HttpClientHandler();
+        return new HttpClient(handler)
+        {
+            BaseAddress = new Uri(apiBaseUrl)
+        };
     });
 
     // Register application services
