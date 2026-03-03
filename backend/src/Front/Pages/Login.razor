@@ -53,8 +53,6 @@
     {
         Log.Information("Login page initializing");
 
-        // Set JSRuntime for AuthState
-        AuthState.SetJsRuntime(JSRuntime);
         await AuthState.LoadFromLocalStorageAsync();
 
         // If already authenticated, redirect to home

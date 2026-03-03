@@ -27,7 +27,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        AuthState.SetJsRuntime(JSRuntime);
         await AuthState.LoadFromLocalStorageAsync();
 
         if (!AuthState.IsAuthenticated)
