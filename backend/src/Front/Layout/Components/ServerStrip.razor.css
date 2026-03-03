@@ -92,6 +92,12 @@
     color: hsl(210, 3%, 80%);
 }
 
+.server-icon.logout-icon:hover {
+    border-radius: 0.75rem;
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
+}
+
 .server-icon.logout-icon .logout-icon-svg {
     display: block;
     flex-shrink: 0;
