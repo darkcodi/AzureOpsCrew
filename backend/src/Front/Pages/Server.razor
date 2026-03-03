@@ -1,6 +1,7 @@
 @page "/server/{serverId}"
 
 @inject ChatState ChatState
+@inject ChannelService ChannelService
 
 <MainLayout>
     <LeftSidebar>
@@ -10,7 +11,15 @@
         </Front.Layout.Components.LeftSidebar>
     </LeftSidebar>
     <MainArea>
-        <ChatArea />
+        <ChatArea Messages="messages"
+                  CurrentUserId="ChatState.CurrentUser?.Id"
+                  TypingAgents="ChatState.GetTypingAgents()"
+                  ShowInput="ChatState.SelectedChannel != null"
+                  Placeholder="@(ChatState.SelectedChannel != null ? $"Message #{ChatState.SelectedChannel.Name}" : "")"
+                  EmptyIcon="@(ChatState.SelectedChannel != null ? "#" : "👋")"
+                  EmptyTitle="@(ChatState.SelectedChannel != null ? $"Welcome to #{ChatState.SelectedChannel.Name}!" : "Select a channel")"
+                  EmptySubtitle="@(ChatState.SelectedChannel != null ? $"This is the start of the #{ChatState.SelectedChannel.Name} channel." : "Pick a channel from the sidebar to start chatting.")"
+                  OnSendMessage="SendChannelMessage" />
     </MainArea>
     <RightSidebar>
         <Front.Layout.Components.RightSidebar Title="Members">
@@ -20,18 +29,50 @@
 </MainLayout>
 
 @code {
+    private List<ChatMessageDto> messages = [];
+    private Guid? _loadedChannelId;
+
     [Parameter]
     public string? ServerId { get; set; }
 
     protected override void OnInitialized()
     {
         SetServerFromRoute();
+        ChatState.OnChange += OnStateChanged;
     }
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        // Update server when route parameter changes
         SetServerFromRoute();
+        await LoadMessagesIfNeeded();
+    }
+
+    private async void OnStateChanged()
+    {
+        await LoadMessagesIfNeeded();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadMessagesIfNeeded()
+    {
+        var channelId = ChatState.SelectedChannel?.Id;
+        if (channelId.HasValue && channelId != _loadedChannelId)
+        {
+            _loadedChannelId = channelId;
+            messages = await ChannelService.GetChannelMessagesAsync(channelId.Value);
+        }
+    }
+
+    private async Task SendChannelMessage(string text)
+    {
+        if (ChatState.SelectedChannel == null) return;
+
+        var newMessage = await ChannelService.PostMessageAsync(ChatState.SelectedChannel.Id, text);
+        if (newMessage != null)
+        {
+            newMessage.IsOwnMessage = true;
+            messages.Add(newMessage);
+        }
     }
 
     private void SetServerFromRoute()
@@ -44,5 +85,10 @@
                 ChatState.SelectedServer = server;
             }
         }
+    }
+
+    public void Dispose()
+    {
+        ChatState.OnChange -= OnStateChanged;
     }
 }

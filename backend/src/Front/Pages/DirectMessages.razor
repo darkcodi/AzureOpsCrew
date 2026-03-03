@@ -2,6 +2,7 @@
 @page "/dm/{dmId}"
 
 @inject ChatState ChatState
+@inject DmService DmService
 
 <MainLayout>
     <LeftSidebar>
@@ -11,7 +12,14 @@
         </Front.Layout.Components.LeftSidebar>
     </LeftSidebar>
     <MainArea>
-        <ChatArea />
+        <ChatArea Messages="messages"
+                  CurrentUserId="ChatState.CurrentUser?.Id"
+                  ShowInput="ChatState.SelectedDm != null"
+                  Placeholder="@(ChatState.SelectedDm != null ? $"Message @{GetDmName()}" : "")"
+                  EmptyIcon="@(ChatState.SelectedDm != null ? "💬" : "👋")"
+                  EmptyTitle="@(ChatState.SelectedDm != null ? "Welcome to this conversation!" : "Select a conversation")"
+                  EmptySubtitle="@(ChatState.SelectedDm != null ? "This is the start of your conversation." : "Pick a DM from the sidebar to start chatting.")"
+                  OnSendMessage="SendDmMessage" />
     </MainArea>
     <RightSidebar>
         <Front.Layout.Components.RightSidebar Title="Members">
@@ -21,18 +29,61 @@
 </MainLayout>
 
 @code {
+    private List<ChatMessageDto> messages = [];
+    private Guid? _loadedDmId;
+
     [Parameter]
     public string? DmId { get; set; }
 
-    protected override void OnParametersSet()
+    protected override void OnInitialized()
     {
-        // Handle dmId from route if provided
-        SetDmServer();
+        SetDmFromRoute();
+        ChatState.OnChange += OnStateChanged;
     }
 
-    private void SetDmServer()
+    protected override async Task OnParametersSetAsync()
     {
-        // If dmId is provided, select that DM
+        SetDmFromRoute();
+        await LoadMessagesIfNeeded();
+    }
+
+    private async void OnStateChanged()
+    {
+        await LoadMessagesIfNeeded();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadMessagesIfNeeded()
+    {
+        var dmId = ChatState.SelectedDm?.Id;
+        if (dmId.HasValue && dmId != _loadedDmId)
+        {
+            _loadedDmId = dmId;
+            messages = await DmService.GetDmMessagesAsync(dmId.Value);
+        }
+    }
+
+    private async Task SendDmMessage(string text)
+    {
+        var dm = ChatState.SelectedDm;
+        if (dm == null) return;
+
+        ChatMessageDto? newMessage = null;
+
+        if (dm.OtherAgent != null)
+            newMessage = await DmService.PostAgentDmMessageAsync(dm.OtherAgent.Id, text);
+        else if (dm.OtherUser != null)
+            newMessage = await DmService.PostUserDmMessageAsync(dm.OtherUser.Id, text);
+
+        if (newMessage != null)
+        {
+            newMessage.IsOwnMessage = true;
+            messages.Add(newMessage);
+        }
+    }
+
+    private void SetDmFromRoute()
+    {
         if (!string.IsNullOrEmpty(DmId) && Guid.TryParse(DmId, out var parsedDmId))
         {
             var dm = ChatState.Dms.FirstOrDefault(d => d.Id == parsedDmId);
@@ -43,7 +94,18 @@
             }
         }
 
-        // If no dmId or not found, clear selected DM
         ChatState.SelectedDm = null;
+    }
+
+    private string GetDmName()
+    {
+        return ChatState.SelectedDm?.OtherAgent?.Username
+               ?? ChatState.SelectedDm?.OtherUser?.Username
+               ?? "Unknown";
+    }
+
+    public void Dispose()
+    {
+        ChatState.OnChange -= OnStateChanged;
     }
 }
