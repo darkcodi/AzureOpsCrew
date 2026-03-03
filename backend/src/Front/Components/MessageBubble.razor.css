@@ -1,0 +1,128 @@
+.message-group {
+    display: flex;
+    padding: 2px 48px 2px 72px;
+    margin: 8px 0;
+    position: relative;
+    min-height: 44px;
+}
+
+.message-group.grouped {
+    padding: 0 48px 0 72px;
+    margin: 0;
+    min-height: 0;
+}
+
+.message-group.grouped .message-header {
+    display: none;
+}
+
+.message-group:hover {
+    background-color: rgba(0, 0, 0, 0.06);
+}
+
+.message-group.own-message {
+    background-color: transparent;
+}
+
+.message-group.grouped.own-message:hover {
+    background-color: transparent;
+}
+
+.message-spacer {
+    width: 40px;
+    height: 0;
+    margin-right: 16px;
+    flex-shrink: 0;
+}
+
+.message-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #5865F2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 16px;
+    margin-right: 16px;
+    flex-shrink: 0;
+    cursor: pointer;
+    color: white;
+}
+
+.message-avatar.agent-avatar {
+    background-color: #3ba55c;
+}
+
+.message-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.message-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.message-username {
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    color: white;
+}
+
+.message-username:hover {
+    text-decoration: underline;
+}
+
+.message-username.bot-username {
+    color: #5865F2;
+}
+
+.message-bot-badge {
+    background-color: #5865F2;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    text-transform: uppercase;
+}
+
+.message-timestamp {
+    font-size: 12px;
+    color: #72767d;
+}
+
+.message-text {
+    color: #dcddde;
+    font-size: 16px;
+    line-height: 1.375rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+@media (max-width: 768px) {
+    .message-group {
+        padding: 2px 16px 2px 56px;
+    }
+
+    .message-group.grouped {
+        padding: 0 16px 0 56px;
+    }
+
+    .message-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        margin-right: 12px;
+    }
+
+    .message-spacer {
+        width: 32px;
+        margin-right: 12px;
+    }
+}

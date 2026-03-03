@@ -1,0 +1,144 @@
+.member-sidebar {
+    background-color: #2f3136;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.member-header {
+    height: 48px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    border-bottom: 2px solid #26272d;
+    font-weight: 700;
+    font-size: 16px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+.member-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 0;
+}
+
+.member-section {
+    margin-bottom: 16px;
+}
+
+.member-section-header {
+    padding: 0 16px;
+    margin-bottom: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #72767d;
+}
+
+.member-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    margin: 1px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.1s ease;
+}
+
+.member-item:hover {
+    background-color: #34373c;
+}
+
+.member-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #5865F2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    margin-right: 10px;
+    position: relative;
+    flex-shrink: 0;
+    color: white;
+}
+
+.member-status {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 3px solid #2f3136;
+}
+
+.member-status.online {
+    background-color: #3ba55c;
+}
+
+.member-status.idle {
+    background-color: #faa61a;
+}
+
+.member-status.dnd {
+    background-color: #ed4245;
+}
+
+.member-status.offline {
+    background-color: #747f8d;
+}
+
+.member-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.member-name {
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: white;
+}
+
+.member-name.bot-name {
+    color: #5865F2;
+}
+
+.member-status-text {
+    font-size: 12px;
+    color: #72767d;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bot-badge {
+    background-color: #5865F2;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    margin-left: 4px;
+    flex-shrink: 0;
+}
+
+.no-selection {
+    padding: 16px;
+    text-align: center;
+    color: #72767d;
+    font-size: 14px;
+}
+
+@media (max-width: 1200px) {
+    .member-sidebar {
+        display: none;
+    }
+}

@@ -1,0 +1,44 @@
+@inject ChatState ChatState
+
+<div class="server-strip">
+    <div class="server-icon home-icon @IsServerSelected(null)" @onclick="SelectHome" title="Direct Messages">
+        💬
+    </div>
+
+    <div class="server-separator"></div>
+
+    @foreach (var server in ChatState.Servers.Where(s => s.Id != Guid.Parse("00000000-0000-0000-0000-000000000001")))
+    {
+        <div class="server-icon @IsServerSelected(server)" @onclick="() => SelectServer(server)" title="@server.Name">
+            @server.Icon
+        </div>
+    }
+
+    <div class="server-separator"></div>
+
+    <div class="server-icon settings-icon" title="Settings">
+        ⚙️
+    </div>
+</div>
+
+@code {
+    private string IsServerSelected(ServerInfo? server)
+    {
+        if (server == null)
+        {
+            return ChatState.SelectedServer?.Id == Guid.Parse("00000000-0000-0000-0000-000000000001") ? "active" : "";
+        }
+        return ChatState.SelectedServer?.Id == server.Id ? "active" : "";
+    }
+
+    private void SelectHome()
+    {
+        var dmServer = ChatState.Servers.FirstOrDefault(s => s.Id == Guid.Parse("00000000-0000-0000-0000-000000000001"));
+        ChatState.SelectedServer = dmServer;
+    }
+
+    private void SelectServer(ServerInfo server)
+    {
+        ChatState.SelectedServer = server;
+    }
+}

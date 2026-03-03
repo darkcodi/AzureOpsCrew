@@ -1,0 +1,19 @@
+.discord-layout {
+    display: grid;
+    grid-template-columns: 72px 240px 1fr 240px;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+@media (max-width: 1200px) {
+    .discord-layout {
+        grid-template-columns: 72px 240px 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .discord-layout {
+        grid-template-columns: 72px 1fr;
+    }
+}

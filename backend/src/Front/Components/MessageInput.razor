@@ -1,0 +1,80 @@
+<div class="message-input-component">
+    <div class="message-input-wrapper">
+        <div class="message-input-actions-left">
+            <button class="action-button" title="Add attachment" @onclick="AddAttachment">
+                ➕
+            </button>
+        </div>
+
+        <textarea class="message-textarea"
+                  placeholder="@Placeholder"
+                  @bind="messageText"
+                  @bind:event="oninput"
+                  @onkeypress="HandleKeyPress"
+                  @onfocus="OnFocus"
+                  @onblur="OnBlur"
+                  @ref="textareaElement">
+        </textarea>
+
+        <div class="message-input-actions-right">
+            <button class="action-button" title="Gift Nitro">🎁</button>
+            <button class="action-button" title="GIF">GIF</button>
+            <button class="action-button" title="Sticker">😀</button>
+        </div>
+
+        <button class="send-button" disabled="@string.IsNullOrEmpty(messageText)" @onclick="SendMessage">
+            ➤
+        </button>
+    </div>
+</div>
+
+@code {
+    private ElementReference textareaElement;
+    private string messageText = string.Empty;
+
+    [Parameter] public string Placeholder { get; set; } = "Message #general";
+    [Parameter] public EventCallback<string> OnSend { get; set; }
+    [Parameter] public EventCallback OnTypingStart { get; set; }
+    [Parameter] public EventCallback OnTypingEnd { get; set; }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (!string.IsNullOrWhiteSpace(messageText))
+        {
+            var text = messageText;
+            messageText = string.Empty;
+            await OnSend.InvokeAsync(text);
+            await AutoResizeTextarea();
+        }
+    }
+
+    private Task AddAttachment()
+    {
+        // TODO: Implement attachment functionality
+        return Task.CompletedTask;
+    }
+
+    private Task OnFocus()
+    {
+        return OnTypingStart.InvokeAsync();
+    }
+
+    private Task OnBlur()
+    {
+        return OnTypingEnd.InvokeAsync();
+    }
+
+    private async Task AutoResizeTextarea()
+    {
+        // Simple auto-resize - in production you'd use JS interop
+        await Task.CompletedTask;
+    }
+}

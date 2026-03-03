@@ -1,0 +1,75 @@
+@inject ChatState ChatState
+
+<div class="message-group @GetGroupClass() @GetOwnClass()">
+    @if (!IsGrouped)
+    {
+        <div class="message-avatar @GetAvatarClass()">
+            @GetInitials()
+        </div>
+    }
+    else
+    {
+        <div class="message-spacer"></div>
+    }
+
+    <div class="message-content">
+        @if (!IsGrouped)
+        {
+            <div class="message-header">
+                <span class="message-username @GetUsernameClass()">@Message.AuthorName</span>
+                @if (Message.IsAgentMessage)
+                {
+                    <span class="message-bot-badge">BOT</span>
+                }
+                <span class="message-timestamp">@GetFormattedTimestamp()</span>
+            </div>
+        }
+        <div class="message-text">
+            @Message.Text
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public ChatMessageDto Message { get; set; } = default!;
+    [Parameter] public bool IsGrouped { get; set; }
+    [Parameter] public bool IsOwn { get; set; }
+
+    private string GetGroupClass() => IsGrouped ? "grouped" : "";
+
+    private string GetOwnClass() => IsOwn ? "own-message" : "";
+
+    private string GetAvatarClass() => Message.IsAgentMessage ? "agent-avatar" : "";
+
+    private string GetUsernameClass() => Message.IsAgentMessage ? "bot-username" : "";
+
+    private string GetInitials()
+    {
+        if (string.IsNullOrEmpty(Message.AuthorName)) return "?";
+        var parts = Message.AuthorName.Split(' ');
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        }
+        return Message.AuthorName.Length >= 2
+            ? Message.AuthorName.Substring(0, 2).ToUpper()
+            : Message.AuthorName.ToUpper();
+    }
+
+    private string GetFormattedTimestamp()
+    {
+        var now = DateTime.UtcNow;
+        var diff = now - Message.PostedAt;
+
+        if (diff.TotalMinutes < 1)
+            return "Just now";
+        if (diff.TotalMinutes < 60)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24)
+            return Message.PostedAt.ToString("HH:mm");
+        if (diff.TotalDays < 7)
+            return Message.PostedAt.ToString("ddd HH:mm");
+
+        return Message.PostedAt.ToString("MMM d, yyyy");
+    }
+}

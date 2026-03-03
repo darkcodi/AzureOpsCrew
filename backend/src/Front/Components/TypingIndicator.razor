@@ -1,0 +1,33 @@
+@if (Agents.Count > 0)
+{
+    <div class="typing-indicator">
+        <div class="typing-dots">
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+        </div>
+        <span class="typing-text">
+            @GetTypingText()
+        </span>
+    </div>
+}
+
+@code {
+    [Parameter] public List<AgentDto> Agents { get; set; } = [];
+
+    private string GetTypingText()
+    {
+        if (Agents.Count == 1)
+        {
+            return $"{Agents[0].Username} is typing...";
+        }
+        else if (Agents.Count == 2)
+        {
+            return $"{Agents[0].Username} and {Agents[1].Username} are typing...";
+        }
+        else
+        {
+            return "Several people are typing...";
+        }
+    }
+}

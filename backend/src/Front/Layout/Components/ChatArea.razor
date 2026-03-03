@@ -1,0 +1,227 @@
+@inject ChatState ChatState
+@inject ChannelService ChannelService
+@inject IJSRuntime JS
+
+<div class="chat-area">
+    @if (ChatState.SelectedChannel != null)
+    {
+        <div class="chat-header">
+            <span class="hash">#</span>
+            <span class="channel-name">@ChatState.SelectedChannel.Name</span>
+            @if (ChatState.SelectedChannel.Description != null)
+            {
+                <span class="channel-topic">@ChatState.SelectedChannel.Description</span>
+            }
+        </div>
+
+        <div class="messages-container" @ref="messagesContainer">
+            @if (messages.Count == 0)
+            {
+                <div class="no-messages">
+                    <div class="welcome-icon">#</div>
+                    <h3>Welcome to #@ChatState.SelectedChannel.Name!</h3>
+                    <p>This is the start of the #@ChatState.SelectedChannel.Name channel.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var messageGroup in GetMessageGroups())
+                {
+                    <MessageBubble Message="@messageGroup.Message" IsGrouped="@messageGroup.IsGrouped" IsOwn="@messageGroup.IsOwn" />
+                }
+            }
+        </div>
+
+        @if (ChatState.GetTypingAgents().Count > 0)
+        {
+            <TypingIndicator Agents="ChatState.GetTypingAgents()" />
+        }
+
+        <div class="message-input-container">
+            <div class="message-input-wrapper">
+                <button class="message-action-button" title="Add attachment">+</button>
+                <input type="text"
+                       class="message-input"
+                       placeholder="Message #@ChatState.SelectedChannel.Name"
+                       @bind="messageText"
+                       @bind:event="oninput"
+                       @onkeypress="HandleKeyPress"
+                       @onfocusin="ShowTyping"
+                       @onfocusout="HideTyping" />
+                <div class="message-input-actions">
+                    <button class="message-action-button" title="Gift Nitro">🎁</button>
+                    <button class="message-action-button" title="GIF">GIF</button>
+                    <button class="message-action-button" title="Sticker">😀</button>
+                </div>
+                <button class="send-button" disabled="@string.IsNullOrEmpty(messageText)" @onclick="SendMessage">
+                    ➤
+                </button>
+            </div>
+        </div>
+    }
+    else if (ChatState.SelectedDm != null)
+    {
+        <div class="chat-header">
+            <span class="dm-icon">@GetDmInitials()</span>
+            <span class="channel-name">@GetDmName()</span>
+        </div>
+
+        <div class="messages-container" @ref="messagesContainer">
+            @if (messages.Count == 0)
+            {
+                <div class="no-messages">
+                    <div class="welcome-icon">💬</div>
+                    <h3>Welcome to this conversation!</h3>
+                    <p>This is the start of your conversation.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var messageGroup in GetMessageGroups())
+                {
+                    <MessageBubble Message="@messageGroup.Message" IsGrouped="@messageGroup.IsGrouped" IsOwn="@messageGroup.IsOwn" />
+                }
+            }
+        </div>
+
+        <div class="message-input-container">
+            <div class="message-input-wrapper">
+                <button class="message-action-button" title="Add attachment">+</button>
+                <input type="text"
+                       class="message-input"
+                       placeholder="Message @GetDmName()"
+                       @bind="messageText"
+                       @bind:event="oninput"
+                       @onkeypress="HandleKeyPress" />
+                <button class="send-button" disabled="@string.IsNullOrEmpty(messageText)" @onclick="SendDmMessage">
+                    ➤
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="no-selection">
+            <div class="welcome-icon">👋</div>
+            <h3>Welcome to AzureOpsCrew!</h3>
+            <p>Select a channel or start a direct message to begin chatting.</p>
+        </div>
+    }
+</div>
+
+@code {
+    private ElementReference messagesContainer;
+    private List<ChatMessageDto> messages = [];
+    private string messageText = string.Empty;
+    private Guid? _currentChannelId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var channelId = ChatState.SelectedChannel?.Id;
+        var dmId = ChatState.SelectedDm?.Id;
+
+        if (channelId.HasValue && channelId != _currentChannelId)
+        {
+            _currentChannelId = channelId;
+            messages = await ChannelService.GetChannelMessagesAsync(channelId.Value);
+            await ScrollToBottomAsync();
+        }
+        else if (dmId.HasValue && channelId != _currentChannelId)
+        {
+            _currentChannelId = dmId;
+            // TODO: Load DM messages
+            messages = [];
+            await ScrollToBottomAsync();
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ScrollToBottomAsync();
+        }
+    }
+
+    private List<(ChatMessageDto Message, bool IsGrouped, bool IsOwn)> GetMessageGroups()
+    {
+        var result = new List<(ChatMessageDto, bool, bool)>();
+        ChatMessageDto? previousMessage = null;
+
+        foreach (var message in messages)
+        {
+            var isOwn = message.UserId == ChatState.CurrentUser?.Id;
+            var isGrouped = previousMessage != null &&
+                           message.AuthorName == previousMessage.AuthorName &&
+                           (message.PostedAt - previousMessage.PostedAt).TotalMinutes < 5;
+
+            result.Add((message, isGrouped, isOwn));
+            previousMessage = message;
+        }
+
+        return result;
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(messageText) || ChatState.SelectedChannel == null)
+            return;
+
+        var newMessage = await ChannelService.PostMessageAsync(ChatState.SelectedChannel.Id, messageText);
+
+        if (newMessage != null)
+        {
+            newMessage.IsOwnMessage = true;
+            messages.Add(newMessage);
+            messageText = string.Empty;
+            await ScrollToBottomAsync();
+        }
+    }
+
+    private async Task SendDmMessage()
+    {
+        if (string.IsNullOrWhiteSpace(messageText) || ChatState.SelectedDm == null)
+            return;
+
+        // TODO: Implement DM message sending
+        messageText = string.Empty;
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private Task ShowTyping() => Task.CompletedTask;
+
+    private Task HideTyping() => Task.CompletedTask;
+
+    private async Task ScrollToBottomAsync()
+    {
+        await JS.InvokeVoidAsync("scrollToBottom", messagesContainer);
+    }
+
+    private string GetDmName()
+    {
+        return ChatState.SelectedDm?.OtherAgent?.Username
+               ?? ChatState.SelectedDm?.OtherUser?.Username
+               ?? "Unknown";
+    }
+
+    private string GetDmInitials()
+    {
+        var name = GetDmName();
+        if (string.IsNullOrEmpty(name)) return "?";
+        var parts = name.Split(' ');
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        }
+        return name.Length >= 2 ? name.Substring(0, 2).ToUpper() : name.ToUpper();
+    }
+}

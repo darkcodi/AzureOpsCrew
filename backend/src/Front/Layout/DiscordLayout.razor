@@ -1,0 +1,184 @@
+@inherits LayoutComponentBase
+@inject ChatState ChatState
+@inject SignalRService SignalRService
+@inject UserService UserService
+@inject ChannelService ChannelService
+@inject AgentService AgentService
+@implements IAsyncDisposable
+
+<div class="discord-layout">
+    <ServerStrip />
+    @if (ChatState.SelectedServer != null && ChatState.SelectedServer.Name == "Direct Messages")
+    {
+        <div class="channel-sidebar dm-sidebar">
+            <div class="channel-header">
+                <span>Direct Messages</span>
+            </div>
+            <div class="channel-list">
+                <div class="channel-section">
+                    @foreach (var dm in ChatState.Dms)
+                    {
+                        <div class="channel-item @IsDmSelected(dm)" @onclick="() => SelectDm(dm)">
+                            @if (dm.OtherAgent != null)
+                            {
+                                <span class="agent-icon">🤖</span>
+                            }
+                            else
+                            {
+                                <span class="dm-icon">@GetInitials(dm.OtherUser?.Username ?? "User")</span>
+                            }
+                            <span class="dm-name">@GetDmDisplayName(dm)</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <ChannelSidebar />
+    }
+    <ChatArea />
+    <MemberSidebar />
+</div>
+
+@code {
+    private bool _isInitialized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_isInitialized) return;
+
+        // Load current user
+        var currentUser = await UserService.GetCurrentUserAsync();
+        if (currentUser != null)
+        {
+            ChatState.CurrentUser = currentUser;
+        }
+
+        // Load channels and agents
+        await LoadDataAsync();
+
+        // Connect to SignalR
+        await SignalRService.StartAsync();
+
+        // Subscribe to SignalR events
+        SignalRService.MessageAdded += OnMessageAdded;
+        SignalRService.AgentThinkingStart += OnAgentThinkingStart;
+        SignalRService.AgentThinkingEnd += OnAgentThinkingEnd;
+        SignalRService.AgentTextContent += OnAgentTextContent;
+        SignalRService.TypingIndicator += OnTypingIndicator;
+
+        _isInitialized = true;
+    }
+
+    private async Task LoadDataAsync()
+    {
+        var channels = await ChannelService.GetChannelsAsync();
+        ChatState.Channels = channels;
+
+        var agents = await AgentService.GetAgentsAsync();
+        ChatState.Agents = agents;
+
+        // Populate agents in channels
+        foreach (var channel in ChatState.Channels)
+        {
+            var agentIds = channel.AgentIds
+                .Select(id => Guid.TryParse(id, out var guid) ? guid : (Guid?)null)
+                .Where(g => g.HasValue)
+                .Select(g => g!.Value)
+                .ToHashSet();
+
+            channel.Agents = ChatState.Agents.Where(a => agentIds.Contains(a.Id)).ToList();
+        }
+
+        // Select first channel if none selected
+        if (ChatState.SelectedChannel == null && ChatState.Channels.Count > 0)
+        {
+            ChatState.SelectedChannel = ChatState.Channels[0];
+        }
+    }
+
+    private string IsDmSelected(DmChannelDto dm) => ChatState.SelectedDm?.Id == dm.Id ? "active" : "";
+
+    private void SelectDm(DmChannelDto dm)
+    {
+        ChatState.SelectedDm = dm;
+    }
+
+    private string GetDmDisplayName(DmChannelDto dm)
+    {
+        return dm.OtherAgent?.Username ?? dm.OtherUser?.Username ?? "Unknown";
+    }
+
+    private string GetInitials(string username)
+    {
+        if (string.IsNullOrEmpty(username)) return "?";
+        var parts = username.Split(' ');
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        }
+        return username.Length >= 2 ? username.Substring(0, 2).ToUpper() : username.ToUpper();
+    }
+
+    private Task OnMessageAdded(ChatMessageDto message)
+    {
+        if (message.ChannelId.HasValue)
+        {
+            ChatState.AddMessage(message.ChannelId.Value, message, isDm: false);
+        }
+        else if (message.DmId.HasValue)
+        {
+            ChatState.AddMessage(message.DmId.Value, message, isDm: true);
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task OnAgentThinkingStart(Guid agentId, string agentName)
+    {
+        var agent = ChatState.Agents.FirstOrDefault(a => a.Id == agentId);
+        if (agent != null)
+        {
+            agent.Status = "Thinking";
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task OnAgentThinkingEnd(Guid agentId, string agentName)
+    {
+        var agent = ChatState.Agents.FirstOrDefault(a => a.Id == agentId);
+        if (agent != null)
+        {
+            agent.Status = "Idle";
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task OnAgentTextContent(Guid agentId, string agentName, string content, bool isDelta)
+    {
+        // Handle streaming content
+        return Task.CompletedTask;
+    }
+
+    private Task OnTypingIndicator(Guid agentId, string agentName, bool isTyping)
+    {
+        var agent = ChatState.Agents.FirstOrDefault(a => a.Id == agentId);
+        if (agent != null)
+        {
+            agent.IsTyping = isTyping;
+            ChatState.UpdateAgentTyping(agentId, agent, isTyping);
+        }
+        return Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        SignalRService.MessageAdded -= OnMessageAdded;
+        SignalRService.AgentThinkingStart -= OnAgentThinkingStart;
+        SignalRService.AgentThinkingEnd -= OnAgentThinkingEnd;
+        SignalRService.AgentTextContent -= OnAgentTextContent;
+        SignalRService.TypingIndicator -= OnTypingIndicator;
+        await SignalRService.StopAsync();
+    }
+}

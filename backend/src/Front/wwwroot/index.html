@@ -7,8 +7,7 @@
     <title>Front</title>
     <base href="/" />
     <link rel="preload" id="webassembly" />
-    <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/discord.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="Front.styles.css" rel="stylesheet" />
     <script type="importmap"></script>
@@ -29,6 +28,13 @@
         <span class="dismiss">🗙</span>
     </div>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+    <script>
+        window.scrollToBottom = (element) => {
+            if (element) {
+                element.scrollTop = element.scrollHeight;
+            }
+        };
+    </script>
 </body>
 
 </html>

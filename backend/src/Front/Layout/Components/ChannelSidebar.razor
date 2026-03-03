@@ -1,0 +1,109 @@
+@inject ChatState ChatState
+@inject NavigationManager NavigationManager
+
+<div class="channel-sidebar">
+    <div class="channel-header" @onclick="ToggleServerMenu">
+        <span class="server-name">@GetServerName()</span>
+        <span class="dropdown-icon">▼</span>
+    </div>
+
+    <div class="channel-list">
+        <div class="channel-section">
+            <div class="channel-section-header" @onclick="ToggleTextChannels">
+                <span class="collapse-icon@(textChannelsExpanded ? "" : " collapsed")">▼</span>
+                <span>Text Channels</span>
+                <span class="add-icon">+</span>
+            </div>
+
+            @if (textChannelsExpanded)
+            {
+                @foreach (var channel in ChatState.GetVisibleChannels())
+                {
+                    <div class="channel-item @IsChannelSelected(channel)" @onclick="() => SelectChannel(channel)">
+                        <span class="hash">#</span>
+                        <span class="channel-name">@channel.Name</span>
+                        @if (channel.Description != null)
+                        {
+                            <span class="channel-tooltip">@channel.Description</span>
+                        }
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="channel-section">
+            <div class="channel-section-header" @onclick="ToggleVoiceChannels">
+                <span class="collapse-icon@(voiceChannelsExpanded ? "" : " collapsed")">▼</span>
+                <span>Voice Channels</span>
+            </div>
+
+            @if (voiceChannelsExpanded)
+            {
+                <div class="channel-item disabled">
+                    <span class="voice-icon">🔊</span>
+                    <span class="channel-name">General Voice</span>
+                </div>
+                <div class="channel-item disabled">
+                    <span class="voice-icon">🔊</span>
+                    <span class="channel-name">Lounge</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="user-panel">
+        <div class="user-avatar">@GetUserInitials()</div>
+        <div class="user-info">
+            <div class="username">@GetUserName()</div>
+            <div class="user-status">Online</div>
+        </div>
+        <div class="user-actions">
+            <button class="icon-button" title="Mute">🎤</button>
+            <button class="icon-button" title="Deafen">🎧</button>
+            <button class="icon-button" title="Settings">⚙️</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool textChannelsExpanded = true;
+    private bool voiceChannelsExpanded = true;
+
+    private string GetServerName()
+    {
+        return ChatState.SelectedServer?.Name ?? "Select a Server";
+    }
+
+    private string IsChannelSelected(ChannelDto channel) => ChatState.SelectedChannel?.Id == channel.Id ? "active" : "";
+
+    private void SelectChannel(ChannelDto channel)
+    {
+        ChatState.SelectedChannel = channel;
+    }
+
+    private void ToggleTextChannels() => textChannelsExpanded = !textChannelsExpanded;
+
+    private void ToggleVoiceChannels() => voiceChannelsExpanded = !voiceChannelsExpanded;
+
+    private void ToggleServerMenu()
+    {
+        // TODO: Show server menu
+    }
+
+    private string GetUserInitials()
+    {
+        var username = GetUserName();
+        if (string.IsNullOrEmpty(username)) return "?";
+        var parts = username.Split(' ');
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        }
+        return username.Length >= 2 ? username.Substring(0, 2).ToUpper() : username.ToUpper();
+    }
+
+    private string GetUserName()
+    {
+        return ChatState.CurrentUser?.Username ?? "User";
+    }
+}

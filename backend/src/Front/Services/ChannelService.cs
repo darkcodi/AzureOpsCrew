@@ -1,0 +1,106 @@
+using System.Net.Http.Json;
+using Front.Models;
+
+namespace Front.Services;
+
+public class ChannelService
+{
+    private readonly HttpClient _httpClient;
+
+    public ChannelService(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
+    public async Task<List<ChannelDto>> GetChannelsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<ChannelDto>>("/api/channels");
+            return response ?? [];
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching channels: {ex.Message}");
+            return [];
+        }
+    }
+
+    public async Task<ChannelDto?> GetChannelAsync(Guid id)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<ChannelDto>($"/api/channels/{id}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching channel {id}: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<List<ChatMessageDto>> GetChannelMessagesAsync(Guid channelId)
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<ChatMessageDto>>($"/api/channels/{channelId}/messages");
+            return response ?? [];
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching messages for channel {channelId}: {ex.Message}");
+            return [];
+        }
+    }
+
+    public async Task<ChatMessageDto?> PostMessageAsync(Guid channelId, string text)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"/api/channels/{channelId}/messages",
+                new { Content = text });
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ChatMessageDto>();
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error posting message to channel {channelId}: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<bool> CreateChannelAsync(string name, string? description, Guid[] agentIds)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("/api/channels/create",
+                new { Name = name, Description = description, AgentIds = agentIds });
+
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating channel: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteChannelAsync(Guid id)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"/api/channels/{id}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting channel {id}: {ex.Message}");
+            return false;
+        }
+    }
+}
