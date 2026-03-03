@@ -19,8 +19,12 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
 
         builder.OwnsOne(a => a.Info, infoBuilder =>
         {
-            infoBuilder.Property(i => i.Name)
-                       .IsRequired();
+            infoBuilder.Property(i => i.Username)
+                       .IsRequired()
+                       .HasMaxLength(30);
+
+            infoBuilder.HasIndex(i => i.Username)
+                       .IsUnique();
 
             infoBuilder.Property(i => i.Prompt)
                        .IsRequired()

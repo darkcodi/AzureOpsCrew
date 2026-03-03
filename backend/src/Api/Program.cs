@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AzureOpsCrew.Api.Background;
+using AzureOpsCrew.Api.Channels;
 using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
@@ -53,6 +54,21 @@ try
     builder.Services.AddHttpClient();
     builder.Services.AddAGUI();
 
+    // Configure SignalR
+    builder.Services.AddSignalR();
+
+    // Configure CORS for SignalR
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowFrontend", policy =>
+        {
+            policy.SetIsOriginAllowed(_ => true)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        });
+    });
+
     // Enable Application Insights
     if (bool.TryParse(builder.Configuration["ApplicationInsights:Enable"], out var enableApplicationInsights)
         && enableApplicationInsights)
@@ -87,6 +103,7 @@ try
 
     app.UseHttpsRedirection();
     app.UseAuthentication();
+    app.UseCors("AllowFrontend");
     app.UseAuthorization();
 
     // Map endpoints
@@ -96,6 +113,10 @@ try
     app.MapChannelEndpoints();
     app.MapDmEndpoints();
     app.MapProviderEndpoints();
+
+    // Map SignalR hubs
+    app.MapHub<ChannelEventsHub>("/channels/{id}/events");
+    app.MapHub<DmEventsHub>("/dms/{id}/events");
 
     await app.Services.RunDbSetup();
     await app.Services.RunLongTermMemorySetup();

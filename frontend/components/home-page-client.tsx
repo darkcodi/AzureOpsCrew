@@ -6,7 +6,7 @@ import { IconSidebar, type ViewMode } from "@/components/icon-sidebar"
 import { ChannelSidebar } from "@/components/channel-sidebar"
 import { ChannelArea } from "@/components/channel-area"
 import { DirectMessagesView } from "@/components/direct-messages-view"
-import { SettingsView, getDisplayNameFromStorage } from "@/components/settings/settings-view"
+import { SettingsView, getUsernameFromStorage } from "@/components/settings/settings-view"
 import {
   clearCachedHumans,
   getCachedHumans,
@@ -14,6 +14,7 @@ import {
   type HumanMember,
 } from "@/lib/humans"
 import { fetchWithErrorHandling } from "@/lib/fetch"
+import { ChannelEventsClient } from "@/lib/signalr-client"
 
 interface HomePageClientProps {
   initialHumans: HumanMember[]
@@ -30,14 +31,14 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
   )
   const [activeChannelId, setActiveChannelId] = useState<string>("")
   const [activeDMId, setActiveDMId] = useState<string | null>(null)
-  const [displayName, setDisplayName] = useState(() =>
-    typeof window !== "undefined" ? getDisplayNameFromStorage() : "User"
+  const [username, setUsername] = useState(() =>
+    typeof window !== "undefined" ? getUsernameFromStorage() : "User"
   )
   const activeChannel = channels.find((c) => c.id === activeChannelId) ?? channels[0]
 
-  // Refresh display name from persisted settings when returning from Settings
+  // Refresh username from persisted settings when returning from Settings
   useEffect(() => {
-    if (viewMode !== "settings") setDisplayName(getDisplayNameFromStorage())
+    if (viewMode !== "settings") setUsername(getUsernameFromStorage())
   }, [viewMode])
 
   useEffect(() => {
@@ -113,7 +114,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     loadChannels()
   }, [])
 
-  // Load registered users and refresh presence periodically.
+  // Load registered users on mount (no polling)
   useEffect(() => {
     let isCancelled = false
 
@@ -133,13 +134,40 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
     }
 
     void loadHumans()
-    const interval = window.setInterval(() => {
-      void loadHumans()
-    }, 30000)
-
     return () => {
       isCancelled = true
-      window.clearInterval(interval)
+    }
+  }, [])
+
+  // Listen for user presence updates via SignalR
+  useEffect(() => {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL ?? "http://localhost:5000"
+    // Use empty GUID as a convention for the global presence channel
+    const globalChannelId = "00000000-0000-0000-0000-000000000000"
+    const hubUrl = `${backendUrl}/channels/${globalChannelId}/events`
+
+    const presenceClient = new ChannelEventsClient(globalChannelId)
+    let mounted = true
+
+    presenceClient.start().then(() => {
+      if (!mounted) return
+
+      presenceClient.onUserPresence((event) => {
+        setHumans((prev) =>
+          prev.map((h) =>
+            h.userId === event.userId
+              ? { ...h, status: event.isOnline ? ("Online" as const) : ("Offline" as const) }
+              : h
+          )
+        )
+      })
+    }).catch((err) => {
+      console.error("Failed to connect to presence hub:", err)
+    })
+
+    return () => {
+      mounted = false
+      presenceClient.stop()
     }
   }, [])
 
@@ -275,7 +303,7 @@ export default function HomePageClient({ initialHumans }: HomePageClientProps) {
               channel={activeChannel}
               allAgents={agents}
               humans={humans}
-              displayName={displayName}
+              username={username}
               onUpdateChannel={handleUpdateChannel}
               onAddAgent={handleAddAgent}
               onUpdateAgent={handleUpdateAgent}

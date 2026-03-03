@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import type { Channel, Agent, ChatMessage } from "@/lib/agents"
 import { ChannelHeader } from "@/components/channel-header"
 import { MessageList } from "@/components/message-list"
@@ -8,12 +8,13 @@ import { MessageInput } from "@/components/message-input"
 import { MemberList } from "@/components/member-list"
 import type { HumanMember } from "@/lib/humans"
 import { fetchWithErrorHandling } from "@/lib/fetch"
+import { ChannelEventsClient, type MessageAddedEvent, type AgentThinkingStartEvent, type AgentThinkingEndEvent, type AgentTextContentEvent, type TypingIndicatorEvent, type AgentStatusEvent } from "@/lib/signalr-client"
 
 interface ChannelAreaProps {
   channel: Channel
   allAgents: Agent[]
   humans: HumanMember[]
-  displayName: string
+  username: string
   onUpdateChannel: (channel: Channel) => void
   onAddAgent: (agent: Agent) => void
   onUpdateAgent: (agent: Agent) => void
@@ -25,7 +26,7 @@ export function ChannelArea({
   channel,
   allAgents,
   humans,
-  displayName,
+  username,
   onUpdateChannel,
   onAddAgent,
   onUpdateAgent,
@@ -34,42 +35,245 @@ export function ChannelArea({
 }: ChannelAreaProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [showMembers, setShowMembers] = useState(true)
+  const [streamingAgentId, setStreamingAgentId] = useState<string | null>(null)
+  const [streamingContent, setStreamingContent] = useState("")
+  const [typingAgentIds, setTypingAgentIds] = useState<Set<string>>(new Set())
+  const [agentStatuses, setAgentStatuses] = useState<Map<string, string>>(new Map())
+
+  // Track the SignalR client connection
+  const signalRClientRef = useRef<ChannelEventsClient | null>(null)
+  // Track the current channel ID to guard against stale async operations
+  const currentChannelIdRef = useRef(channel.id)
+  // Track whether messages are currently being loaded to prevent duplicate requests
+  const isLoadingMessagesRef = useRef(false)
+  // Track when a teardown is in progress to prevent race conditions with new connections
+  const isTearingDownRef = useRef(false)
+  // Track the current connection instance ID to prevent stale cleanups from stopping new connections
+  const connectionInstanceIdRef = useRef(0)
 
   const activeAgents = allAgents.filter((a) => channel.agentIds.includes(a.id))
 
+  // Helper to convert backend message to frontend ChatMessage format
+  const toChatMessage = useCallback((m: {
+    id: string
+    text?: string
+    content?: string
+    userId?: string
+    agentId?: string
+    senderId?: string
+    postedAt?: string
+  }): ChatMessage => {
+    const isUser = !m.agentId
+    return {
+      id: m.id,
+      role: isUser ? 'user' : 'assistant',
+      content: m.text ?? m.content ?? '',
+      ...(isUser ? {} : { agentId: m.agentId }),
+      timestamp: m.postedAt ? new Date(m.postedAt) : new Date(),
+    }
+  }, [])
+
+  // Set up SignalR connection when channel changes
+  useEffect(() => {
+    // Local variable for THIS setup attempt - each mount has its own closure
+    // This is key for handling React StrictMode's double-mount correctly
+    let isCancelled = false
+
+    const channelIdForEffect = channel.id
+    currentChannelIdRef.current = channelIdForEffect
+
+    // Generate a unique instance ID for this effect run
+    const instanceId = ++connectionInstanceIdRef.current
+
+    const setupConnection = async () => {
+      // Wait for any ongoing teardown to complete before starting new connection
+      while (isTearingDownRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      }
+
+      // Abort guard: check if THIS setup was cancelled while waiting for teardown
+      if (isCancelled) {
+        console.log("Connection setup cancelled during teardown wait")
+        return
+      }
+
+      // Stop previous connection (using ref for shared state)
+      if (signalRClientRef.current) {
+        try {
+          await signalRClientRef.current.stop()
+        } catch (err) {
+          console.error("Error stopping SignalR connection:", err)
+        }
+        signalRClientRef.current = null
+      }
+
+      // Abort guard: check if THIS setup was cancelled during stop
+      if (isCancelled) {
+        console.log("Connection setup aborted, returning early")
+        return
+      }
+
+      // Guard: only proceed if we haven't switched channels again
+      if (currentChannelIdRef.current !== channelIdForEffect) {
+        console.log("Channel changed during setup, aborting connection")
+        return
+      }
+
+      // Reset state and create new connection
+      setStreamingAgentId(null)
+      setStreamingContent("")
+      setTypingAgentIds(new Set())
+      setAgentStatuses(new Map())
+
+      // Create client but DON'T set ref yet - wait for start() to succeed first
+      // This prevents cleanups from stopping a connection that's still negotiating
+      const client = new ChannelEventsClient(channel.id)
+
+      // Register event handlers - use functional update to avoid stale closures and deduplicate
+      client.onMessageAdded((event: MessageAddedEvent) => {
+        const chatMessage = toChatMessage(event.message)
+        setMessages(prev => {
+          if (prev.some(m => m.id === chatMessage.id)) return prev
+          return [...prev, chatMessage]
+        })
+      })
+
+      client.onAgentThinkingStart((event: AgentThinkingStartEvent) => {
+        console.log(`Agent ${event.agentName} started thinking`)
+        setTypingAgentIds(prev => new Set(prev).add(event.agentId))
+      })
+
+      client.onAgentThinkingEnd((event: AgentThinkingEndEvent) => {
+        console.log(`Agent ${event.agentName} stopped thinking`)
+        setTypingAgentIds(prev => {
+          const next = new Set(prev)
+          next.delete(event.agentId)
+          return next
+        })
+        // Note: streaming state resets are handled elsewhere when the final message arrives
+      })
+
+      client.onAgentTextContent((event: AgentTextContentEvent) => {
+        // Note: We currently don't use this for streaming display
+        // The final message comes via MESSAGE_ADDED when the agent finishes
+        console.log(`Agent ${event.agentName} text content: ${event.content.substring(0, 50)}...`)
+      })
+
+      client.onTypingIndicator((event: TypingIndicatorEvent) => {
+        if (event.isTyping) {
+          setTypingAgentIds(prev => new Set(prev).add(event.agentId))
+        } else {
+          setTypingAgentIds(prev => {
+            const next = new Set(prev)
+            next.delete(event.agentId)
+            return next
+          })
+        }
+      })
+
+      client.onAgentStatus((event: AgentStatusEvent) => {
+        console.log(`Agent ${event.agentName} status: ${event.status}`)
+        setAgentStatuses(prev => {
+          const next = new Map(prev)
+          next.set(event.agentId, event.status)
+          return next
+        })
+      })
+
+      // Final guard before starting connection
+      if (isCancelled || currentChannelIdRef.current !== channelIdForEffect) {
+        console.log("Connection setup aborted before start")
+        return
+      }
+
+      // Start the connection
+      try {
+        await client.start()
+        console.log(`SignalR connected to channel ${channel.id}`)
+
+        // Only set the ref AFTER start() succeeds and we're still the current instance
+        // This prevents cleanups from stopping a connection that's still negotiating
+        if (isCancelled || connectionInstanceIdRef.current !== instanceId) {
+          // We were cancelled or a newer instance started while we were connecting
+          client.stop().catch(err => console.error("Error stopping cancelled connection:", err))
+          return
+        }
+        signalRClientRef.current = client
+      } catch (err) {
+        // Only log error if this wasn't an expected abort
+        if (!isCancelled) {
+          console.error(`Failed to connect SignalR for channel ${channel.id}:`, err)
+        }
+      }
+    }
+
+    setupConnection()
+
+    // Cleanup on unmount or channel change
+    return () => {
+      // Set the local variable - cancels THIS setup attempt
+      isCancelled = true
+      isTearingDownRef.current = true
+
+      // Only stop the connection if it's still the one we created (check instance ID)
+      // This prevents newer instances from being stopped by older cleanups
+      if (signalRClientRef.current && connectionInstanceIdRef.current === instanceId) {
+        signalRClientRef.current.stop()
+          .catch(err => console.error("Error stopping SignalR connection:", err))
+          .finally(() => {
+            isTearingDownRef.current = false
+          })
+      } else {
+        // Not our connection anymore, just clear the teardown flag
+        isTearingDownRef.current = false
+      }
+    }
+  }, [channel.id, toChatMessage])
+
   // Load messages when channel changes
   useEffect(() => {
+    // Capture channel ID for this effect instance
+    const channelIdForEffect = channel.id
+
     const loadMessages = async () => {
+      // Guard: don't start a new load if one is already in progress for this channel
+      if (isLoadingMessagesRef.current) {
+        console.log("Messages already loading, skipping duplicate request")
+        return
+      }
+
+      isLoadingMessagesRef.current = true
+
+      // Guard: only proceed if we haven't switched channels again
+      if (currentChannelIdRef.current !== channelIdForEffect) {
+        isLoadingMessagesRef.current = false
+        return
+      }
+
       try {
         const response = await fetchWithErrorHandling(`/api/channels/${channel.id}/messages`)
+
+        // Guard again after async fetch completes
+        if (currentChannelIdRef.current !== channelIdForEffect) {
+          isLoadingMessagesRef.current = false
+          return
+        }
+
         if (response.ok) {
           const data = await response.json()
-          // Transform backend messages to frontend ChatMessage format (backend uses text, userId/agentId)
-          const chatMessages: ChatMessage[] = data.map((m: {
-            id: string
-            text?: string
-            content?: string
-            userId?: string
-            agentId?: string
-            senderId?: string
-          }) => {
-            const isUser = !m.agentId
-            return {
-              id: m.id,
-              role: isUser ? 'user' : 'assistant',
-              content: m.text ?? m.content ?? '',
-              ...(isUser ? {} : { agentId: m.agentId }),
-            }
-          })
+          // Transform backend messages to frontend ChatMessage format
+          const chatMessages: ChatMessage[] = data.map(toChatMessage)
           setMessages(chatMessages)
         }
       } catch (err) {
         console.error("Failed to load channel messages:", err)
+      } finally {
+        isLoadingMessagesRef.current = false
       }
     }
 
     loadMessages()
-  }, [channel.id])
+  }, [channel.id, toChatMessage])
 
   const handleToggleAgent = async (agentId: string) => {
     const isAdding = !channel.agentIds.includes(agentId)
@@ -136,12 +340,14 @@ export function ChannelArea({
 
         if (response.ok) {
           const message = await response.json()
-          // Update the optimistic message with the real ID
-          setMessages((prev) =>
-            prev.map((m) =>
+          // Update the optimistic message with the real ID, and remove any duplicate
+          // that SignalR may have already added (race condition)
+          setMessages((prev) => {
+            const withoutDuplicate = prev.filter((m) => m.id !== message.id)
+            return withoutDuplicate.map((m) =>
               m.id === userMsg.id ? { ...m, id: message.id } : m
             )
-          )
+          })
         } else {
           // Remove optimistic message on failure
           setMessages((prev) => prev.filter((m) => m.id !== userMsg.id))
@@ -171,8 +377,8 @@ export function ChannelArea({
         <MessageList
           messages={messages}
           agents={allAgents}
-          streamingAgentId={null}
-          streamingContent=""
+          streamingAgentId={streamingAgentId}
+          streamingContent={streamingContent}
         />
 
         <MessageInput
@@ -186,11 +392,11 @@ export function ChannelArea({
           allAgents={allAgents}
           humans={humans}
           activeAgentIds={channel.agentIds}
-          streamingAgentId={null}
-          displayName={displayName}
+          username={username}
           onToggleAgent={handleToggleAgent}
           onOpenInDM={onOpenInDM}
           onKickMember={handleKickMember}
+          agentStatuses={agentStatuses}
         />
       )}
     </div>

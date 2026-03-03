@@ -30,14 +30,14 @@ import { Search, User, Plus, Loader2 } from "lucide-react"
 
 function MemberContextMenu({
   userId,
-  displayName,
+  username,
   onCopyId,
   onKickClick,
   onOpenInDM,
   children,
 }: {
   userId: string
-  displayName?: string
+  username?: string
   onCopyId: (id: string) => void
   onKickClick?: (id: string, name: string) => void
   onOpenInDM?: (dmId: string) => void
@@ -61,7 +61,7 @@ function MemberContextMenu({
         {onKickClick != null && (
           <ContextMenuItem
             className="cursor-pointer rounded px-2 py-1.5 text-sm text-red-500 focus:bg-white/10 focus:text-red-500"
-            onSelect={() => onKickClick(userId, displayName ?? userId)}
+            onSelect={() => onKickClick(userId, username ?? userId)}
           >
             Kick
           </ContextMenuItem>
@@ -82,11 +82,11 @@ interface MemberListProps {
   allAgents: Agent[]
   humans: HumanMember[]
   activeAgentIds: string[]
-  streamingAgentId?: string | null
-  displayName: string
+  username: string
   onToggleAgent: (agentId: string) => void | Promise<void>
   onOpenInDM?: (agentId: string, message?: string) => void
   onKickMember?: (agentId: string) => void | Promise<void>
+  agentStatuses?: Map<string, string>
 }
 
 function AgentRow({
@@ -96,6 +96,7 @@ function AgentRow({
   onOpenInDM,
   onCopyId,
   onKickClick,
+  agentStatuses,
 }: {
   agent: Agent
   isInRoom: boolean
@@ -103,6 +104,7 @@ function AgentRow({
   onOpenInDM?: (agentId: string, message?: string) => void
   onCopyId: (id: string) => void
   onKickClick?: (id: string, name: string) => void
+  agentStatuses?: Map<string, string>
 }) {
   const handleClick = () => {
     if (!onOpenInDM) onToggle()
@@ -133,7 +135,7 @@ function AgentRow({
           className="text-xs"
           style={{ color: "hsl(214, 5%, 55%)" }}
         >
-          {agent.status ?? "Idle"}
+          {agentStatuses?.get(agent.id) ?? agent.status ?? "Idle"}
         </span>
       </div>
     </div>
@@ -163,7 +165,7 @@ function AgentRow({
   return (
     <MemberContextMenu
       userId={agent.id}
-      displayName={agent.name}
+      username={agent.name}
       onCopyId={onCopyId}
       onKickClick={onKickClick}
       onOpenInDM={onOpenInDM}
@@ -177,11 +179,11 @@ export function MemberList({
   allAgents,
   humans,
   activeAgentIds,
-  streamingAgentId = null,
-  displayName,
+  username,
   onToggleAgent,
   onOpenInDM,
   onKickMember,
+  agentStatuses,
 }: MemberListProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [addAgentsOpen, setAddAgentsOpen] = useState(false)
@@ -209,15 +211,11 @@ export function MemberList({
     .filter((a) => !activeAgentIds.includes(a.id))
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  const workingAgents = agentsInRoom.filter((a) => a.id === streamingAgentId)
-  const availableAgents = agentsInRoom.filter((a) => a.id !== streamingAgentId)
-
   const query = searchQuery.trim().toLowerCase()
   const matchesSearch = (agent: Agent) =>
     !query || agent.name.toLowerCase().includes(query)
-  const filteredWorking = workingAgents.filter(matchesSearch)
-  const filteredAvailable = availableAgents.filter(matchesSearch)
-  const currentUserName = displayName || "You"
+  const filteredAgents = agentsInRoom.filter(matchesSearch)
+  const currentUserName = username || "You"
   const filteredHumans = humans.filter((h) => {
     if (!query) return true
     const name = h.isCurrentUser ? currentUserName : h.name
@@ -257,36 +255,15 @@ export function MemberList({
         </div>
       </div>
       <ScrollArea className="flex-1 px-2 pt-3">
-        {filteredWorking.length > 0 && (
+        {(filteredAgents.length > 0 || agentsInRoom.length === 0) && (
           <>
             <div
               className="mb-1 mt-1 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
               style={{ color: "hsl(214, 5%, 55%)" }}
             >
-              Working
-            </div>
-            {filteredWorking.map((agent) => (
-              <AgentRow
-                key={agent.id}
-                agent={agent}
-                isInRoom
-                onToggle={() => onToggleAgent(agent.id)}
-                onOpenInDM={onOpenInDM}
-                onCopyId={handleCopyId}
-                onKickClick={onKickMember ? handleKickClick : undefined}
-              />
-            ))}
-          </>
-        )}
-        {(filteredAvailable.length > 0 || agentsInRoom.length === 0) && (
-          <>
-            <div
-              className="mb-1 mt-2 px-2 py-1 text-xs font-semibold uppercase tracking-wider"
-              style={{ color: "hsl(214, 5%, 55%)" }}
-            >
               AI Agents
             </div>
-            {filteredAvailable.map((agent) => (
+            {filteredAgents.map((agent) => (
               <AgentRow
                 key={agent.id}
                 agent={agent}
@@ -295,9 +272,10 @@ export function MemberList({
                 onOpenInDM={onOpenInDM}
                 onCopyId={handleCopyId}
                 onKickClick={onKickMember ? handleKickClick : undefined}
+                agentStatuses={agentStatuses}
               />
             ))}
-            {filteredAvailable.length === 0 && agentsInRoom.length === 0 && (
+            {filteredAgents.length === 0 && agentsInRoom.length === 0 && (
               <div
                 className="px-2 py-2 text-center text-sm"
                 style={{ color: "hsl(214, 5%, 55%)" }}
@@ -600,8 +578,7 @@ export function MemberList({
           </>
         )}
         {query &&
-          filteredWorking.length === 0 &&
-          filteredAvailable.length === 0 &&
+          filteredAgents.length === 0 &&
           !matchesHuman && (
             <div
               className="px-2 py-4 text-center text-sm"

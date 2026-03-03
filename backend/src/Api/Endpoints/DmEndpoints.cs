@@ -1,6 +1,7 @@
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Background;
 using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
+using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
@@ -84,12 +85,46 @@ public static class DmEndpoints
         })
         .Produces<List<Message>>(StatusCodes.Status200OK);
 
+        // POST: /api/dms/agents/{agentId}/ensure-channel - Returns or creates a DM channel between the user and an agent
+        group.MapPost("/agents/{agentId}/ensure-channel", async (
+            HttpContext httpContext,
+            Guid agentId,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = httpContext.User.GetRequiredUserId();
+            var dm = await context.Dms
+                .FirstOrDefaultAsync(dm =>
+                    (dm.User1Id == userId && dm.Agent1Id == agentId) ||
+                    (dm.User2Id == userId && dm.Agent1Id == agentId) ||
+                    (dm.User1Id == userId && dm.Agent2Id == agentId) ||
+                    (dm.User2Id == userId && dm.Agent2Id == agentId),
+                    cancellationToken);
+
+            if (dm is null)
+            {
+                dm = new DirectMessageChannel
+                {
+                    Id = Guid.NewGuid(),
+                    User1Id = userId,
+                    Agent1Id = agentId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await context.Dms.AddAsync(dm, cancellationToken);
+                await context.SaveChangesAsync(cancellationToken);
+            }
+
+            return Results.Ok(dm);
+        })
+        .Produces<DirectMessageChannel>(StatusCodes.Status200OK);
+
         // POST: /api/dms/users/{otherUserId}/messages - Posts a message between two users
         group.MapPost("/users/{otherUserId}/messages", async (
             HttpContext httpContext,
             Guid otherUserId,
             CreateDirectMessageDto dto,
             AzureOpsCrewContext context,
+            IChannelEventBroadcaster channelEventBroadcaster,
             CancellationToken cancellationToken) =>
         {
             var userId = httpContext.User.GetRequiredUserId();
@@ -121,10 +156,13 @@ public static class DmEndpoints
                 PostedAt = DateTime.UtcNow,
                 UserId = userId,
                 DmId = dm.Id,
-                AuthorName = user?.DisplayName,
+                AuthorName = user?.Username,
             };
             await context.Messages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
+
+            // Broadcast the new message via SignalR
+            await channelEventBroadcaster.BroadcastDmMessageAddedAsync(dm.Id, message);
 
             return Results.Created($"/api/users/{userId}/dms/users/{otherUserId}/messages/{message.Id}", message);
         })
@@ -137,6 +175,7 @@ public static class DmEndpoints
             CreateDirectMessageDto dto,
             AzureOpsCrewContext context,
             AgentTriggerQueue agentTriggerQueue,
+            IChannelEventBroadcaster channelEventBroadcaster,
             CancellationToken cancellationToken) =>
         {
             var userId = httpContext.User.GetRequiredUserId();
@@ -170,10 +209,13 @@ public static class DmEndpoints
                 PostedAt = DateTime.UtcNow,
                 UserId = userId,
                 DmId = dm.Id,
-                AuthorName = user?.DisplayName,
+                AuthorName = user?.Username,
             };
             await context.Messages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
+
+            // Broadcast the new message via SignalR
+            await channelEventBroadcaster.BroadcastDmMessageAddedAsync(dm.Id, message);
 
             agentTriggerQueue.Enqueue(agentId, dm.Id);
 

@@ -27,9 +27,16 @@ public sealed class UserEntityTypeConfiguration : IEntityTypeConfiguration<User>
             .IsRequired()
             .HasMaxLength(512);
 
-        builder.Property(x => x.DisplayName)
+        builder.Property(x => x.Username)
             .IsRequired()
-            .HasMaxLength(120);
+            .HasMaxLength(30);
+
+        builder.Property(x => x.NormalizedUsername)
+            .IsRequired()
+            .HasMaxLength(30);
+
+        builder.HasIndex(x => x.NormalizedUsername)
+            .IsUnique();
 
         builder.Property(x => x.IsActive)
             .IsRequired()

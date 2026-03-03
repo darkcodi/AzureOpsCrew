@@ -2,6 +2,7 @@ using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Background;
 using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
 using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
+using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Chats;
@@ -169,6 +170,7 @@ public static class ChannelEndpoints
             HttpContext httpContext,
             AzureOpsCrewContext context,
             AgentTriggerQueue agentTriggerQueue,
+            IChannelEventBroadcaster channelEventBroadcaster,
             CancellationToken cancellationToken) =>
         {
             var channel = await context.Set<Channel>()
@@ -186,10 +188,13 @@ public static class ChannelEndpoints
                 PostedAt = DateTime.UtcNow,
                 UserId = senderId,
                 ChannelId = channel.Id,
-                AuthorName = user?.DisplayName,
+                AuthorName = user?.Username,
             };
             await context.Messages.AddAsync(message, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
+
+            // Broadcast the new message via SignalR
+            await channelEventBroadcaster.BroadcastMessageAddedAsync(channel.Id, message);
 
             // Trigger all agents in the channel
             foreach (var agentIdString in channel.AgentIds)

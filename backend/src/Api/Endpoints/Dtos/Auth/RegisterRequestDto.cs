@@ -14,6 +14,8 @@ public sealed class RegisterRequestDto
     [MaxLength(128)]
     public string Password { get; set; } = string.Empty;
 
-    [StringLength(120, MinimumLength = 2)]
-    public string? DisplayName { get; set; }
+    [Required]
+    [StringLength(30, MinimumLength = 2)]
+    [RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "Username must contain only letters and numbers.")]
+    public string Username { get; set; } = string.Empty;
 }

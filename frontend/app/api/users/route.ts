@@ -7,7 +7,7 @@ const BACKEND_API_URL = process.env.BACKEND_API_URL ?? "http://localhost:5000"
 
 interface BackendUserPresence {
   id: string
-  displayName: string
+  username: string
   isOnline: boolean
   isCurrentUser: boolean
   lastSeenAtUtc: string | null
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       (user): HumanMember => ({
         id: toHumanCardId(user.id),
         userId: user.id,
-        name: user.displayName,
+        name: user.username || "User",
         status: user.isOnline ? "Online" : "Offline",
         isCurrentUser: user.isCurrentUser,
       })

@@ -33,12 +33,27 @@ public static class AuthEndpoints
             var now = DateTime.UtcNow;
             var normalizedEmail = NormalizeEmail(body.Email);
             var email = body.Email.Trim();
+            var username = body.Username.Trim();
+            var normalizedUsername = NormalizeUsername(username);
 
             var exists = await context.Users
                 .AnyAsync(u => u.NormalizedEmail == normalizedEmail, cancellationToken);
 
             if (exists)
                 return Results.Conflict(new { error = "Email is already registered." });
+
+            // Check username uniqueness across both Users and Agents
+            var usernameExists = await context.Users
+                .AnyAsync(u => u.NormalizedUsername == normalizedUsername, cancellationToken);
+
+            if (usernameExists)
+                return Results.Conflict(new { error = "Username is already taken." });
+
+            var agentUsernameExists = await context.Agents
+                .AnyAsync(a => a.Info.Username.ToLowerInvariant() == normalizedUsername, cancellationToken);
+
+            if (agentUsernameExists)
+                return Results.Conflict(new { error = "Username is already taken." });
 
             var pendingRegistration = await context.PendingRegistrations
                 .SingleOrDefaultAsync(p => p.NormalizedEmail == normalizedEmail, cancellationToken);
@@ -64,13 +79,9 @@ public static class AuthEndpoints
 
             if (pendingRegistration is null)
             {
-                pendingRegistration = new PendingRegistration(email, normalizedEmail);
+                pendingRegistration = new PendingRegistration(email, normalizedEmail, username, normalizedUsername);
                 context.PendingRegistrations.Add(pendingRegistration);
             }
-
-            var displayName = string.IsNullOrWhiteSpace(body.DisplayName)
-                ? email
-                : body.DisplayName.Trim();
 
             var verificationCode = settings.IsEnabled ? GenerateVerificationCode(settings.CodeLength) : DefaultVerificationCode;
             var passwordHash = pendingRegistrationHasher.HashPassword(pendingRegistration, body.Password);
@@ -79,7 +90,8 @@ public static class AuthEndpoints
 
             pendingRegistration.Refresh(
                 email,
-                displayName,
+                username,
+                normalizedUsername,
                 passwordHash,
                 verificationCodeHash,
                 expiresAtUtc,
@@ -156,7 +168,8 @@ public static class AuthEndpoints
 
             pendingRegistration.Refresh(
                 pendingRegistration.Email,
-                pendingRegistration.DisplayName,
+                pendingRegistration.Username,
+                pendingRegistration.NormalizedUsername,
                 pendingRegistration.PasswordHash,
                 verificationCodeHash,
                 expiresAtUtc,
@@ -263,7 +276,8 @@ public static class AuthEndpoints
                     email: pendingRegistration.Email,
                     normalizedEmail: pendingRegistration.NormalizedEmail,
                     passwordHash: pendingRegistration.PasswordHash,
-                    displayName: pendingRegistration.DisplayName);
+                    username: pendingRegistration.Username,
+                    normalizedUsername: pendingRegistration.NormalizedUsername);
                 user.MarkLogin();
 
                 context.Users.Add(user);
@@ -351,7 +365,7 @@ public static class AuthEndpoints
                 await context.SaveChangesAsync(cancellationToken);
             }
 
-            return Results.Ok(new AuthUserDto(user.Id, user.Email, user.DisplayName));
+            return Results.Ok(new AuthUserDto(user.Id, user.Email, user.Username));
         })
         .Produces<AuthUserDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -359,6 +373,8 @@ public static class AuthEndpoints
     }
 
     private static string NormalizeEmail(string email) => email.Trim().ToUpperInvariant();
+
+    private static string NormalizeUsername(string username) => username.Trim().ToLowerInvariant();
 
     private static int GetRemainingCooldownSeconds(
         DateTime nowUtc,
@@ -381,6 +397,6 @@ public static class AuthEndpoints
         return new AuthResponseDto(
             token.AccessToken,
             token.ExpiresAtUtc,
-            new AuthUserDto(user.Id, user.Email, user.DisplayName));
+            new AuthUserDto(user.Id, user.Email, user.Username));
     }
 }

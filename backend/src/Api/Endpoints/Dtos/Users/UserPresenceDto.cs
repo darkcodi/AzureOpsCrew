@@ -2,7 +2,7 @@ namespace AzureOpsCrew.Api.Endpoints.Dtos.Users;
 
 public sealed record UserPresenceDto(
     Guid Id,
-    string DisplayName,
+    string Username,
     bool IsOnline,
     bool IsCurrentUser,
     DateTime? LastSeenAtUtc);

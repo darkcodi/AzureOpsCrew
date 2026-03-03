@@ -55,7 +55,7 @@ export interface AdvancedConfig {
 }
 
 export interface AccountConfig {
-  displayName: string
+  username: string
 }
 
 export interface SettingsState {
@@ -142,7 +142,7 @@ export const defaultSettings: SettingsState = {
     },
   ],
   account: {
-    displayName: "User",
+    username: "User",
   },
   appearance: {
     theme: "dark",

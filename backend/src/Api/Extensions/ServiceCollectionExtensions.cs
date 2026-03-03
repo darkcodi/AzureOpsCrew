@@ -1,9 +1,13 @@
 using AzureOpsCrew.Api.Auth;
+using AzureOpsCrew.Api.Background;
 using AzureOpsCrew.Api.Email;
 using AzureOpsCrew.Api.Settings;
+using AzureOpsCrew.Api.Channels;
+using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Domain.Users;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory;
@@ -18,8 +22,6 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
-using AzureOpsCrew.Api.Background;
-using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 
 namespace AzureOpsCrew.Api.Extensions;
 
@@ -231,5 +233,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<AgentTriggerQueue>();
         services.AddScoped<AgentRunService>();
         services.AddScoped<ToolExecutor>();
+
+        // Channel event broadcasting via SignalR
+        services.AddSingleton<IChannelEventBroadcaster, ChannelEventBroadcaster>();
     }
 }

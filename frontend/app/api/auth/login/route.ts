@@ -9,7 +9,7 @@ interface BackendAuthResponse {
   user: {
     id: string
     email: string
-    displayName: string
+    username: string
   }
 }
 
