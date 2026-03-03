@@ -8,7 +8,7 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // Configure HttpClient with API base URL
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:5282";
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:5000";
 builder.Services.AddScoped(sp => new HttpClient
 {
     BaseAddress = new Uri(apiBaseUrl)
