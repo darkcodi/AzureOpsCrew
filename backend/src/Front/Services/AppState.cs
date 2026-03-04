@@ -5,23 +5,8 @@ namespace Front.Services;
 /// <summary>
 /// Centralized state management for the chat application.
 /// </summary>
-public class AppState : IDisposable
+public class AppState
 {
-    public AppState()
-    {
-        _subscriptions =
-        [
-            SubscribeCurrentUser(OnStateChanged),
-            SubscribeSelectedServer(OnStateChanged),
-            SubscribeSelectedChannel(OnStateChanged),
-            SubscribeSelectedDm(OnStateChanged),
-            SubscribeServers(OnStateChanged),
-            SubscribeChannels(OnStateChanged),
-            SubscribeDms(OnStateChanged),
-            SubscribeAgents(OnStateChanged)
-        ];
-    }
-
     // Current user
     private readonly Reactive<UserDto?> _currentUser = new();
     public UserDto? CurrentUser
@@ -65,23 +50,17 @@ public class AppState : IDisposable
     // Channels list
     public readonly ReactiveList<ChannelDto> Channels = new();
     public IDisposable SubscribeChannels(Action handler) => Channels.Subscribe(handler);
-    private bool _channelsLoaded = false;
+    private bool _channelsLoaded;
 
     // DMs list
     public readonly ReactiveList<DmChannelDto> Dms = new();
     public IDisposable SubscribeDms(Action handler) => Dms.Subscribe(handler);
-    private bool _dmsLoaded = false;
+    private bool _dmsLoaded;
 
     // Agents list
     public readonly ReactiveList<AgentDto> Agents = new();
     public IDisposable SubscribeAgents(Action handler) => Agents.Subscribe(handler);
-    private bool _agentsLoaded = false;
-
-    // Event for state changes
-    private List<IDisposable> _subscriptions = new();
-    public event Action? OnChange;
-
-    private void OnStateChanged() => OnChange?.Invoke();
+    private bool _agentsLoaded;
 
     // Load channels from backend
     public async Task LoadChannels(ChannelService channelService, bool forceReload = false)
@@ -96,7 +75,6 @@ public class AppState : IDisposable
         }
 
         _channelsLoaded = true;
-        OnStateChanged();
     }
 
     // Load DMs from backend
@@ -112,7 +90,6 @@ public class AppState : IDisposable
         }
 
         _dmsLoaded = true;
-        OnStateChanged();
     }
 
     public async Task LoadAgents(AgentService agentService, bool forceReload = false)
@@ -127,14 +104,5 @@ public class AppState : IDisposable
         }
 
         _agentsLoaded = true;
-        OnStateChanged();
-    }
-
-    public void Dispose()
-    {
-        foreach (var sub in _subscriptions)
-        {
-            sub.Dispose();
-        }
     }
 }
