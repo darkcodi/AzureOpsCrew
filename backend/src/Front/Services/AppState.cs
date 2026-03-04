@@ -91,6 +91,14 @@ public class AppState
         {
             Channels.Add(channel);
         }
+
+        var selectedId = SelectedChannel?.Id;
+        if (selectedId != null)
+        {
+            var updated = Channels.FirstOrDefault(c => c.Id == selectedId);
+            if (updated != null)
+                SelectedChannel = updated;
+        }
     }
 
     public async Task LoadDms(DmService dmService, bool forceReload = false)
