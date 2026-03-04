@@ -1,4 +1,4 @@
-@inject ChatState ChatState
+@inject AppState AppState
 
 <div class="user-panel">
     <div class="user-avatar">@GetUserInitials()</div>
@@ -28,6 +28,6 @@
 
     private string GetUserName()
     {
-        return ChatState.CurrentUser?.Username ?? "User";
+        return AppState.CurrentUser?.Username ?? "User";
     }
 }

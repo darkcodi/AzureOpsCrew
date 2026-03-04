@@ -1,7 +1,7 @@
 @page "/dms"
 @page "/dms/{dmId}"
 
-@inject ChatState ChatState
+@inject AppState AppState
 @inject DmService DmService
 
 <MainLayout>
@@ -13,12 +13,12 @@
     </LeftSidebar>
     <MainArea>
         <ChatArea Messages="messages"
-                  CurrentUserId="ChatState.CurrentUser?.Id"
-                  ShowInput="ChatState.SelectedDm != null"
-                  Placeholder="@(ChatState.SelectedDm != null ? $"Message @{GetDmName()}" : "")"
-                  EmptyIcon="@(ChatState.SelectedDm != null ? "💬" : "👋")"
-                  EmptyTitle="@(ChatState.SelectedDm != null ? "Welcome to this conversation!" : "Select a conversation")"
-                  EmptySubtitle="@(ChatState.SelectedDm != null ? "This is the start of your conversation." : "Pick a DM from the sidebar to start chatting.")"
+                  CurrentUserId="AppState.CurrentUser?.Id"
+                  ShowInput="AppState.SelectedDm != null"
+                  Placeholder="@(AppState.SelectedDm != null ? $"Message @{GetDmName()}" : "")"
+                  EmptyIcon="@(AppState.SelectedDm != null ? "💬" : "👋")"
+                  EmptyTitle="@(AppState.SelectedDm != null ? "Welcome to this conversation!" : "Select a conversation")"
+                  EmptySubtitle="@(AppState.SelectedDm != null ? "This is the start of your conversation." : "Pick a DM from the sidebar to start chatting.")"
                   OnSendMessage="SendDmMessage" />
     </MainArea>
     <RightSidebar>
@@ -37,9 +37,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await ChatState.LoadDms(DmService);
+        await AppState.LoadDms(DmService);
         SetDmFromRoute();
-        ChatState.OnChange += OnStateChanged;
+        AppState.OnChange += OnStateChanged;
     }
 
     protected override async Task OnParametersSetAsync()
@@ -56,7 +56,7 @@
 
     private async Task LoadMessagesIfNeeded()
     {
-        var dmId = ChatState.SelectedDm?.Id;
+        var dmId = AppState.SelectedDm?.Id;
         if (dmId.HasValue && dmId != _loadedDmId)
         {
             _loadedDmId = dmId;
@@ -66,7 +66,7 @@
 
     private async Task SendDmMessage(string text)
     {
-        var dm = ChatState.SelectedDm;
+        var dm = AppState.SelectedDm;
         if (dm == null) return;
 
         ChatMessageDto? newMessage = null;
@@ -87,26 +87,26 @@
     {
         if (!string.IsNullOrEmpty(DmId) && Guid.TryParse(DmId, out var parsedDmId))
         {
-            var dm = ChatState.Dms.FirstOrDefault(d => d.Id == parsedDmId);
+            var dm = AppState.Dms.FirstOrDefault(d => d.Id == parsedDmId);
             if (dm != null)
             {
-                ChatState.SelectedDm = dm;
+                AppState.SelectedDm = dm;
                 return;
             }
         }
 
-        ChatState.SelectedDm = null;
+        AppState.SelectedDm = null;
     }
 
     private string GetDmName()
     {
-        return ChatState.SelectedDm?.OtherAgent?.Username
-               ?? ChatState.SelectedDm?.OtherUser?.Username
+        return AppState.SelectedDm?.OtherAgent?.Username
+               ?? AppState.SelectedDm?.OtherUser?.Username
                ?? "Unknown";
     }
 
     public void Dispose()
     {
-        ChatState.OnChange -= OnStateChanged;
+        AppState.OnChange -= OnStateChanged;
     }
 }

@@ -1,4 +1,4 @@
-@inject ChatState ChatState
+@inject AppState AppState
 @inject ChannelService ChannelService
 
 <div class="members-list">
@@ -18,7 +18,7 @@
     </div>
 
     <div class="members-scroll">
-        @if (ChatState.SelectedChannel == null)
+        @if (AppState.SelectedChannel == null)
         {
             <div class="members-no-selection">Select a channel to see members</div>
         }
@@ -86,7 +86,7 @@
                 }
                 @foreach (var user in humans)
                 {
-                    var displayName = user.Id == ChatState.CurrentUser?.Id ? "You" : user.Username;
+                    var displayName = user.Id == AppState.CurrentUser?.Id ? "You" : user.Username;
                     <div class="members-item" @onclick="() => MentionUser(user)">
                         <div class="members-avatar members-avatar-human">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -107,7 +107,7 @@
     </div>
 </div>
 
-@if (addAgentsOpen && ChatState.SelectedChannel != null)
+@if (addAgentsOpen && AppState.SelectedChannel != null)
 {
     <div class="members-dialog-backdrop" @onclick="CloseAddAgentsDialog"></div>
     <div class="members-dialog" role="dialog" aria-modal="true" aria-labelledby="add-agents-title">
@@ -158,7 +158,7 @@
 
     protected override void OnInitialized()
     {
-        ChatState.OnChange += OnStateChanged;
+        AppState.OnChange += OnStateChanged;
     }
 
     private async void OnStateChanged()
@@ -168,7 +168,7 @@
 
     public void Dispose()
     {
-        ChatState.OnChange -= OnStateChanged;
+        AppState.OnChange -= OnStateChanged;
     }
 
     private string GetAgentInitials(string username)
@@ -182,7 +182,7 @@
 
     private List<AgentDto> FilteredChannelAgents()
     {
-        var agents = ChatState.GetChannelAgents();
+        var agents = AppState.GetChannelAgents();
         var q = searchQuery?.Trim().ToLowerInvariant();
         if (string.IsNullOrEmpty(q)) return agents;
         return agents.Where(a => (a.Username ?? "").ToLowerInvariant().Contains(q)).ToList();
@@ -190,31 +190,31 @@
 
     private List<UserDto> FilteredHumans()
     {
-        var currentName = ChatState.CurrentUser?.Username ?? "You";
+        var currentName = AppState.CurrentUser?.Username ?? "You";
         var users = new List<UserDto>();
-        if (ChatState.CurrentUser != null)
-            users.Add(ChatState.CurrentUser);
-        users.AddRange(GetOnlineUsers().Where(u => u.Id != ChatState.CurrentUser?.Id));
+        if (AppState.CurrentUser != null)
+            users.Add(AppState.CurrentUser);
+        users.AddRange(GetOnlineUsers().Where(u => u.Id != AppState.CurrentUser?.Id));
         var q = searchQuery?.Trim().ToLowerInvariant();
         if (string.IsNullOrEmpty(q)) return users;
         return users.Where(u =>
         {
-            var name = u.Id == ChatState.CurrentUser?.Id ? currentName : u.Username;
+            var name = u.Id == AppState.CurrentUser?.Id ? currentName : u.Username;
             return (name ?? "").ToLowerInvariant().Contains(q);
         }).ToList();
     }
 
-    private List<UserDto> GetOnlineUsers() => ChatState.GetOnlineUsers().Where(u => u.IsOnline).ToList();
+    private List<UserDto> GetOnlineUsers() => AppState.GetOnlineUsers().Where(u => u.IsOnline).ToList();
 
     private List<AgentDto> AgentsNotInChannel()
     {
-        if (ChatState.SelectedChannel == null) return [];
-        var channelIdSet = ChatState.SelectedChannel.AgentIds
+        if (AppState.SelectedChannel == null) return [];
+        var channelIdSet = AppState.SelectedChannel.AgentIds
             .Select(s => Guid.TryParse(s, out var g) ? g : (Guid?)null)
             .Where(g => g.HasValue)
             .Select(g => g!.Value)
             .ToHashSet();
-        return ChatState.Agents.Where(a => !channelIdSet.Contains(a.Id)).OrderBy(a => a.Username).ToList();
+        return AppState.Agents.Where(a => !channelIdSet.Contains(a.Id)).OrderBy(a => a.Username).ToList();
     }
 
     private void OpenAddAgentsDialog() => addAgentsOpen = true;
@@ -223,14 +223,14 @@
 
     private async Task AddAgentToChannel(Guid agentId)
     {
-        if (ChatState.SelectedChannel == null) return;
+        if (AppState.SelectedChannel == null) return;
         addingAgentId = agentId;
         StateHasChanged();
         try
         {
-            var ok = await ChannelService.AddAgentToChannelAsync(ChatState.SelectedChannel.Id, agentId);
+            var ok = await ChannelService.AddAgentToChannelAsync(AppState.SelectedChannel.Id, agentId);
             if (ok)
-                await ChatState.RefreshChannelsAsync(ChannelService);
+                await AppState.RefreshChannelsAsync(ChannelService);
         }
         finally
         {

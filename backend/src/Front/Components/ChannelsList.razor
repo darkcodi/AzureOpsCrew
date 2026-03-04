@@ -1,9 +1,9 @@
-@inject ChatState ChatState
+@inject AppState AppState
 @inject NavigationManager NavigationManager
 
 <div class="channels-list">
     <div class="channels-section">
-        @foreach (var channel in ChatState.GetVisibleChannels())
+        @foreach (var channel in AppState.GetVisibleChannels())
         {
             <div class="channels-item @(IsChannelSelected(channel) ? "active" : "")" @onclick="() => SelectChannel(channel)">
                 <span class="channels-item-icon" aria-hidden="true">
@@ -44,7 +44,7 @@
 @code {
     protected override void OnInitialized()
     {
-        ChatState.OnChange += OnStateChanged;
+        AppState.OnChange += OnStateChanged;
     }
 
     private async void OnStateChanged()
@@ -54,14 +54,14 @@
 
     public void Dispose()
     {
-        ChatState.OnChange -= OnStateChanged;
+        AppState.OnChange -= OnStateChanged;
     }
 
-    private bool IsChannelSelected(ChannelDto channel) => ChatState.SelectedChannel?.Id == channel.Id;
+    private bool IsChannelSelected(ChannelDto channel) => AppState.SelectedChannel?.Id == channel.Id;
 
     private void SelectChannel(ChannelDto channel)
     {
-        var serverId = ChatState.SelectedServer?.Id ?? ServerInfoDto.GetDefaultServers().LastOrDefault()?.Id;
+        var serverId = AppState.SelectedServer?.Id ?? ServerInfoDto.GetDefaultServers().LastOrDefault()?.Id;
         if (serverId.HasValue)
         {
             NavigationManager.NavigateTo($"/servers/{serverId.Value}/channels/{channel.Id}");
@@ -69,7 +69,7 @@
         else
         {
             // Fallback to state-based navigation if no server is available
-            ChatState.SelectedChannel = channel;
+            AppState.SelectedChannel = channel;
         }
     }
 

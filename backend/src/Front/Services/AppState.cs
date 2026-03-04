@@ -5,7 +5,7 @@ namespace Front.Services;
 /// <summary>
 /// Centralized state management for the chat application.
 /// </summary>
-public class ChatState
+public class AppState
 {
     private UserDto? _currentUser;
     private ServerInfoDto? _selectedServer = ServerInfoDto.GetDefaultServers().LastOrDefault();

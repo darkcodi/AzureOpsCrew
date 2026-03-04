@@ -38,7 +38,7 @@ try
     });
 
     // Register application services
-    builder.Services.AddSingleton<ChatState>();
+    builder.Services.AddSingleton<AppState>();
     builder.Services.AddSingleton<AuthState>();
     builder.Services.AddScoped<SignalRService>();
     builder.Services.AddScoped<ChannelService>();

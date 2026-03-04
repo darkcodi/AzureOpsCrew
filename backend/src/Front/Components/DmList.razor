@@ -1,9 +1,9 @@
-@inject ChatState ChatState
+@inject AppState AppState
 @implements IDisposable
 
 <div class="channels-list">
     <div class="channels-section">
-        @foreach (var dm in ChatState.Dms)
+        @foreach (var dm in AppState.Dms)
         {
             <div class="channels-item @(IsDmSelected(dm) ? "active" : "")" @onclick="() => SelectDm(dm)">
                 @if (dm.OtherAgent != null)
@@ -23,7 +23,7 @@
 @code {
     protected override void OnInitialized()
     {
-        ChatState.OnChange += OnStateChanged;
+        AppState.OnChange += OnStateChanged;
     }
 
     private async void OnStateChanged()
@@ -33,14 +33,14 @@
 
     public void Dispose()
     {
-        ChatState.OnChange -= OnStateChanged;
+        AppState.OnChange -= OnStateChanged;
     }
 
-    private bool IsDmSelected(DmChannelDto dm) => ChatState.SelectedDm?.Id == dm.Id;
+    private bool IsDmSelected(DmChannelDto dm) => AppState.SelectedDm?.Id == dm.Id;
 
     private void SelectDm(DmChannelDto dm)
     {
-        ChatState.SelectedDm = dm;
+        AppState.SelectedDm = dm;
     }
 
     private string GetDmDisplayName(DmChannelDto dm)

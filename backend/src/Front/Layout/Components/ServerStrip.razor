@@ -1,4 +1,4 @@
-@inject ChatState ChatState
+@inject AppState AppState
 @inject NavigationManager Navigation
 @inject AuthState AuthState
 
@@ -15,7 +15,7 @@
 
         <div class="server-separator"></div>
 
-        @foreach (var server in ChatState.Servers)
+        @foreach (var server in AppState.Servers)
         {
             <div class="server-icon @(IsServerSelected(server) ? "active" : "")" @onclick="() => NavigateToServer(server)" title="@server.Name">
                 @server.Icon
