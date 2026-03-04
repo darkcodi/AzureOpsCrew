@@ -1,0 +1,98 @@
+@inject AppState AppState
+@implements IDisposable
+
+<div class="dm-right-pane">
+    @if (AppState.SelectedDm == null)
+    {
+        <div class="dm-right-pane-placeholder">
+            <p class="dm-right-pane-placeholder-text">Select a conversation to view profile.</p>
+        </div>
+    }
+    else if (GetSelectedAgent() is { } agent)
+    {
+        <div class="dm-right-pane-content">
+            <button type="button" class="dm-right-pane-mind-btn" @onclick="OnViewAgentMind">
+                <span class="dm-right-pane-mind-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
+                        <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+                    </svg>
+                </span>
+                View Agent Mind
+            </button>
+            <AgentCard Agent="agent" />
+        </div>
+    }
+    else if (IsHumanDm(AppState.SelectedDm))
+    {
+        <div class="dm-right-pane-content">
+            <HumanCard Name="@GetHumanDmName()" Status="Online" Description="@GetHumanDmDescription()" />
+        </div>
+    }
+    else
+    {
+        <div class="dm-right-pane-placeholder">
+            <p class="dm-right-pane-placeholder-text">Select a conversation to view profile.</p>
+        </div>
+    }
+</div>
+
+@code {
+    private IDisposable? _subscription;
+
+    protected override void OnInitialized()
+    {
+        _subscription = AppState.SubscribeSelectedDm(OnStateChanged)
+            .Combine(AppState.SubscribeDms(OnStateChanged))
+            .Combine(AppState.SubscribeAgents(OnStateChanged));
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _subscription?.Dispose();
+    }
+
+    private AgentDto? GetSelectedAgent()
+    {
+        var dm = AppState.SelectedDm;
+        if (dm == null) return null;
+        var agentId = dm.Agent1Id ?? dm.Agent2Id;
+        if (!agentId.HasValue) return null;
+        return AppState.Agents.FirstOrDefault(a => a.Id == agentId.Value);
+    }
+
+    private static bool IsHumanDm(DmChannelDto dm)
+    {
+        return !dm.Agent1Id.HasValue && !dm.Agent2Id.HasValue;
+    }
+
+    private string GetHumanDmName()
+    {
+        var dm = AppState.SelectedDm;
+        if (dm == null) return "You";
+        var currentUserId = AppState.CurrentUser?.Id;
+        if (dm.User1Id == currentUserId || dm.User2Id == currentUserId)
+            return AppState.CurrentUser?.Username ?? "You";
+        return "User";
+    }
+
+    private string GetHumanDmDescription()
+    {
+        var dm = AppState.SelectedDm;
+        if (dm == null) return "Your profile and direct message threads.";
+        var currentUserId = AppState.CurrentUser?.Id;
+        if (dm.User1Id == currentUserId || dm.User2Id == currentUserId)
+            return "Your profile and direct message threads.";
+        return "Profile and direct message threads.";
+    }
+
+    private void OnViewAgentMind()
+    {
+        // TODO: Open Agent Mind modal when implemented
+    }
+}

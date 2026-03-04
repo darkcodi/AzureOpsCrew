@@ -1,0 +1,61 @@
+@namespace Front.Components
+
+<div class="agent-card">
+    <div class="agent-card-header-wrap">
+        <div class="agent-card-strip" style="background-color: @Agent.Color;"></div>
+        <div class="agent-card-avatar-wrap">
+            <div class="agent-card-avatar" style="background-color: @Agent.Color; color: #fff;">
+                @GetAgentAvatar()
+            </div>
+        </div>
+        <div class="agent-card-status">
+            @(Agent.Status ?? "Idle")
+        </div>
+    </div>
+    <div class="agent-card-body">
+        <h3 class="agent-card-name">@Agent.Username</h3>
+        <p class="agent-card-id">@Agent.Id.ToString()</p>
+        <p class="agent-card-bio">@GetBio()</p>
+        <div class="agent-card-pills">
+            <span class="agent-card-pill agent-card-pill-agent">
+                <span class="agent-card-pill-dot"></span>
+                Agent
+            </span>
+            <span class="agent-card-pill agent-card-pill-model">@GetModelDisplay()</span>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public AgentDto Agent { get; set; } = null!;
+
+    private string GetAgentAvatar()
+    {
+        var u = Agent.Username;
+        if (string.IsNullOrWhiteSpace(u)) return "?";
+        var parts = u.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}";
+        return u.Length >= 2 ? u[..2].ToUpperInvariant() : u.ToUpperInvariant();
+    }
+
+    private string GetBio()
+    {
+        var text = Agent.Prompt;
+        if (string.IsNullOrEmpty(text))
+            text = Agent.Description ?? string.Empty;
+        if (text.Length <= 120) return text;
+        return text[..120].TrimEnd() + "...";
+    }
+
+    private string GetModelDisplay()
+    {
+        var model = Agent.Model;
+        if (string.IsNullOrEmpty(model)) return string.Empty;
+        var lastSlash = model.LastIndexOf('/');
+        return lastSlash >= 0 && lastSlash < model.Length - 1
+            ? model[(lastSlash + 1)..]
+            : model;
+    }
+}
