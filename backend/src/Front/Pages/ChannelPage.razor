@@ -1,9 +1,9 @@
 @page "/servers/{serverId}/channels/{channelId}"
 
 @inject AppState AppState
+@implements IDisposable
 @inject ChannelService ChannelService
 @inject AgentService AgentService
-@inject NavigationManager NavigationManager
 
 <MainLayout>
     <LeftSidebar>
@@ -13,7 +13,7 @@
         </Front.Layout.Components.LeftSidebar>
     </LeftSidebar>
     <MainArea>
-        <ChatArea Messages="messages"
+        <ChatArea Messages="_messages"
                   CurrentUserId="AppState.CurrentUser?.Id"
                   TypingAgents="[]"
                   ShowInput="AppState.SelectedChannel != null"
@@ -31,21 +31,43 @@
 </MainLayout>
 
 @code {
-    private List<ChatMessageDto> messages = [];
-    private Guid? _loadedChannelId;
-
     [Parameter]
     public string? ServerId { get; set; }
 
     [Parameter]
     public string? ChannelId { get; set; }
 
+    private List<ChatMessageDto> _messages = [];
+    private Guid? _loadedChannelId;
+    private IDisposable? _appStateSubscription;
+
+    private async void OnStateChanged()
+    {
+        try
+        {
+            await LoadMessagesIfNeeded();
+        }
+        catch
+        {
+            // ignored
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _appStateSubscription?.Dispose();
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await AppState.LoadChannels(ChannelService);
         await AppState.LoadAgents(AgentService);
         SetChannelAndServerFromRoute();
-        AppState.OnChange += OnStateChanged;
+        _appStateSubscription = AppState.SubscribeCurrentUser(OnStateChanged)
+            .Combine(AppState.SubscribeSelectedChannel(OnStateChanged))
+            .Combine(AppState.SubscribeChannels(OnStateChanged));
     }
 
     protected override async Task OnParametersSetAsync()
@@ -54,19 +76,13 @@
         await LoadMessagesIfNeeded();
     }
 
-    private async void OnStateChanged()
-    {
-        await LoadMessagesIfNeeded();
-        await InvokeAsync(StateHasChanged);
-    }
-
     private async Task LoadMessagesIfNeeded()
     {
         var channelId = AppState.SelectedChannel?.Id;
         if (channelId.HasValue && channelId != _loadedChannelId)
         {
             _loadedChannelId = channelId;
-            messages = await ChannelService.GetChannelMessagesAsync(channelId.Value);
+            _messages = await ChannelService.GetChannelMessagesAsync(channelId.Value);
         }
     }
 
@@ -78,7 +94,7 @@
         if (newMessage != null)
         {
             newMessage.IsOwnMessage = true;
-            messages.Add(newMessage);
+            _messages.Add(newMessage);
         }
     }
 
@@ -120,10 +136,5 @@
         {
             await AppState.LoadChannels(ChannelService, forceReload: true);
         }
-    }
-
-    public void Dispose()
-    {
-        AppState.OnChange -= OnStateChanged;
     }
 }
