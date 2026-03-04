@@ -8,12 +8,11 @@
 
         <textarea class="message-textarea"
                   placeholder="@Placeholder"
-                  @bind="messageText"
+                  @bind="_messageText"
                   @bind:event="oninput"
                   @onkeypress="HandleKeyPress"
                   @onfocus="OnFocus"
-                  @onblur="OnBlur"
-                  @ref="textareaElement">
+                  @onblur="OnBlur">
         </textarea>
 
         <div class="message-input-actions-right">
@@ -22,20 +21,20 @@
             <button class="action-button" title="Sticker">😀</button>
         </div>
 
-        <button class="send-button" disabled="@string.IsNullOrEmpty(messageText)" @onclick="SendMessage">
+        <button class="send-button" disabled="@string.IsNullOrEmpty(_messageText)" @onclick="SendMessage">
             ➤
         </button>
     </div>
 </div>
 
 @code {
-    private ElementReference textareaElement;
-    private string messageText = string.Empty;
 
     [Parameter] public string Placeholder { get; set; } = "Message #general";
     [Parameter] public EventCallback<string> OnSend { get; set; }
     [Parameter] public EventCallback OnTypingStart { get; set; }
     [Parameter] public EventCallback OnTypingEnd { get; set; }
+
+    private string _messageText = string.Empty;
 
     private async Task HandleKeyPress(KeyboardEventArgs e)
     {
@@ -47,10 +46,10 @@
 
     private async Task SendMessage()
     {
-        if (!string.IsNullOrWhiteSpace(messageText))
+        if (!string.IsNullOrWhiteSpace(_messageText))
         {
-            var text = messageText;
-            messageText = string.Empty;
+            var text = _messageText;
+            _messageText = string.Empty;
             await OnSend.InvokeAsync(text);
             await AutoResizeTextarea();
         }
