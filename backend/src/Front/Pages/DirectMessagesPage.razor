@@ -2,6 +2,7 @@
 @page "/dms/{dmId}"
 
 @inject AppState AppState
+@implements IDisposable
 @inject DmService DmService
 
 <MainLayout>
@@ -12,7 +13,7 @@
         </Front.Layout.Components.LeftSidebar>
     </LeftSidebar>
     <MainArea>
-        <ChatArea Messages="messages"
+        <ChatArea Messages="_messages"
                   CurrentUserId="AppState.CurrentUser?.Id"
                   ShowInput="AppState.SelectedDm != null"
                   Placeholder="@(AppState.SelectedDm != null ? $"Message @{GetDmName()}" : "")"
@@ -29,17 +30,21 @@
 </MainLayout>
 
 @code {
-    private List<ChatMessageDto> messages = [];
-    private Guid? _loadedDmId;
-
     [Parameter]
     public string? DmId { get; set; }
+
+    private List<ChatMessageDto> _messages = [];
+    private Guid? _loadedDmId;
+
+    private IDisposable? _appStateSubscription;
 
     protected override async Task OnInitializedAsync()
     {
         await AppState.LoadDms(DmService);
         SetDmFromRoute();
-        AppState.OnChange += OnStateChanged;
+        _appStateSubscription = AppState.SubscribeCurrentUser(OnStateChanged)
+            .Combine(AppState.SubscribeSelectedDm(OnStateChanged))
+            .Combine(AppState.SubscribeDms(OnStateChanged));
     }
 
     protected override async Task OnParametersSetAsync()
@@ -50,8 +55,21 @@
 
     private async void OnStateChanged()
     {
-        await LoadMessagesIfNeeded();
+        try
+        {
+            await LoadMessagesIfNeeded();
+        }
+        catch
+        {
+            // ignored
+        }
+
         await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _appStateSubscription?.Dispose();
     }
 
     private async Task LoadMessagesIfNeeded()
@@ -60,7 +78,7 @@
         if (dmId.HasValue && dmId != _loadedDmId)
         {
             _loadedDmId = dmId;
-            messages = await DmService.GetDmMessagesAsync(dmId.Value);
+            _messages = await DmService.GetDmMessagesAsync(dmId.Value);
         }
     }
 
@@ -79,7 +97,7 @@
         if (newMessage != null)
         {
             newMessage.IsOwnMessage = true;
-            messages.Add(newMessage);
+            _messages.Add(newMessage);
         }
     }
 
@@ -103,10 +121,5 @@
         return AppState.SelectedDm?.OtherAgent?.Username
                ?? AppState.SelectedDm?.OtherUser?.Username
                ?? "Unknown";
-    }
-
-    public void Dispose()
-    {
-        AppState.OnChange -= OnStateChanged;
     }
 }
