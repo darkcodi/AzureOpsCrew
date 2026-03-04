@@ -209,8 +209,16 @@ public class ChatState
     /// </summary>
     public async Task RefreshChannelsAsync(ChannelService channelService)
     {
+        var selectedId = _selectedChannel?.Id;
         _channelsLoaded = false;
         await LoadChannels(channelService);
+        if (selectedId.HasValue && _channels.Count > 0)
+        {
+            var found = _channels.FirstOrDefault(c => c.Id == selectedId.Value);
+            if (found != null)
+                _selectedChannel = found;
+        }
+        OnStateChanged();
     }
 
     // Initialize DMs from backend

@@ -91,6 +91,21 @@ public class ChannelService
         }
     }
 
+    public async Task<bool> AddAgentToChannelAsync(Guid channelId, Guid agentId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"/api/channels/{channelId}/add-agent",
+                new { AgentId = agentId });
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error adding agent to channel: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<bool> DeleteChannelAsync(Guid id)
     {
         try

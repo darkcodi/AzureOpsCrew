@@ -2,6 +2,7 @@
 
 @inject ChatState ChatState
 @inject ChannelService ChannelService
+@inject AgentService AgentService
 
 <MainLayout>
     <LeftSidebar>
@@ -22,7 +23,7 @@
                   OnSendMessage="SendChannelMessage" />
     </MainArea>
     <RightSidebar>
-        <Front.Layout.Components.RightSidebar Title="Members">
+        <Front.Layout.Components.RightSidebar>
             <MembersList />
         </Front.Layout.Components.RightSidebar>
     </RightSidebar>
@@ -39,6 +40,7 @@
     {
         SetServerFromRoute();
         await ChatState.LoadChannels(ChannelService);
+        ChatState.Agents = await AgentService.GetAgentsAsync();
         ChatState.OnChange += OnStateChanged;
     }
 
