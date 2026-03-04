@@ -2,19 +2,36 @@
 @implements IDisposable
 
 <div class="channels-list">
-    <div class="channels-section">
-        @foreach (var dm in AppState.Dms)
+    <div class="channels-list-inner">
+        <div class="dm-section-label">AI Agents</div>
+        @foreach (var dm in GetAgentDms())
         {
-            <div class="channels-item @(IsDmSelected(dm) ? "active" : "")" @onclick="() => SelectDm(dm)">
-                @if (GetAgent(dm) != null)
-                {
-                    <span class="agent-icon">🤖</span>
-                }
-                else
-                {
-                    <span class="dm-icon">@GetInitials("User")</span>
-                }
+            var agent = GetAgent(dm);
+            var isActive = IsDmSelected(dm);
+            <div class="channels-item @(isActive ? "active" : "")" @onclick="() => SelectDm(dm)">
+                <div class="dm-avatar dm-avatar-agent" style="background-color: @(agent?.Color ?? "#43b581"); color: #fff;">
+                    @GetAgentAvatar(agent)
+                </div>
                 <span class="dm-name">@GetDmDisplayName(dm)</span>
+                <span class="dm-status">@(agent?.Status ?? "Idle")</span>
+            </div>
+        }
+        <div class="dm-section-label dm-section-label-humans">Humans</div>
+        @foreach (var dm in GetHumanDms())
+        {
+            var isActive = IsDmSelected(dm);
+            <div class="channels-item @(isActive ? "active" : "")" @onclick="() => SelectDm(dm)">
+                <div class="dm-avatar dm-avatar-human">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <span class="dm-name">@GetHumanDmDisplayName(dm)</span>
+                <span class="dm-status dm-status-with-dot">
+                    <span class="dm-status-dot dm-status-dot-online"></span>
+                    Online
+                </span>
             </div>
         }
     </div>
@@ -26,7 +43,8 @@
     protected override void OnInitialized()
     {
         _appStateSubscription = AppState.SubscribeDms(OnStateChanged)
-            .Combine(AppState.SubscribeSelectedDm(OnStateChanged));
+            .Combine(AppState.SubscribeSelectedDm(OnStateChanged))
+            .Combine(AppState.SubscribeAgents(OnStateChanged));
     }
 
     private async void OnStateChanged()
@@ -46,13 +64,39 @@
         AppState.SelectedDm = dm;
     }
 
+    private List<DmChannelDto> GetAgentDms()
+    {
+        return AppState.Dms
+            .Where(d => d.Agent1Id.HasValue || d.Agent2Id.HasValue)
+            .OrderBy(d => d.CreatedAt)
+            .ToList();
+    }
+
+    private List<DmChannelDto> GetHumanDms()
+    {
+        return AppState.Dms
+            .Where(d => !d.Agent1Id.HasValue && !d.Agent2Id.HasValue)
+            .OrderBy(d => d.CreatedAt)
+            .ToList();
+    }
+
     private AgentDto? GetAgent(DmChannelDto dm)
     {
         var agentId = dm.Agent1Id ?? dm.Agent2Id;
         if (!agentId.HasValue)
             return null;
-
         return AppState.Agents.FirstOrDefault(a => a.Id == agentId.Value);
+    }
+
+    private string GetAgentAvatar(AgentDto? agent)
+    {
+        if (agent == null) return "?";
+        var u = agent.Username;
+        if (string.IsNullOrWhiteSpace(u)) return "?";
+        var parts = u.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}";
+        return u.Length >= 2 ? u[..2].ToUpperInvariant() : u.ToUpperInvariant();
     }
 
     private string GetDmDisplayName(DmChannelDto dm)
@@ -60,18 +104,14 @@
         var agent = GetAgent(dm);
         if (agent != null && !string.IsNullOrWhiteSpace(agent.Username))
             return agent.Username;
-
         return "Unknown";
     }
 
-    private string GetInitials(string username)
+    private string GetHumanDmDisplayName(DmChannelDto dm)
     {
-        if (string.IsNullOrEmpty(username)) return "?";
-        var parts = username.Split(' ');
-        if (parts.Length >= 2)
-        {
-            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
-        }
-        return username.Length >= 2 ? username.Substring(0, 2).ToUpper() : username.ToUpper();
+        var currentUserId = AppState.CurrentUser?.Id;
+        if (dm.User1Id == currentUserId || dm.User2Id == currentUserId)
+            return AppState.CurrentUser?.Username ?? "You";
+        return "User";
     }
 }

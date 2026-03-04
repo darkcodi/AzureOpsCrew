@@ -1,34 +1,130 @@
+/* Viewport container - match React ScrollArea + inner px-2 */
 .channels-list {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 12px 0;
+    padding: 8px 0;
     background-color: hsl(228, 7%, 14%);
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-.agent-icon {
-    margin-right: 8px;
-    font-size: 18px;
+.channels-list-inner {
+    padding: 0 8px;
+}
+
+/* Section labels - match React AI Agents / Humans headers */
+.dm-section-label {
+    margin: 4px 0;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: hsl(214, 5%, 55%);
+}
+
+.dm-section-label-humans {
+    margin-top: 24px;
+}
+
+/* Row - match React button: flex, gap-3, rounded-md, px-2 py-2, text-sm */
+.channels-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 8px;
+    margin: 0 0 2px 0;
+    cursor: pointer;
+    color: hsl(210, 3%, 85%);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    text-align: left;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.channels-item:hover {
+    background-color: hsl(228, 6%, 18%);
+    color: hsl(210, 3%, 80%);
+}
+
+.channels-item.active {
+    background-color: hsl(228, 6%, 22%);
+    color: hsl(0, 0%, 100%);
+    font-weight: 500;
+}
+
+/* Avatar - match React h-8 w-8 (32px) rounded-full */
+.dm-avatar {
+    width: 32px;
+    height: 32px;
     flex-shrink: 0;
-}
-
-.dm-icon {
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    margin-right: 8px;
-    background-color: hsl(210, 5%, 30%);
-    color: hsl(210, 3%, 90%);
-    border-radius: 50%;
-    font-size: 13px;
-    font-weight: 600;
-    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 500;
 }
 
+.dm-avatar-agent {
+    color: #fff;
+}
+
+.dm-avatar-human {
+    background-color: hsl(228, 6%, 24%);
+    color: hsl(214, 5%, 55%);
+}
+
+.dm-avatar-human svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Name - truncate */
 .dm-name {
+    flex: 1;
+    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* Status - ml-auto text-xs, muted color */
+.dm-status {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: hsl(214, 5%, 55%);
+}
+
+.channels-item.active .dm-status {
+    color: hsl(214, 5%, 55%);
+}
+
+.dm-status-with-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.dm-status-dot {
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    border-radius: 50%;
+}
+
+.dm-status-dot-online {
+    background-color: #22c55e;
+}
+
+.dm-status-dot-idle {
+    background-color: #6b7280;
 }
