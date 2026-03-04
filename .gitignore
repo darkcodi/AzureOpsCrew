@@ -3,65 +3,31 @@
 ####################################
 
 # Build artifacts
-backend/**/bin/
-backend/**/obj/
-backend/**/out/
-backend/**/publish/
+**/bin/
+**/obj/
+**/out/
+**/publish/
 
 # User-specific files
-backend/*.user
-backend/*.suo
-backend/*.userosscache
-backend/*.sln.docstates
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
 *.sln.DotSettings.user
 Folder.DotSettings.user
 
 # Logs
-backend/**/*.log
+**/*.log
 
 # Test results
-backend/**/TestResults/
-
-####################################
-# ===== FRONTEND (Node.js) ========
-####################################
-
-frontend/node_modules/
-frontend/dist/
-frontend/build/
-frontend/.next/
-frontend/.nuxt/
-frontend/.output/
-frontend/coverage/
-
-# Logs
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-frontend/pnpm-debug.log*
-
-# v0 runtime files (should only exist in preview, not in git)
-__v0_runtime_loader.js
-__v0_devtools.tsx
-__v0_jsx-dev-runtime.ts
-
-# Common ignores
-node_modules/
-.next/
-.env*.local
-.DS_Store
-tsconfig.tsbuildinfo
-next-env.d.ts
+**/TestResults/
 
 ####################################
 # ===== ENV FILES =================
 ####################################
 
-frontend/.env
-frontend/.env.*
-backend/.env
-backend/.env.*
-
+.env
+.env.*
 !.env.example
 
 ####################################
