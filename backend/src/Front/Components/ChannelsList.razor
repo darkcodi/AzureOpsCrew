@@ -17,6 +17,21 @@
 </div>
 
 @code {
+    protected override void OnInitialized()
+    {
+        ChatState.OnChange += OnStateChanged;
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ChatState.OnChange -= OnStateChanged;
+    }
+
     private bool IsChannelSelected(ChannelDto channel) => ChatState.SelectedChannel?.Id == channel.Id;
 
     private void SelectChannel(ChannelDto channel)
