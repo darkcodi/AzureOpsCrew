@@ -1,5 +1,5 @@
 .chat-area {
-    background-color: #36393f;
+    background-color: hsl(228, 6%, 22%);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -9,7 +9,7 @@
 .messages-container {
     flex: 1;
     overflow-y: auto;
-    padding: 16px 0;
+    padding: 16px;
 }
 
 .no-messages {
