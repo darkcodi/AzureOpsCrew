@@ -64,7 +64,7 @@
         var serverId = ChatState.SelectedServer?.Id ?? ServerInfoDto.GetDefaultServers().LastOrDefault()?.Id;
         if (serverId.HasValue)
         {
-            NavigationManager.NavigateTo($"/server/{serverId.Value}/channel/{channel.Id}");
+            NavigationManager.NavigateTo($"/servers/{serverId.Value}/channels/{channel.Id}");
         }
         else
         {

@@ -52,23 +52,23 @@
     private bool IsDmSelected()
     {
         var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath;
-        return path.StartsWith("/dm");
+        return path.StartsWith("/dms");
     }
 
     private bool IsServerSelected(ServerInfoDto server)
     {
         var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath;
-        return path.StartsWith($"/server/{server.Id}");
+        return path.StartsWith($"/servers/{server.Id}");
     }
 
     private void NavigateToDm()
     {
-        Navigation.NavigateTo("/dm");
+        Navigation.NavigateTo("/dms");
     }
 
     private void NavigateToServer(ServerInfoDto server)
     {
-        Navigation.NavigateTo($"/server/{server.Id}");
+        Navigation.NavigateTo($"/servers/{server.Id}");
     }
 
     private async Task HandleLogout()
