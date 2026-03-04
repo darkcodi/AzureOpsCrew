@@ -2,9 +2,11 @@
 @page "/servers/{serverId}/channels/{channelId}"
 
 @inject AppState AppState
-@implements IDisposable
+@implements IAsyncDisposable
 @inject ChannelService ChannelService
 @inject AgentService AgentService
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
 
 <MainLayout>
     <LeftSidebar>
@@ -40,6 +42,7 @@
     private List<ChatMessageDto> _messages = [];
     private Guid? _loadedChannelId;
     private IDisposable? _appStateSubscription;
+    private ChatHubClient? _hubClient;
 
     private async void OnStateChanged()
     {
@@ -55,9 +58,11 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         _appStateSubscription?.Dispose();
+        if (_hubClient != null)
+            await _hubClient.DisposeAsync();
     }
 
     protected override async Task OnInitializedAsync()
@@ -83,7 +88,30 @@
         {
             _loadedChannelId = channelId;
             _messages = await ChannelService.GetChannelMessagesAsync(channelId.Value);
+            await ConnectToChannelHub(channelId.Value);
         }
+    }
+
+    private async Task ConnectToChannelHub(Guid channelId)
+    {
+        if (_hubClient != null)
+            await _hubClient.DisposeAsync();
+
+        _hubClient = ChatHubClient.ForChannel(LoggerFactory);
+        _hubClient.MessageReceived += OnMessageReceived;
+
+        var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/');
+        var hubUrl = $"{baseUrl}/channels/{channelId}/events";
+        await _hubClient.ConnectAsync(hubUrl, channelId);
+    }
+
+    private async void OnMessageReceived(ChatMessageDto message)
+    {
+        if (_messages.Any(m => m.Id == message.Id))
+            return;
+
+        _messages.Add(message);
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task SendChannelMessage(string text)

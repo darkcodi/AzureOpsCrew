@@ -2,9 +2,11 @@
 @page "/dms/{dmId}"
 
 @inject AppState AppState
-@implements IDisposable
+@implements IAsyncDisposable
 @inject DmService DmService
 @inject AgentService AgentService
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
 
 <MainLayout>
     <LeftSidebar>
@@ -36,8 +38,8 @@
 
     private List<ChatMessageDto> _messages = [];
     private Guid? _loadedDmId;
-
     private IDisposable? _appStateSubscription;
+    private ChatHubClient? _hubClient;
 
     protected override async Task OnInitializedAsync()
     {
@@ -69,9 +71,11 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         _appStateSubscription?.Dispose();
+        if (_hubClient != null)
+            await _hubClient.DisposeAsync();
     }
 
     private async Task LoadMessagesIfNeeded()
@@ -96,7 +100,31 @@
                     _messages = await DmService.GetUserDmMessagesAsync(otherUserId.Value);
                 }
             }
+
+            await ConnectToDmHub(dmId.Value);
         }
+    }
+
+    private async Task ConnectToDmHub(Guid dmId)
+    {
+        if (_hubClient != null)
+            await _hubClient.DisposeAsync();
+
+        _hubClient = ChatHubClient.ForDm(LoggerFactory);
+        _hubClient.MessageReceived += OnMessageReceived;
+
+        var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/');
+        var hubUrl = $"{baseUrl}/dms/{dmId}/events";
+        await _hubClient.ConnectAsync(hubUrl, dmId);
+    }
+
+    private async void OnMessageReceived(ChatMessageDto message)
+    {
+        if (_messages.Any(m => m.Id == message.Id))
+            return;
+
+        _messages.Add(message);
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task SendDmMessage(string text)

@@ -40,7 +40,6 @@ try
     // Register application services
     builder.Services.AddSingleton<AppState>();
     builder.Services.AddSingleton<AuthState>();
-    builder.Services.AddScoped<SignalRService>();
     builder.Services.AddScoped<ChannelService>();
     builder.Services.AddScoped<DmService>();
     builder.Services.AddScoped<UserService>();
