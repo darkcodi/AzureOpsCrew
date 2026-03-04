@@ -1,4 +1,5 @@
 @inject AppState AppState
+@implements IDisposable
 @inject NavigationManager NavigationManager
 
 <div class="channels-list">
@@ -27,7 +28,7 @@
         <input type="text"
                class="create-channel-input"
                placeholder="Enter channel name..."
-               @bind="newChannelName"
+               @bind="_newChannelName"
                @onkeydown="HandleCreateChannelKeyDown" />
         <button type="button" class="create-channel-btn" @onclick="HandleCreateChannelClick">
             <span class="create-channel-btn-icon" aria-hidden="true">
@@ -42,9 +43,17 @@
 </div>
 
 @code {
+    [Parameter]
+    public EventCallback<string> OnCreateChannel { get; set; }
+
+    private string _newChannelName = string.Empty;
+    private IDisposable? _appStateSubscription;
+
     protected override void OnInitialized()
     {
-        AppState.OnChange += OnStateChanged;
+        _appStateSubscription = AppState.SubscribeSelectedChannel(OnStateChanged)
+            .Combine(AppState.SubscribeSelectedServer(OnStateChanged))
+            .Combine(AppState.SubscribeChannels(OnStateChanged));
     }
 
     private async void OnStateChanged()
@@ -54,7 +63,7 @@
 
     public void Dispose()
     {
-        AppState.OnChange -= OnStateChanged;
+        _appStateSubscription?.Dispose();
     }
 
     private bool IsChannelSelected(ChannelDto channel) => AppState.SelectedChannel?.Id == channel.Id;
@@ -73,11 +82,6 @@
         }
     }
 
-    [Parameter]
-    public EventCallback<string> OnCreateChannel { get; set; }
-
-    private string newChannelName = string.Empty;
-
     private async Task HandleCreateChannelKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
@@ -93,10 +97,10 @@
 
     private async Task SubmitCreateChannel()
     {
-        var name = newChannelName?.Trim();
+        var name = _newChannelName?.Trim();
         if (string.IsNullOrEmpty(name)) return;
 
         await OnCreateChannel.InvokeAsync(name);
-        newChannelName = string.Empty;
+        _newChannelName = string.Empty;
     }
 }
