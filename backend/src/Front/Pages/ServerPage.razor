@@ -119,7 +119,7 @@
         if (AppState.SelectedChannel == null) return;
 
         var newMessage = await ChannelService.PostMessageAsync(AppState.SelectedChannel.Id, text);
-        if (newMessage != null)
+        if (newMessage != null && !_messages.Any(m => m.Id == newMessage.Id))
         {
             newMessage.IsOwnMessage = true;
             _messages.Add(newMessage);
