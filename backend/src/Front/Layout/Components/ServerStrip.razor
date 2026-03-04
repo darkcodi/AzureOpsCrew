@@ -1,0 +1,108 @@
+@inject AppState AppState
+@implements IDisposable
+@inject NavigationManager Navigation
+@inject AuthState AuthState
+
+<div class="server-strip">
+    <div class="server-strip-top">
+        <div class="server-icon home-icon @(IsDmSelected() ? "active" : "")" @onclick="NavigateToDm" title="Direct Messages">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="home-icon-svg">
+                <line x1="4" y1="9" x2="20" y2="9"/>
+                <line x1="4" y1="15" x2="20" y2="15"/>
+                <line x1="10" y1="3" x2="8" y2="21"/>
+                <line x1="16" y1="3" x2="14" y2="21"/>
+            </svg>
+        </div>
+
+        <div class="server-separator"></div>
+
+        @foreach (var server in AppState.Servers)
+        {
+            <div class="server-icon @(IsServerSelected(server) ? "active" : "")" @onclick="() => NavigateToServer(server)" title="@server.Name">
+                @server.Icon
+            </div>
+        }
+
+        <div class="server-icon add-server-icon" title="Add a New Server">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="add-server-svg">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="server-strip-bottom">
+        <div class="server-icon settings-icon @(IsSettingsSelected() ? "active" : "")" @onclick="NavigateToSettings" title="Settings">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="settings-icon-svg">
+                <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0a2.34 2.34 0 0 0 3.319 1.915a2.34 2.34 0 0 1 2.33 4.033a2.34 2.34 0 0 0 0 3.831a2.34 2.34 0 0 1-2.33 4.033a2.34 2.34 0 0 0-3.319 1.915a2.34 2.34 0 0 1-4.659 0a2.34 2.34 0 0 0-3.32-1.915a2.34 2.34 0 0 1-2.33-4.033a2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+        </div>
+
+        <div class="server-icon logout-icon" @onclick="HandleLogout" title="Logout">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="logout-icon-svg">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IDisposable? _appStateSubscription;
+
+    protected override void OnInitialized()
+    {
+        _appStateSubscription = AppState.SubscribeServers(OnStateChanged);
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _appStateSubscription?.Dispose();
+    }
+
+    private bool IsDmSelected()
+    {
+        var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath;
+        return path.StartsWith("/dms");
+    }
+
+    private bool IsServerSelected(ServerInfoDto server)
+    {
+        var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath;
+        return path.StartsWith($"/servers/{server.Id}");
+    }
+
+    private void NavigateToDm()
+    {
+        Navigation.NavigateTo("/dms");
+    }
+
+    private void NavigateToServer(ServerInfoDto server)
+    {
+        Navigation.NavigateTo($"/servers/{server.Id}");
+    }
+
+    private bool IsSettingsSelected()
+    {
+        var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath;
+        return path.StartsWith("/settings");
+    }
+
+    private void NavigateToSettings()
+    {
+        Navigation.NavigateTo("/settings");
+    }
+
+    private async Task HandleLogout()
+    {
+        await AuthState.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}

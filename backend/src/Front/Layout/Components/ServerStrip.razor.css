@@ -1,0 +1,132 @@
+.server-strip {
+    background-color: hsl(228, 7%, 10%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    overflow: hidden;
+    flex-shrink: 0;
+    width: 52px;
+}
+
+.server-strip-top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.server-strip-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding-top: 8px;
+}
+
+.server-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 1rem;
+    background-color: hsl(228, 6%, 22%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: hsl(210, 3%, 80%);
+    font-weight: 600;
+    font-size: 20px;
+    user-select: none;
+}
+
+.server-icon:hover {
+    border-radius: 0.75rem;
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
+}
+
+.server-icon.active {
+    border-radius: 0.75rem;
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
+}
+
+.server-icon.home-icon {
+    background-color: hsl(228, 6%, 22%);
+    color: hsl(210, 3%, 80%);
+}
+
+.server-icon.home-icon .home-icon-svg {
+    display: block;
+    flex-shrink: 0;
+}
+
+.server-icon.home-icon:hover,
+.server-icon.home-icon.active {
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
+}
+
+.server-icon.settings-icon {
+    background-color: hsl(228, 6%, 22%);
+    color: hsl(210, 3%, 80%);
+    font-size: 20px;
+}
+
+.server-icon.settings-icon .settings-icon-svg {
+    display: block;
+    flex-shrink: 0;
+}
+
+.server-icon.settings-icon:hover {
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
+}
+
+.server-icon.logout-icon {
+    background-color: hsl(228, 6%, 22%);
+    color: hsl(210, 3%, 80%);
+}
+
+.server-icon.logout-icon:hover {
+    border-radius: 0.75rem;
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
+}
+
+.server-icon.logout-icon .logout-icon-svg {
+    display: block;
+    flex-shrink: 0;
+}
+
+.server-icon.add-server-icon {
+    background-color: hsl(228, 6%, 22%);
+    color: hsl(210, 3%, 80%);
+}
+
+.server-icon.add-server-icon .add-server-svg {
+    display: block;
+    flex-shrink: 0;
+}
+
+.server-icon.add-server-icon:hover {
+    border-radius: 0.75rem;
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
+}
+
+.server-separator {
+    width: 24px;
+    height: 2px;
+    background-color: hsl(228, 6%, 28%);
+    border-radius: 1px;
+    margin: 4px 0;
+}
+
+.server-strip-top::-webkit-scrollbar {
+    width: 0;
+}

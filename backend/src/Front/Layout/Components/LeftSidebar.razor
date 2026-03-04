@@ -1,0 +1,17 @@
+<div class="left-sidebar">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <div class="left-sidebar-header">
+            @Title
+        </div>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

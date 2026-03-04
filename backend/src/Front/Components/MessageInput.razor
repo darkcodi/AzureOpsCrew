@@ -1,0 +1,70 @@
+<div class="message-input-component">
+    <div class="message-input-wrapper">
+        <div class="message-input-actions-left">
+            <button class="action-button" title="Add attachment" @onclick="AddAttachment">
+                ➕
+            </button>
+        </div>
+
+        <textarea class="message-textarea"
+                  placeholder="@Placeholder"
+                  @bind="_messageText"
+                  @bind:event="oninput"
+                  @onkeypress="HandleKeyPress"
+                  @onfocus="OnFocus"
+                  @onblur="OnBlur">
+        </textarea>
+
+        <div class="message-input-actions-right">
+            <button class="action-button" title="Sticker">😀</button>
+        </div>
+
+        <button class="send-button" disabled="@string.IsNullOrEmpty(_messageText)" @onclick="SendMessage">
+            ➤
+        </button>
+    </div>
+</div>
+
+@code {
+
+    [Parameter] public string Placeholder { get; set; } = "Type a message...";
+    [Parameter] public EventCallback<string> OnSend { get; set; }
+    [Parameter] public EventCallback OnTypingStart { get; set; }
+    [Parameter] public EventCallback OnTypingEnd { get; set; }
+
+    private string _messageText = string.Empty;
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (!string.IsNullOrWhiteSpace(_messageText))
+        {
+            var text = _messageText;
+            _messageText = string.Empty;
+            await OnSend.InvokeAsync(text);
+        }
+    }
+
+    private Task AddAttachment()
+    {
+        // TODO: Implement attachment functionality
+        return Task.CompletedTask;
+    }
+
+    private Task OnFocus()
+    {
+        return OnTypingStart.InvokeAsync();
+    }
+
+    private Task OnBlur()
+    {
+        return OnTypingEnd.InvokeAsync();
+    }
+}

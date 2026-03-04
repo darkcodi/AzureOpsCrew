@@ -1,0 +1,122 @@
+.agent-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 8px;
+    background-color: hsl(228, 7%, 14%);
+    color: hsl(210, 3%, 90%);
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.agent-card-header-wrap {
+    position: relative;
+}
+
+.agent-card-strip {
+    height: 80px;
+    width: 100%;
+    border-radius: 8px 8px 0 0;
+}
+
+.agent-card-avatar-wrap {
+    position: absolute;
+    left: 16px;
+    top: 40px;
+    display: flex;
+    align-items: center;
+}
+
+.agent-card-avatar {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 4px solid hsl(228, 7%, 14%);
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.agent-card-status {
+    position: absolute;
+    right: 16px;
+    top: 12px;
+    height: 24px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background-color: hsla(0, 0%, 0%, 0.4);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.agent-card-body {
+    padding: 56px 16px 16px 16px;
+}
+
+.agent-card-name {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: hsl(210, 3%, 98%);
+}
+
+.agent-card-id {
+    margin: 0;
+    font-size: 0.875rem;
+    color: hsl(214, 5%, 55%);
+}
+
+.agent-card-bio {
+    margin: 12px 0 0 0;
+    font-size: 0.875rem;
+    line-height: 1.375;
+    color: hsl(210, 3%, 80%);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.agent-card-pills {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.agent-card-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 9999px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.agent-card-pill-agent {
+    background-color: hsl(228, 6%, 22%);
+    color: hsl(210, 3%, 90%);
+}
+
+.agent-card-pill-dot {
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background-color: hsl(235, 86%, 65%);
+}
+
+.agent-card-pill-model {
+    background-color: hsl(228, 6%, 22%);
+    color: hsl(214, 5%, 55%);
+}

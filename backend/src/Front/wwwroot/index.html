@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Front</title>
+    <base href="/" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/gg-sans@5.1.0/index.min.css" />
+    <link rel="preload" id="webassembly" />
+    <link rel="stylesheet" href="css/discord.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="Front.styles.css" rel="stylesheet" />
+    <script type="importmap"></script>
+    <style>
+        #blazor-error-ui {
+            display: none;
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background: #3b3b3b;
+            color: #ffffff;
+            padding: 0.75rem 1.5rem;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            font-size: 0.9rem;
+        }
+
+        #blazor-error-ui .dismiss {
+            cursor: pointer;
+            float: right;
+        }
+
+        .splash {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            width: 100vw;
+            background-color: #202225;
+            font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            color: #dcddde;
+            user-select: none;
+        }
+
+        .splash-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 1.25rem;
+            background: linear-gradient(135deg, #5865F2, #3ba55c);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .splash-logo svg {
+            width: 44px;
+            height: 44px;
+            color: #fff;
+        }
+
+        .splash-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 32px;
+            letter-spacing: -0.2px;
+        }
+
+        .splash-bar-track {
+            width: 260px;
+            height: 6px;
+            background: #2f3136;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 36px;
+        }
+
+        .splash-bar-fill {
+            height: 100%;
+            width: 40%;
+            border-radius: 3px;
+            background: #5865F2;
+            animation: splashSlide 1.6s ease-in-out infinite;
+        }
+
+        @keyframes splashSlide {
+            0%   { transform: translateX(-100%); width: 40%; }
+            50%  { transform: translateX(160%);  width: 60%; }
+            100% { transform: translateX(-100%); width: 40%; }
+        }
+
+        .splash-tip-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #5865F2;
+            letter-spacing: 0.4px;
+            margin-bottom: 6px;
+        }
+
+        .splash-tip {
+            font-size: 14px;
+            color: #72767d;
+            max-width: 340px;
+            text-align: center;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="splash">
+            <div class="splash-logo">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <path d="M12 18v-6"/>
+                    <path d="M8 18v-1"/>
+                    <path d="M16 18v-3"/>
+                </svg>
+            </div>
+            <div class="splash-title">AzureOpsCrew</div>
+            <div class="splash-bar-track">
+                <div class="splash-bar-fill"></div>
+            </div>
+            <div class="splash-tip-label">Did you know</div>
+            <div class="splash-tip" id="splash-tip"></div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+    <script>
+        (function () {
+            var tips = [
+                "You can mention agents with @ to get their attention in any channel.",
+                "AzureOpsCrew agents can collaborate across channels to solve complex tasks.",
+                "Direct messages are great for focused one-on-one conversations with agents.",
+                "Each channel can have multiple agents working together as a crew.",
+                "You can add or remove agents from channels at any time.",
+                "Agents will show a typing indicator while they're thinking about a response.",
+                "Press Enter to send a message, or click the send button."
+            ];
+            var el = document.getElementById("splash-tip");
+            if (el) el.textContent = tips[Math.floor(Math.random() * tips.length)];
+        })();
+    </script>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+    <script>
+        window.scrollToBottom = (element) => {
+            if (element) {
+                element.scrollTop = element.scrollHeight;
+            }
+        };
+    </script>
+</body>
+
+</html>

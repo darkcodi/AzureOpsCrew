@@ -1,0 +1,104 @@
+.chat-area {
+    background-color: hsl(228, 6%, 22%);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+}
+
+.messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+.no-messages {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    text-align: center;
+}
+
+.welcome-icon {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background-color: #4f545c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.no-messages h3 {
+    font-size: 32px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.no-messages p {
+    font-size: 16px;
+    color: hsl(214, 5%, 55%);
+}
+
+.message-input-container {
+    padding: 0 16px 24px;
+    flex-shrink: 0;
+}
+
+.message-input-wrapper {
+    background-color: #40444b;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+}
+
+.message-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #dcddde;
+    font-size: 16px;
+    padding: 11px 8px;
+    font-family: inherit;
+}
+
+.message-input:focus {
+    outline: none;
+}
+
+.message-input::placeholder {
+    color: #72767d;
+}
+
+.send-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #5865F2;
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    font-size: 14px;
+    margin-left: 8px;
+}
+
+.send-button:hover {
+    background-color: #4752c4;
+}
+
+.send-button:disabled {
+    background-color: #40444b;
+    cursor: not-allowed;
+    color: #72767d;
+}

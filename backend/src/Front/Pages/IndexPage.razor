@@ -1,0 +1,11 @@
+@page "/"
+@inject NavigationManager Navigation
+
+@code {
+    private readonly Guid _defaultServerId = Guid.Empty;
+
+    protected override void OnInitialized()
+    {
+        Navigation.NavigateTo($"/servers/{_defaultServerId}", forceLoad: true);
+    }
+}

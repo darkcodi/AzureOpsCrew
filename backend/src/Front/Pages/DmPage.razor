@@ -1,0 +1,210 @@
+@page "/dms"
+@page "/dms/{dmId}"
+
+@inject AppState AppState
+@implements IAsyncDisposable
+@inject DmService DmService
+@inject AgentService AgentService
+@inject HttpClient Http
+@inject ILoggerFactory LoggerFactory
+
+<MainLayout>
+    <LeftSidebar>
+        <Front.Layout.Components.LeftSidebar Title="Direct Messages">
+            <DmList />
+            <UserPanel />
+        </Front.Layout.Components.LeftSidebar>
+    </LeftSidebar>
+    <MainArea>
+        <ChatArea Messages="_messages"
+                  CurrentUserId="AppState.CurrentUser?.Id"
+                  ShowInput="AppState.SelectedDm != null"
+                  Placeholder="@(AppState.SelectedDm != null ? $"Message @{GetDmName()}" : "")"
+                  EmptyIcon="@(AppState.SelectedDm != null ? "💬" : "👋")"
+                  EmptyTitle="@(AppState.SelectedDm != null ? "Welcome to this conversation!" : "Select a conversation")"
+                  EmptySubtitle="@(AppState.SelectedDm != null ? "This is the start of your conversation." : "Pick a DM from the sidebar to start chatting.")"
+                  OnSendMessage="SendDmMessage" />
+    </MainArea>
+    <RightSidebar>
+        <Front.Layout.Components.RightSidebar Title="">
+            <DmRightPane />
+        </Front.Layout.Components.RightSidebar>
+    </RightSidebar>
+</MainLayout>
+
+@code {
+    [Parameter]
+    public string? DmId { get; set; }
+
+    private List<ChatMessageDto> _messages = [];
+    private Guid? _loadedDmId;
+    private IDisposable? _appStateSubscription;
+    private ChatHubClient? _hubClient;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AppState.LoadAgents(AgentService);
+        await AppState.LoadDms(DmService);
+        SetDmFromRoute();
+        _appStateSubscription = AppState.SubscribeCurrentUser(OnStateChanged)
+            .Combine(AppState.SubscribeSelectedDm(OnStateChanged))
+            .Combine(AppState.SubscribeDms(OnStateChanged));
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        SetDmFromRoute();
+        await LoadMessagesIfNeeded();
+    }
+
+    private async void OnStateChanged()
+    {
+        try
+        {
+            await LoadMessagesIfNeeded();
+        }
+        catch
+        {
+            // ignored
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _appStateSubscription?.Dispose();
+        if (_hubClient != null)
+            await _hubClient.DisposeAsync();
+    }
+
+    private async Task LoadMessagesIfNeeded()
+    {
+        var dmId = AppState.SelectedDm?.Id;
+        if (dmId.HasValue && dmId != _loadedDmId)
+        {
+            _loadedDmId = dmId;
+            var agentId = AppState.SelectedDm?.Agent1Id ?? AppState.SelectedDm?.Agent2Id;
+            if (agentId.HasValue)
+            {
+                _messages = await DmService.GetAgentDmMessagesAsync(agentId.Value);
+            }
+            else
+            {
+                var userId1 = AppState.SelectedDm?.User1Id;
+                var userId2 = AppState.SelectedDm?.User2Id;
+                var currentUserId = AppState.CurrentUser?.Id;
+                var otherUserId = userId1 == currentUserId ? userId2 : userId1;
+                if (otherUserId.HasValue)
+                {
+                    _messages = await DmService.GetUserDmMessagesAsync(otherUserId.Value);
+                }
+            }
+
+            await ConnectToDmHub(dmId.Value);
+        }
+    }
+
+    private async Task ConnectToDmHub(Guid dmId)
+    {
+        if (_hubClient != null)
+            await _hubClient.DisposeAsync();
+
+        _hubClient = ChatHubClient.ForDm(LoggerFactory);
+        _hubClient.MessageReceived += OnMessageReceived;
+
+        var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/');
+        var hubUrl = $"{baseUrl}/dms/{dmId}/events";
+        await _hubClient.ConnectAsync(hubUrl, dmId);
+    }
+
+    private async void OnMessageReceived(ChatMessageDto message)
+    {
+        if (_messages.Any(m => m.Id == message.Id))
+            return;
+
+        _messages.Add(message);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SendDmMessage(string text)
+    {
+        var dm = AppState.SelectedDm;
+        if (dm == null) return;
+
+        ChatMessageDto? newMessage = null;
+
+        // Prefer agent-based DMs when an agent participant is present.
+        var agentId = dm.Agent1Id ?? dm.Agent2Id;
+        if (agentId.HasValue)
+        {
+            newMessage = await DmService.PostAgentDmMessageAsync(agentId.Value, text);
+        }
+        else if (AppState.CurrentUser is { } currentUser)
+        {
+            // Fallback path for potential user-to-user DMs: find the other user id.
+            Guid? otherUserId = null;
+            if (dm.User1Id == currentUser.Id)
+                otherUserId = dm.User2Id;
+            else if (dm.User2Id == currentUser.Id)
+                otherUserId = dm.User1Id;
+
+            if (otherUserId.HasValue)
+            {
+                newMessage = await DmService.PostUserDmMessageAsync(otherUserId.Value, text);
+            }
+        }
+
+        if (newMessage != null && !_messages.Any(m => m.Id == newMessage.Id))
+        {
+            newMessage.IsOwnMessage = true;
+            _messages.Add(newMessage);
+        }
+    }
+
+    private void SetDmFromRoute()
+    {
+        if (!string.IsNullOrEmpty(DmId) && Guid.TryParse(DmId, out var parsedDmId))
+        {
+            var dm = AppState.Dms.FirstOrDefault(d => d.Id == parsedDmId);
+            if (dm != null)
+            {
+                AppState.SelectedDm = dm;
+                return;
+            }
+        }
+
+        // If DM not found in route, fall back to last used DM
+        if (string.IsNullOrEmpty(DmId))
+        {
+            // Try to use the last used DM
+            if (AppState.LastUsedDm.HasValue)
+            {
+                var lastDm = AppState.Dms.FirstOrDefault(d => d.Id == AppState.LastUsedDm.Value);
+                if (lastDm != null)
+                {
+                    AppState.SelectedDm = lastDm;
+                    return;
+                }
+            }
+            AppState.SelectedDm = null;
+        }
+    }
+
+    private string GetDmName()
+    {
+        var dm = AppState.SelectedDm;
+        if (dm == null)
+            return "Unknown";
+
+        var agentId = dm.Agent1Id ?? dm.Agent2Id;
+        if (agentId.HasValue)
+        {
+            var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentId.Value);
+            if (agent != null && !string.IsNullOrWhiteSpace(agent.Username))
+                return agent.Username;
+        }
+
+        return "Unknown";
+    }
+}

@@ -1,0 +1,48 @@
+.left-sidebar {
+    background-color: hsl(228, 7%, 14%);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.left-sidebar-header {
+    height: 48px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid hsl(228, 6%, 10%);
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.left-sidebar-header:hover {
+    background-color: transparent;
+}
+
+.server-name {
+    color: white;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dropdown-icon {
+    color: hsl(214, 5%, 55%);
+    font-size: 12px;
+}
+
+@media (max-width: 768px) {
+    .left-sidebar {
+        width: 60px;
+    }
+
+    .left-sidebar-header {
+        padding: 0 8px;
+    }
+
+    .server-name {
+        font-size: 12px;
+    }
+}

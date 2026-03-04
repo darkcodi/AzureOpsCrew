@@ -1,0 +1,333 @@
+@page "/settings"
+
+@inject SettingsService SettingsService
+@inject NavigationManager Navigation
+@inject AppState AppState
+@inject AgentService AgentService
+
+<MainLayout>
+    <LeftSidebar>
+        <SettingsSidebar ActiveSection="_activeSection"
+                         OnSectionChange="section => { _activeSection = section; StateHasChanged(); }" />
+    </LeftSidebar>
+    <MainArea>
+        <div class="settings-main-area">
+            <SettingsContent ActiveSection="_activeSection"
+                             Settings="_settings"
+                             SavedSettings="_savedSettings"
+                             ModifiedProviderIds="_modifiedProviderIds"
+                             SelectedProviderId="@_selectedProviderId"
+                             OnSelectProvider="id => { _selectedProviderId = id; StateHasChanged(); }"
+                             OnSettingsChange="HandleSettingsChange"
+                             OnSaveCurrentProvider="HandleSaveCurrentProvider"
+                             OnTestProvider="HandleTestProvider"
+                             OnRemoveProvider="HandleRemoveProvider"
+                             OnToggleSelectedModel="HandleToggleSelectedModel"
+                             IsSaving="_isSaving"
+                             IsTesting="_isTesting"
+                             SaveError="@_saveError"
+                             Agents="@_agents"
+                             OnEditAgent="HandleEditAgent"
+                             OnCreateAgent="HandleCreateAgent"
+                             OnDeleteAgent="HandleDeleteAgent"
+                             OnAgentsChanged="HandleAgentsChanged" />
+
+            @if (HasUnsavedChanges)
+            {
+                <div class="unsaved-bar">
+                    <span class="unsaved-text">Unsaved changes</span>
+                    <div class="unsaved-actions">
+                        @if (!string.IsNullOrEmpty(_saveError))
+                        {
+                            <span class="unsaved-error">@_saveError</span>
+                        }
+                        <button type="button" class="unsaved-btn reset-btn" disabled="@_isSaving" @onclick="HandleReset">
+                            Reset
+                        </button>
+                        <button type="button" class="unsaved-btn save-btn" disabled="@_isSaving" @onclick="HandleSaveAll">
+                            @(_isSaving ? "Saving…" : "Save")
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </MainArea>
+    <RightSidebar>
+        <SettingsInfoPanel ActiveSection="_activeSection"
+                           SelectedProvider="@SelectedProvider"
+                           SelectedModels="@(SelectedProvider?.SelectedModels ?? [])"
+                           OnToggleSelectedModel="HandleToggleSelectedModel"
+                           ProviderTestResult="@CurrentTestResult" />
+    </RightSidebar>
+</MainLayout>
+
+@code {
+    private SettingsSection _activeSection = SettingsSection.Providers;
+    private SettingsState _settings = new() { Providers = [] };
+    private SettingsState _savedSettings = new() { Providers = [] };
+    private string? _selectedProviderId;
+    private Dictionary<string, ProviderTestResult> _providerTestResults = new();
+    private string? _saveError;
+    private bool _isSaving;
+    private bool _isTesting;
+
+    private Provider? SelectedProvider =>
+        _settings.Providers.FirstOrDefault(p => p.Id == _selectedProviderId);
+
+    private ProviderTestResult? CurrentTestResult =>
+        _selectedProviderId != null && _providerTestResults.TryGetValue(_selectedProviderId, out var r) ? r : null;
+
+    private HashSet<string> _modifiedProviderIds = [];
+    private IReadOnlyList<AgentDto> _agents = [];
+
+    private bool HasUnsavedChanges =>
+        System.Text.Json.JsonSerializer.Serialize(_settings) !=
+        System.Text.Json.JsonSerializer.Serialize(_savedSettings);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var persisted = await SettingsService.LoadFromLocalStorageAsync();
+
+        try
+        {
+            var apiProviders = await SettingsService.GetProvidersAsync();
+            if (apiProviders.Count > 0)
+            {
+                var sorted = apiProviders
+                    .OrderBy(p => p.DateCreated != null && DateTime.TryParse(p.DateCreated, out var d) ? d.Ticks : long.MaxValue)
+                    .ToList();
+                persisted.Providers = sorted;
+                _settings = persisted;
+            }
+            else
+            {
+                _settings = persisted;
+            }
+        }
+        catch
+        {
+            _settings = persisted;
+        }
+
+        _savedSettings = _settings.DeepClone();
+        _selectedProviderId = _settings.Providers.FirstOrDefault()?.Id;
+        await SettingsService.SaveToLocalStorageAsync(_settings);
+        ComputeModifiedIds();
+        await AppState.LoadAgents(AgentService);
+        _agents = AppState.Agents.ToList();
+    }
+
+    private void ComputeModifiedIds()
+    {
+        var savedById = _savedSettings.Providers.ToDictionary(p => p.Id);
+        _modifiedProviderIds = _settings.Providers
+            .Where(p =>
+            {
+                if (!savedById.TryGetValue(p.Id, out var saved) || string.IsNullOrEmpty(p.BackendId)) return false;
+                return p.Name != saved.Name ||
+                       p.Status != saved.Status ||
+                       p.ApiKey != saved.ApiKey ||
+                       p.BaseUrl != saved.BaseUrl ||
+                       p.DefaultModel != saved.DefaultModel ||
+                       p.IsDefault != saved.IsDefault ||
+                       System.Text.Json.JsonSerializer.Serialize(p.SelectedModels ?? []) !=
+                       System.Text.Json.JsonSerializer.Serialize(saved.SelectedModels ?? []);
+            })
+            .Select(p => p.Id)
+            .ToHashSet();
+    }
+
+    private void HandleSettingsChange(SettingsState updated)
+    {
+        _settings = updated;
+        ComputeModifiedIds();
+        StateHasChanged();
+    }
+
+    private async Task HandleSaveAll()
+    {
+        _saveError = null;
+        _isSaving = true;
+        try
+        {
+            var response = await SettingsService.SaveProvidersAsync(_settings.Providers);
+            MergeSaveResults(response);
+            _savedSettings = _settings.DeepClone();
+            await SettingsService.SaveToLocalStorageAsync(_settings);
+            ComputeModifiedIds();
+        }
+        catch (Exception ex)
+        {
+            _saveError = ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task HandleSaveCurrentProvider()
+    {
+        if (_selectedProviderId == null) return;
+        var current = _settings.Providers.FirstOrDefault(p => p.Id == _selectedProviderId);
+        if (current == null) return;
+
+        _saveError = null;
+        _isSaving = true;
+        try
+        {
+            var response = await SettingsService.SaveProvidersAsync([current]);
+            MergeSaveResults(response);
+
+            var savedProvider = _settings.Providers.FirstOrDefault(p => p.Id == _selectedProviderId);
+            if (savedProvider != null)
+            {
+                var idx = _savedSettings.Providers.FindIndex(p => p.Id == _selectedProviderId);
+                if (idx >= 0)
+                    _savedSettings.Providers[idx] = savedProvider.Clone();
+                else
+                    _savedSettings.Providers.Add(savedProvider.Clone());
+            }
+
+            await SettingsService.SaveToLocalStorageAsync(_settings);
+            ComputeModifiedIds();
+        }
+        catch (Exception ex)
+        {
+            _saveError = ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task HandleTestProvider()
+    {
+        if (_selectedProviderId == null) return;
+        var current = _settings.Providers.FirstOrDefault(p => p.Id == _selectedProviderId);
+        if (current == null) return;
+
+        _isTesting = true;
+        _saveError = null;
+        try
+        {
+            var result = await SettingsService.TestProviderAsync(current);
+            _providerTestResults[_selectedProviderId] = result;
+        }
+        catch (Exception ex)
+        {
+            _providerTestResults[_selectedProviderId] = new ProviderTestResult
+            {
+                Success = false,
+                Message = ex.Message,
+            };
+        }
+        finally
+        {
+            _isTesting = false;
+        }
+    }
+
+    private async Task HandleRemoveProvider(string providerId)
+    {
+        var provider = _settings.Providers.FirstOrDefault(p => p.Id == providerId);
+        if (provider == null) return;
+
+        if (!string.IsNullOrEmpty(provider.BackendId))
+        {
+            _isSaving = true;
+            try
+            {
+                await SettingsService.RemoveProviderAsync(provider.BackendId);
+            }
+            catch (Exception ex)
+            {
+                _saveError = ex.Message;
+                _isSaving = false;
+                return;
+            }
+            finally
+            {
+                _isSaving = false;
+            }
+        }
+
+        var deletedIndex = _settings.Providers.FindIndex(p => p.Id == providerId);
+        _settings.Providers.RemoveAll(p => p.Id == providerId);
+        _savedSettings.Providers.RemoveAll(p => p.Id == providerId);
+
+        var remaining = _settings.Providers;
+        _selectedProviderId = deletedIndex > 0 && remaining.Count > 0
+            ? remaining[Math.Min(deletedIndex - 1, remaining.Count - 1)].Id
+            : remaining.FirstOrDefault()?.Id;
+
+        await SettingsService.SaveToLocalStorageAsync(_settings);
+        ComputeModifiedIds();
+    }
+
+    private void HandleToggleSelectedModel(string modelId)
+    {
+        if (_selectedProviderId == null) return;
+        var provider = _settings.Providers.FirstOrDefault(p => p.Id == _selectedProviderId);
+        if (provider == null) return;
+
+        var current = provider.SelectedModels ?? [];
+        provider.SelectedModels = current.Contains(modelId)
+            ? current.Where(id => id != modelId).ToList()
+            : [..current, modelId];
+        ComputeModifiedIds();
+        StateHasChanged();
+    }
+
+    private void HandleReset()
+    {
+        _settings = _savedSettings.DeepClone();
+        ComputeModifiedIds();
+    }
+
+    private void MergeSaveResults(SaveProvidersResponse? response)
+    {
+        if (response?.Providers == null || response.Providers.Count == 0) return;
+        var byId = response.Providers.ToDictionary(r => r.Id, r => r.BackendId);
+        foreach (var p in _settings.Providers)
+        {
+            if (!byId.TryGetValue(p.Id, out var backendId)) continue;
+            p.BackendId = backendId;
+            if (p.Status == "disabled") continue;
+            p.Status = "enabled";
+        }
+    }
+
+    private void HandleEditAgent(AgentDto agent)
+    {
+        // TODO: open edit agent dialog or navigate to agent management
+    }
+
+    private void HandleCreateAgent()
+    {
+        // TODO: open create agent dialog or navigate
+    }
+
+    private async Task HandleDeleteAgent(Guid agentId)
+    {
+        try
+        {
+            await AgentService.DeleteAgentAsync(agentId);
+            await AppState.LoadAgents(AgentService, forceReload: true);
+            _agents = AppState.Agents.ToList();
+            StateHasChanged();
+        }
+        catch
+        {
+            // TODO: show error toast
+        }
+    }
+
+    private async Task HandleAgentsChanged()
+    {
+        await AppState.LoadAgents(AgentService, forceReload: true);
+        _agents = AppState.Agents.ToList();
+        StateHasChanged();
+    }
+}

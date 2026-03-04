@@ -1,0 +1,140 @@
+/* Login Page Styles - Matching Next.js Tailwind Slate/Sky Palette */
+/* Colors inlined because Blazor CSS isolation scopes :root, preventing var() resolution */
+
+.login-container {
+    display: flex;
+    height: 100dvh;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    background-color: #020617;
+    padding: 1rem;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 28rem;
+    border-radius: 0.75rem;
+    border: 1px solid #1e293b;
+    background-color: #0f172a;
+    padding: 1.5rem;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.login-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.login-header h1 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 600;
+    color: white;
+    margin: 0;
+}
+
+.signup-button {
+    border-radius: 0.375rem;
+    border: 1px solid #334155;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #e2e8f0;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+
+.signup-button:hover {
+    background-color: #1e293b;
+}
+
+/* Form Styles */
+.form-group {
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+}
+
+.label-text {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #cbd5e1;
+}
+
+::deep .form-input {
+    width: 100%;
+    border-radius: 0.375rem;
+    border: 1px solid #334155;
+    background-color: #1e293b;
+    padding: 0.5rem 0.75rem;
+    color: white;
+    outline: none;
+    transition: border-color 0.15s ease;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    box-sizing: border-box;
+}
+
+::deep .form-input:focus {
+    border-color: #0ea5e9;
+}
+
+::deep .form-input::placeholder {
+    color: #334155;
+}
+
+::deep .validation-message {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: #f87171;
+}
+
+.error-message {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #f87171;
+}
+
+.submit-button {
+    width: 100%;
+    border-radius: 0.375rem;
+    background-color: #0284c7;
+    padding: 0.5rem 0.75rem;
+    font-weight: 500;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.submit-button:hover {
+    background-color: #0ea5e9;
+}
+
+.submit-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.simple-layout {
+    width: 100%;
+    height: 100%;
+}
+
+@media (max-width: 640px) {
+    .login-card {
+        padding: 1rem;
+    }
+}

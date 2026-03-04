@@ -1,0 +1,155 @@
+@page "/login"
+@using Serilog
+@layout SimpleLayout
+@inject AuthenticationService AuthService
+@inject AuthState AuthState
+@inject NavigationManager NavigationManager
+
+<main class="login-container">
+    <section class="login-card">
+        <div class="login-header">
+            <h1>Login</h1>
+            <a href="/signup" class="signup-button">Sign up</a>
+        </div>
+
+        <EditForm Model="@_loginModel" OnValidSubmit="@HandleLoginSubmit">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label for="email">
+                    <span class="label-text">Email</span>
+                </label>
+                <InputText Id="email" @bind-Value="_loginModel.Email" class="form-input" autocomplete="email" />
+                <ValidationMessage For="() => _loginModel.Email" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">
+                    <span class="label-text">Password</span>
+                </label>
+                <InputText Id="password" type="password" @bind-Value="_loginModel.Password" class="form-input" autocomplete="current-password" />
+                <ValidationMessage For="() => _loginModel.Password" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <p class="error-message">@_errorMessage</p>
+            }
+
+            <button type="submit" disabled="@_isSubmitting" class="submit-button">
+                @(_isSubmitting ? "Signing in..." : "Sign in")
+            </button>
+        </EditForm>
+    </section>
+</main>
+
+@code {
+    private LoginModel _loginModel = new();
+    private bool _isSubmitting = false;
+    private string? _errorMessage = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Log.Information("Login page initializing");
+
+        await AuthState.LoadFromLocalStorageAsync();
+
+        // If already authenticated, redirect to next path or home
+        if (AuthState.IsAuthenticated)
+        {
+            Log.Information("User already authenticated, redirecting. UserId: {UserId}", AuthState.CurrentUser?.Id.ToString() ?? "unknown");
+            NavigationManager.NavigateTo(GetNextPath());
+        }
+        else
+        {
+            Log.Information("User not authenticated, showing login form");
+        }
+    }
+
+    private async Task HandleLoginSubmit()
+    {
+        if (_isSubmitting) return;
+
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        Log.Information("Login attempt started for email: {Email}", _loginModel.Email);
+
+        try
+        {
+            var response = await AuthService.LoginAsync(_loginModel.Email, _loginModel.Password);
+
+            if (response != null && response.Error == null && response.User != null && !string.IsNullOrEmpty(response.AccessToken))
+            {
+                // Successful login
+                Log.Information("Login successful for email: {Email}, UserId: {UserId}, ExpiresAt: {ExpiresAtUtc}",
+                    _loginModel.Email, response.User?.Id.ToString() ?? "unknown", response.ExpiresAtUtc);
+
+                await AuthState.LoginAsync(response.AccessToken, response.ExpiresAtUtc, response.User!);
+
+                // Get next parameter or default to home
+                var nextPath = GetNextPath();
+                Log.Information("Navigating to: {NextPath}", nextPath);
+                NavigationManager.NavigateTo(nextPath);
+            }
+            else
+            {
+                var error = response?.Error ?? "Login failed";
+                _errorMessage = error;
+                Log.Warning("Login failed for email: {Email}, Reason: {Error}", _loginModel.Email, error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Unable to login. Please try again.";
+            Log.Error(ex, "Login exception for email: {Email}", _loginModel.Email);
+        }
+        finally
+        {
+            _isSubmitting = false;
+            Log.Information("Login flow completed for email: {Email}, IsSubmitting: {IsSubmitting}", _loginModel.Email, _isSubmitting);
+        }
+    }
+
+    private string GetNextPath()
+    {
+        try
+        {
+            var uri = new Uri(NavigationManager.Uri);
+            var query = uri.Query;
+            var nextParam = System.Text.RegularExpressions.Regex.Match(query, "[?&]next=([^&]*)").Groups[1].Value;
+
+            if (string.IsNullOrEmpty(nextParam))
+            {
+                Log.Information("No next parameter found, using default path: /");
+                return "/";
+            }
+
+            if (!nextParam.StartsWith("/") || nextParam.StartsWith("//"))
+            {
+                Log.Warning("Invalid next parameter format: {NextParam}, using default path", nextParam);
+                return "/";
+            }
+
+            var unescapedPath = Uri.UnescapeDataString(nextParam);
+            Log.Information("Next parameter found: {UnescapedPath}", unescapedPath);
+            return unescapedPath;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error parsing next parameter from URI: {Uri}", NavigationManager.Uri);
+            return "/";
+        }
+    }
+
+    public class LoginModel
+    {
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Please enter a valid email")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required")]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

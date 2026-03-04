@@ -1,0 +1,40 @@
+@inherits LayoutComponentBase
+@inject AuthState AuthState
+@inject NavigationManager NavigationManager
+
+<div class="discord-layout">
+    <ServerStrip />
+    @if (LeftSidebar != null)
+    {
+        @LeftSidebar
+    }
+    @if (MainArea != null)
+    {
+        @MainArea
+    }
+    @if (RightSidebar != null)
+    {
+        @RightSidebar
+    }
+    @Body
+</div>
+
+@code {
+    [Parameter] public RenderFragment? LeftSidebar { get; set; }
+    [Parameter] public RenderFragment? MainArea { get; set; }
+    [Parameter] public RenderFragment? RightSidebar { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.LoadFromLocalStorageAsync();
+
+        if (!AuthState.IsAuthenticated)
+        {
+            var currentPath = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+            var loginPath = string.IsNullOrEmpty(currentPath) || currentPath == "login"
+                ? "/login"
+                : $"/login?next={Uri.EscapeDataString(currentPath)}";
+            NavigationManager.NavigateTo(loginPath, forceLoad: true);
+        }
+    }
+}

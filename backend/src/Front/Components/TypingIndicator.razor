@@ -1,0 +1,33 @@
+@if (Usernames.Count > 0)
+{
+    <div class="typing-indicator">
+        <div class="typing-dots">
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+        </div>
+        <span class="typing-text">
+            @GetTypingText()
+        </span>
+    </div>
+}
+
+@code {
+    [Parameter] public List<string> Usernames { get; set; } = [];
+
+    private string GetTypingText()
+    {
+        if (Usernames.Count == 1)
+        {
+            return $"{Usernames[0]} is typing...";
+        }
+        else if (Usernames.Count == 2)
+        {
+            return $"{Usernames[0]} and {Usernames[1]} are typing...";
+        }
+        else
+        {
+            return "Several people are typing...";
+        }
+    }
+}

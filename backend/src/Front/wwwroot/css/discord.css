@@ -1,0 +1,104 @@
+/* Discord Dark Theme Color Variables */
+:root {
+    --discord-darker: #18191c;
+    --discord-dark: #202225;
+    --discord-not-black: #2f3136;
+    --discord-header: #202225;
+    --discord-text: #dcddde;
+    --discord-muted: #72767d;
+    --discord-blurple: #5865F2;
+    --discord-green: #3ba55c;
+    --discord-yellow: #faa61a;
+    --discord-red: #ed4245;
+    --discord-bg-hover: #34373c;
+    --discord-bg-active: #393c43;
+    --discord-divider: #26272d;
+    --discord-input-bg: #40444b;
+    --discord-scrollbar: #202225;
+    --discord-scrollbar-thumb: #202225;
+
+    /* Message colors */
+    --discord-mention-bg: rgba(88, 101, 242, 0.3);
+    --discord-mention-text: #dee0fc;
+    --discord-mention-hover: rgba(88, 101, 242, 0.4);
+
+    /* Bot/App badge */
+    --discord-bot-bg: #5865F2;
+    --discord-bot-text: #ffffff;
+
+    /* Status colors */
+    --discord-status-online: #3ba55c;
+    --discord-status-idle: #faa61a;
+    --discord-status-dnd: #ed4245;
+    --discord-status-offline: #747f8d;
+    --discord-status-streaming: #593695;
+
+    /* Spacing */
+    --discord-spacing-xs: 4px;
+    --discord-spacing-sm: 8px;
+    --discord-spacing-md: 12px;
+    --discord-spacing-lg: 16px;
+    --discord-spacing-xl: 24px;
+}
+
+/* Reset and base styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background-color: var(--discord-dark);
+    color: var(--discord-text);
+    overflow: hidden;
+    height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+input, button, select, textarea {
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background-color: var(--discord-scrollbar);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--discord-bg-hover);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--discord-muted);
+}
+
+/* Utility classes */
+.text-muted {
+    color: var(--discord-muted);
+}
+
+.text-blurple {
+    color: var(--discord-blurple);
+}
+
+.text-green {
+    color: var(--discord-green);
+}
+
+.text-red {
+    color: var(--discord-red);
+}
+
+.bg-hover:hover {
+    background-color: var(--discord-bg-hover);
+}
