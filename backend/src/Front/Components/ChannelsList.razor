@@ -1,4 +1,5 @@
 @inject ChatState ChatState
+@inject NavigationManager NavigationManager
 
 <div class="channels-list">
     <div class="channels-section">
@@ -60,7 +61,16 @@
 
     private void SelectChannel(ChannelDto channel)
     {
-        ChatState.SelectedChannel = channel;
+        var serverId = ChatState.SelectedServer?.Id ?? ServerInfoDto.GetDefaultServers().LastOrDefault()?.Id;
+        if (serverId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/server/{serverId.Value}/channel/{channel.Id}");
+        }
+        else
+        {
+            // Fallback to state-based navigation if no server is available
+            ChatState.SelectedChannel = channel;
+        }
     }
 
     [Parameter]

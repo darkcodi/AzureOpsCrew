@@ -1,0 +1,129 @@
+@page "/server/{serverId}/channel/{channelId}"
+
+@inject ChatState ChatState
+@inject ChannelService ChannelService
+@inject AgentService AgentService
+@inject NavigationManager NavigationManager
+
+<MainLayout>
+    <LeftSidebar>
+        <Front.Layout.Components.LeftSidebar Title="Channels">
+            <ChannelsList OnCreateChannel="HandleCreateChannel" />
+            <UserPanel />
+        </Front.Layout.Components.LeftSidebar>
+    </LeftSidebar>
+    <MainArea>
+        <ChatArea Messages="messages"
+                  CurrentUserId="ChatState.CurrentUser?.Id"
+                  TypingAgents="ChatState.GetTypingAgents()"
+                  ShowInput="ChatState.SelectedChannel != null"
+                  Placeholder="@(ChatState.SelectedChannel != null ? $"Message #{ChatState.SelectedChannel.Name}" : "")"
+                  EmptyIcon="@(ChatState.SelectedChannel != null ? "#" : "👋")"
+                  EmptyTitle="@(ChatState.SelectedChannel != null ? $"Welcome to #{ChatState.SelectedChannel.Name}!" : "Select a channel")"
+                  EmptySubtitle="@(ChatState.SelectedChannel != null ? $"This is the start of the #{ChatState.SelectedChannel.Name} channel." : "Pick a channel from the sidebar to start chatting.")"
+                  OnSendMessage="SendChannelMessage" />
+    </MainArea>
+    <RightSidebar>
+        <Front.Layout.Components.RightSidebar>
+            <MembersList />
+        </Front.Layout.Components.RightSidebar>
+    </RightSidebar>
+</MainLayout>
+
+@code {
+    private List<ChatMessageDto> messages = [];
+    private Guid? _loadedChannelId;
+
+    [Parameter]
+    public string? ServerId { get; set; }
+
+    [Parameter]
+    public string? ChannelId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ChatState.LoadChannels(ChannelService);
+        ChatState.Agents = await AgentService.GetAgentsAsync();
+        SetChannelAndServerFromRoute();
+        ChatState.OnChange += OnStateChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        SetChannelAndServerFromRoute();
+        await LoadMessagesIfNeeded();
+    }
+
+    private async void OnStateChanged()
+    {
+        await LoadMessagesIfNeeded();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadMessagesIfNeeded()
+    {
+        var channelId = ChatState.SelectedChannel?.Id;
+        if (channelId.HasValue && channelId != _loadedChannelId)
+        {
+            _loadedChannelId = channelId;
+            messages = await ChannelService.GetChannelMessagesAsync(channelId.Value);
+        }
+    }
+
+    private async Task SendChannelMessage(string text)
+    {
+        if (ChatState.SelectedChannel == null) return;
+
+        var newMessage = await ChannelService.PostMessageAsync(ChatState.SelectedChannel.Id, text);
+        if (newMessage != null)
+        {
+            newMessage.IsOwnMessage = true;
+            messages.Add(newMessage);
+        }
+    }
+
+    private void SetChannelAndServerFromRoute()
+    {
+        // Set server from route
+        if (!string.IsNullOrEmpty(ServerId) && Guid.TryParse(ServerId, out var parsedServerId))
+        {
+            var server = ChatState.Servers.FirstOrDefault(s => s.Id == parsedServerId);
+            if (server != null)
+            {
+                ChatState.SelectedServer = server;
+            }
+        }
+
+        // Set channel from route
+        if (!string.IsNullOrEmpty(ChannelId) && Guid.TryParse(ChannelId, out var parsedChannelId))
+        {
+            var channel = ChatState.Channels.FirstOrDefault(c => c.Id == parsedChannelId);
+            if (channel != null)
+            {
+                ChatState.SelectedChannel = channel;
+                return;
+            }
+        }
+
+        // If channel not found, keep the current selection or clear it
+        if (string.IsNullOrEmpty(ChannelId))
+        {
+            ChatState.SelectedChannel = null;
+        }
+    }
+
+    private async Task HandleCreateChannel(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var created = await ChannelService.CreateChannelAsync(name.Trim(), null, []);
+        if (created)
+        {
+            await ChatState.RefreshChannelsAsync(ChannelService);
+        }
+    }
+
+    public void Dispose()
+    {
+        ChatState.OnChange -= OnStateChanged;
+    }
+}
