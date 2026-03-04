@@ -1,4 +1,5 @@
 @inject AppState AppState
+@implements IDisposable
 @inject ChannelService ChannelService
 
 <div class="members-list">
@@ -13,7 +14,7 @@
             <input type="search"
                    class="members-search-input"
                    placeholder="Search members..."
-                   @bind="searchQuery" />
+                   @bind="_searchQuery" />
         </div>
     </div>
 
@@ -26,7 +27,7 @@
         {
             var channelAgents = FilteredChannelAgents();
             var humans = FilteredHumans();
-            var hasQuery = !string.IsNullOrWhiteSpace(searchQuery);
+            var hasQuery = !string.IsNullOrWhiteSpace(_searchQuery);
             var noMatches = hasQuery && channelAgents.Count == 0 && humans.Count == 0;
 
             @if (noMatches)
@@ -107,7 +108,7 @@
     </div>
 </div>
 
-@if (addAgentsOpen && AppState.SelectedChannel != null)
+@if (_addAgentsOpen && AppState.SelectedChannel != null)
 {
     <div class="members-dialog-backdrop" @onclick="CloseAddAgentsDialog"></div>
     <div class="members-dialog" role="dialog" aria-modal="true" aria-labelledby="add-agents-title">
@@ -133,9 +134,9 @@
                         <span class="members-dialog-row-name">@agent.Username</span>
                         <button type="button"
                                 class="members-dialog-add-btn"
-                                disabled="@addingAgentId.HasValue"
+                                disabled="@_addingAgentId.HasValue"
                                 @onclick="() => AddAgentToChannel(agent.Id)">
-                            @if (addingAgentId == agent.Id)
+                            @if (_addingAgentId == agent.Id)
                             {
                                 <span class="members-dialog-add-spinner"></span>
                             }
@@ -152,13 +153,17 @@
 }
 
 @code {
-    private string searchQuery = string.Empty;
-    private bool addAgentsOpen;
-    private Guid? addingAgentId;
+    private string _searchQuery = string.Empty;
+    private bool _addAgentsOpen;
+    private Guid? _addingAgentId;
+
+    private IDisposable? _appStateSubscription;
 
     protected override void OnInitialized()
     {
-        AppState.OnChange += OnStateChanged;
+        _appStateSubscription = AppState.SubscribeSelectedChannel(OnStateChanged)
+            .Combine(AppState.SubscribeCurrentUser(OnStateChanged))
+            .Combine(AppState.SubscribeAgents(OnStateChanged));
     }
 
     private async void OnStateChanged()
@@ -168,7 +173,7 @@
 
     public void Dispose()
     {
-        AppState.OnChange -= OnStateChanged;
+        _appStateSubscription?.Dispose();
     }
 
     private string GetAgentInitials(string username)
@@ -182,8 +187,13 @@
 
     private List<AgentDto> FilteredChannelAgents()
     {
-        var agents = AppState.GetChannelAgents();
-        var q = searchQuery?.Trim().ToLowerInvariant();
+        var agentIds = AppState.SelectedChannel?.AgentIds.Select(id => Guid.TryParse(id, out var guid) ? guid : (Guid?)null)
+            .Where(g => g.HasValue)
+            .Select(g => g!.Value)
+            .ToHashSet() ?? [];
+
+        var agents = AppState.Agents.Where(a => agentIds.Contains(a.Id)).ToList();
+        var q = _searchQuery?.Trim().ToLowerInvariant();
         if (string.IsNullOrEmpty(q)) return agents;
         return agents.Where(a => (a.Username ?? "").ToLowerInvariant().Contains(q)).ToList();
     }
@@ -195,7 +205,7 @@
         if (AppState.CurrentUser != null)
             users.Add(AppState.CurrentUser);
         users.AddRange(GetOnlineUsers().Where(u => u.Id != AppState.CurrentUser?.Id));
-        var q = searchQuery?.Trim().ToLowerInvariant();
+        var q = _searchQuery?.Trim().ToLowerInvariant();
         if (string.IsNullOrEmpty(q)) return users;
         return users.Where(u =>
         {
@@ -204,7 +214,7 @@
         }).ToList();
     }
 
-    private List<UserDto> GetOnlineUsers() => AppState.GetOnlineUsers().Where(u => u.IsOnline).ToList();
+    private List<UserDto> GetOnlineUsers() => []; // TODO: Implement online users tracking
 
     private List<AgentDto> AgentsNotInChannel()
     {
@@ -217,14 +227,14 @@
         return AppState.Agents.Where(a => !channelIdSet.Contains(a.Id)).OrderBy(a => a.Username).ToList();
     }
 
-    private void OpenAddAgentsDialog() => addAgentsOpen = true;
+    private void OpenAddAgentsDialog() => _addAgentsOpen = true;
 
-    private void CloseAddAgentsDialog() => addAgentsOpen = false;
+    private void CloseAddAgentsDialog() => _addAgentsOpen = false;
 
     private async Task AddAgentToChannel(Guid agentId)
     {
         if (AppState.SelectedChannel == null) return;
-        addingAgentId = agentId;
+        _addingAgentId = agentId;
         StateHasChanged();
         try
         {
@@ -234,7 +244,7 @@
         }
         finally
         {
-            addingAgentId = null;
+            _addingAgentId = null;
             StateHasChanged();
         }
     }

@@ -3,7 +3,7 @@
 
 <div class="channels-list">
     <div class="channels-section">
-        @foreach (var channel in AppState.GetVisibleChannels())
+        @foreach (var channel in AppState.Channels)
         {
             <div class="channels-item @(IsChannelSelected(channel) ? "active" : "")" @onclick="() => SelectChannel(channel)">
                 <span class="channels-item-icon" aria-hidden="true">

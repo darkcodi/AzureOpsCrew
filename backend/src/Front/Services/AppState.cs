@@ -83,33 +83,6 @@ public class AppState : IDisposable
 
     private void OnStateChanged() => OnChange?.Invoke();
 
-
-    // Get visible channels for selected server
-    public IEnumerable<ChannelDto> GetVisibleChannels()
-    {
-        if (SelectedServer == null) return [];
-
-        // For now, return all channels
-        // TODO: Filter by server when backend supports servers
-        return Channels;
-    }
-
-    // Get agents for current channel
-    public List<AgentDto> GetChannelAgents()
-    {
-        if (SelectedChannel == null) return [];
-
-        var agentIds = SelectedChannel.AgentIds.Select(id => Guid.TryParse(id, out var guid) ? guid : (Guid?)null)
-                                                  .Where(g => g.HasValue)
-                                                  .Select(g => g!.Value)
-                                                  .ToHashSet();
-
-        return Agents.Where(a => agentIds.Contains(a.Id)).ToList();
-    }
-
-    // Get online users (placeholder for now)
-    public List<UserDto> GetOnlineUsers() => []; // TODO: Implement when presence is available
-
     // Load channels from backend
     public async Task LoadChannels(ChannelService channelService, bool forceReload = false)
     {
