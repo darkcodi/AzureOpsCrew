@@ -12,15 +12,13 @@
         </Front.Layout.Components.LeftSidebar>
     </LeftSidebar>
     <MainArea>
-        <ChatArea Messages="messages"
-                  CurrentUserId="AppState.CurrentUser?.Id"
+        <ChatArea Messages="[]"
                   TypingAgents="[]"
-                  ShowInput="AppState.SelectedChannel != null"
-                  Placeholder="@(AppState.SelectedChannel != null ? $"Message #{AppState.SelectedChannel.Name}" : "")"
-                  EmptyIcon="@(AppState.SelectedChannel != null ? "#" : "👋")"
-                  EmptyTitle="@(AppState.SelectedChannel != null ? $"Welcome to #{AppState.SelectedChannel.Name}!" : "Select a channel")"
-                  EmptySubtitle="@(AppState.SelectedChannel != null ? $"This is the start of the #{AppState.SelectedChannel.Name} channel." : "Pick a channel from the sidebar to start chatting.")"
-                  OnSendMessage="SendChannelMessage" />
+                  ShowInput="false"
+                  Placeholder=""
+                  EmptyIcon="👋"
+                  EmptyTitle="Select a channel"
+                  EmptySubtitle="Pick a channel from the sidebar to start chatting." />
     </MainArea>
     <RightSidebar>
         <Front.Layout.Components.RightSidebar>
@@ -30,9 +28,6 @@
 </MainLayout>
 
 @code {
-    private List<ChatMessageDto> messages = [];
-    private Guid? _loadedChannelId;
-
     [Parameter]
     public string? ServerId { get; set; }
 
@@ -41,41 +36,11 @@
         SetServerFromRoute();
         await AppState.LoadChannels(ChannelService);
         await AppState.LoadAgents(AgentService);
-        AppState.OnChange += OnStateChanged;
     }
 
-    protected override async Task OnParametersSetAsync()
+    protected override void OnParametersSet()
     {
         SetServerFromRoute();
-        await LoadMessagesIfNeeded();
-    }
-
-    private async void OnStateChanged()
-    {
-        await LoadMessagesIfNeeded();
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task LoadMessagesIfNeeded()
-    {
-        var channelId = AppState.SelectedChannel?.Id;
-        if (channelId.HasValue && channelId != _loadedChannelId)
-        {
-            _loadedChannelId = channelId;
-            messages = await ChannelService.GetChannelMessagesAsync(channelId.Value);
-        }
-    }
-
-    private async Task SendChannelMessage(string text)
-    {
-        if (AppState.SelectedChannel == null) return;
-
-        var newMessage = await ChannelService.PostMessageAsync(AppState.SelectedChannel.Id, text);
-        if (newMessage != null)
-        {
-            newMessage.IsOwnMessage = true;
-            messages.Add(newMessage);
-        }
     }
 
     private void SetServerFromRoute()
@@ -98,10 +63,5 @@
         {
             await AppState.LoadChannels(ChannelService, forceReload: true);
         }
-    }
-
-    public void Dispose()
-    {
-        AppState.OnChange -= OnStateChanged;
     }
 }
