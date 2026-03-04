@@ -1,4 +1,5 @@
 @inject ChatState ChatState
+@implements IDisposable
 
 <div class="channels-list">
     <div class="channels-section">
@@ -20,6 +21,21 @@
 </div>
 
 @code {
+    protected override void OnInitialized()
+    {
+        ChatState.OnChange += OnStateChanged;
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ChatState.OnChange -= OnStateChanged;
+    }
+
     private bool IsDmSelected(DmChannelDto dm) => ChatState.SelectedDm?.Id == dm.Id;
 
     private void SelectDm(DmChannelDto dm)
