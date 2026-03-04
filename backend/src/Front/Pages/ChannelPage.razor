@@ -15,7 +15,6 @@
     <MainArea>
         <ChatArea Messages="_messages"
                   CurrentUserId="AppState.CurrentUser?.Id"
-                  TypingAgents="[]"
                   ShowInput="AppState.SelectedChannel != null"
                   Placeholder="@(AppState.SelectedChannel != null ? $"Message #{AppState.SelectedChannel.Name}" : "")"
                   EmptyIcon="@(AppState.SelectedChannel != null ? "#" : "👋")"

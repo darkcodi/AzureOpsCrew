@@ -19,10 +19,10 @@
         }
     </div>
 
-    @if (TypingAgents.Count > 0)
-    {
-        <TypingIndicator Usernames="TypingAgents.Select(a => a.Username).ToList()" />
-    }
+    @* @if (TypingAgents.Count > 0) *@
+    @* { *@
+    @*     <TypingIndicator Usernames="TypingAgents.Select(a => a.Username).ToList()" /> *@
+    @* } *@
 
     @if (ShowInput)
     {
@@ -46,7 +46,6 @@
     [Parameter] public List<ChatMessageDto> Messages { get; set; } = [];
     [Parameter] public EventCallback<string> OnSendMessage { get; set; }
     [Parameter] public Guid? CurrentUserId { get; set; }
-    [Parameter] public List<AgentDto> TypingAgents { get; set; } = [];
     [Parameter] public bool ShowInput { get; set; } = true;
     [Parameter] public string Placeholder { get; set; } = "Type a message...";
     [Parameter] public string EmptyIcon { get; set; } = "💬";
