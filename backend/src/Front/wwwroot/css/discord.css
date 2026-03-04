@@ -58,6 +58,10 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+input, button, select, textarea {
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
     width: 8px;
