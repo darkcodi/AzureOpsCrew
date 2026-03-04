@@ -195,7 +195,7 @@ public class ChatState
         var channels = await channelService.GetChannelsAsync();
         _channels = channels;
 
-        if (_channels.Any())
+        if (_channels.Any() && _selectedChannel == null)
         {
             _selectedChannel = _channels.First();
         }
