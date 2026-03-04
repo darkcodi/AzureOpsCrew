@@ -138,3 +138,70 @@
 .channels-item:hover .channels-tooltip {
     display: block;
 }
+
+/* Create channel section - match Next.js channel-sidebar 1:1 */
+.create-channel-wrap {
+    margin-top: 16px;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
+.create-channel-input {
+    display: block;
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 6px 8px;
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: rgb(229, 230, 230);
+    background-color: rgb(43, 44, 49);
+    border: 1px solid rgb(62, 64, 70);
+    border-radius: 6px;
+    outline: none;
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.create-channel-input::placeholder {
+    color: rgb(163, 163, 163);
+    font-size: 0.875rem;
+}
+
+.create-channel-btn {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 0;
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 0.875rem;
+    color: rgb(135, 139, 146);
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.create-channel-btn:hover {
+    opacity: 0.8;
+}
+
+.create-channel-btn-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.create-channel-btn-icon svg {
+    width: 16px;
+    height: 16px;
+}

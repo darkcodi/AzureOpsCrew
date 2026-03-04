@@ -204,6 +204,15 @@ public class ChatState
         OnStateChanged();
     }
 
+    /// <summary>
+    /// Reload channels from the API (e.g. after creating a new channel).
+    /// </summary>
+    public async Task RefreshChannelsAsync(ChannelService channelService)
+    {
+        _channelsLoaded = false;
+        await LoadChannels(channelService);
+    }
+
     // Initialize DMs from backend
     public async Task LoadDms(DmService dmService)
     {

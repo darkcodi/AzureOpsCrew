@@ -6,7 +6,7 @@
 <MainLayout>
     <LeftSidebar>
         <Front.Layout.Components.LeftSidebar Title="Main">
-            <ChannelsList />
+            <ChannelsList OnCreateChannel="HandleCreateChannel" />
             <UserPanel />
         </Front.Layout.Components.LeftSidebar>
     </LeftSidebar>
@@ -85,6 +85,16 @@
             {
                 ChatState.SelectedServer = server;
             }
+        }
+    }
+
+    private async Task HandleCreateChannel(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var created = await ChannelService.CreateChannelAsync(name.Trim(), null, []);
+        if (created)
+        {
+            await ChatState.RefreshChannelsAsync(ChannelService);
         }
     }
 
