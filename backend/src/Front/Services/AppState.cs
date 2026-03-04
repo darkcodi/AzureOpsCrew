@@ -50,22 +50,19 @@ public class AppState
     // Channels list
     public readonly ReactiveList<ChannelDto> Channels = new();
     public IDisposable SubscribeChannels(Action handler) => Channels.Subscribe(handler);
-    private bool _channelsLoaded;
 
     // DMs list
     public readonly ReactiveList<DmChannelDto> Dms = new();
     public IDisposable SubscribeDms(Action handler) => Dms.Subscribe(handler);
-    private bool _dmsLoaded;
 
     // Agents list
     public readonly ReactiveList<AgentDto> Agents = new();
     public IDisposable SubscribeAgents(Action handler) => Agents.Subscribe(handler);
-    private bool _agentsLoaded;
 
     // Load channels from backend
     public async Task LoadChannels(ChannelService channelService, bool forceReload = false)
     {
-        if (_channelsLoaded && !forceReload) return;
+        if (Channels.Any() && !forceReload) return;
 
         var channels = await channelService.GetChannelsAsync();
         Channels.Clear();
@@ -73,14 +70,12 @@ public class AppState
         {
             Channels.Add(channel);
         }
-
-        _channelsLoaded = true;
     }
 
     // Load DMs from backend
     public async Task LoadDms(DmService dmService, bool forceReload = false)
     {
-        if (_dmsLoaded && !forceReload) return;
+        if (Dms.Any() && !forceReload) return;
 
         var dms = await dmService.GetDmsAsync();
         Dms.Clear();
@@ -88,13 +83,12 @@ public class AppState
         {
             Dms.Add(dm);
         }
-
-        _dmsLoaded = true;
     }
 
+    // Load agents from backend
     public async Task LoadAgents(AgentService agentService, bool forceReload = false)
     {
-        if (_agentsLoaded && !forceReload) return;
+        if (Agents.Any() && !forceReload) return;
 
         var agents = await agentService.GetAgentsAsync();
         Agents.Clear();
@@ -102,7 +96,5 @@ public class AppState
         {
             Agents.Add(agent);
         }
-
-        _agentsLoaded = true;
     }
 }
