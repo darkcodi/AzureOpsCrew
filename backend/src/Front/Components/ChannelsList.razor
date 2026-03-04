@@ -1,6 +1,7 @@
 @inject AppState AppState
 @implements IDisposable
 @inject NavigationManager NavigationManager
+@inject ChannelService ChannelService
 
 <div class="channels-list">
     <div class="channels-section">
@@ -43,9 +44,6 @@
 </div>
 
 @code {
-    [Parameter]
-    public EventCallback<string> OnCreateChannel { get; set; }
-
     private string _newChannelName = string.Empty;
     private IDisposable? _appStateSubscription;
 
@@ -98,9 +96,12 @@
     private async Task SubmitCreateChannel()
     {
         var name = _newChannelName?.Trim();
-        if (string.IsNullOrEmpty(name)) return;
-
-        await OnCreateChannel.InvokeAsync(name);
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var created = await ChannelService.CreateChannelAsync(name.Trim(), null, []);
+        if (created)
+        {
+            await AppState.LoadChannels(ChannelService, forceReload: true);
+        }
         _newChannelName = string.Empty;
     }
 }

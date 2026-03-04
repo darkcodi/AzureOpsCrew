@@ -7,7 +7,7 @@
 <MainLayout>
     <LeftSidebar>
         <Front.Layout.Components.LeftSidebar Title="Main">
-            <ChannelsList OnCreateChannel="HandleCreateChannel" />
+            <ChannelsList />
             <UserPanel />
         </Front.Layout.Components.LeftSidebar>
     </LeftSidebar>
@@ -53,16 +53,6 @@
             {
                 AppState.SelectedServer = server;
             }
-        }
-    }
-
-    private async Task HandleCreateChannel(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return;
-        var created = await ChannelService.CreateChannelAsync(name.Trim(), null, []);
-        if (created)
-        {
-            await AppState.LoadChannels(ChannelService, forceReload: true);
         }
     }
 }
