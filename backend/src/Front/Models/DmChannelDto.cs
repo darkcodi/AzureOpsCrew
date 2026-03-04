@@ -8,7 +8,4 @@ public class DmChannelDto
     public Guid? Agent1Id { get; set; }
     public Guid? Agent2Id { get; set; }
     public DateTime CreatedAt { get; set; }
-
-    public UserDto? OtherUser { get; set; }
-    public AgentDto? OtherAgent { get; set; }
 }

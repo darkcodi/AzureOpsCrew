@@ -27,20 +27,6 @@ public class DmService
         }
     }
 
-    public async Task<List<ChatMessageDto>> GetDmMessagesAsync(Guid dmId)
-    {
-        try
-        {
-            var response = await _httpClient.GetFromJsonAsync<List<ChatMessageDto>>($"/api/dms/{dmId}/messages");
-            return response ?? [];
-        }
-        catch (Exception ex)
-        {
-            Log.Error($"Error fetching messages for DM {dmId}: {ex.Message}");
-            return [];
-        }
-    }
-
     public async Task<List<ChatMessageDto>> GetUserDmMessagesAsync(Guid otherUserId)
     {
         try

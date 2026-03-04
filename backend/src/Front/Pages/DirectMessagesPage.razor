@@ -80,7 +80,22 @@
         if (dmId.HasValue && dmId != _loadedDmId)
         {
             _loadedDmId = dmId;
-            _messages = await DmService.GetDmMessagesAsync(dmId.Value);
+            var agentId = AppState.SelectedDm?.Agent1Id ?? AppState.SelectedDm?.Agent2Id;
+            if (agentId.HasValue)
+            {
+                _messages = await DmService.GetAgentDmMessagesAsync(agentId.Value);
+            }
+            else
+            {
+                var userId1 = AppState.SelectedDm?.User1Id;
+                var userId2 = AppState.SelectedDm?.User2Id;
+                var currentUserId = AppState.CurrentUser?.Id;
+                var otherUserId = userId1 == currentUserId ? userId2 : userId1;
+                if (otherUserId.HasValue)
+                {
+                    _messages = await DmService.GetUserDmMessagesAsync(otherUserId.Value);
+                }
+            }
         }
     }
 
