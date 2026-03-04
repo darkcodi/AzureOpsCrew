@@ -16,8 +16,6 @@
         </textarea>
 
         <div class="message-input-actions-right">
-            <button class="action-button" title="Gift Nitro">🎁</button>
-            <button class="action-button" title="GIF">GIF</button>
             <button class="action-button" title="Sticker">😀</button>
         </div>
 
@@ -29,7 +27,7 @@
 
 @code {
 
-    [Parameter] public string Placeholder { get; set; } = "Message #general";
+    [Parameter] public string Placeholder { get; set; } = "Type a message...";
     [Parameter] public EventCallback<string> OnSend { get; set; }
     [Parameter] public EventCallback OnTypingStart { get; set; }
     [Parameter] public EventCallback OnTypingEnd { get; set; }
@@ -51,7 +49,6 @@
             var text = _messageText;
             _messageText = string.Empty;
             await OnSend.InvokeAsync(text);
-            await AutoResizeTextarea();
         }
     }
 
@@ -69,11 +66,5 @@
     private Task OnBlur()
     {
         return OnTypingEnd.InvokeAsync();
-    }
-
-    private async Task AutoResizeTextarea()
-    {
-        // Simple auto-resize - in production you'd use JS interop
-        await Task.CompletedTask;
     }
 }
