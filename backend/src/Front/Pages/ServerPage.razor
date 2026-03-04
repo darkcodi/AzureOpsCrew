@@ -121,9 +121,19 @@
             }
         }
 
-        // If channel not found in route, keep the current selection or clear it
+        // If channel not found in route, fall back to last used channel
         if (string.IsNullOrEmpty(ChannelId))
         {
+            // Try to use the last used channel
+            if (AppState.LastUsedChannel.HasValue)
+            {
+                var lastChannel = AppState.Channels.FirstOrDefault(c => c.Id == AppState.LastUsedChannel.Value);
+                if (lastChannel != null)
+                {
+                    AppState.SelectedChannel = lastChannel;
+                    return;
+                }
+            }
             AppState.SelectedChannel = null;
         }
     }

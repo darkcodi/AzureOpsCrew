@@ -146,7 +146,21 @@
             }
         }
 
-        AppState.SelectedDm = null;
+        // If DM not found in route, fall back to last used DM
+        if (string.IsNullOrEmpty(DmId))
+        {
+            // Try to use the last used DM
+            if (AppState.LastUsedDm.HasValue)
+            {
+                var lastDm = AppState.Dms.FirstOrDefault(d => d.Id == AppState.LastUsedDm.Value);
+                if (lastDm != null)
+                {
+                    AppState.SelectedDm = lastDm;
+                    return;
+                }
+            }
+            AppState.SelectedDm = null;
+        }
     }
 
     private string GetDmName()

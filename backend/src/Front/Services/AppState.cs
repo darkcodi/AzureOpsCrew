@@ -11,6 +11,8 @@ public class AppState
     private readonly Reactive<ServerInfoDto?> _selectedServer = new();
     private readonly Reactive<ChannelDto?> _selectedChannel = new();
     private readonly Reactive<DmChannelDto?> _selectedDm = new();
+    private readonly Reactive<Guid?> _lastUsedChannel = new();
+    private readonly Reactive<Guid?> _lastUsedDm = new();
     public readonly ReactiveList<ServerInfoDto> Servers = new(ServerInfoDto.GetDefaultServers());
     public readonly ReactiveList<ChannelDto> Channels = new();
     public readonly ReactiveList<DmChannelDto> Dms = new();
@@ -31,14 +33,43 @@ public class AppState
     public ChannelDto? SelectedChannel
     {
         get => _selectedChannel.Value;
-        set => _selectedChannel.Value = value;
+        set
+        {
+            _selectedChannel.Value = value;
+            if (value != null)
+            {
+                _lastUsedChannel.Value = value.Id;
+            }
+        }
     }
 
     public DmChannelDto? SelectedDm
     {
         get => _selectedDm.Value;
-        set => _selectedDm.Value = value;
+        set
+        {
+            _selectedDm.Value = value;
+            if (value != null)
+            {
+                _lastUsedDm.Value = value.Id;
+            }
+        }
     }
+
+    public Guid? LastUsedChannel
+    {
+        get => _lastUsedChannel.Value;
+        set => _lastUsedChannel.Value = value;
+    }
+
+    public Guid? LastUsedDm
+    {
+        get => _lastUsedDm.Value;
+        set => _lastUsedDm.Value = value;
+    }
+
+    public IDisposable SubscribeLastUsedChannel(Action handler) => _lastUsedChannel.Subscribe(handler);
+    public IDisposable SubscribeLastUsedDm(Action handler) => _lastUsedDm.Subscribe(handler);
 
     public IDisposable SubscribeCurrentUser(Action handler) => _currentUser.Subscribe(handler);
     public IDisposable SubscribeSelectedServer(Action handler) => _selectedServer.Subscribe(handler);
