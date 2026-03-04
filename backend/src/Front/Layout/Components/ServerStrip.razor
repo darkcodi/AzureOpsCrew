@@ -1,5 +1,6 @@
 @inject ChatState ChatState
 @inject NavigationManager Navigation
+@inject AuthState AuthState
 
 <div class="server-strip">
     <div class="server-strip-top">
@@ -37,7 +38,7 @@
             </svg>
         </div>
 
-        <div class="server-icon logout-icon" title="Logout">
+        <div class="server-icon logout-icon" @onclick="HandleLogout" title="Logout">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="logout-icon-svg">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                 <polyline points="16 17 21 12 16 7"/>
@@ -68,5 +69,11 @@
     private void NavigateToServer(ServerInfoDto server)
     {
         Navigation.NavigateTo($"/server/{server.Id}");
+    }
+
+    private async Task HandleLogout()
+    {
+        await AuthState.LogoutAsync();
+        Navigation.NavigateTo("/login");
     }
 }
