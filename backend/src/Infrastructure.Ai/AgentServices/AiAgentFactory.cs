@@ -16,6 +16,9 @@ namespace AzureOpsCrew.Domain.AgentServices
             "When you have visual tools available (showPipelineStatus, showWorkItems, showResourceInfo, showDeployment, showMetrics), " +
             "use them proactively to present information as interactive cards instead of plain text. " +
             "When you have MCP tools available, ALWAYS use them to fetch real data from Azure and Azure DevOps. " +
+            "IMPORTANT: Your tools come from MULTIPLE MCP servers with different capabilities. " +
+            "For comprehensive data gathering (e.g., listing all resources), call tools from ALL relevant MCP servers — not just one. " +
+            "Different MCP servers may return different subsets of data, so cross-reference and merge results. " +
             "NEVER make up or fabricate data — use tools or say you don't have access. " +
             "If you attempt to call a tool and get ACCESS DENIED, stop and report to the Manager — do NOT retry.";
 

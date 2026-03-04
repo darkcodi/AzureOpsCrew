@@ -28,6 +28,66 @@ public record OrchestrationSettings
         ["devops"] = new() { Temperature = 0.05f },
         ["developer"] = new() { Temperature = 0.2f }
     };
+
+    // ═══ FEATURE FLAGS (default enabled in dev) ═══
+
+    /// <summary>
+    /// Enable structured delegation via orchestrator_delegate_tasks tool call.
+    /// When false, falls back to text-based name parsing.
+    /// </summary>
+    public bool EnableStructuredDelegation { get; set; } = true;
+
+    /// <summary>
+    /// Enable direct addressing (@DevOps, @Developer, @Manager) bypassing Manager coordination.
+    /// </summary>
+    public bool EnableDirectAddressing { get; set; } = true;
+
+    /// <summary>
+    /// Enable composite inventory tool that calls both Platform MCP and Azure MCP.
+    /// </summary>
+    public bool EnableCompositeInventoryTool { get; set; } = true;
+
+    /// <summary>
+    /// Enable artifact-first behavior for large tool outputs.
+    /// </summary>
+    public bool EnableArtifactFirst { get; set; } = true;
+
+    /// <summary>
+    /// Enable tool usage enforcement: reject worker responses without tool calls when required.
+    /// </summary>
+    public bool EnableToolEnforcement { get; set; } = true;
+
+    // ═══ TOOL ENFORCEMENT SETTINGS ═══
+
+    /// <summary>
+    /// Max retries when a worker fails to use required tools (rejected + retry).
+    /// After this limit, the task is marked as failed.
+    /// </summary>
+    public int MaxMissingToolRetries { get; set; } = 2;
+
+    // ═══ ARTIFACT & CONTENT LIMITS ═══
+
+    /// <summary>
+    /// Threshold (in chars) above which tool results are stored as artifacts instead of inline.
+    /// </summary>
+    public int ToolInlineThresholdChars { get; set; } = 6000;
+
+    /// <summary>
+    /// Maximum chars for tool result inline in chat when artifact-first is disabled.
+    /// </summary>
+    public int MaxToolResultChars { get; set; } = 8000;
+
+    // ═══ INVENTORY SETTINGS ═══
+
+    /// <summary>
+    /// Maximum pages to fetch during inventory pagination (safety limit).
+    /// </summary>
+    public int MaxInventoryPages { get; set; } = 50;
+
+    /// <summary>
+    /// Page size for inventory tool calls (if supported by MCP).
+    /// </summary>
+    public int InventoryPageSize { get; set; } = 100;
 }
 
 public record AgentModelSettings

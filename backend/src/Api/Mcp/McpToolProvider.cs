@@ -636,7 +636,7 @@ public class McpToolProvider
             invokeAsync: async (args, ct) =>
             {
                 var argsJson = JsonSerializer.SerializeToElement(args ?? new Dictionary<string, object?>());
-                Log.Information("Invoking MCP tool {Tool} with args: {Args}", mcpTool.Name, argsJson.ToString());
+                Log.Information("Invoking MCP tool {Tool} with original args: {Args}", mcpTool.Name, argsJson.ToString());
 
                 // Approval policy check: block dangerous tools at runtime
                 if (ApprovalPolicy.RequiresApproval(fullName))
@@ -647,7 +647,27 @@ public class McpToolProvider
                            "Only after the user says APPROVED can this tool be called.";
                 }
 
-                // Retry with exponential backoff
+                // Step 1: Normalize arguments against schema
+                JsonElement normalizedArgs;
+                try
+                {
+                    normalizedArgs = McpArgumentNormalizer.NormalizeAndValidate(fullName, mcpTool.InputSchema, argsJson);
+                    if (!normalizedArgs.Equals(argsJson))
+                    {
+                        Log.Information("MCP tool {Tool}: arguments normalized. Before: {Before}, After: {After}",
+                            mcpTool.Name,
+                            argsJson.ToString().Length > 200 ? argsJson.ToString()[..200] + "..." : argsJson.ToString(),
+                            normalizedArgs.ToString().Length > 200 ? normalizedArgs.ToString()[..200] + "..." : normalizedArgs.ToString());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "MCP tool {Tool}: argument normalization failed, proceeding with original args", mcpTool.Name);
+                    normalizedArgs = argsJson;
+                }
+
+                // Step 2: Retry with exponential backoff + MCP error-aware repair
+                JsonElement currentArgs = normalizedArgs;
                 for (int attempt = 0; attempt <= MaxRetries; attempt++)
                 {
                     try
@@ -655,7 +675,32 @@ public class McpToolProvider
                         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                         cts.CancelAfter(TimeSpan.FromSeconds(PerToolTimeoutSeconds));
 
-                        var result = await InvokeToolAsync(serverSettings, mcpTool.Name, argsJson, cts.Token);
+                        var result = await InvokeToolAsync(serverSettings, mcpTool.Name, currentArgs, cts.Token);
+
+                        // Check if result is an MCP error that we can auto-repair
+                        if (result.TryGetProperty("error", out var errorObj) || 
+                            (result.TryGetProperty("content", out var contentArray) && 
+                             contentArray.ValueKind == JsonValueKind.Array &&
+                             contentArray.EnumerateArray().Any(c => c.TryGetProperty("text", out var t) && 
+                                                                      t.GetString()?.Contains("error", StringComparison.OrdinalIgnoreCase) == true)))
+                        {
+                            var repairStrategy = McpArgumentNormalizer.ParseErrorAndSuggestRepair(fullName, result);
+                            if (repairStrategy is not null && attempt < MaxRetries)
+                            {
+                                Log.Information("MCP tool {Tool}: detected repairable error on attempt {Attempt}. Repair: {Reason}",
+                                    mcpTool.Name, attempt + 1, repairStrategy.Reason);
+
+                                // Apply repair and retry - pass tool name for InferCommandWrapper
+                                currentArgs = McpArgumentNormalizer.ApplyRepair(repairStrategy, currentArgs, fullName);
+                                Log.Information("MCP tool {Tool}: retrying with repaired args: {Args}",
+                                    mcpTool.Name, currentArgs.ToString().Length > 200 ? currentArgs.ToString()[..200] + "..." : currentArgs.ToString());
+
+                                // Retry immediately (no backoff delay for format errors)
+                                continue;
+                            }
+                        }
+
+                        // Success or non-repairable error
                         var resultStr = FormatToolResult(result);
                         Log.Information("MCP tool {Tool} returned (attempt {Attempt}): {Result}",
                             mcpTool.Name, attempt + 1, resultStr.Length > 500 ? resultStr[..500] + "..." : resultStr);
@@ -688,12 +733,12 @@ public class McpToolProvider
                             return $"⚠️ Error calling tool '{mcpTool.Name}': {ex.Message}. Cannot verify this data point.";
                     }
 
-                    // Exponential backoff: 1s, 2s
+                    // Exponential backoff: 1s, 2s (for network/timeout errors, not format errors)
                     if (attempt < MaxRetries)
                         await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct);
                 }
 
-                return $"⚠️ Tool '{mcpTool.Name}' failed unexpectedly. Cannot verify this data point.";
+                return $"⚠️ Tool '{mcpTool.Name}' failed unexpectedly after {MaxRetries + 1} attempts. Cannot verify this data point.";
             });
     }
 
@@ -737,51 +782,60 @@ public class McpToolProvider
         {
             lines.Add(_azureCircuitOpen
                 ? "⚠️ Azure MCP: TEMPORARILY UNAVAILABLE (circuit breaker open). Read-only Azure tools may not work."
-                : $"✅ Azure MCP: Available ({_azureTools?.Count ?? 0} tools loaded)");
+                : $"✅ Azure MCP: Available ({_azureTools?.Count ?? 0} tools loaded) — resource listing, resource details, diagnostics");
         }
         else
         {
-            lines.Add("ℹ️ Azure MCP: Not configured (using mock data for demo)");
+            lines.Add("ℹ️ Azure MCP: Not configured (using mock data for demo) — resource listing, resource details");
         }
 
         if (!string.IsNullOrWhiteSpace(_settings.AzureDevOps.ServerUrl))
         {
             lines.Add(_adoCircuitOpen
                 ? "⚠️ Azure DevOps MCP: TEMPORARILY UNAVAILABLE (circuit breaker open). ADO tools may not work."
-                : $"✅ Azure DevOps MCP: Available ({_adoTools?.Count ?? 0} tools loaded)");
+                : $"✅ Azure DevOps MCP: Available ({_adoTools?.Count ?? 0} tools loaded) — pipelines, repos, work items");
         }
         else
         {
-            lines.Add("ℹ️ Azure DevOps MCP: Not configured (using mock data for demo)");
+            lines.Add("ℹ️ Azure DevOps MCP: Not configured (using mock data for demo) — pipelines, repos, work items");
         }
 
         if (!string.IsNullOrWhiteSpace(_settings.Platform.ServerUrl))
         {
             lines.Add(_platformCircuitOpen
                 ? "⚠️ Platform MCP: TEMPORARILY UNAVAILABLE (circuit breaker open). Platform tools may not work."
-                : $"✅ Platform MCP: Available ({_platformTools?.Count ?? 0} tools loaded)");
+                : $"✅ Platform MCP: Available ({_platformTools?.Count ?? 0} tools loaded) — ARG queries (comprehensive resource inventory), Container Apps, Key Vault, App Insights, Log Analytics");
         }
         else
         {
-            lines.Add("ℹ️ Platform MCP: Not configured (using mock data for demo)");
+            lines.Add("ℹ️ Platform MCP: Not configured (using mock data for demo) — ARG queries, Container Apps, Key Vault, App Insights");
         }
 
         if (!string.IsNullOrWhiteSpace(_settings.GitOps.ServerUrl))
         {
             lines.Add(_gitopsCircuitOpen
                 ? "⚠️ GitOps MCP: TEMPORARILY UNAVAILABLE (circuit breaker open). GitOps tools may not work."
-                : $"✅ GitOps MCP: Available ({_gitopsTools?.Count ?? 0} tools loaded)");
+                : $"✅ GitOps MCP: Available ({_gitopsTools?.Count ?? 0} tools loaded) — branches, commits, PRs, pipeline triggers");
         }
         else
         {
-            lines.Add("ℹ️ GitOps MCP: Not configured (using mock data for demo)");
+            lines.Add("ℹ️ GitOps MCP: Not configured (using mock data for demo) — branches, commits, PRs");
         }
+
+        lines.Add("");
+        lines.Add("NOTE: For comprehensive resource inventory, DevOps should use tools from BOTH Azure MCP and Platform MCP.");
 
         return string.Join("\n", lines);
     }
 
+    // Maximum characters for tool results to prevent context overflow
+    // Roughly 2000 tokens × 4 chars/token = 8000 chars
+    private const int MaxToolResultChars = 8000;
+
     private static string FormatToolResult(JsonElement result)
     {
+        string rawResult;
+
         if (result.TryGetProperty("content", out var content))
         {
             var parts = new List<string>();
@@ -790,10 +844,36 @@ public class McpToolProvider
                 if (item.TryGetProperty("text", out var text))
                     parts.Add(text.GetString() ?? "");
             }
-            return string.Join("\n", parts);
+            rawResult = string.Join("\n", parts);
+        }
+        else
+        {
+            rawResult = result.ToString();
         }
 
-        return result.ToString();
+        // Truncate large results to prevent context budget overflow
+        // This is critical: without truncation, large MCP results (e.g., listing many resources)
+        // can cause context_length_exceeded on the next LLM call
+        if (rawResult.Length > MaxToolResultChars)
+        {
+            var truncatedLength = MaxToolResultChars - 200; // Leave room for truncation notice
+            var truncated = rawResult[..truncatedLength];
+
+            // Try to truncate at a natural boundary (newline)
+            var lastNewline = truncated.LastIndexOf('\n');
+            if (lastNewline > truncatedLength / 2)
+            {
+                truncated = truncated[..lastNewline];
+            }
+
+            Log.Information("[MCP] Truncating large tool result from {OriginalLength} to {TruncatedLength} chars",
+                rawResult.Length, truncated.Length);
+
+            return truncated + $"\n\n[... result truncated from {rawResult.Length} to {truncated.Length} chars to fit context budget. " +
+                               "If you need more data, use more specific filters or query parameters.]";
+        }
+
+        return rawResult;
     }
 
     #endregion
@@ -858,9 +938,9 @@ public class McpToolProvider
         [
             CreateMockTool(
                 "platform_arg_query_resources",
-                "Execute Azure Resource Graph query. Supports KQL over all accessible resources.",
-                """{"type":"object","properties":{"query":{"type":"string","description":"KQL query to execute"},"subscription_id":{"type":"string","description":"Optional subscription ID to scope the query"}},"required":["query"]}""",
-                _ => """{"count": 0, "data": [], "note": "Mock: Platform MCP not connected"}"""),
+                "Execute Azure Resource Graph query. Supports KQL over all accessible resources. This is the MOST COMPREHENSIVE way to list ALL Azure resources.",
+                """{"type":"object","properties":{"query":{"type":"string","description":"KQL query to execute (e.g., 'resources | project name, type, location, resourceGroup, tags')"},"subscription_id":{"type":"string","description":"Optional subscription ID to scope the query"}},"required":["query"]}""",
+                MockPlatformArgQueryResources),
             CreateMockTool(
                 "platform_containerapp_list",
                 "List all Container Apps in a resource group.",
@@ -949,6 +1029,34 @@ public class McpToolProvider
             {"name": "rg-azureopscrew", "location": "westus2", "provisioningState": "Succeeded", "tags": {"project": "AzureOpsCrew", "hackathon": "2025"}},
             {"name": "NetworkWatcherRG", "location": "westus2", "provisioningState": "Succeeded"}
           ]
+        }
+        """;
+    }
+
+    private static string MockPlatformArgQueryResources(IDictionary<string, object?>? args)
+    {
+        // Platform MCP ARG query returns ALL resource types including those Azure MCP might miss
+        return """
+        {
+          "count": 15,
+          "data": [
+            {"name": "ca-azureopscrew-api", "type": "microsoft.app/containerapps", "location": "westus2", "resourceGroup": "rg-azureopscrew", "tags": {"project": "AzureOpsCrew"}},
+            {"name": "ca-azureopscrew-frontend", "type": "microsoft.app/containerapps", "location": "westus2", "resourceGroup": "rg-azureopscrew", "tags": {"project": "AzureOpsCrew"}},
+            {"name": "ca-azure-mcp-server", "type": "microsoft.app/containerapps", "location": "westus2", "resourceGroup": "rg-azureopscrew"},
+            {"name": "ca-azuredevops-mcp-server", "type": "microsoft.app/containerapps", "location": "westus2", "resourceGroup": "rg-azureopscrew"},
+            {"name": "cae-azureopscrew", "type": "microsoft.app/managedenvironments", "location": "westus2", "resourceGroup": "rg-azureopscrew"},
+            {"name": "cr-azureopscrew", "type": "microsoft.containerregistry/registries", "location": "westus2", "resourceGroup": "rg-azureopscrew"},
+            {"name": "kv-azureopscrew", "type": "microsoft.keyvault/vaults", "location": "westus2", "resourceGroup": "rg-azureopscrew"},
+            {"name": "log-azureopscrew", "type": "microsoft.operationalinsights/workspaces", "location": "westus2", "resourceGroup": "rg-azureopscrew"},
+            {"name": "appi-azureopscrew", "type": "microsoft.insights/components", "location": "westus2", "resourceGroup": "rg-azureopscrew"},
+            {"name": "swa-azureopscrew-portal", "type": "microsoft.web/staticsites", "location": "westus2", "resourceGroup": "rg-azureopscrew"},
+            {"name": "sql-azureopscrew", "type": "microsoft.sql/servers", "location": "westus2", "resourceGroup": "rg-azureopscrew"},
+            {"name": "sqldb-azureopscrew", "type": "microsoft.sql/servers/databases", "location": "westus2", "resourceGroup": "rg-azureopscrew"},
+            {"name": "vnet-azureopscrew", "type": "microsoft.network/virtualnetworks", "location": "westus2", "resourceGroup": "rg-azureopscrew"},
+            {"name": "nsg-azureopscrew", "type": "microsoft.network/networksecuritygroups", "location": "westus2", "resourceGroup": "rg-azureopscrew"},
+            {"name": "Application Insights Smart Detection", "type": "microsoft.insights/actiongroups", "location": "global", "resourceGroup": "rg-azureopscrew"}
+          ],
+          "subscriptionId": "00000000-0000-0000-0000-000000000000"
         }
         """;
     }

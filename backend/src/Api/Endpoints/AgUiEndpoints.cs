@@ -20,6 +20,7 @@ using Newtonsoft.Json;
 using Serilog;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -144,8 +145,19 @@ public static class ChannelAgUiEndpoints
             var jsonOptions = http.RequestServices.GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>();
             var jsonSerializerOptions = jsonOptions.Value.SerializerOptions;
 
-            var messages = input.Messages.AsChatMessages(jsonSerializerOptions);
+            var messages = input.Messages.AsChatMessages(jsonSerializerOptions).ToList();
             var clientTools = input.Tools?.AsAITools().ToList();
+
+            // Apply context budget management BEFORE creating agents
+            // This prevents context_length_exceeded by compacting message history
+            var budgetManager = new ContextBudgetManager();
+            var originalMessageCount = messages.Count;
+            messages = budgetManager.CompactMessages(messages);
+            if (messages.Count < originalMessageCount)
+            {
+                Log.Information("[ContextBudget] Compacted messages from {Original} to {Compacted} to fit budget",
+                    originalMessageCount, messages.Count);
+            }
 
             // 1) Load channel + participants
             var channel = await dbContext.Channels.SingleOrDefaultAsync(c => c.Id == channelId && c.ClientId == userId, cancellationToken);
@@ -197,6 +209,7 @@ public static class ChannelAgUiEndpoints
                     try
                     {
                         mcpTools = await mcpToolProvider.GetToolsForAgentAsync(a.ProviderAgentId, cancellationToken);
+                        Log.Information("[ContextBudget] Agent {Agent} has {ToolCount} tools assigned", a.Info.Name, mcpTools.Count);
                     }
                     catch (Exception ex)
                     {
@@ -208,6 +221,11 @@ public static class ChannelAgUiEndpoints
                     if (clientTools is not null) allTools.AddRange(clientTools);
                     allTools.AddRange(mcpTools);
 
+                    // Log tool schema budget estimate for this agent
+                    var toolSchemaTokens = budgetManager.EstimateToolSchemaTokens(allTools);
+                    Log.Information("[ContextBudget] Agent {Agent}: {ToolCount} tools, ~{TokenEstimate} tool schema tokens",
+                        a.Info.Name, allTools.Count, toolSchemaTokens);
+
                     agent = ChannelAgUiFactory.CreateChannelAgent(agentFactory, chatClient, a, allTools, input);
                 }
 
@@ -217,10 +235,42 @@ public static class ChannelAgUiEndpoints
             // Fallback: use first agent as manager if no "manager" role found
             managerAIAgent ??= internalAgents[0];
 
+            // Log final context budget estimate
+            var messageTokens = budgetManager.EstimateTokenCount(messages);
+            Log.Information("[ContextBudget] Final estimate: {MessageCount} messages (~{MessageTokens} tokens), {AgentCount} agents ready",
+                messages.Count, messageTokens, internalAgents.Count);
+
             // 3) Create run context for structured tracing
             var runContextRequest = input.Messages.LastOrDefault()?.Content ?? "(no message)";
             var runContext = new RunContext(input.RunId, input.ThreadId, channelId, runContextRequest);
             runContext.TransitionTo(RunStatus.Triaged, "Channel AG-UI request received");
+
+            // 3.1) Parse direct addressing (@DevOps, @Developer, @Manager)
+            if (orchSettings.EnableDirectAddressing)
+            {
+                var lastUserMessage = input.Messages.LastOrDefault()?.Content;
+                if (!string.IsNullOrEmpty(lastUserMessage))
+                {
+                    var (parsedAddress, cleanedMessage) = DirectAddressingHelper.Parse(lastUserMessage, agents.Select(a => a.Info.Name).ToList());
+                    if (parsedAddress.IsDirect)
+                    {
+                        runContext.SetDirectAddress(parsedAddress);
+                        Log.Information("[DirectAddress] User addressed @{Agent}: {Message}", 
+                            parsedAddress.AddressedTo, cleanedMessage);
+                        
+                        // Update the last message to remove the @ prefix for cleaner processing
+                        var lastMessage = messages.LastOrDefault();
+                        if (lastMessage != null && lastMessage.Role == ChatRole.User)
+                        {
+                            var idx = messages.IndexOf(lastMessage);
+                            messages[idx] = new ChatMessage(ChatRole.User, cleanedMessage)
+                            {
+                                AuthorName = lastMessage.AuthorName
+                            };
+                        }
+                    }
+                }
+            }
 
             // 4) Build workflow -> workflow agent (Multi-round Manager-first orchestration)
             var workflow = ChannelAgUiFactory.BuildWorkflow(internalAgents, managerAIAgent, orchSettings, runContext);
@@ -455,5 +505,49 @@ Always respond in the same language the human uses.
         };
 
         return chatClient.AsAIAgent(options);
+    }
+}
+
+/// <summary>
+/// Helper for parsing direct addressing syntax (@DevOps, @Developer, @Manager) from user messages.
+/// </summary>
+public static class DirectAddressingHelper
+{
+    // Match @AgentName at the start of the message or after whitespace
+    private static readonly Regex DirectAddressPattern = new(
+        @"^@(\w+)\s*,?\s*|(?<=\s)@(\w+)\s*,?\s*",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// Parse a user message for direct addressing.
+    /// Returns the DirectAddressing info and the cleaned message (without the @ prefix).
+    /// </summary>
+    public static (DirectAddressing Address, string CleanedMessage) Parse(string message, IReadOnlyList<string> agentNames)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return (new DirectAddressing(), message);
+
+        var match = DirectAddressPattern.Match(message);
+        if (!match.Success)
+            return (new DirectAddressing(), message);
+
+        // Get the matched agent name
+        var matchedName = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
+
+        // Find matching agent (case-insensitive)
+        var targetAgent = agentNames.FirstOrDefault(name =>
+            name.Equals(matchedName, StringComparison.OrdinalIgnoreCase));
+
+        if (targetAgent == null)
+            return (new DirectAddressing(), message);
+
+        // Clean the message by removing the @ prefix
+        var cleanedMessage = DirectAddressPattern.Replace(message, "", 1).Trim();
+
+        return (new DirectAddressing
+        {
+            AddressedTo = targetAgent,
+            CleanedMessage = cleanedMessage
+        }, cleanedMessage);
     }
 }
