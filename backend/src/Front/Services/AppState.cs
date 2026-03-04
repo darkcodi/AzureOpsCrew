@@ -95,11 +95,6 @@ public class AppState : IDisposable
             Channels.Add(channel);
         }
 
-        if (Channels.Any() && SelectedChannel == null)
-        {
-            SelectedChannel = Channels.First();
-        }
-
         _channelsLoaded = true;
         OnStateChanged();
     }
@@ -114,11 +109,6 @@ public class AppState : IDisposable
         foreach (var dm in dms)
         {
             Dms.Add(dm);
-        }
-
-        if (Dms.Any() && SelectedDm == null)
-        {
-            SelectedDm = Dms.First();
         }
 
         _dmsLoaded = true;
