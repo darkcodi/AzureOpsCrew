@@ -35,7 +35,7 @@ namespace AzureOpsCrew.Api.Endpoints
                     return Results.Conflict(new { error = "Username is already taken." });
 
                 var agentUsernameExists = await context.Agents
-                    .AnyAsync(a => a.Info.Username.ToLowerInvariant() == normalizedUsername, cancellationToken);
+                    .AnyAsync(a => a.Info.Username == normalizedUsername, cancellationToken);
 
                 if (agentUsernameExists)
                     return Results.Conflict(new { error = "Username is already taken." });
@@ -116,7 +116,7 @@ namespace AzureOpsCrew.Api.Endpoints
                         return Results.Conflict(new { error = "Username is already taken." });
 
                     var agentUsernameExists = await context.Agents
-                        .AnyAsync(a => a.Id != id && a.Info.Username.ToLowerInvariant() == normalizedUsername, cancellationToken);
+                        .AnyAsync(a => a.Id != id && a.Info.Username == normalizedUsername, cancellationToken);
 
                     if (agentUsernameExists)
                         return Results.Conflict(new { error = "Username is already taken." });

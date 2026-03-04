@@ -7,7 +7,7 @@ namespace AzureOpsCrew.Api.Endpoints.Dtos.Agents
     {
         [Required]
         [StringLength(30, MinimumLength = 2)]
-        [RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "Username must contain only letters and numbers.")]
+        [RegularExpression(@"^[a-z0-9]+$", ErrorMessage = "Username must contain only lowercase letters and numbers.")]
         public string Username { get; set; } = string.Empty;
 
         [Required]
