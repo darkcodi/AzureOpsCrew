@@ -37,11 +37,14 @@ services:
       sqlserver:
         condition: service_healthy
 
+  # Blazor WASM frontend (static files served by nginx).
+  # Dockerfile is in docker/ (not src/Front/) so VS Docker tooling
+  # doesn't match it to Front.csproj and won't override the entrypoint.
   frontend:
     image: ${DOCKER_REGISTRY-}frontend
     build:
       context: .
-      dockerfile: src/Front/Dockerfile
+      dockerfile: Dockerfile.frontend
     ports:
       - "8080:80"
     restart: on-failure
