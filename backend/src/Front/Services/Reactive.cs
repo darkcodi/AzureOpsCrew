@@ -51,14 +51,6 @@ public class Reactive<T>
             Log.Error("Error in Reactive OnChange event: {Message}", e.Message);
         }
     }
-
-    private class DisposableAction(Action action) : IDisposable
-    {
-        public void Dispose()
-        {
-            action();
-        }
-    }
 }
 
 public class ReactiveList<T> : IList<T>
