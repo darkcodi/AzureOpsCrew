@@ -6,13 +6,13 @@
         @foreach (var dm in AppState.Dms)
         {
             <div class="channels-item @(IsDmSelected(dm) ? "active" : "")" @onclick="() => SelectDm(dm)">
-                @if (dm.OtherAgent != null)
+                @if (GetAgent(dm) != null)
                 {
                     <span class="agent-icon">🤖</span>
                 }
                 else
                 {
-                    <span class="dm-icon">@GetInitials(dm.OtherUser?.Username ?? "User")</span>
+                    <span class="dm-icon">@GetInitials("User")</span>
                 }
                 <span class="dm-name">@GetDmDisplayName(dm)</span>
             </div>
@@ -46,9 +46,22 @@
         AppState.SelectedDm = dm;
     }
 
+    private AgentDto? GetAgent(DmChannelDto dm)
+    {
+        var agentId = dm.Agent1Id ?? dm.Agent2Id;
+        if (!agentId.HasValue)
+            return null;
+
+        return AppState.Agents.FirstOrDefault(a => a.Id == agentId.Value);
+    }
+
     private string GetDmDisplayName(DmChannelDto dm)
     {
-        return dm.OtherAgent?.Username ?? dm.OtherUser?.Username ?? "Unknown";
+        var agent = GetAgent(dm);
+        if (agent != null && !string.IsNullOrWhiteSpace(agent.Username))
+            return agent.Username;
+
+        return "Unknown";
     }
 
     private string GetInitials(string username)

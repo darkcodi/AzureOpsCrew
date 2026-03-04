@@ -4,6 +4,7 @@
 @inject AppState AppState
 @implements IDisposable
 @inject DmService DmService
+@inject AgentService AgentService
 
 <MainLayout>
     <LeftSidebar>
@@ -40,6 +41,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await AppState.LoadAgents(AgentService);
         await AppState.LoadDms(DmService);
         SetDmFromRoute();
         _appStateSubscription = AppState.SubscribeCurrentUser(OnStateChanged)
@@ -89,10 +91,26 @@
 
         ChatMessageDto? newMessage = null;
 
-        if (dm.OtherAgent != null)
-            newMessage = await DmService.PostAgentDmMessageAsync(dm.OtherAgent.Id, text);
-        else if (dm.OtherUser != null)
-            newMessage = await DmService.PostUserDmMessageAsync(dm.OtherUser.Id, text);
+        // Prefer agent-based DMs when an agent participant is present.
+        var agentId = dm.Agent1Id ?? dm.Agent2Id;
+        if (agentId.HasValue)
+        {
+            newMessage = await DmService.PostAgentDmMessageAsync(agentId.Value, text);
+        }
+        else if (AppState.CurrentUser is { } currentUser)
+        {
+            // Fallback path for potential user-to-user DMs: find the other user id.
+            Guid? otherUserId = null;
+            if (dm.User1Id == currentUser.Id)
+                otherUserId = dm.User2Id;
+            else if (dm.User2Id == currentUser.Id)
+                otherUserId = dm.User1Id;
+
+            if (otherUserId.HasValue)
+            {
+                newMessage = await DmService.PostUserDmMessageAsync(otherUserId.Value, text);
+            }
+        }
 
         if (newMessage != null)
         {
@@ -118,8 +136,18 @@
 
     private string GetDmName()
     {
-        return AppState.SelectedDm?.OtherAgent?.Username
-               ?? AppState.SelectedDm?.OtherUser?.Username
-               ?? "Unknown";
+        var dm = AppState.SelectedDm;
+        if (dm == null)
+            return "Unknown";
+
+        var agentId = dm.Agent1Id ?? dm.Agent2Id;
+        if (agentId.HasValue)
+        {
+            var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentId.Value);
+            if (agent != null && !string.IsNullOrWhiteSpace(agent.Username))
+                return agent.Username;
+        }
+
+        return "Unknown";
     }
 }
