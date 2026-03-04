@@ -11,7 +11,7 @@ import { StartConversationEmpty } from "@/components/start-conversation-empty"
 import { DeploymentCard } from "@/components/deployment-card"
 import { MyIpCard, type IpInfo } from "@/components/my-ip-card"
 import { BackendToolCard } from "@/components/backend-tool-card"
-import { DmEventsClient, type MessageAddedEvent, type AgentThinkingStartEvent, type AgentThinkingEndEvent, type TypingIndicatorEvent, type AgentStatusEvent } from "@/lib/signalr-client"
+import { DmEventsClient, type MessageAddedEvent, type AgentThinkingStartEvent, type AgentThinkingEndEvent, type AgentTextContentEvent, type TypingIndicatorEvent, type AgentStatusEvent } from "@/lib/signalr-client"
 
 const KNOWN_FE_TOOL_NAMES = new Set(["showMyIp", "showDeployment"])
 const DM_EMPTY_SUBTITLE = "Send a message to get started."
@@ -219,11 +219,14 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
         if (currentDmIdRef.current !== activeDMId) return
         if (res.ok) {
           const channel = await res.json()
+          console.log(`[DM] Ensured DM channel: ${channel.id} for agent ${activeDMId}`)
           setDmChannelId(channel.id)
+        } else {
+          console.error(`[DM] Failed to ensure DM channel for agent ${activeDMId}: HTTP ${res.status}`)
         }
       })
       .catch((err) => {
-        console.error("Failed to ensure DM channel:", err)
+        console.error("[DM] Failed to ensure DM channel:", err)
       })
   }, [activeDMId])
 
@@ -308,12 +311,22 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
         })
       })
 
-      client.onAgentThinkingStart(() => {
-        // Could show thinking indicator
+      client.onAgentThinkingStart((event: AgentThinkingStartEvent) => {
+        console.log(`[DM] Agent ${event.agentName} started thinking`)
+        setTypingAgentIds(prev => new Set(prev).add(event.agentId))
       })
 
-      client.onAgentThinkingEnd(() => {
-        // Could hide thinking indicator
+      client.onAgentThinkingEnd((event: AgentThinkingEndEvent) => {
+        console.log(`[DM] Agent ${event.agentName} stopped thinking`)
+        setTypingAgentIds(prev => {
+          const next = new Set(prev)
+          next.delete(event.agentId)
+          return next
+        })
+      })
+
+      client.onAgentTextContent((event: AgentTextContentEvent) => {
+        console.log(`[DM] Agent ${event.agentName} text content: ${event.content.substring(0, 50)}...`)
       })
 
       client.onTypingIndicator((event) => {
@@ -611,6 +624,23 @@ export function ManualChatContainer({ activeDMId, agents }: ManualChatContainerP
           </div>
         )}
       </div>
+
+      {/* Typing indicator */}
+      {typingAgentIds.size > 0 && (
+        <div
+          className="flex items-center gap-2 px-4 py-1.5 text-xs"
+          style={{ color: "hsl(214, 5%, 55%)" }}
+        >
+          <span className="flex gap-0.5">
+            <span className="animate-bounce" style={{ animationDelay: "0ms" }}>.</span>
+            <span className="animate-bounce" style={{ animationDelay: "150ms" }}>.</span>
+            <span className="animate-bounce" style={{ animationDelay: "300ms" }}>.</span>
+          </span>
+          <span>
+            {selectedAgent?.name ?? "Agent"} is typing...
+          </span>
+        </div>
+      )}
 
       {/* Input area */}
       <MessageInput placeholder={placeholder} onSend={sendMessage} />

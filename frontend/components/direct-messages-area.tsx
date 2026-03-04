@@ -65,8 +65,8 @@ export function DirectMessagesArea({
         )}
       </header>
 
-      {/* Manual chat container - NO CopilotKit */}
-      <ManualChatContainer activeDMId={activeDMId} agents={agents} />
+      {/* Manual chat container with key for clean remount on agent switch */}
+      <ManualChatContainer key={activeDMId} activeDMId={activeDMId} agents={agents} />
     </div>
   )
 }
