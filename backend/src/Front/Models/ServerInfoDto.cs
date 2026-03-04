@@ -14,7 +14,7 @@ public class ServerInfoDto
     [
         new()
         {
-            Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
+            Id = Guid.Empty,
             Name = "Main",
             Icon = "M",
             ChannelIds = []

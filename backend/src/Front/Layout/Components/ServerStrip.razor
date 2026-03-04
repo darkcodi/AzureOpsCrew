@@ -14,7 +14,7 @@
 
         <div class="server-separator"></div>
 
-        @foreach (var server in ChatState.Servers.Where(s => s.Id != Guid.Parse("00000000-0000-0000-0000-000000000001")))
+        @foreach (var server in ChatState.Servers)
         {
             <div class="server-icon @(IsServerSelected(server) ? "active" : "")" @onclick="() => NavigateToServer(server)" title="@server.Name">
                 @server.Icon
