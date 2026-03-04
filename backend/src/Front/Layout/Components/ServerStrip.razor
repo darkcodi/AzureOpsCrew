@@ -1,4 +1,5 @@
 @inject AppState AppState
+@implements IDisposable
 @inject NavigationManager Navigation
 @inject AuthState AuthState
 
@@ -49,6 +50,23 @@
 </div>
 
 @code {
+    private IDisposable? _appStateSubscription;
+
+    protected override void OnInitialized()
+    {
+        _appStateSubscription = AppState.SubscribeServers(OnStateChanged);
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _appStateSubscription?.Dispose();
+    }
+
     private bool IsDmSelected()
     {
         var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath;

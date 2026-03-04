@@ -1,4 +1,5 @@
 @inject AppState AppState
+@implements IDisposable
 
 <div class="user-panel">
     <div class="user-avatar">@GetUserInitials()</div>
@@ -14,6 +15,23 @@
 </div>
 
 @code {
+    private IDisposable? _appStateSubscription;
+
+    protected override void OnInitialized()
+    {
+        _appStateSubscription = AppState.SubscribeCurrentUser(OnStateChanged);
+    }
+
+    private async void OnStateChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _appStateSubscription?.Dispose();
+    }
+
     private string GetUserInitials()
     {
         var username = GetUserName();
