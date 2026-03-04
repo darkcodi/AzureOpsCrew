@@ -230,7 +230,7 @@
         {
             var ok = await ChannelService.AddAgentToChannelAsync(AppState.SelectedChannel.Id, agentId);
             if (ok)
-                await AppState.RefreshChannelsAsync(ChannelService);
+                await AppState.LoadChannels(ChannelService, forceReload: true);
         }
         finally
         {

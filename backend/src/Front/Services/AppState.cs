@@ -5,236 +5,173 @@ namespace Front.Services;
 /// <summary>
 /// Centralized state management for the chat application.
 /// </summary>
-public class AppState
+public class AppState : IDisposable
 {
-    private UserDto? _currentUser;
-    private ServerInfoDto? _selectedServer = ServerInfoDto.GetDefaultServers().LastOrDefault();
-    private ChannelDto? _selectedChannel = null;
-    private DmChannelDto? _selectedDm;
-    private List<ServerInfoDto> _servers = ServerInfoDto.GetDefaultServers();
-    private List<ChannelDto> _channels = [];
-    private bool _channelsLoaded = false;
-    private List<DmChannelDto> _dms = [];
-    private bool _dmsLoaded = false;
-    private List<AgentDto> _agents = [];
-    private Dictionary<Guid, List<ChatMessageDto>> _channelMessages = [];
-    private Dictionary<Guid, List<ChatMessageDto>> _dmMessages = [];
-    private Dictionary<Guid, AgentDto> _typingAgents = [];
+    public AppState()
+    {
+        _subscriptions =
+        [
+            SubscribeCurrentUser(OnStateChanged),
+            SubscribeSelectedServer(OnStateChanged),
+            SubscribeSelectedChannel(OnStateChanged),
+            SubscribeSelectedDm(OnStateChanged),
+            SubscribeServers(OnStateChanged),
+            SubscribeChannels(OnStateChanged),
+            SubscribeDms(OnStateChanged),
+            SubscribeAgents(OnStateChanged)
+        ];
+    }
 
     // Current user
+    private readonly Reactive<UserDto?> _currentUser = new();
     public UserDto? CurrentUser
     {
-        get => _currentUser;
-        set
-        {
-            _currentUser = value;
-            OnStateChanged();
-        }
+        get => _currentUser.Value;
+        set => _currentUser.Value = value;
     }
+    public IDisposable SubscribeCurrentUser(Action handler) => _currentUser.Subscribe(handler);
 
     // Server selection
+    private readonly Reactive<ServerInfoDto?> _selectedServer = new();
     public ServerInfoDto? SelectedServer
     {
-        get => _selectedServer;
-        set
-        {
-            _selectedServer = value;
-            OnStateChanged();
-        }
+        get => _selectedServer.Value;
+        set => _selectedServer.Value = value;
     }
+    public IDisposable SubscribeSelectedServer(Action handler) => _selectedServer.Subscribe(handler);
 
-    // Channel/DM selection
+    // Channel selection
+    private readonly Reactive<ChannelDto?> _selectedChannel = new();
     public ChannelDto? SelectedChannel
     {
-        get => _selectedChannel;
-        set
-        {
-            _selectedChannel = value;
-            _selectedDm = null;
-            OnStateChanged();
-        }
+        get => _selectedChannel.Value;
+        set => _selectedChannel.Value = value;
     }
+    public IDisposable SubscribeSelectedChannel(Action handler) => _selectedChannel.Subscribe(handler);
 
+    // DM selection
+    private readonly Reactive<DmChannelDto?> _selectedDm = new();
     public DmChannelDto? SelectedDm
     {
-        get => _selectedDm;
-        set
-        {
-            _selectedDm = value;
-            _selectedChannel = null;
-            OnStateChanged();
-        }
+        get => _selectedDm.Value;
+        set => _selectedDm.Value = value;
     }
+    public IDisposable SubscribeSelectedDm(Action handler) => _selectedDm.Subscribe(handler);
 
-    // Data collections
-    public List<ServerInfoDto> Servers
-    {
-        get => _servers;
-        set
-        {
-            _servers = value;
-            OnStateChanged();
-        }
-    }
+    // Servers list
+    public readonly ReactiveList<ServerInfoDto> Servers = new(ServerInfoDto.GetDefaultServers());
+    public IDisposable SubscribeServers(Action handler) => Servers.Subscribe(handler);
 
-    public List<ChannelDto> Channels
-    {
-        get => _channels;
-        set
-        {
-            _channels = value;
-            OnStateChanged();
-        }
-    }
+    // Channels list
+    public readonly ReactiveList<ChannelDto> Channels = new();
+    public IDisposable SubscribeChannels(Action handler) => Channels.Subscribe(handler);
+    private bool _channelsLoaded = false;
 
-    public List<DmChannelDto> Dms
-    {
-        get => _dms;
-        set
-        {
-            _dms = value;
-            OnStateChanged();
-        }
-    }
+    // DMs list
+    public readonly ReactiveList<DmChannelDto> Dms = new();
+    public IDisposable SubscribeDms(Action handler) => Dms.Subscribe(handler);
+    private bool _dmsLoaded = false;
 
-    public List<AgentDto> Agents
-    {
-        get => _agents;
-        set
-        {
-            _agents = value;
-            OnStateChanged();
-        }
-    }
+    // Agents list
+    public readonly ReactiveList<AgentDto> Agents = new();
+    public IDisposable SubscribeAgents(Action handler) => Agents.Subscribe(handler);
+    private bool _agentsLoaded = false;
 
     // Event for state changes
+    private List<IDisposable> _subscriptions = new();
     public event Action? OnChange;
 
     private void OnStateChanged() => OnChange?.Invoke();
 
-    // Messages management
-    public List<ChatMessageDto> GetMessages(Guid channelIdOrDmId, bool isDm = false)
-    {
-        var key = isDm ? channelIdOrDmId : channelIdOrDmId;
-        var dict = isDm ? _dmMessages : _channelMessages;
-
-        if (!dict.ContainsKey(key))
-        {
-            dict[key] = [];
-        }
-
-        return dict[key];
-    }
-
-    public void SetMessages(Guid channelIdOrDmId, List<ChatMessageDto> messages, bool isDm = false)
-    {
-        var dict = isDm ? _dmMessages : _channelMessages;
-        dict[channelIdOrDmId] = messages;
-        OnStateChanged();
-    }
-
-    public void AddMessage(Guid channelIdOrDmId, ChatMessageDto message, bool isDm = false)
-    {
-        var dict = isDm ? _dmMessages : _channelMessages;
-
-        if (!dict.ContainsKey(channelIdOrDmId))
-        {
-            dict[channelIdOrDmId] = [];
-        }
-
-        dict[channelIdOrDmId].Add(message);
-        OnStateChanged();
-    }
-
-    public void UpdateAgentTyping(Guid agentId, AgentDto agent, bool isTyping)
-    {
-        if (isTyping)
-        {
-            _typingAgents[agentId] = agent;
-        }
-        else
-        {
-            _typingAgents.Remove(agentId);
-        }
-        OnStateChanged();
-    }
-
-    public List<AgentDto> GetTypingAgents() => _typingAgents.Values.ToList();
 
     // Get visible channels for selected server
-    public List<ChannelDto> GetVisibleChannels()
+    public IEnumerable<ChannelDto> GetVisibleChannels()
     {
-        if (_selectedServer == null) return [];
+        if (SelectedServer == null) return [];
 
         // For now, return all channels
         // TODO: Filter by server when backend supports servers
-        return _channels;
+        return Channels;
     }
 
     // Get agents for current channel
     public List<AgentDto> GetChannelAgents()
     {
-        if (_selectedChannel == null) return [];
+        if (SelectedChannel == null) return [];
 
-        var agentIds = _selectedChannel.AgentIds.Select(id => Guid.TryParse(id, out var guid) ? guid : (Guid?)null)
+        var agentIds = SelectedChannel.AgentIds.Select(id => Guid.TryParse(id, out var guid) ? guid : (Guid?)null)
                                                   .Where(g => g.HasValue)
                                                   .Select(g => g!.Value)
                                                   .ToHashSet();
 
-        return _agents.Where(a => agentIds.Contains(a.Id)).ToList();
+        return Agents.Where(a => agentIds.Contains(a.Id)).ToList();
     }
 
     // Get online users (placeholder for now)
     public List<UserDto> GetOnlineUsers() => []; // TODO: Implement when presence is available
 
-    // Initialize channels from backend
-    public async Task LoadChannels(ChannelService channelService)
+    // Load channels from backend
+    public async Task LoadChannels(ChannelService channelService, bool forceReload = false)
     {
-        if (_channelsLoaded) return;
+        if (_channelsLoaded && !forceReload) return;
 
         var channels = await channelService.GetChannelsAsync();
-        _channels = channels;
-
-        if (_channels.Any() && _selectedChannel == null)
+        Channels.Clear();
+        foreach (var channel in channels)
         {
-            _selectedChannel = _channels.First();
+            Channels.Add(channel);
+        }
+
+        if (Channels.Any() && SelectedChannel == null)
+        {
+            SelectedChannel = Channels.First();
         }
 
         _channelsLoaded = true;
         OnStateChanged();
     }
 
-    /// <summary>
-    /// Reload channels from the API (e.g. after creating a new channel).
-    /// </summary>
-    public async Task RefreshChannelsAsync(ChannelService channelService)
+    // Load DMs from backend
+    public async Task LoadDms(DmService dmService, bool forceReload = false)
     {
-        var selectedId = _selectedChannel?.Id;
-        _channelsLoaded = false;
-        await LoadChannels(channelService);
-        if (selectedId.HasValue && _channels.Count > 0)
-        {
-            var found = _channels.FirstOrDefault(c => c.Id == selectedId.Value);
-            if (found != null)
-                _selectedChannel = found;
-        }
-        OnStateChanged();
-    }
-
-    // Initialize DMs from backend
-    public async Task LoadDms(DmService dmService)
-    {
-        if (_dmsLoaded) return;
+        if (_dmsLoaded && !forceReload) return;
 
         var dms = await dmService.GetDmsAsync();
-        _dms = dms;
-
-        if (_dms.Any())
+        Dms.Clear();
+        foreach (var dm in dms)
         {
-            _selectedDm = _dms.First();
+            Dms.Add(dm);
+        }
+
+        if (Dms.Any() && SelectedDm == null)
+        {
+            SelectedDm = Dms.First();
         }
 
         _dmsLoaded = true;
         OnStateChanged();
+    }
+
+    public async Task LoadAgents(AgentService agentService, bool forceReload = false)
+    {
+        if (_agentsLoaded && !forceReload) return;
+
+        var agents = await agentService.GetAgentsAsync();
+        Agents.Clear();
+        foreach (var agent in agents)
+        {
+            Agents.Add(agent);
+        }
+
+        _agentsLoaded = true;
+        OnStateChanged();
+    }
+
+    public void Dispose()
+    {
+        foreach (var sub in _subscriptions)
+        {
+            sub.Dispose();
+        }
     }
 }

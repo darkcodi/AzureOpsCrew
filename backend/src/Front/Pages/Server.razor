@@ -14,7 +14,7 @@
     <MainArea>
         <ChatArea Messages="messages"
                   CurrentUserId="AppState.CurrentUser?.Id"
-                  TypingAgents="AppState.GetTypingAgents()"
+                  TypingAgents="[]"
                   ShowInput="AppState.SelectedChannel != null"
                   Placeholder="@(AppState.SelectedChannel != null ? $"Message #{AppState.SelectedChannel.Name}" : "")"
                   EmptyIcon="@(AppState.SelectedChannel != null ? "#" : "👋")"
@@ -40,7 +40,7 @@
     {
         SetServerFromRoute();
         await AppState.LoadChannels(ChannelService);
-        AppState.Agents = await AgentService.GetAgentsAsync();
+        await AppState.LoadAgents(AgentService);
         AppState.OnChange += OnStateChanged;
     }
 
@@ -96,7 +96,7 @@
         var created = await ChannelService.CreateChannelAsync(name.Trim(), null, []);
         if (created)
         {
-            await AppState.RefreshChannelsAsync(ChannelService);
+            await AppState.LoadChannels(ChannelService, forceReload: true);
         }
     }
 
