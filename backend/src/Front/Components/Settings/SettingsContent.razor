@@ -258,15 +258,15 @@
             _ => null,
         };
 
-    private static string GetApiKeyDescription(string? providerType) =>
+    private static (string Text, string? Url, string? LinkText) GetApiKeyDescription(string? providerType) =>
         providerType switch
         {
-            "OpenRouter" => "Get your API key at openrouter.ai/settings/keys",
-            "OpenAI" => "Get your API key at platform.openai.com/api-keys",
-            "Anthropic" => "Get your API key at console.anthropic.com",
-            "Ollama (Local)" => "No API key needed for local use.",
-            "AzureFoundry" => "Get your API key from your Azure OpenAI resource in the Azure Portal.",
-            _ => "",
+            "OpenRouter" => ("Get your API key at ", "https://openrouter.ai/settings/keys", "openrouter.ai/settings/keys"),
+            "OpenAI" => ("Get your API key at ", "https://platform.openai.com/api-keys", "platform.openai.com/api-keys"),
+            "Anthropic" => ("Get your API key at ", "https://console.anthropic.com", "console.anthropic.com"),
+            "Ollama (Local)" => ("No API key needed for local use.", null, null),
+            "AzureFoundry" => ("Get your API key from your Azure OpenAI resource in the Azure Portal.", null, null),
+            _ => ("", null, null),
         };
 
     private static string GetApiKeyLabel(Provider p)
@@ -382,7 +382,14 @@
                                 @((MarkupString)(_showApiKey ? SvgEyeOff : SvgEye))
                             </button>
                         </div>
-                        <p class="form-description">@GetApiKeyDescription(providerType)</p>
+                        <p class="form-description">
+                            @{ var apiKeyDesc = GetApiKeyDescription(providerType); }
+                            @apiKeyDesc.Text
+                            @if (apiKeyDesc.Url != null && apiKeyDesc.LinkText != null)
+                            {
+                                <a href="@apiKeyDesc.Url" target="_blank" rel="noopener noreferrer" class="description-link">@apiKeyDesc.LinkText</a>
+                            }
+                        </p>
                     </div>
 
                     @* Base URL *@
