@@ -1,7 +1,7 @@
 @inject IJSRuntime JS
 
 <div class="chat-area">
-    <div class="messages-container" @ref="messagesContainer">
+    <div class="messages-container" @ref="_messagesContainer">
         @if (Messages.Count == 0)
         {
             <div class="no-messages">
@@ -31,10 +31,10 @@
                 <input type="text"
                        class="message-input"
                        placeholder="@Placeholder"
-                       @bind="messageText"
+                       @bind="_messageText"
                        @bind:event="oninput"
                        @onkeypress="HandleKeyPress" />
-                <button class="send-button" disabled="@string.IsNullOrEmpty(messageText)" @onclick="SendMessage">
+                <button class="send-button" disabled="@string.IsNullOrEmpty(_messageText)" @onclick="SendMessage">
                     ➤
                 </button>
             </div>
@@ -43,10 +43,6 @@
 </div>
 
 @code {
-    private ElementReference messagesContainer;
-    private string messageText = string.Empty;
-    private int lastMessageCount;
-
     [Parameter] public List<ChatMessageDto> Messages { get; set; } = [];
     [Parameter] public EventCallback<string> OnSendMessage { get; set; }
     [Parameter] public Guid? CurrentUserId { get; set; }
@@ -57,11 +53,15 @@
     [Parameter] public string EmptyTitle { get; set; } = "No messages yet";
     [Parameter] public string EmptySubtitle { get; set; } = "Be the first to send a message!";
 
+    private ElementReference _messagesContainer;
+    private string _messageText = string.Empty;
+    private int _lastMessageCount;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender || Messages.Count != lastMessageCount)
+        if (firstRender || Messages.Count != _lastMessageCount)
         {
-            lastMessageCount = Messages.Count;
+            _lastMessageCount = Messages.Count;
             await ScrollToBottomAsync();
         }
     }
@@ -95,16 +95,16 @@
 
     private async Task SendMessage()
     {
-        if (string.IsNullOrWhiteSpace(messageText))
+        if (string.IsNullOrWhiteSpace(_messageText))
             return;
 
-        var text = messageText;
-        messageText = string.Empty;
+        var text = _messageText;
+        _messageText = string.Empty;
         await OnSendMessage.InvokeAsync(text);
     }
 
     private async Task ScrollToBottomAsync()
     {
-        await JS.InvokeVoidAsync("scrollToBottom", messagesContainer);
+        await JS.InvokeVoidAsync("scrollToBottom", _messagesContainer);
     }
 }
