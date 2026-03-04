@@ -35,8 +35,9 @@
     [Parameter]
     public string? DmId { get; set; }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        await ChatState.LoadDms(DmService);
         SetDmFromRoute();
         ChatState.OnChange += OnStateChanged;
     }

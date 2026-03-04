@@ -15,6 +15,7 @@ public class ChatState
     private List<ChannelDto> _channels = [];
     private bool _channelsLoaded = false;
     private List<DmChannelDto> _dms = [];
+    private bool _dmsLoaded = false;
     private List<AgentDto> _agents = [];
     private Dictionary<Guid, List<ChatMessageDto>> _channelMessages = [];
     private Dictionary<Guid, List<ChatMessageDto>> _dmMessages = [];
@@ -200,6 +201,23 @@ public class ChatState
         }
 
         _channelsLoaded = true;
+        OnStateChanged();
+    }
+
+    // Initialize DMs from backend
+    public async Task LoadDms(DmService dmService)
+    {
+        if (_dmsLoaded) return;
+
+        var dms = await dmService.GetDmsAsync();
+        _dms = dms;
+
+        if (_dms.Any())
+        {
+            _selectedDm = _dms.First();
+        }
+
+        _dmsLoaded = true;
         OnStateChanged();
     }
 }
