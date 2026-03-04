@@ -1,9 +1,11 @@
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints.Dtos.Agents;
+using AzureOpsCrew.Api.Mcp;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace AzureOpsCrew.Api.Endpoints
 {
@@ -54,6 +56,7 @@ namespace AzureOpsCrew.Api.Endpoints
             group.MapGet("", async (
                 HttpContext httpContext,
                 AzureOpsCrewContext context,
+                McpToolProvider mcpToolProvider,
                 CancellationToken cancellationToken) =>
             {
                 var userId = httpContext.User.GetRequiredUserId();
@@ -63,6 +66,12 @@ namespace AzureOpsCrew.Api.Endpoints
                     .OrderBy(a => a.DateCreated)
                     .ToListAsync(cancellationToken);
 
+                // Populate tools for each agent based on their role
+                foreach (var agent in agents)
+                {
+                    await PopulateAgentToolsAsync(agent, mcpToolProvider, cancellationToken);
+                }
+
                 return Results.Ok(agents);
             })
             .Produces<Agent[]>(StatusCodes.Status200OK);
@@ -71,6 +80,7 @@ namespace AzureOpsCrew.Api.Endpoints
                 Guid id,
                 HttpContext httpContext,
                 AzureOpsCrewContext context,
+                McpToolProvider mcpToolProvider,
                 CancellationToken cancellationToken) =>
             {
                 var userId = httpContext.User.GetRequiredUserId();
@@ -78,7 +88,13 @@ namespace AzureOpsCrew.Api.Endpoints
                 var found = await context.Set<Agent>()
                     .SingleOrDefaultAsync(a => a.Id == id && a.ClientId == userId, cancellationToken);
 
-                return found is null ? Results.NotFound() : Results.Ok(found);
+                if (found is null)
+                    return Results.NotFound();
+
+                // Populate tools for the agent
+                await PopulateAgentToolsAsync(found, mcpToolProvider, cancellationToken);
+
+                return Results.Ok(found);
             })
             .Produces<Agent>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
@@ -150,6 +166,39 @@ namespace AzureOpsCrew.Api.Endpoints
             })
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound);
+        }
+
+        /// <summary>
+        /// Populate agent's AvailableTools based on their role by loading from McpToolProvider
+        /// </summary>
+        private static async Task PopulateAgentToolsAsync(
+            Agent agent,
+            McpToolProvider mcpToolProvider,
+            CancellationToken ct)
+        {
+            try
+            {
+                var tools = await mcpToolProvider.GetToolsForAgentAsync(
+                    agent.ProviderAgentId ?? "developer", ct);
+
+                agent.Info.AvailableTools = tools
+                    .Select(t => new AgentTool
+                    {
+                        Name = t.Name,
+                        Description = t.Description ?? "No description"
+                    })
+                    .ToArray();
+
+                Log.Information("Populated {Count} tools for agent {AgentName} (role: {Role})",
+                    agent.Info.AvailableTools.Length,
+                    agent.Info.Name,
+                    agent.ProviderAgentId);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to populate tools for agent {AgentName}", agent.Info.Name);
+                agent.Info.AvailableTools = Array.Empty<AgentTool>();
+            }
         }
     }
 }

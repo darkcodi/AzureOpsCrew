@@ -80,6 +80,8 @@ try
         // JWT & OpenAI mappings from .env (SCREAMING_SNAKE_CASE → .NET config paths)
         MapEnv("JWT_SIGNING_KEY", "Jwt:SigningKey");
         MapEnv("OPENAI_API_KEY", "OpenAI:ApiKey");
+        MapEnv("ANTHROPIC_API_KEY", "Anthropic:ApiKey");
+        MapEnv("SEEDING_ENABLED", "Seeding:IsEnabled");
 
         if (mcpOverrides.Count > 0)
             config.AddInMemoryCollection(mcpOverrides);

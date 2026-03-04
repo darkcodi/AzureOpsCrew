@@ -95,7 +95,25 @@ Each task should specify: assignee, intent, goal, requires_tools, required_tools
             {
                 try
                 {
-                    var request = JsonSerializer.Deserialize<DelegationRequest>(tasksJson);
+                    // Claude may return escaped JSON string - try to parse it first
+                    string jsonToDeserialize = tasksJson;
+                    
+                    // Check if input is an escaped JSON string (starts with escaped quote or backslash)
+                    if (tasksJson.StartsWith("\\") || tasksJson.Contains("\\\""))
+                    {
+                        // Try to parse as JsonDocument first to unescape
+                        try
+                        {
+                            using var doc = JsonDocument.Parse($"\"{tasksJson}\"");
+                            jsonToDeserialize = doc.RootElement.GetString() ?? tasksJson;
+                        }
+                        catch
+                        {
+                            // If that fails, just use original string
+                        }
+                    }
+                    
+                    var request = JsonSerializer.Deserialize<DelegationRequest>(jsonToDeserialize);
                     if (request?.Tasks == null || request.Tasks.Count == 0)
                     {
                         return JsonSerializer.Serialize(new { error = "No tasks provided in delegation request" });

@@ -59,6 +59,12 @@ public sealed class Provider
         DateModified = DateTime.UtcNow;
     }
 
+    public void SetApiKey(string apiKey)
+    {
+        ApiKey = apiKey;
+        DateModified = DateTime.UtcNow;
+    }
+
     public void SetModelsCount(int count)
     {
         ModelsCount = count;

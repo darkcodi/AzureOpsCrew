@@ -39,6 +39,7 @@ done < .env
 # ─── 5. Маппинг в .NET формат (Секция__Ключ) ────────────────
 export Jwt__SigningKey="$JWT_SIGNING_KEY"
 export OpenAI__ApiKey="$OPENAI_API_KEY"
+export Anthropic__ApiKey="$ANTHROPIC_API_KEY"
 
 export Mcp__Azure__ServerUrl="$MCP_AZURE_URL"
 export Mcp__Azure__TenantId="$MCP_AZURE_TENANT_ID"
@@ -46,6 +47,13 @@ export Mcp__Azure__ClientId="$MCP_AZURE_CLIENT_ID"
 export Mcp__Azure__ClientSecret="$MCP_AZURE_CLIENT_SECRET"
 export Mcp__Azure__TokenUrl="$MCP_AZURE_TOKEN_URL"
 export Mcp__Azure__Scope="$MCP_AZURE_SCOPE"
+export Mcp__Azure__SubscriptionId="$MCP_AZURE_SUBSCRIPTION_ID"
+
+# MCP tool runtime parameters (for InferToolParameters)
+export MCP_AZURE_SUBSCRIPTION_ID="$MCP_AZURE_SUBSCRIPTION_ID"
+export MCP_ADO_ORGANIZATION="$MCP_ADO_ORGANIZATION"
+export MCP_ADO_PROJECT="$MCP_ADO_PROJECT"
+export MCP_GITOPS_REPO="$MCP_GITOPS_REPO"
 
 export Mcp__AzureDevOps__ServerUrl="$MCP_ADO_URL"
 export Mcp__AzureDevOps__TenantId="$MCP_ADO_TENANT_ID"
@@ -68,7 +76,11 @@ export Mcp__GitOps__ClientSecret="$MCP_GITOPS_CLIENT_SECRET"
 export Mcp__GitOps__TokenUrl="$MCP_GITOPS_TOKEN_URL"
 export Mcp__GitOps__Scope="$MCP_GITOPS_SCOPE"
 
-export Seeding__IsEnabled=true
+if [ -n "$SEEDING_ENABLED" ]; then
+  export Seeding__IsEnabled="$SEEDING_ENABLED"
+else
+  export Seeding__IsEnabled=true
+fi
 export DOTNET_ROOT=/tmp/dotnet10
 
 # Проверить что JWT ключ загрузился

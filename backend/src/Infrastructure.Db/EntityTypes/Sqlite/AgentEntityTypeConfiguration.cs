@@ -1,6 +1,7 @@
 using AzureOpsCrew.Domain.Agents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using System.Text.Json;
 
 namespace AzureOpsCrew.Infrastructure.Db.EntityTypes.Sqlite;
 
@@ -41,8 +42,8 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
 
             infoBuilder.Property(i => i.AvailableTools)
                        .HasConversion(
-                           v => v == null ? null : string.Join(',', v.Select(x => x.ToString())),
-                           s => (string.IsNullOrEmpty(s) || s == "[]") ? System.Array.Empty<AgentTool>() : s.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => Enum.Parse<AgentTool>(x)).ToArray());
+                           v => v == null || v.Length == 0 ? "[]" : JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                           s => string.IsNullOrEmpty(s) || s == "[]" ? Array.Empty<AgentTool>() : JsonSerializer.Deserialize<AgentTool[]>(s, (JsonSerializerOptions?)null) ?? Array.Empty<AgentTool>());
         });
 
         builder.Property(a => a.ProviderId)

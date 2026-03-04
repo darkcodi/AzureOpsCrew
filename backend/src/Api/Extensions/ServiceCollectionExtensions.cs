@@ -167,12 +167,23 @@ public static class ServiceCollectionExtensions
 
     public static void AddOpenAIAndMcp(this IServiceCollection services, IConfiguration configuration)
     {
+        // OpenAI settings (legacy, kept for backwards compatibility)
         var openAISettings = configuration.GetSection("OpenAI").Get<OpenAISettings>() ?? new OpenAISettings();
         if (string.IsNullOrWhiteSpace(openAISettings.ApiKey))
-            Log.Warning("OpenAI__ApiKey is not configured. Agents will not work without it.");
+            Log.Warning("OpenAI__ApiKey is not configured.");
 
         services.Configure<OpenAISettings>(configuration.GetSection("OpenAI"));
         services.AddOptions<OpenAISettings>();
+
+        // Anthropic settings (primary LLM provider)
+        var anthropicSettings = configuration.GetSection("Anthropic").Get<AnthropicSettings>() ?? new AnthropicSettings();
+        if (string.IsNullOrWhiteSpace(anthropicSettings.ApiKey))
+            Log.Warning("Anthropic__ApiKey is not configured. Agents require it for Claude models.");
+        else
+            Log.Information("Anthropic configured with default model: {Model}", anthropicSettings.DefaultModel);
+
+        services.Configure<AnthropicSettings>(configuration.GetSection("Anthropic"));
+        services.AddOptions<AnthropicSettings>();
 
         var mcpSettings = configuration.GetSection("Mcp").Get<McpSettings>() ?? new McpSettings();
         services.Configure<McpSettings>(configuration.GetSection("Mcp"));

@@ -6,9 +6,10 @@ import { ChannelHeader } from "@/components/channel-header"
 import { MessageList } from "@/components/message-list"
 import { MessageInput } from "@/components/message-input"
 import { MemberList } from "@/components/member-list"
-import { RunStatusBar, type RunPhase, type ToolCallInfo } from "@/components/run-status-bar"
+import { AgentActivityLog, type ActivityPhase, type ActivityLogEntry } from "@/components/agent-activity-log"
 import { TaskTreePanel, type RunData } from "@/components/task-tree-panel"
 import { ApprovalDialog, type ApprovalRequest } from "@/components/approval-dialog"
+import { RunStatusBar, type RunPhase, type ToolCallInfo } from "@/components/run-status-bar"
 import type { AGUIEvent } from "@ag-ui/core"
 import { EventType } from "@ag-ui/core"
 import type { HumanMember } from "@/lib/humans"
@@ -41,13 +42,14 @@ export function ChannelArea({
   const [streamingContent, setStreamingContent] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [showMembers, setShowMembers] = useState(true)
-  const [runPhase, setRunPhase] = useState<RunPhase>("idle")
+  const [runPhase, setRunPhase] = useState<ActivityPhase>("idle")
   const [activeAgentName, setActiveAgentName] = useState<string | null>(null)
-  const [toolCalls, setToolCalls] = useState<ToolCallInfo[]>([])
+  const [activityLogEntries, setActivityLogEntries] = useState<ActivityLogEntry[]>([])
   const [runStartTime, setRunStartTime] = useState<number | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
   const messageCounterRef = useRef(0)
+  const logEntryCounterRef = useRef(0)
 
   // Execution engine state
   const [executionRunId, setExecutionRunId] = useState<string | null>(null)
@@ -158,10 +160,18 @@ export function ChannelArea({
 
       setIsProcessing(true)
       setRunPhase("triaging")
-      setToolCalls([])
+      setActivityLogEntries([])
       setRunStartTime(Date.now())
       setElapsedSeconds(0)
       setActiveAgentName(null)
+
+      // Log phase change
+      setActivityLogEntries(prev => [...prev, {
+        id: `log-${logEntryCounterRef.current++}`,
+        timestamp: new Date(),
+        type: "phase-change",
+        phase: "triaging",
+      }])
 
       const userMsg: ChatMessage = {
         id: "user-" + Date.now(),
@@ -240,28 +250,132 @@ export function ChannelArea({
                   setStreamingAgentId(agent?.id ?? "channel")
                   setStreamingContent("")
                   setActiveAgentName(currentAgentName)
+
+                  // Log agent switch
+                  if (currentAgentName) {
+                    setActivityLogEntries(prev => [...prev, {
+                      id: `log-${logEntryCounterRef.current++}`,
+                      timestamp: new Date(),
+                      type: "agent-switch",
+                      agentName: currentAgentName,
+                    }])
+                    setActivityLogEntries(prev => [...prev, {
+                      id: `log-${logEntryCounterRef.current++}`,
+                      timestamp: new Date(),
+                      type: "message-start",
+                      agentName: currentAgentName,
+                    }])
+                  }
                 }
                 // TEXT_MESSAGE_CONTENT: Streaming content
                 else if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
-                  if (event.messageId === currentMessageId) {
-                    currentContent += event.delta
-                    setStreamingContent(currentContent)
+                  const incomingMessageId = event.messageId ?? null
 
-                    // Detect run phase from structured markers in content
-                    if (currentContent.includes("[TRIAGE]")) setRunPhase("triaging")
-                    else if (currentContent.includes("[PLAN]")) setRunPhase("investigating")
-                    else if (currentContent.includes("[EVIDENCE]")) setRunPhase("investigating")
-                    else if (currentContent.includes("[APPROVAL REQUIRED]")) setRunPhase("waiting-approval")
-                    else if (currentContent.includes("[RESOLVED]")) setRunPhase("resolved")
+                  // If the backend doesn't emit TEXT_MESSAGE_START, initialize implicitly
+                  if (!currentMessageId) {
+                    currentMessageId = incomingMessageId ?? `implicit-${Date.now()}`
+                    currentContent = ""
+
+                    if (!currentAgentName && incomingMessageId) {
+                      const pipeIndex = incomingMessageId.indexOf("|")
+                      currentAgentName = pipeIndex !== -1 ? incomingMessageId.slice(0, pipeIndex) : null
+                    }
+
+                    const fallbackAgent = !currentAgentName
+                      ? activeAgents.find((a) => a.name === "Manager")
+                      : null
+                    const agent = currentAgentName
+                      ? activeAgents.find((a) => a.name === currentAgentName)
+                      : fallbackAgent
+                    setStreamingAgentId(agent?.id ?? "channel")
+                    setStreamingContent("")
+                    setActiveAgentName(currentAgentName)
+
+                    if (currentAgentName) {
+                      setActivityLogEntries(prev => [...prev, {
+                        id: `log-${logEntryCounterRef.current++}`,
+                        timestamp: new Date(),
+                        type: "message-start",
+                        agentName: currentAgentName,
+                      }])
+                    }
+                  }
+
+                  // If a new messageId arrives without a start event, flush the previous message first
+                  if (incomingMessageId && incomingMessageId !== currentMessageId) {
+                    if (currentContent) {
+                      const fallbackAgent = !currentAgentName
+                        ? activeAgents.find((a) => a.name === "Manager")
+                        : null
+                      const agent = currentAgentName
+                        ? activeAgents.find((a) => a.name === currentAgentName)
+                        : fallbackAgent
+                      const agentMsg: ChatMessage = {
+                        id: `channel-${channel.id}-${messageCounterRef.current++}`,
+                        role: "assistant",
+                        content: currentContent,
+                        timestamp: new Date(),
+                        agentId: agent?.id,
+                      }
+                      setMessages((prev) => [...prev, agentMsg])
+                    }
+
+                    const pipeIndex = incomingMessageId.indexOf("|")
+                    currentAgentName = pipeIndex !== -1 ? incomingMessageId.slice(0, pipeIndex) : null
+                    currentMessageId = incomingMessageId
+                    currentContent = ""
+
+                    const fallbackAgent = !currentAgentName
+                      ? activeAgents.find((a) => a.name === "Manager")
+                      : null
+                    const agent = currentAgentName
+                      ? activeAgents.find((a) => a.name === currentAgentName)
+                      : fallbackAgent
+                    setStreamingAgentId(agent?.id ?? "channel")
+                    setStreamingContent("")
+                    setActiveAgentName(currentAgentName)
+
+                    if (currentAgentName) {
+                      setActivityLogEntries(prev => [...prev, {
+                        id: `log-${logEntryCounterRef.current++}`,
+                        timestamp: new Date(),
+                        type: "message-start",
+                        agentName: currentAgentName,
+                      }])
+                    }
+                  }
+
+                  currentContent += event.delta
+                  setStreamingContent(currentContent)
+
+                  // Detect run phase from structured markers in content
+                  let newPhase: ActivityPhase | null = null
+                  if (currentContent.includes("[TRIAGE]")) newPhase = "triaging"
+                  else if (currentContent.includes("[PLAN]")) newPhase = "investigating"
+                  else if (currentContent.includes("[EVIDENCE]")) newPhase = "investigating"
+                  else if (currentContent.includes("[APPROVAL REQUIRED]")) newPhase = "waiting-approval"
+                  else if (currentContent.includes("[RESOLVED]")) newPhase = "resolved"
+
+                  if (newPhase) {
+                    setRunPhase(newPhase)
+                    setActivityLogEntries(prev => [...prev, {
+                      id: `log-${logEntryCounterRef.current++}`,
+                      timestamp: new Date(),
+                      type: "phase-change",
+                      phase: newPhase,
+                    }])
                   }
                 }
                 // TEXT_MESSAGE_END: Message finished
                 else if (event.type === EventType.TEXT_MESSAGE_END) {
                   if (event.messageId === currentMessageId && currentContent) {
                     // Map authorName to agentId
+                    const fallbackAgent = !currentAgentName
+                      ? activeAgents.find((a) => a.name === "Manager")
+                      : null
                     const agent = currentAgentName
                       ? activeAgents.find((a) => a.name === currentAgentName)
-                      : null
+                      : fallbackAgent
                     const agentMsg: ChatMessage = {
                       id: `channel-${channel.id}-${messageCounterRef.current++}`,
                       role: "assistant",
@@ -270,6 +384,16 @@ export function ChannelArea({
                       agentId: agent?.id,
                     }
                     setMessages((prev) => [...prev, agentMsg])
+
+                    // Log message end
+                    if (currentAgentName) {
+                      setActivityLogEntries(prev => [...prev, {
+                        id: `log-${logEntryCounterRef.current++}`,
+                        timestamp: new Date(),
+                        type: "message-end",
+                        agentName: currentAgentName,
+                      }])
+                    }
 
                     // Reset for next message
                     currentMessageId = null
@@ -283,42 +407,112 @@ export function ChannelArea({
                 else if (event.type === EventType.TOOL_CALL_START) {
                   setRunPhase("executing-tools")
                   const tcId = event.toolCallId ?? `tc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-                  const tc: ToolCallInfo = {
-                    id: tcId,
-                    name: event.toolCallName ?? "unknown",
-                    agentName: currentAgentName ?? "Agent",
-                    status: "running",
-                    timestamp: new Date(),
-                  }
-                  setToolCalls((prev) => {
-                    // Prevent duplicate entries with the same tool-call ID
-                    if (prev.some((t) => t.id === tcId)) return prev
-                    return [...prev, tc]
+                  const toolName = event.toolCallName ?? "unknown"
+
+                  // Log tool call start
+                  setActivityLogEntries(prev => {
+                    // Prevent duplicates
+                    if (prev.some(e => e.type === "tool-call" && e.toolName === toolName && e.toolStatus === "running")) {
+                      return prev
+                    }
+                    return [...prev, {
+                      id: `log-${logEntryCounterRef.current++}`,
+                      timestamp: new Date(),
+                      type: "tool-call",
+                      toolName,
+                      agentName: currentAgentName ?? "Agent",
+                      toolStatus: "running" as const,
+                    }]
+                  })
+
+                  // Also log phase change if not already in executing-tools
+                  setActivityLogEntries(prev => {
+                    const lastPhaseChange = [...prev].reverse().find(e => e.type === "phase-change")
+                    if (!lastPhaseChange || lastPhaseChange.phase !== "executing-tools") {
+                      return [...prev, {
+                        id: `log-${logEntryCounterRef.current++}`,
+                        timestamp: new Date(),
+                        type: "phase-change",
+                        phase: "executing-tools" as ActivityPhase,
+                      }]
+                    }
+                    return prev
                   })
                 }
                 // TOOL_CALL_END: Tool finished
                 else if (event.type === EventType.TOOL_CALL_END) {
-                  setToolCalls((prev) =>
-                    prev.map((tc) =>
-                      tc.id === event.toolCallId
-                        ? { ...tc, status: "completed" as const }
-                        : tc
-                    )
-                  )
+                  const toolName = event.toolCallName ?? "unknown"
+
+                  // Update tool call status in log
+                  setActivityLogEntries(prev => {
+                    // Find the most recent running tool call with this name
+                    const entries = [...prev]
+                    for (let i = entries.length - 1; i >= 0; i--) {
+                      if (entries[i].type === "tool-call" &&
+                        entries[i].toolName === toolName &&
+                        entries[i].toolStatus === "running") {
+                        // Mark as completed
+                        entries[i] = {
+                          ...entries[i],
+                          toolStatus: "completed" as const,
+                        }
+                        break
+                      }
+                    }
+                    return entries
+                  })
+
                   setRunPhase("investigating")
+                  setActivityLogEntries(prev => [...prev, {
+                    id: `log-${logEntryCounterRef.current++}`,
+                    timestamp: new Date(),
+                    type: "phase-change",
+                    phase: "investigating" as ActivityPhase,
+                  }])
                 }
                 // RUN_FINISHED: All done
                 else if (event.type === EventType.RUN_FINISHED) {
+                  if (currentContent) {
+                    const fallbackAgent = !currentAgentName
+                      ? activeAgents.find((a) => a.name === "Manager")
+                      : null
+                    const agent = currentAgentName
+                      ? activeAgents.find((a) => a.name === currentAgentName)
+                      : fallbackAgent
+                    const agentMsg: ChatMessage = {
+                      id: `channel-${channel.id}-${messageCounterRef.current++}`,
+                      role: "assistant",
+                      content: currentContent,
+                      timestamp: new Date(),
+                      agentId: agent?.id,
+                    }
+                    setMessages((prev) => [...prev, agentMsg])
+                  }
+
                   setStreamingAgentId(null)
                   setStreamingContent("")
                   setRunPhase("resolved")
                   setRunStartTime(null)
+
+                  setActivityLogEntries(prev => [...prev, {
+                    id: `log-${logEntryCounterRef.current++}`,
+                    timestamp: new Date(),
+                    type: "phase-change",
+                    phase: "resolved" as ActivityPhase,
+                  }])
                 }
                 // RUN_ERROR: Error occurred
                 else if (event.type === EventType.RUN_ERROR) {
                   console.error("AGUI run error:", event.message)
                   setRunPhase("error")
                   setRunStartTime(null)
+
+                  setActivityLogEntries(prev => [...prev, {
+                    id: `log-${logEntryCounterRef.current++}`,
+                    timestamp: new Date(),
+                    type: "error",
+                    error: event.message ?? "Unknown error",
+                  }])
                 }
               } catch {
                 /* skip invalid events */
@@ -329,6 +523,25 @@ export function ChannelArea({
       } catch (err) {
         if (!(err instanceof DOMException && err.name === "AbortError")) {
           console.error("Error processing channel stream:", err)
+
+          // Log the error
+          setActivityLogEntries(prev => [...prev, {
+            id: `log-${logEntryCounterRef.current++}`,
+            timestamp: new Date(),
+            type: "error",
+            error: err instanceof Error ? err.message : "Unknown error occurred",
+          }])
+
+          setRunPhase("error")
+
+          // Add a message to the chat with error info
+          const errorMsg: ChatMessage = {
+            id: `error-${Date.now()}`,
+            role: "assistant",
+            content: `⚠️ An error occurred during processing. ${err instanceof Error ? err.message : "Please try again."}\n\nPartial results may have been saved above.`,
+            timestamp: new Date(),
+          }
+          setMessages((prev) => [...prev, errorMsg])
         }
       } finally {
         setStreamingAgentId(null)
@@ -388,11 +601,12 @@ export function ChannelArea({
           onToggleMembers={() => setShowMembers((prev) => !prev)}
         />
 
-        <RunStatusBar
+        <AgentActivityLog
           phase={runPhase}
           activeAgentName={activeAgentName}
-          toolCalls={toolCalls}
+          entries={activityLogEntries}
           elapsedSeconds={elapsedSeconds}
+          defaultExpanded={false}
         />
 
         {/* Execution engine: task tree panel */}

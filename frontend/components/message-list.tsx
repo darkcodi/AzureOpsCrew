@@ -223,6 +223,9 @@ export function MessageList({
           ? agentMap.get(message.agentId)
           : undefined
 
+        // Check if it's an error message
+        const isErrorMessage = message.content.startsWith("⚠️")
+
         // Parse structured blocks from agent output
         const { blocks, plainContent } = parseStructuredBlocks(message.content)
         const hasStructuredContent = blocks.length > 0
@@ -232,19 +235,21 @@ export function MessageList({
             <div
               className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
               style={{
-                backgroundColor: agent?.color ?? "hsl(214, 5%, 55%)",
+                backgroundColor: isErrorMessage
+                  ? "hsl(0, 72%, 51%)"
+                  : (agent?.color ?? "hsl(214, 5%, 55%)"),
                 color: "#fff",
               }}
             >
-              {agent?.avatar ?? "?"}
+              {isErrorMessage ? "!" : (agent?.avatar ?? "?")}
             </div>
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex items-center gap-2">
                 <span
                   className="text-sm font-medium"
-                  style={{ color: "hsl(0, 0%, 100%)" }}
+                  style={{ color: isErrorMessage ? "hsl(0, 72%, 51%)" : "hsl(0, 0%, 100%)" }}
                 >
-                  {agent?.name ?? "Agent"}
+                  {isErrorMessage ? "Error" : (agent?.name ?? "Agent")}
                 </span>
                 <span
                   className="text-xs"
@@ -254,8 +259,14 @@ export function MessageList({
                 </span>
               </div>
               <div
-                className="max-w-2xl text-sm leading-relaxed"
-                style={{ color: "hsl(210, 3%, 83%)" }}
+                className={`max-w-2xl text-sm leading-relaxed ${isErrorMessage ? "rounded-lg border px-3 py-2" : ""}`}
+                style={{
+                  color: "hsl(210, 3%, 83%)",
+                  ...(isErrorMessage ? {
+                    backgroundColor: "hsl(0, 72%, 51%, 0.08)",
+                    borderColor: "hsl(0, 72%, 51%, 0.3)",
+                  } : {})
+                }}
               >
                 {/* Plain text content (before any markers) */}
                 {plainContent && (

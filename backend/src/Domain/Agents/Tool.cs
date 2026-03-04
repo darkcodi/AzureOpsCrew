@@ -1,7 +1,11 @@
 ﻿namespace AzureOpsCrew.Domain.Agents
 {
-    public enum AgentTool
+    /// <summary>
+    /// Represents information about a tool available to an agent
+    /// </summary>
+    public class AgentTool
     {
-        AzureMcp = 0
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
     }
 }

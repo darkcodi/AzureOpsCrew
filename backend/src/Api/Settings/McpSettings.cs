@@ -16,4 +16,7 @@ public record McpServerSettings
     public string ClientSecret { get; set; } = string.Empty;
     public string TokenUrl { get; set; } = string.Empty;
     public string Scope { get; set; } = string.Empty;
+    
+    /// <summary>Azure subscription ID for MCP tools (optional)</summary>
+    public string SubscriptionId { get; set; } = string.Empty;
 }

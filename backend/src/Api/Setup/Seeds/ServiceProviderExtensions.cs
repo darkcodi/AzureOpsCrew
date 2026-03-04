@@ -22,6 +22,16 @@ public static class ServiceProviderExtensions
         {
             options.OpenAiApiKey = configuration["OpenAI:ApiKey"];
         }
+        
+        // Pass Anthropic key from config if not already set
+        if (string.IsNullOrWhiteSpace(options.AnthropicApiKey))
+        {
+            options.AnthropicApiKey = configuration["Anthropic:ApiKey"];
+        }
+
+        var hasKey = !string.IsNullOrEmpty(options.AnthropicApiKey);
+        Log.Warning("[Seeder] AnthropicApiKey from config: hasKey={HasKey}, length={KeyLen}", 
+            hasKey, options.AnthropicApiKey?.Length ?? 0);
 
         Log.Information("Running seeding default entities.");
 

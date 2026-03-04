@@ -378,16 +378,17 @@ Verification: <how this fix can be verified by DevOps>
             // Seed demo user (clientId = 1)
             await SeedDemoUser();
 
-            // Seed OpenAI provider
+            // Seed Anthropic provider (Claude Opus 4.6 with extended thinking)
             var providerId = Guid.Parse("5f4e3d10-0123-4000-9abc-def123456789");
-            var openAiApiKey = _seederOptions.OpenAiApiKey ?? "";
+            var anthropicApiKey = _seederOptions.AnthropicApiKey ?? "";
+            var defaultModel = _seederOptions.DefaultModel;
             var provider = new Provider(providerId, clientId,
-                name: "OpenAI", ProviderType.OpenAI, apiKey: openAiApiKey,
-                defaultModel: "gpt-4o-mini",
-                selectedModels: "[\"gpt-4o-mini\"]");
-            await AddProviderIfNotExists(provider);
+                name: "Anthropic", ProviderType.Anthropic, apiKey: anthropicApiKey,
+                defaultModel: defaultModel,
+                selectedModels: $"[\"{defaultModel}\"]");
+            await AddOrUpdateProvider(provider);
 
-            const string model = "gpt-4o-mini";
+            var model = defaultModel;
             var managerId = Guid.Parse("6a5d8a20-1234-4000-a1b2-c3d4e5f6a7b8");
             var devOpsId = Guid.Parse("7b6e9b30-2345-4111-b2c3-d4e5f6a7b8c9");
             var developerId = Guid.Parse("9d801d50-4567-4333-d4e5-f6a7b8c9d0e1");
@@ -461,14 +462,23 @@ Verification: <how this fix can be verified by DevOps>
             }
         }
 
-        private async Task AddProviderIfNotExists(Provider provider)
+        private async Task AddOrUpdateProvider(Provider provider)
         {
-            var exists = await _context.Set<Provider>()
-                .AsNoTracking()
-                .AnyAsync(p => p.Id == provider.Id);
+            var existing = await _context.Set<Provider>()
+                .FirstOrDefaultAsync(p => p.Id == provider.Id);
 
-            if (!exists)
+            if (existing is null)
+            {
                 _context.Add(provider);
+            }
+            else
+            {
+                // Always update API key from config (in case it changed)
+                if (!string.IsNullOrEmpty(provider.ApiKey))
+                {
+                    existing.SetApiKey(provider.ApiKey);
+                }
+            }
         }
 
         private async Task AddAgentIfNotExists(Agent agent)

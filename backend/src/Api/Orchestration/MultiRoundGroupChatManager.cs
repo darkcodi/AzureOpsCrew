@@ -280,8 +280,11 @@ public class MultiRoundGroupChatManager : GroupChatManager
             return ToolEnforcementResult.Pass;
         }
 
-        // Check if worker used any tools
-        if (_workerUsedToolsThisTurn)
+        // Check if worker used any tools by examining the history
+        // Look for tool calls from the current worker in recent messages
+        var workerUsedTools = _workerUsedToolsThisTurn || DetectWorkerToolUsage(history);
+        
+        if (workerUsedTools)
         {
             _runContext.CompleteCurrentTask(true, "Task completed with tool calls");
             return ToolEnforcementResult.Pass;
@@ -299,6 +302,51 @@ public class MultiRoundGroupChatManager : GroupChatManager
         // Inject system message to prompt retry
         // (The actual injection would happen at a higher level that has access to modify history)
         return ToolEnforcementResult.Retry;
+    }
+
+    /// <summary>
+    /// Detect if the current worker used any tools by examining chat history.
+    /// Looks for FunctionCallContent or FunctionResultContent from the worker.
+    /// </summary>
+    private bool DetectWorkerToolUsage(IReadOnlyList<ChatMessage> history)
+    {
+        if (_currentWorker == null) return false;
+
+        var workerName = _currentWorker.Name;
+        
+        // Scan recent history for tool usage by this worker
+        // Look backwards from the end for efficiency
+        for (var i = history.Count - 1; i >= 0 && i >= history.Count - 10; i--)
+        {
+            var msg = history[i];
+            
+            // Check if this message is from current worker or a tool result
+            var isFromWorker = msg.AuthorName?.Equals(workerName, StringComparison.OrdinalIgnoreCase) == true;
+            var isToolMessage = msg.Role.Value == "tool" || msg.Role == ChatRole.Tool;
+            
+            if (!isFromWorker && !isToolMessage) continue;
+            
+            // Check for FunctionCallContent (tool request) or FunctionResultContent (tool response)
+            foreach (var content in msg.Contents)
+            {
+                if (content is FunctionCallContent functionCall)
+                {
+                    Log.Debug("[ToolEnforcement] Detected tool call from {Worker}: {Tool}",
+                        workerName, functionCall.Name);
+                    _workerUsedToolsThisTurn = true;
+                    _runContext.RecordToolCall(functionCall.Name, workerName, true);
+                    return true;
+                }
+                if (content is FunctionResultContent)
+                {
+                    // Tool result means a tool was called
+                    _workerUsedToolsThisTurn = true;
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private enum ToolEnforcementResult { Pass, Retry, Fail }

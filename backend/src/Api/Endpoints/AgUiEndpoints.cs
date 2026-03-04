@@ -182,7 +182,18 @@ public static class ChannelAgUiEndpoints
             if (providers.Count != providerIds.Count)
                 return Results.BadRequest("Some providers was not found.");
 
-            // 2) Create internal agents
+            // 2) Create run context EARLY so tools can reference it
+            var runContextRequest = input.Messages.LastOrDefault()?.Content ?? "(no message)";
+            var runContext = new RunContext(input.RunId, input.ThreadId, channelId, runContextRequest);
+            runContext.TransitionTo(RunStatus.Triaged, "Channel AG-UI request received");
+
+            // 2.1) Create OrchestratorToolProvider for Manager's structured delegation tools
+            var orchestratorToolProvider = new OrchestratorToolProvider(
+                orchSettings,
+                mcpToolProvider,
+                () => dbContext);
+
+            // 3) Create internal agents
             //WARNING: ChatClientAgentRunOptions are ignored from input !!! We should keep the context to ourselves
             AIAgent? managerAIAgent = null;
             var internalAgents = new List<AIAgent>();
@@ -195,11 +206,14 @@ public static class ChannelAgUiEndpoints
                 AIAgent agent;
                 if (a.ProviderAgentId == "manager")
                 {
-                    // Manager is a pure router — no tools (no MCP, no memory).
-                    // This prevents it from getting stuck in tool-call loops.
-                    // Inject service registry and MCP availability info into Manager prompt.
+                    // Manager gets orchestrator tools (delegate_tasks, inventory, etc.)
+                    // These enable structured delegation instead of text-based mentions.
+                    var managerTools = orchestratorToolProvider.GetManagerTools(runContext);
+                    Log.Information("[Manager] Loaded {ToolCount} orchestrator tools: {ToolNames}",
+                        managerTools.Count, string.Join(", ", managerTools.Select(t => t.Name)));
+                    
                     agent = ChannelAgUiFactory.CreateManagerAgent(
-                        chatClient, a, input, serviceRegistry, mcpToolProvider, orchSettings);
+                        chatClient, a, input, serviceRegistry, mcpToolProvider, orchSettings, managerTools);
                     managerAIAgent = agent;
                 }
                 else
@@ -240,12 +254,7 @@ public static class ChannelAgUiEndpoints
             Log.Information("[ContextBudget] Final estimate: {MessageCount} messages (~{MessageTokens} tokens), {AgentCount} agents ready",
                 messages.Count, messageTokens, internalAgents.Count);
 
-            // 3) Create run context for structured tracing
-            var runContextRequest = input.Messages.LastOrDefault()?.Content ?? "(no message)";
-            var runContext = new RunContext(input.RunId, input.ThreadId, channelId, runContextRequest);
-            runContext.TransitionTo(RunStatus.Triaged, "Channel AG-UI request received");
-
-            // 3.1) Parse direct addressing (@DevOps, @Developer, @Manager)
+            // 4) Parse direct addressing (@DevOps, @Developer, @Manager)
             if (orchSettings.EnableDirectAddressing)
             {
                 var lastUserMessage = input.Messages.LastOrDefault()?.Content;
@@ -447,7 +456,8 @@ public static class ChannelAgUiFactory
         RunAgentInput input,
         ServiceRegistryProvider serviceRegistry,
         McpToolProvider mcpToolProvider,
-        OrchestrationSettings orchSettings)
+        OrchestrationSettings orchSettings,
+        IReadOnlyList<AITool>? orchestratorTools = null)
     {
         var additionalPropertiesDictionary = new AdditionalPropertiesDictionary
         {
@@ -464,6 +474,17 @@ public static class ChannelAgUiFactory
         var registrySummary = serviceRegistry.GetRegistrySummaryForPrompt();
         var mcpDiagnostics = mcpToolProvider.GetAvailabilityDiagnostics();
 
+        // Build tool availability section based on whether orchestrator tools are provided
+        var toolInstructions = orchestratorTools?.Count > 0
+            ? $@"=== ORCHESTRATOR TOOLS ===
+You have {orchestratorTools.Count} orchestrator tools available:
+{string.Join("\n", orchestratorTools.Select(t => $"- {t.Name}: {t.Description?.Split('\n').FirstOrDefault()}"))}
+
+IMPORTANT: Use the orchestrator_delegate_tasks tool to delegate work to specialists.
+This is MORE RELIABLE than mentioning agent names in text."
+            : @"=== DELEGATION ===
+Delegate work by mentioning agent names (DevOps, Developer) in your response text.";
+
         var prompt = $@"
 You are the Manager of the Azure Ops Crew — a multi-agent team.
 
@@ -476,6 +497,8 @@ Your name is {agentEntity.Info.Name}.
 
 === TOOL AVAILABILITY ===
 {mcpDiagnostics}
+
+{toolInstructions}
 
 === ORCHESTRATION LIMITS ===
 - Maximum rounds per run: {orchSettings.MaxRoundsPerRun}
@@ -491,6 +514,9 @@ CRITICAL REMINDERS:
 Always respond in the same language the human uses.
 ";
 
+        // Build tools list - orchestrator tools if provided, otherwise empty
+        var tools = orchestratorTools?.ToList() ?? [];
+
         var options = new ChatClientAgentOptions
         {
             Name = agentEntity.Info.Name,
@@ -498,7 +524,7 @@ Always respond in the same language the human uses.
             {
                 Instructions = prompt,
                 Temperature = orchSettings.ModelSettings.TryGetValue("manager", out var ms) ? ms.Temperature : 0.1f,
-                Tools = [], // Manager is a router — no tools
+                Tools = tools,
                 AdditionalProperties = additionalPropertiesDictionary
             }
             // No AIContextProviderFactory — Manager doesn't need memory

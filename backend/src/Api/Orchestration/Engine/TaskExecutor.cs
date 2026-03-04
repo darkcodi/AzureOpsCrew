@@ -246,13 +246,14 @@ public class TaskExecutor
         var toolCalls = new List<string>();
         var evidence = new List<string>();
 
-        // More targeted investigation based on task goal
+        // More targeted investigation based on task goal with smart parameter inference
         var relevantTools = tools.Take(5).ToList();
         foreach (var tool in relevantTools)
         {
             try
             {
-                var result = await InvokeMcpToolAsync(tool, new Dictionary<string, object?>(), ct);
+                var parameters = InferToolParameters(tool, run, task);
+                var result = await InvokeMcpToolAsync(tool, parameters, ct);
                 toolCalls.Add(tool.Name);
                 evidence.Add($"[{tool.Name}]: {Truncate(result, 500)}");
             }
@@ -380,6 +381,120 @@ public class TaskExecutor
         }
 
         return "(tool type not supported)";
+    }
+
+    /// <summary>
+    /// Intelligently infer parameters for MCP tools based on tool name and task context.
+    /// Uses heuristics to provide reasonable defaults for common Azure MCP tools.
+    /// </summary>
+    private IDictionary<string, object?> InferToolParameters(
+        AITool tool, ExecutionRun run, ExecutionTask task)
+    {
+        var parameters = new Dictionary<string, object?>();
+        var toolName = tool.Name.ToLowerInvariant();
+
+        // Azure MCP tools - extract subscription_id if available
+        if (toolName.StartsWith("azure_"))
+        {
+            // Try to get subscription_id from environment or settings
+            var subscriptionId = Environment.GetEnvironmentVariable("MCP_AZURE_SUBSCRIPTION_ID") 
+                ?? Environment.GetEnvironmentVariable("AZURE_SUBSCRIPTION_ID");
+            
+            if (!string.IsNullOrEmpty(subscriptionId))
+            {
+                parameters["subscription_id"] = subscriptionId;
+            }
+
+            // Common Azure tool patterns
+            if (toolName.Contains("list_resource_groups") || toolName.Contains("resourcegroups"))
+            {
+                // No additional params needed beyond subscription_id
+            }
+            else if (toolName.Contains("list_resources") || toolName.Contains("resource"))
+            {
+                // If we have a resource group from context, use it
+                var rgMatch = System.Text.RegularExpressions.Regex.Match(
+                    run.UserRequest ?? "", 
+                    @"resource[- ]group[:\s]+([a-zA-Z0-9\-_]+)",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                
+                if (rgMatch.Success)
+                {
+                    parameters["resource_group"] = rgMatch.Groups[1].Value;
+                }
+                else
+                {
+                    // Try common patterns
+                    parameters["resource_group"] = "rg-prod"; // Fallback
+                }
+            }
+            else if (toolName.Contains("appservice") || toolName.Contains("webapp"))
+            {
+                // Extract web app name from request if present
+                var appMatch = System.Text.RegularExpressions.Regex.Match(
+                    run.UserRequest ?? "",
+                    @"app[:\s]+([a-zA-Z0-9\-_]+)",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                
+                if (appMatch.Success)
+                {
+                    parameters["app_name"] = appMatch.Groups[1].Value;
+                }
+            }
+            else if (toolName.Contains("aks") || toolName.Contains("kubernetes"))
+            {
+                var clusterMatch = System.Text.RegularExpressions.Regex.Match(
+                    run.UserRequest ?? "",
+                    @"cluster[:\s]+([a-zA-Z0-9\-_]+)",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                
+                if (clusterMatch.Success)
+                {
+                    parameters["cluster_name"] = clusterMatch.Groups[1].Value;
+                }
+            }
+        }
+        // ADO MCP tools
+        else if (toolName.StartsWith("ado_"))
+        {
+            var organization = Environment.GetEnvironmentVariable("MCP_ADO_ORGANIZATION") 
+                ?? Environment.GetEnvironmentVariable("AZURE_DEVOPS_ORGANIZATION");
+            var project = Environment.GetEnvironmentVariable("MCP_ADO_PROJECT") 
+                ?? Environment.GetEnvironmentVariable("AZURE_DEVOPS_PROJECT");
+
+            if (!string.IsNullOrEmpty(organization))
+            {
+                parameters["organization"] = organization;
+            }
+            if (!string.IsNullOrEmpty(project))
+            {
+                parameters["project"] = project;
+            }
+
+            if (toolName.Contains("pipeline"))
+            {
+                parameters["top"] = 10; // Limit results
+            }
+        }
+        // GitOps MCP tools
+        else if (toolName.StartsWith("gitops_"))
+        {
+            var repo = Environment.GetEnvironmentVariable("MCP_GITOPS_REPO") 
+                ?? "main-repo";
+            parameters["repo"] = repo;
+
+            if (toolName.Contains("create_branch"))
+            {
+                parameters["branch_name"] = $"fix/{task.Id}";
+                parameters["base_branch"] = "main";
+            }
+        }
+
+        Log.Information("[Executor] Inferred {Count} parameters for tool {Tool}: {Params}", 
+            parameters.Count, tool.Name, 
+            string.Join(", ", parameters.Select(kv => $"{kv.Key}={kv.Value}")));
+
+        return parameters;
     }
 
     private string BuildTaskContext(ExecutionRun run, ExecutionTask task)
