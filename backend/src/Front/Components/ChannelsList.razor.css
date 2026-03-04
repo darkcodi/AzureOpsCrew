@@ -56,9 +56,13 @@
     margin: 0 0 2px 0;
     cursor: pointer;
     color: hsl(214, 5%, 55%);
-    font-size: 14px;
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 0.875rem;
     font-weight: 400;
-    line-height: 20px;
+    line-height: 1.25rem;
+    letter-spacing: normal;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     border-radius: 6px;
     transition: color 0.15s ease, background-color 0.15s ease;
     position: relative;
@@ -107,6 +111,7 @@
     text-overflow: ellipsis;
     flex: 1;
     min-width: 0;
+    font: inherit;
 }
 
 .voice-icon {

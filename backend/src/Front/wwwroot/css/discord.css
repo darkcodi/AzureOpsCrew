@@ -49,11 +49,13 @@
 }
 
 body {
-    font-family: 'gg sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
     background-color: var(--discord-dark);
     color: var(--discord-text);
     overflow: hidden;
     height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* Scrollbar styling */
