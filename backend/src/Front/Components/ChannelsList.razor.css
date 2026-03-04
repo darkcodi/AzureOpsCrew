@@ -51,12 +51,14 @@
     align-items: center;
     gap: 6px;
     width: 100%;
-    padding: 6px 8px;
+    height: 32px;
+    padding: 0 8px;
     margin: 0 0 2px 0;
     cursor: pointer;
     color: hsl(214, 5%, 55%);
     font-size: 14px;
     font-weight: 400;
+    line-height: 20px;
     border-radius: 6px;
     transition: color 0.15s ease, background-color 0.15s ease;
     position: relative;
