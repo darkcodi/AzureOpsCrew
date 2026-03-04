@@ -2,6 +2,8 @@
 
 @inject SettingsService SettingsService
 @inject NavigationManager Navigation
+@inject AppState AppState
+@inject AgentService AgentService
 
 <MainLayout>
     <LeftSidebar>
@@ -23,7 +25,12 @@
                              OnToggleSelectedModel="HandleToggleSelectedModel"
                              IsSaving="_isSaving"
                              IsTesting="_isTesting"
-                             SaveError="@_saveError" />
+                             SaveError="@_saveError"
+                             Agents="@_agents"
+                             OnEditAgent="HandleEditAgent"
+                             OnCreateAgent="HandleCreateAgent"
+                             OnDeleteAgent="HandleDeleteAgent"
+                             OnAgentsChanged="HandleAgentsChanged" />
 
             @if (HasUnsavedChanges)
             {
@@ -71,6 +78,7 @@
         _selectedProviderId != null && _providerTestResults.TryGetValue(_selectedProviderId, out var r) ? r : null;
 
     private HashSet<string> _modifiedProviderIds = [];
+    private IReadOnlyList<AgentDto> _agents = [];
 
     private bool HasUnsavedChanges =>
         System.Text.Json.JsonSerializer.Serialize(_settings) !=
@@ -105,6 +113,8 @@
         _selectedProviderId = _settings.Providers.FirstOrDefault()?.Id;
         await SettingsService.SaveToLocalStorageAsync(_settings);
         ComputeModifiedIds();
+        await AppState.LoadAgents(AgentService);
+        _agents = AppState.Agents.ToList();
     }
 
     private void ComputeModifiedIds()
@@ -287,5 +297,37 @@
             if (p.Status == "disabled") continue;
             p.Status = "enabled";
         }
+    }
+
+    private void HandleEditAgent(AgentDto agent)
+    {
+        // TODO: open edit agent dialog or navigate to agent management
+    }
+
+    private void HandleCreateAgent()
+    {
+        // TODO: open create agent dialog or navigate
+    }
+
+    private async Task HandleDeleteAgent(Guid agentId)
+    {
+        try
+        {
+            await AgentService.DeleteAgentAsync(agentId);
+            await AppState.LoadAgents(AgentService, forceReload: true);
+            _agents = AppState.Agents.ToList();
+            StateHasChanged();
+        }
+        catch
+        {
+            // TODO: show error toast
+        }
+    }
+
+    private async Task HandleAgentsChanged()
+    {
+        await AppState.LoadAgents(AgentService, forceReload: true);
+        _agents = AppState.Agents.ToList();
+        StateHasChanged();
     }
 }

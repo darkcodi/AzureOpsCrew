@@ -1,3 +1,5 @@
+@inject AgentService AgentService
+
 <div class="settings-content">
     <div class="settings-content-scroll">
         <div class="settings-content-inner">
@@ -84,6 +86,32 @@
     </div>
 }
 
+@* ──── Delete Agent Dialog ──── *@
+@if (_deleteAgentPending != null)
+{
+    <div class="dialog-overlay" @onclick="() => _deleteAgentPending = null">
+        <div class="dialog-box" @onclick:stopPropagation="true" role="dialog" aria-labelledby="delete-agent-title" aria-describedby="delete-agent-desc">
+            <div class="dialog-header">
+                <h3 id="delete-agent-title" class="dialog-title">Delete Agent</h3>
+                <div id="delete-agent-desc" class="dialog-description">
+                    <p>Are you sure you want to delete <strong class="text-white">@_deleteAgentPending.Username</strong>?</p>
+                    <p>This cannot be undone.</p>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="btn btn-secondary" disabled="@_isDeletingAgent"
+                        @onclick="() => _deleteAgentPending = null">
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-danger" disabled="@_isDeletingAgent"
+                        @onclick="ConfirmDeleteAgent">
+                    @(_isDeletingAgent ? "Deleting…" : "Delete Agent")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public SettingsSection ActiveSection { get; set; }
     [Parameter] public SettingsState Settings { get; set; } = new();
@@ -99,13 +127,38 @@
     [Parameter] public bool IsSaving { get; set; }
     [Parameter] public bool IsTesting { get; set; }
     [Parameter] public string? SaveError { get; set; }
+    [Parameter] public IReadOnlyList<AgentDto>? Agents { get; set; }
+    [Parameter] public EventCallback<AgentDto> OnEditAgent { get; set; }
+    [Parameter] public EventCallback OnCreateAgent { get; set; }
+    [Parameter] public EventCallback<Guid> OnDeleteAgent { get; set; }
+    [Parameter] public EventCallback OnAgentsChanged { get; set; }
 
     private string _searchQuery = "";
     private bool _showApiKey;
     private bool _addProviderDialogOpen;
     private Provider? _removeProviderPending;
     private bool _isRemovingProvider;
+    private AgentDto? _deleteAgentPending;
+    private bool _isDeletingAgent;
     private string _customModelInput = "";
+
+    // ──── Agents list vs form view ────
+    private string _agentsSubView = "list"; // "list" | "form"
+    private AgentDto? _editingAgent;
+    private string _agentName = "";
+    private string _agentColor = "#43b581";
+    private string _agentProviderId = "";
+    private string _agentModel = "";
+    private string _agentPrompt = "";
+    private string? _agentSaveError;
+    private bool _isSavingAgent;
+
+    private static readonly string[] AgentColors =
+    [
+        "#43b581", "#7289da", "#faa61a", "#e91e63",
+        "#f04747", "#3498db", "#9b59b6", "#e67e22",
+        "#1abc9c", "#2ecc71", "#e74c3c", "#8e44ad",
+    ];
 
     private Provider? SelectedProvider => Settings.Providers.FirstOrDefault(p => p.Id == SelectedProviderId);
 
@@ -164,6 +217,21 @@
         }
     }
 
+    private async Task ConfirmDeleteAgent()
+    {
+        if (_deleteAgentPending == null) return;
+        _isDeletingAgent = true;
+        try
+        {
+            await OnDeleteAgent.InvokeAsync(_deleteAgentPending.Id);
+            _deleteAgentPending = null;
+        }
+        finally
+        {
+            _isDeletingAgent = false;
+        }
+    }
+
     private async Task HandleRemoveClick()
     {
         if (SelectedProvider == null) return;
@@ -207,8 +275,14 @@
         """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22h6a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v10"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 0 3 3L18 11l-3-3z"/><path d="m8 18-2.5.5.5-2.5z"/></svg>""";
     private const string SvgPencil =
         """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>""";
+    private const string SvgTrash2 =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>""";
+    private const string SvgChevronLeft =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>""";
+    private const string SvgSave =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>""";
 
-    // ──── Provider Icons ────
+    // ──── Agent form: enabled providers (have BackendId and status enabled) ────
     private const string SvgBrain =
         """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></svg>""";
     private const string SvgCloud =
@@ -275,6 +349,135 @@
         if (pt == "Ollama (Local)") return "API Key (optional)";
         if (!string.IsNullOrEmpty(p.BackendId) && p.HasApiKey == true) return "New API Key (leave blank to keep existing)";
         return "API Key";
+    }
+
+    private List<Provider> EnabledProviders =>
+        Settings.Providers
+            .Where(p => p.Status == "enabled" && !string.IsNullOrEmpty(p.BackendId))
+            .ToList();
+
+    private Provider? AgentFormSelectedProvider =>
+        string.IsNullOrEmpty(_agentProviderId)
+            ? null
+            : EnabledProviders.FirstOrDefault(p => p.BackendId == _agentProviderId);
+
+    private List<string> AgentFormProviderModels =>
+        AgentFormSelectedProvider?.SelectedModels ?? [];
+
+    private void OpenCreateAgent()
+    {
+        _agentsSubView = "form";
+        _editingAgent = null;
+        _agentName = "";
+        _agentPrompt = "";
+        _agentSaveError = null;
+        var first = EnabledProviders.FirstOrDefault();
+        if (first != null)
+        {
+            _agentProviderId = first.BackendId ?? "";
+            var models = first.SelectedModels ?? [];
+            _agentModel = (!string.IsNullOrEmpty(first.DefaultModel) && models.Contains(first.DefaultModel))
+                ? first.DefaultModel
+                : models.FirstOrDefault() ?? "";
+        }
+        else
+        {
+            _agentProviderId = "";
+            _agentModel = "";
+        }
+        _agentColor = AgentColors[(Agents?.Count ?? 0) % AgentColors.Length];
+    }
+
+    private void OpenEditAgent(AgentDto agent)
+    {
+        _agentsSubView = "form";
+        _editingAgent = agent;
+        _agentName = agent.Username;
+        _agentPrompt = agent.Prompt;
+        _agentColor = agent.Color;
+        _agentModel = agent.Model;
+        _agentSaveError = null;
+        var matching = EnabledProviders.FirstOrDefault(p => (p.SelectedModels ?? []).Contains(agent.Model));
+        _agentProviderId = matching?.BackendId ?? EnabledProviders.FirstOrDefault()?.BackendId ?? "";
+        if (string.IsNullOrEmpty(_agentProviderId))
+            _agentModel = "";
+    }
+
+    private void BackToAgentList()
+    {
+        _agentsSubView = "list";
+        _editingAgent = null;
+        _agentSaveError = null;
+    }
+
+    private void OnAgentProviderChanged(ChangeEventArgs e)
+    {
+        _agentProviderId = e.Value?.ToString() ?? "";
+        var provider = AgentFormSelectedProvider;
+        var models = provider?.SelectedModels ?? [];
+        if (!models.Contains(_agentModel))
+        {
+            _agentModel = (!string.IsNullOrEmpty(provider?.DefaultModel) && models.Contains(provider.DefaultModel))
+                ? provider!.DefaultModel
+                : models.FirstOrDefault() ?? "";
+        }
+    }
+
+    private async Task SaveAgent()
+    {
+        var name = _agentName.Trim();
+        if (string.IsNullOrEmpty(name))
+            return;
+        if (string.IsNullOrEmpty(_agentProviderId))
+        {
+            _agentSaveError = "Please select a provider";
+            return;
+        }
+        if (!Guid.TryParse(_agentProviderId, out var providerGuid))
+        {
+            _agentSaveError = "Invalid provider";
+            return;
+        }
+
+        _isSavingAgent = true;
+        _agentSaveError = null;
+        try
+        {
+            var prompt = string.IsNullOrWhiteSpace(_agentPrompt)
+                ? $"You are {name}, a helpful AI assistant."
+                : _agentPrompt.Trim();
+
+            if (_editingAgent == null)
+            {
+                var created = await AgentService.CreateAgentAsync(name, prompt, _agentModel, providerGuid, _agentColor, null);
+                if (created != null)
+                {
+                    await OnAgentsChanged.InvokeAsync();
+                    BackToAgentList();
+                }
+                else
+                    _agentSaveError = "Failed to create agent";
+            }
+            else
+            {
+                var updated = await AgentService.UpdateAgentAsync(_editingAgent.Id, name, prompt, _agentModel, providerGuid, _agentColor, _editingAgent.Description);
+                if (updated != null)
+                {
+                    await OnAgentsChanged.InvokeAsync();
+                    BackToAgentList();
+                }
+                else
+                    _agentSaveError = "Failed to update agent";
+            }
+        }
+        catch (Exception ex)
+        {
+            _agentSaveError = ex.Message;
+        }
+        finally
+        {
+            _isSavingAgent = false;
+        }
     }
 
     // ──── Render Fragments ────
@@ -483,11 +686,118 @@
 
     private RenderFragment RenderAgents() => __builder =>
     {
-        <div class="section-header">
-            <h2 class="section-title">Agents</h2>
-            <p class="section-description">Configure default agent behaviors, model assignments, and system prompts.</p>
+        <div class="agents-section">
+            <div class="section-header">
+                <h2 class="section-title">Agents</h2>
+                <p class="section-description">Configure default agent behaviors, model assignments, and system prompts.</p>
+            </div>
+            @if (_agentsSubView == "list")
+            {
+                <div class="agents-list">
+                    @foreach (var agent in Agents ?? [])
+                    {
+                        <div class="agent-row">
+                            <div class="agent-row-avatar" style="background-color: @agent.Color;">
+                                @GetAgentAvatar(agent)
+                            </div>
+                            <div class="agent-row-info">
+                                <span class="agent-row-name">@agent.Username</span>
+                                <span class="agent-row-model">@agent.Model</span>
+                            </div>
+                            <div class="agent-row-actions">
+                                <button type="button" class="agent-row-btn agent-row-btn-edit" title="Edit @agent.Username" @onclick="() => OpenEditAgent(agent)">
+                                    @((MarkupString)SvgPencil)
+                                </button>
+                                <button type="button" class="agent-row-btn agent-row-btn-delete" title="Delete @agent.Username" @onclick="() => _deleteAgentPending = agent">
+                                    @((MarkupString)SvgTrash2)
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="agents-create-footer">
+                    <button type="button" class="agents-create-btn" @onclick="OpenCreateAgent">
+                        <span class="agents-create-icon">@((MarkupString)SvgPlus)</span>
+                        <span>Create New Agent</span>
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="agents-back-bar">
+                    <button type="button" class="agents-back-btn" @onclick="BackToAgentList" aria-label="Back to list">
+                        <span class="agents-back-icon">@((MarkupString)SvgChevronLeft)</span>
+                        <span>Back to list</span>
+                    </button>
+                </div>
+                <div class="agent-form">
+                    <div class="agent-form-field">
+                        <label for="agent-name" class="agent-form-label">Agent Name</label>
+                        <input id="agent-name" type="text" class="agent-form-input" placeholder="e.g. Research Assistant"
+                               @bind="_agentName" @bind:event="oninput" />
+                    </div>
+                    <div class="agent-form-field">
+                        <span class="agent-form-label">Color</span>
+                        <div class="agent-color-swatches">
+                            @foreach (var c in AgentColors)
+                            {
+                                var isSelected = _agentColor == c;
+                                <button type="button" class="agent-color-swatch @(isSelected ? "selected" : "")"
+                                        style="background-color: @c;" @onclick="() => _agentColor = c"
+                                        aria-label="Select color @c"></button>
+                            }
+                        </div>
+                    </div>
+                    <div class="agent-form-field">
+                        <label for="agent-provider" class="agent-form-label">Provider</label>
+                        @if (EnabledProviders.Count == 0)
+                        {
+                            <div class="agent-form-message agent-form-message-error">No enabled providers found. Please enable a provider in Settings.</div>
+                        }
+                        else
+                        {
+                            <select id="agent-provider" class="agent-form-select" value="@_agentProviderId" @onchange="OnAgentProviderChanged">
+                                @foreach (var p in EnabledProviders)
+                                {
+                                    <option value="@p.BackendId">@p.Name (@(p.ProviderType ?? p.Name))</option>
+                                }
+                            </select>
+                        }
+                    </div>
+                    <div class="agent-form-field">
+                        <label for="agent-model" class="agent-form-label">LLM Model</label>
+                        @if (AgentFormProviderModels.Count == 0)
+                        {
+                            <div class="agent-form-message">@(string.IsNullOrEmpty(_agentProviderId) ? "Select a provider first." : "No selected models for this provider.")</div>
+                        }
+                        else
+                        {
+                            <select id="agent-model" class="agent-form-select" @bind="_agentModel">
+                                @foreach (var m in AgentFormProviderModels)
+                                {
+                                    <option value="@m">@m</option>
+                                }
+                            </select>
+                        }
+                    </div>
+                    <div class="agent-form-field">
+                        <label for="agent-prompt" class="agent-form-label">System Prompt</label>
+                        <textarea id="agent-prompt" class="agent-form-textarea" rows="4" placeholder="Describe the agent's role and behavior..."
+                                  @bind="_agentPrompt" @bind:event="oninput"></textarea>
+                    </div>
+                    <button type="button" class="btn btn-primary agent-form-save"
+                            disabled="@(string.IsNullOrWhiteSpace(_agentName) || _isSavingAgent || string.IsNullOrEmpty(_agentProviderId))"
+                            @onclick="SaveAgent">
+                        <span class="agent-form-save-icon">@((MarkupString)SvgSave)</span>
+                        <span>@(_isSavingAgent ? "Saving..." : _editingAgent == null ? "Create Agent" : "Save Changes")</span>
+                    </button>
+                    @if (!string.IsNullOrEmpty(_agentSaveError))
+                    {
+                        <div class="agent-form-error">@_agentSaveError</div>
+                    }
+                </div>
+            }
         </div>
-        <p class="placeholder-text">Agent management is available from the main interface.</p>
     };
 
     private RenderFragment RenderRouting() => __builder =>
@@ -656,5 +966,12 @@
     private void HandleCustomModelKeyDown(KeyboardEventArgs e)
     {
         if (e.Key == "Enter") AddCustomModel();
+    }
+
+    private static string GetAgentAvatar(AgentDto agent)
+    {
+        var u = agent.Username;
+        if (string.IsNullOrWhiteSpace(u)) return "?";
+        return u.Trim().ToUpperInvariant()[..1];
     }
 }
