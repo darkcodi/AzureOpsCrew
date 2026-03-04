@@ -1,0 +1,116 @@
+.settings-sidebar {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: hsl(228, 7%, 14%);
+    overflow: hidden;
+}
+
+.sidebar-header {
+    height: 48px;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    flex-shrink: 0;
+    color: hsl(210, 3%, 95%);
+    border-bottom: 1px solid hsl(228, 6%, 20%);
+    font-size: 16px;
+}
+
+.sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.nav-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+}
+
+.nav-group {
+    margin-bottom: 4px;
+}
+
+.group-label {
+    padding: 12px 8px 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: hsl(214, 5%, 55%);
+}
+
+.nav-item {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: hsl(214, 5%, 65%);
+    font-size: 14px;
+    line-height: 20px;
+    cursor: pointer;
+    transition: color 0.15s, background-color 0.15s;
+    text-align: left;
+    font-family: inherit;
+}
+
+.nav-item:hover {
+    background-color: hsl(228, 6%, 22%);
+}
+
+.nav-item.active {
+    background-color: hsl(228, 6%, 22%);
+    color: hsl(210, 3%, 95%);
+}
+
+.nav-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-label {
+    flex: 1;
+    text-align: left;
+}
+
+.nav-chevron {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: hsl(214, 5%, 55%);
+}
+
+.sidebar-footer {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    font-size: 11px;
+    color: hsl(214, 5%, 45%);
+}
+
+.sidebar-nav::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background-color: hsl(228, 6%, 28%);
+    border-radius: 2px;
+}

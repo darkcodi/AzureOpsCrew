@@ -46,6 +46,7 @@ try
     builder.Services.AddScoped<UserService>();
     builder.Services.AddScoped<AgentService>();
     builder.Services.AddScoped<AuthenticationService>();
+    builder.Services.AddScoped<SettingsService>();
 
     await builder.Build().RunAsync();
 }
