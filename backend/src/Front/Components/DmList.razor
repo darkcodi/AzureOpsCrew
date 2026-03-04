@@ -21,9 +21,12 @@
 </div>
 
 @code {
+    private IDisposable? _appStateSubscription;
+
     protected override void OnInitialized()
     {
-        AppState.OnChange += OnStateChanged;
+        _appStateSubscription = AppState.SubscribeDms(OnStateChanged)
+            .Combine(AppState.SubscribeSelectedDm(OnStateChanged));
     }
 
     private async void OnStateChanged()
@@ -33,7 +36,7 @@
 
     public void Dispose()
     {
-        AppState.OnChange -= OnStateChanged;
+        _appStateSubscription?.Dispose();
     }
 
     private bool IsDmSelected(DmChannelDto dm) => AppState.SelectedDm?.Id == dm.Id;
