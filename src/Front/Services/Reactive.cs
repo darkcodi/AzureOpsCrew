@@ -79,6 +79,17 @@ public class ReactiveList<T> : IList<T>
         _inner.ForceNotify();
     }
 
+    /// <summary>
+    /// Replaces all items in the list with the specified collection.
+    /// This is more efficient than Clear() + Add() in a loop as it only triggers a single notification.
+    /// </summary>
+    public void ReplaceAll(IEnumerable<T> items)
+    {
+        _inner.Value.Clear();
+        _inner.Value.AddRange(items);
+        _inner.ForceNotify();
+    }
+
     public bool Contains(T item) => _inner.Value.Contains(item);
     public void CopyTo(T[] array, int arrayIndex) => _inner.Value.CopyTo(array, arrayIndex);
     public IEnumerator<T> GetEnumerator() => _inner.Value.GetEnumerator();

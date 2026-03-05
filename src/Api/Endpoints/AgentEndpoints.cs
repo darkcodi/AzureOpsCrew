@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Endpoints.Dtos.Agents;
+using AzureOpsCrew.Api.Endpoints.Filters;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
@@ -62,6 +63,7 @@ namespace AzureOpsCrew.Api.Endpoints
 
                 return Results.Created($"/api/agents/{agent.Id}", agent);
             })
+            .AddEndpointFilter<ValidationFilter<CreateAgentBodyDto>>()
             .Produces<Agent>(StatusCodes.Status201Created)
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status409Conflict);
@@ -134,6 +136,7 @@ namespace AzureOpsCrew.Api.Endpoints
 
                 return Results.Ok(found);
             })
+            .AddEndpointFilter<ValidationFilter<UpdateAgentBodyDto>>()
             .Produces<Agent>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound)

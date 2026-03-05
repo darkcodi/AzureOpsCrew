@@ -7,6 +7,7 @@
 @inject AgentService AgentService
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
+@inject ILogger<ServerPage> Logger
 
 <MainLayout>
     <LeftSidebar>
@@ -44,25 +45,27 @@
     private IDisposable? _appStateSubscription;
     private ChatHubClient? _hubClient;
 
-    private async void OnStateChanged()
+    private void OnStateChanged() => InvokeAsync(async () =>
     {
         try
         {
             await LoadMessagesIfNeeded();
+            StateHasChanged();
         }
-        catch
+        catch (Exception ex)
         {
-            // ignored
+            Logger.LogError(ex, "Error in OnStateChanged");
         }
-
-        await InvokeAsync(StateHasChanged);
-    }
+    });
 
     public async ValueTask DisposeAsync()
     {
         _appStateSubscription?.Dispose();
         if (_hubClient != null)
+        {
+            _hubClient.MessageReceived -= OnMessageReceived;
             await _hubClient.DisposeAsync();
+        }
     }
 
     protected override async Task OnInitializedAsync()
@@ -95,7 +98,10 @@
     private async Task ConnectToChannelHub(Guid channelId)
     {
         if (_hubClient != null)
+        {
+            _hubClient.MessageReceived -= OnMessageReceived;
             await _hubClient.DisposeAsync();
+        }
 
         _hubClient = ChatHubClient.ForChannel(LoggerFactory);
         _hubClient.MessageReceived += OnMessageReceived;

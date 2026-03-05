@@ -7,6 +7,7 @@
 @inject AgentService AgentService
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
+@inject ILogger<DmPage> Logger
 
 <MainLayout>
     <LeftSidebar>
@@ -57,25 +58,27 @@
         await LoadMessagesIfNeeded();
     }
 
-    private async void OnStateChanged()
+    private void OnStateChanged() => InvokeAsync(async () =>
     {
         try
         {
             await LoadMessagesIfNeeded();
+            StateHasChanged();
         }
-        catch
+        catch (Exception ex)
         {
-            // ignored
+            Logger.LogError(ex, "Error in OnStateChanged");
         }
-
-        await InvokeAsync(StateHasChanged);
-    }
+    });
 
     public async ValueTask DisposeAsync()
     {
         _appStateSubscription?.Dispose();
         if (_hubClient != null)
+        {
+            _hubClient.MessageReceived -= OnMessageReceived;
             await _hubClient.DisposeAsync();
+        }
     }
 
     private async Task LoadMessagesIfNeeded()
@@ -108,7 +111,10 @@
     private async Task ConnectToDmHub(Guid dmId)
     {
         if (_hubClient != null)
+        {
+            _hubClient.MessageReceived -= OnMessageReceived;
             await _hubClient.DisposeAsync();
+        }
 
         _hubClient = ChatHubClient.ForDm(LoggerFactory);
         _hubClient.MessageReceived += OnMessageReceived;

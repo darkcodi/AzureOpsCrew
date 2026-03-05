@@ -46,13 +46,26 @@
                     @foreach (var agent in channelAgents)
                     {
                         <div class="members-item" @onclick="() => MentionAgent(agent)">
-                            <div class="members-avatar members-avatar-agent" style="background-color: @agent.Color; color: #fff;">
-                                @GetAgentInitials(agent.Username)
+                            <div class="members-item-main">
+                                <div class="members-avatar members-avatar-agent" style="background-color: @agent.Color; color: #fff;">
+                                    @GetAgentInitials(agent.Username)
+                                </div>
+                                <div class="members-item-info">
+                                    <span class="members-item-name">@agent.Username</span>
+                                    <span class="members-item-status">@(agent.Status ?? "Idle")</span>
+                                </div>
                             </div>
-                            <div class="members-item-info">
-                                <span class="members-item-name">@agent.Username</span>
-                                <span class="members-item-status">@(agent.Status ?? "Idle")</span>
-                            </div>
+                            <button type="button"
+                                    class="members-item-remove-btn"
+                                    title="Remove @agent.Username from channel"
+                                    @onclick="() => OpenRemoveAgentDialog(agent)"
+                                    @onclick:stopPropagation="true"
+                                    aria-label="Remove @agent.Username from channel">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
                         </div>
                     }
                 }
@@ -152,10 +165,36 @@
     </div>
 }
 
+@if (_removeAgentPending != null)
+{
+    <div class="dialog-overlay" @onclick="() => _removeAgentPending = null">
+        <div class="dialog-box" @onclick:stopPropagation="true" role="dialog" aria-labelledby="remove-agent-title" aria-describedby="remove-agent-desc">
+            <div class="dialog-header">
+                <h3 id="remove-agent-title" class="dialog-title">Remove from channel</h3>
+                <div id="remove-agent-desc" class="dialog-description">
+                    <p>Are you sure you want to remove <strong class="text-white">@_removeAgentPending.Username</strong> from this channel?</p>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="btn btn-secondary" disabled="@_isRemovingAgent"
+                        @onclick="() => _removeAgentPending = null">
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-danger" disabled="@_isRemovingAgent"
+                        @onclick="ConfirmRemoveAgent">
+                    @(_isRemovingAgent ? "Removing…" : "Remove")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private string _searchQuery = string.Empty;
     private bool _addAgentsOpen;
     private Guid? _addingAgentId;
+    private AgentDto? _removeAgentPending;
+    private bool _isRemovingAgent;
 
     private IDisposable? _appStateSubscription;
 
@@ -166,10 +205,10 @@
             .Combine(AppState.SubscribeAgents(OnStateChanged));
     }
 
-    private async void OnStateChanged()
+    private void OnStateChanged() => InvokeAsync(() =>
     {
-        await InvokeAsync(StateHasChanged);
-    }
+        StateHasChanged();
+    });
 
     public void Dispose()
     {
@@ -230,6 +269,27 @@
     private void OpenAddAgentsDialog() => _addAgentsOpen = true;
 
     private void CloseAddAgentsDialog() => _addAgentsOpen = false;
+
+    private void OpenRemoveAgentDialog(AgentDto agent) => _removeAgentPending = agent;
+
+    private async Task ConfirmRemoveAgent()
+    {
+        if (_removeAgentPending == null || AppState.SelectedChannel == null) return;
+        _isRemovingAgent = true;
+        StateHasChanged();
+        try
+        {
+            var ok = await ChannelService.RemoveAgentFromChannelAsync(AppState.SelectedChannel.Id, _removeAgentPending.Id);
+            if (ok)
+                await AppState.LoadChannels(ChannelService, forceReload: true);
+            _removeAgentPending = null;
+        }
+        finally
+        {
+            _isRemovingAgent = false;
+            StateHasChanged();
+        }
+    }
 
     private async Task AddAgentToChannel(Guid agentId)
     {

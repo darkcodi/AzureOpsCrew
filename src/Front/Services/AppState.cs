@@ -86,11 +86,7 @@ public class AppState
         if (Channels.Any() && !forceReload) return;
 
         var channels = await channelService.GetChannelsAsync();
-        Channels.Clear();
-        foreach (var channel in channels)
-        {
-            Channels.Add(channel);
-        }
+        Channels.ReplaceAll(channels);
 
         var selectedId = SelectedChannel?.Id;
         if (selectedId != null)
@@ -106,11 +102,7 @@ public class AppState
         if (Dms.Any() && !forceReload) return;
 
         var dms = await dmService.GetDmsAsync();
-        Dms.Clear();
-        foreach (var dm in dms)
-        {
-            Dms.Add(dm);
-        }
+        Dms.ReplaceAll(dms);
     }
 
     public async Task LoadAgents(AgentService agentService, bool forceReload = false)
@@ -118,10 +110,6 @@ public class AppState
         if (Agents.Any() && !forceReload) return;
 
         var agents = await agentService.GetAgentsAsync();
-        Agents.Clear();
-        foreach (var agent in agents)
-        {
-            Agents.Add(agent);
-        }
+        Agents.ReplaceAll(agents);
     }
 }

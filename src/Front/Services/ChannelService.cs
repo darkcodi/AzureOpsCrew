@@ -106,6 +106,21 @@ public class ChannelService
         }
     }
 
+    public async Task<bool> RemoveAgentFromChannelAsync(Guid channelId, Guid agentId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"/api/channels/{channelId}/remove-agent",
+                new { AgentId = agentId });
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error removing agent from channel: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<bool> DeleteChannelAsync(Guid id)
     {
         try

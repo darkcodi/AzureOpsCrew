@@ -428,6 +428,13 @@
         var name = _agentName.Trim();
         if (string.IsNullOrEmpty(name))
             return;
+
+        // Validate username format
+        if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-z0-9]{2,30}$"))
+        {
+            _agentSaveError = "Username must contain only lowercase letters and numbers (2-30 characters).";
+            return;
+        }
         if (string.IsNullOrEmpty(_agentProviderId))
         {
             _agentSaveError = "Please select a provider";
@@ -733,8 +740,9 @@
                 <div class="agent-form">
                     <div class="agent-form-field">
                         <label for="agent-name" class="agent-form-label">Agent Name</label>
-                        <input id="agent-name" type="text" class="agent-form-input" placeholder="e.g. Research Assistant"
+                        <input id="agent-name" type="text" class="agent-form-input" placeholder="e.g. researchassistant"
                                @bind="_agentName" @bind:event="oninput" />
+                        <span class="agent-form-helper">Lowercase letters and numbers only, 2-30 characters</span>
                     </div>
                     <div class="agent-form-field">
                         <span class="agent-form-label">Color</span>

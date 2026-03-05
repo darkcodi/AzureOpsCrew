@@ -108,6 +108,40 @@
     transition: background-color 0.15s ease;
 }
 
+.members-item-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.members-item-remove-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: hsl(0, 70%, 55%);
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.members-item-remove-btn:hover {
+    color: hsl(0, 70%, 45%);
+    background-color: hsl(0, 50%, 25%);
+}
+
+.members-item-remove-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
 .members-item:hover {
     background-color: hsl(228, 6%, 18%);
 }
@@ -330,4 +364,87 @@
     to {
         transform: rotate(360deg);
     }
+}
+
+/* ──── Remove from channel dialog (matches Settings delete dialog) ──── */
+
+.dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.dialog-box {
+    background-color: rgb(49, 51, 56);
+    color: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    min-width: 340px;
+    max-width: 480px;
+}
+
+.dialog-header {
+    margin-bottom: 8px;
+}
+
+.dialog-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 8px 0;
+}
+
+.dialog-description {
+    font-size: 14px;
+    color: rgb(163, 163, 163);
+}
+
+.dialog-description p {
+    margin: 0 0 4px 0;
+}
+
+.dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.text-white {
+    color: #fff;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    font-family: inherit;
+}
+
+.btn:hover {
+    opacity: 0.9;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background-color: hsl(228, 6%, 30%);
+    color: hsl(210, 3%, 90%);
+}
+
+.btn-danger {
+    background-color: hsl(0, 70%, 45%);
+    color: #fff;
 }

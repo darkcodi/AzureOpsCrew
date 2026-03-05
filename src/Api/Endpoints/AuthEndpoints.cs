@@ -33,7 +33,7 @@ public static class AuthEndpoints
             var now = DateTime.UtcNow;
             var normalizedEmail = NormalizeEmail(body.Email);
             var email = body.Email.Trim();
-            var username = body.Username.Trim();
+            var username = NormalizeUsername(body.Username);
             var normalizedUsername = NormalizeUsername(username);
 
             var exists = await context.Users
@@ -50,7 +50,7 @@ public static class AuthEndpoints
                 return Results.Conflict(new { error = "Username is already taken." });
 
             var agentUsernameExists = await context.Agents
-                .AnyAsync(a => a.Info.Username.ToLowerInvariant() == normalizedUsername, cancellationToken);
+                .AnyAsync(a => a.Info.Username == normalizedUsername, cancellationToken);
 
             if (agentUsernameExists)
                 return Results.Conflict(new { error = "Username is already taken." });

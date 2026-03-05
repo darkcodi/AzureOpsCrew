@@ -52,8 +52,6 @@
     {
         Log.Information("Login page initializing");
 
-        await AuthState.LoadFromLocalStorageAsync();
-
         // If already authenticated, redirect to next path or home
         if (AuthState.IsAuthenticated)
         {
