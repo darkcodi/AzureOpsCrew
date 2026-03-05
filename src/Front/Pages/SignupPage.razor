@@ -1,0 +1,432 @@
+@page "/signup"
+@using System.Text.RegularExpressions
+@using Serilog
+@layout SimpleLayout
+@inject AuthenticationService AuthService
+@inject AuthState AuthState
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<main class="signup-container">
+    <section class="signup-card">
+        <div class="signup-header">
+            <h1>Sign up</h1>
+            <a href="/login" class="signin-button">Sign in</a>
+        </div>
+
+        @if (_step == SignupStep.Details)
+        {
+            <EditForm Model="@_signupModel" OnValidSubmit="@HandleRequestCode">
+                <DataAnnotationsValidator />
+
+                <div class="form-group">
+                    <label for="username">
+                        <span class="label-text">Username</span>
+                    </label>
+                    <InputText Id="username" @bind-Value="_signupModel.Username" class="form-input" autocomplete="username" />
+                    <ValidationMessage For="() => _signupModel.Username" />
+                </div>
+
+                <div class="form-group">
+                    <label for="email">
+                        <span class="label-text">Email</span>
+                    </label>
+                    <InputText Id="email" @bind-Value="_signupModel.Email" class="form-input" autocomplete="email" />
+                    <ValidationMessage For="() => _signupModel.Email" />
+                </div>
+
+                <div class="form-group">
+                    <label for="password">
+                        <span class="label-text">Password</span>
+                    </label>
+                    <InputText Id="password" type="password" @bind-Value="_signupModel.Password" class="form-input" autocomplete="new-password" />
+                    <ValidationMessage For="() => _signupModel.Password" />
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">
+                        <span class="label-text">Confirm password</span>
+                    </label>
+                    <InputText Id="confirmPassword" type="password" @bind-Value="_signupModel.ConfirmPassword" class="form-input" autocomplete="new-password" />
+                    <ValidationMessage For="() => _signupModel.ConfirmPassword" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <p class="error-message">@_errorMessage</p>
+                }
+
+                <button type="submit" disabled="@_isSubmitting" class="submit-button">
+                    @(_isSubmitting ? "Sending code..." : "Send verification code")
+                </button>
+            </EditForm>
+        }
+        else
+        {
+            <EditForm Model="@_verifyModel" OnValidSubmit="@HandleVerifyCode">
+                <DataAnnotationsValidator />
+
+                <div class="info-box">
+                    <span>@(_challengeMessage ?? "We sent a verification code to your email.")</span>
+                    <div class="info-subtext">
+                        Email: <span class="info-email">@_signupModel.Email</span>
+                    </div>
+                    @if (_expiresInLabel != null)
+                    {
+                        <div class="info-subtext">Code expires in @_expiresInLabel.</div>
+                    }
+                </div>
+
+                <div class="form-group">
+                    <label for="verificationCode">
+                        <span class="label-text">Verification code</span>
+                    </label>
+                    <input id="verificationCode"
+                           type="text"
+                           inputmode="numeric"
+                           autocomplete="one-time-code"
+                           value="@_verifyModel.Code"
+                           @oninput="OnVerificationCodeInput"
+                           required
+                           minlength="4"
+                           maxlength="8"
+                           class="form-input verification-input" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <p class="error-message">@_errorMessage</p>
+                }
+
+                <button type="submit" disabled="@_isSubmitting" class="submit-button">
+                    @(_isSubmitting ? "Verifying..." : "Verify and create account")
+                </button>
+
+                <div class="button-row">
+                    <button type="button"
+                            @onclick="HandleResendCode"
+                            disabled="@(_isResending || _resendCooldownSeconds > 0)"
+                            class="secondary-button">
+                        @if (_isResending)
+                        {
+                            <span>Resending...</span>
+                        }
+                        else if (_resendCooldownSeconds > 0)
+                        {
+                            <span>Resend in @FormatCountdown(_resendCooldownSeconds)</span>
+                        }
+                        else
+                        {
+                            <span>Resend code</span>
+                        }
+                    </button>
+
+                    <button type="button" @onclick="HandleChangeEmail" class="secondary-button">
+                        Change email
+                    </button>
+                </div>
+            </EditForm>
+        }
+    </section>
+</main>
+
+@code {
+    private enum SignupStep { Details, Verify }
+
+    private SignupStep _step = SignupStep.Details;
+    private SignupModel _signupModel = new();
+    private VerifyModel _verifyModel = new();
+
+    private string? _challengeMessage;
+    private DateTime? _expiresAtUtc;
+    private int _resendCooldownSeconds;
+    private string? _errorMessage;
+
+    private bool _isSubmitting;
+    private bool _isResending;
+
+    private Timer? _cooldownTimer;
+    private Timer? _expiryTimer;
+
+    private string? _expiresInLabel;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.LoadFromLocalStorageAsync();
+
+        if (AuthState.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+    }
+
+    private async Task HandleRequestCode()
+    {
+        if (_isSubmitting) return;
+
+        _errorMessage = null;
+
+        if (_signupModel.Password != _signupModel.ConfirmPassword)
+        {
+            _errorMessage = "Passwords do not match";
+            return;
+        }
+
+        if (!Regex.IsMatch(_signupModel.Username, @"^[a-zA-Z0-9]+$"))
+        {
+            _errorMessage = "Username must contain letters and numbers only";
+            return;
+        }
+
+        _isSubmitting = true;
+
+        try
+        {
+            var response = await AuthService.RegisterAsync(
+                _signupModel.Email,
+                _signupModel.Password,
+                _signupModel.Username.Trim());
+
+            if (response == null)
+            {
+                _errorMessage = "Invalid response from server";
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(response.Error))
+            {
+                _errorMessage = response.Error;
+                return;
+            }
+
+            _challengeMessage = response.Message;
+            _expiresAtUtc = response.ExpiresAtUtc;
+            _resendCooldownSeconds = Math.Max(0, response.ResendAvailableInSeconds);
+            _verifyModel = new VerifyModel();
+            _step = SignupStep.Verify;
+
+            StartCooldownTimer();
+            StartExpiryTimer();
+        }
+        catch
+        {
+            _errorMessage = "Unable to start registration. Please try again.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleVerifyCode()
+    {
+        if (_isSubmitting) return;
+
+        _errorMessage = null;
+        var code = _verifyModel.Code?.Trim() ?? "";
+
+        if (!Regex.IsMatch(code, @"^\d{4,8}$"))
+        {
+            _errorMessage = "Enter a valid numeric verification code";
+            return;
+        }
+
+        _isSubmitting = true;
+
+        try
+        {
+            var response = await AuthService.VerifyRegistrationAsync(_signupModel.Email, code);
+
+            if (response == null)
+            {
+                _errorMessage = "Invalid response from server";
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(response.Error))
+            {
+                _errorMessage = response.Error;
+                return;
+            }
+
+            if (response.User != null && !string.IsNullOrEmpty(response.AccessToken))
+            {
+                await AuthState.LoginAsync(response.AccessToken, response.ExpiresAtUtc, response.User);
+                NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = "Verification failed";
+            }
+        }
+        catch
+        {
+            _errorMessage = "Unable to verify code. Please try again.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task HandleResendCode()
+    {
+        _errorMessage = null;
+        _isResending = true;
+
+        try
+        {
+            var response = await AuthService.ResendRegistrationCodeAsync(_signupModel.Email);
+
+            if (response == null)
+            {
+                _errorMessage = "Invalid response from server";
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(response.Error))
+            {
+                _errorMessage = response.Error;
+                return;
+            }
+
+            _challengeMessage = response.Message;
+            _expiresAtUtc = response.ExpiresAtUtc;
+            _resendCooldownSeconds = Math.Max(0, response.ResendAvailableInSeconds);
+
+            StartCooldownTimer();
+            StartExpiryTimer();
+        }
+        catch
+        {
+            _errorMessage = "Unable to resend verification code. Please try again.";
+        }
+        finally
+        {
+            _isResending = false;
+        }
+    }
+
+    private void HandleChangeEmail()
+    {
+        _step = SignupStep.Details;
+        _verifyModel = new VerifyModel();
+        _challengeMessage = null;
+        _expiresAtUtc = null;
+        _resendCooldownSeconds = 0;
+        _errorMessage = null;
+        DisposeCooldownTimer();
+        DisposeExpiryTimer();
+    }
+
+    private void OnVerificationCodeInput(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString() ?? "";
+        var digitsOnly = Regex.Replace(raw, @"\D", "");
+        if (digitsOnly.Length > 8)
+            digitsOnly = digitsOnly[..8];
+        _verifyModel.Code = digitsOnly;
+    }
+
+    private void StartCooldownTimer()
+    {
+        DisposeCooldownTimer();
+        if (_resendCooldownSeconds <= 0) return;
+
+        _cooldownTimer = new Timer(_ =>
+        {
+            _resendCooldownSeconds = Math.Max(0, _resendCooldownSeconds - 1);
+            if (_resendCooldownSeconds <= 0)
+                DisposeCooldownTimer();
+            InvokeAsync(StateHasChanged);
+        }, null, 1000, 1000);
+    }
+
+    private void StartExpiryTimer()
+    {
+        DisposeExpiryTimer();
+        if (_expiresAtUtc == null) return;
+
+        UpdateExpiresInLabel();
+
+        _expiryTimer = new Timer(_ =>
+        {
+            UpdateExpiresInLabel();
+            InvokeAsync(StateHasChanged);
+        }, null, 1000, 1000);
+    }
+
+    private void UpdateExpiresInLabel()
+    {
+        if (_expiresAtUtc == null)
+        {
+            _expiresInLabel = null;
+            return;
+        }
+
+        var diff = _expiresAtUtc.Value - DateTime.UtcNow;
+        if (diff.TotalMilliseconds <= 0)
+        {
+            _expiresInLabel = "expired";
+            DisposeExpiryTimer();
+            return;
+        }
+
+        var minutes = (int)Math.Ceiling(diff.TotalMinutes);
+        _expiresInLabel = minutes == 1 ? "1 minute" : $"{minutes} minutes";
+    }
+
+    private static string FormatCountdown(int totalSeconds)
+    {
+        var minutes = totalSeconds / 60;
+        var seconds = totalSeconds % 60;
+        return $"{minutes}:{seconds:D2}";
+    }
+
+    private void DisposeCooldownTimer()
+    {
+        _cooldownTimer?.Dispose();
+        _cooldownTimer = null;
+    }
+
+    private void DisposeExpiryTimer()
+    {
+        _expiryTimer?.Dispose();
+        _expiryTimer = null;
+    }
+
+    public void Dispose()
+    {
+        DisposeCooldownTimer();
+        DisposeExpiryTimer();
+    }
+
+    public class SignupModel
+    {
+        [Required(ErrorMessage = "Username is required")]
+        [MinLength(2, ErrorMessage = "Username must be at least 2 characters")]
+        [MaxLength(30, ErrorMessage = "Username must be at most 30 characters")]
+        [RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "Letters and numbers only")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Please enter a valid email")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required")]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please confirm your password")]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
+    public class VerifyModel
+    {
+        [Required(ErrorMessage = "Verification code is required")]
+        [MinLength(4, ErrorMessage = "Code must be at least 4 digits")]
+        [MaxLength(8, ErrorMessage = "Code must be at most 8 digits")]
+        public string Code { get; set; } = string.Empty;
+    }
+}

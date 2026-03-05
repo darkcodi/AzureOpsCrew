@@ -1,0 +1,207 @@
+/* Signup Page Styles - Pixel-perfect match of Next.js Tailwind slate/sky palette */
+/* Colors inlined because Blazor CSS isolation scopes :root, preventing var() resolution */
+
+/* main: flex h-dvh w-full items-center justify-center bg-slate-950 px-4 */
+.signup-container {
+    display: flex;
+    height: 100dvh;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    background-color: #020617;
+    padding: 0 1rem;
+}
+
+/* section: w-full max-w-md rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-2xl */
+.signup-card {
+    width: 100%;
+    max-width: 28rem;
+    border-radius: 0.75rem;
+    border: 1px solid #1e293b;
+    background-color: #0f172a;
+    padding: 1.5rem;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+/* div: mb-6 flex items-center justify-between */
+.signup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+/* h1: text-2xl font-semibold text-white */
+.signup-header h1 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 600;
+    color: white;
+    margin: 0;
+}
+
+/* Link: rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-slate-800 */
+.signin-button {
+    border-radius: 0.375rem;
+    border: 1px solid #334155;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #e2e8f0;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+
+.signin-button:hover {
+    background-color: #1e293b;
+}
+
+/* form: space-y-4 -> each child has margin-bottom: 1rem */
+.form-group {
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+}
+
+/* span: mb-1 block text-sm text-slate-300 */
+.label-text {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #cbd5e1;
+}
+
+/* input: w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white outline-none focus:border-sky-500 */
+::deep .form-input {
+    width: 100%;
+    border-radius: 0.375rem;
+    border: 1px solid #334155;
+    background-color: #1e293b;
+    padding: 0.5rem 0.75rem;
+    color: white;
+    outline: none;
+    transition: border-color 0.15s ease;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    box-sizing: border-box;
+}
+
+::deep .form-input:focus {
+    border-color: #0ea5e9;
+}
+
+::deep .form-input::placeholder {
+    color: #334155;
+}
+
+/* verification code: additional tracking-[0.25em] */
+.verification-input {
+    letter-spacing: 0.25em;
+}
+
+::deep .validation-message {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: #f87171;
+}
+
+/* p: text-sm text-red-400 */
+.error-message {
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #f87171;
+}
+
+/* button: w-full rounded-md bg-sky-600 px-3 py-2 font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60 */
+.submit-button {
+    width: 100%;
+    border-radius: 0.375rem;
+    background-color: #0284c7;
+    padding: 0.5rem 0.75rem;
+    font-weight: 500;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    margin-top: 1rem;
+}
+
+.submit-button:hover {
+    background-color: #0ea5e9;
+}
+
+.submit-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* div: rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 */
+.info-box {
+    border-radius: 0.375rem;
+    border: 1px solid #334155;
+    background-color: #1e293b;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #e2e8f0;
+    margin-bottom: 1rem;
+}
+
+/* div: mt-1 text-xs text-slate-400 */
+.info-subtext {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: #94a3b8;
+}
+
+/* span: font-medium text-slate-300 */
+.info-email {
+    font-weight: 500;
+    color: #cbd5e1;
+}
+
+/* div: flex items-center justify-between gap-3 */
+.button-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+/* button: rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 */
+.secondary-button {
+    border-radius: 0.375rem;
+    border: 1px solid #334155;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #e2e8f0;
+    background: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.secondary-button:hover {
+    background-color: #1e293b;
+}
+
+.secondary-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+@media (max-width: 640px) {
+    .signup-card {
+        padding: 1rem;
+    }
+}
