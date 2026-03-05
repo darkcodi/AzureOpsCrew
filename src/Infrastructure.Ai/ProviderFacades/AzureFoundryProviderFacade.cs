@@ -1,13 +1,11 @@
-using System.ClientModel;
-using AzureOpsCrew.Domain.Providers;
 using System.Diagnostics;
 using System.Text.Json;
-using Azure.AI.OpenAI;
-using Microsoft.Extensions.AI;
+using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
+using Microsoft.Extensions.AI;
 
-namespace AzureOpsCrew.Infrastructure.Ai.ProviderServices;
+namespace AzureOpsCrew.Infrastructure.Ai.ProviderFacades;
 
 public sealed class AzureFoundryProviderFacade : IProviderFacade
 {

@@ -1,19 +1,16 @@
-using System.ClientModel;
-using AzureOpsCrew.Domain.Providers;
 using System.Diagnostics;
 using System.Text.Json;
-using Azure.AI.OpenAI;
-using Microsoft.Extensions.AI;
+using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
-using AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
+using Microsoft.Extensions.AI;
 
-namespace AzureOpsCrew.Infrastructure.Ai.ProviderServices;
+namespace AzureOpsCrew.Infrastructure.Ai.ProviderFacades;
 
-public sealed class OpenAIProviderFacade : IProviderFacade
+public sealed class AnthropicProviderFacade : IProviderFacade
 {
     private readonly HttpClient _httpClient;
 
-    public OpenAIProviderFacade(HttpClient httpClient)
+    public AnthropicProviderFacade(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }
@@ -31,11 +28,12 @@ public sealed class OpenAIProviderFacade : IProviderFacade
         try
         {
             var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
-                ? "https://api.openai.com/v1"
-                : config.ApiEndpoint;
+                ? "https://api.anthropic.com/v1"
+                : config.ApiEndpoint.TrimEnd('/');
 
             using var request = new HttpRequestMessage(HttpMethod.Get, $"{endpoint}/models");
-            request.Headers.Add("Authorization", $"Bearer {config.ApiKey}");
+            request.Headers.Add("x-api-key", config.ApiKey);
+            request.Headers.Add("anthropic-version", "2023-06-01");
 
             using var response = await _httpClient.SendAsync(request, cancellationToken);
 
@@ -53,11 +51,7 @@ public sealed class OpenAIProviderFacade : IProviderFacade
             var doc = JsonDocument.Parse(json);
             var modelsElement = doc.RootElement.GetProperty("data");
 
-            var models = modelsElement.EnumerateArray()
-                .Select(m => new ProviderModelInfo(
-                    m.GetProperty("id").GetString()!,
-                    m.GetProperty("id").GetString()!))
-                .ToArray();
+            var models = ParseModels(modelsElement);
 
             // Validate model if specified
             if (!string.IsNullOrWhiteSpace(config.DefaultModel))
@@ -93,11 +87,12 @@ public sealed class OpenAIProviderFacade : IProviderFacade
     public async Task<ProviderModelInfo[]> ListModelsAsync(Provider config, CancellationToken cancellationToken)
     {
         var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
-            ? "https://api.openai.com/v1"
-            : config.ApiEndpoint;
+            ? "https://api.anthropic.com/v1"
+            : config.ApiEndpoint.TrimEnd('/');
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"{endpoint}/models");
-        request.Headers.Add("Authorization", $"Bearer {config.ApiKey}");
+        request.Headers.Add("x-api-key", config.ApiKey);
+        request.Headers.Add("anthropic-version", "2023-06-01");
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -105,20 +100,35 @@ public sealed class OpenAIProviderFacade : IProviderFacade
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
         var doc = JsonDocument.Parse(json);
 
-        var models = doc.RootElement.GetProperty("data");
-
-        return models.EnumerateArray()
-            .Select(m => new ProviderModelInfo(
-                m.GetProperty("id").GetString()!,
-                m.GetProperty("id").GetString()!))
-            .ToArray();
+        var modelsElement = doc.RootElement.GetProperty("data");
+        return ParseModels(modelsElement);
     }
 
     public IChatClient CreateChatClient(Provider config, string model, CancellationToken cancellationToken)
     {
-        var options = new CustomOpenAiChatClientOptions(new Uri(config.ApiEndpoint!), config.ApiKey!, model) ;
-        var chatClient = new CustomOpenAiChatClient(options);
+        throw new NotImplementedException();
+    }
 
-        return chatClient;
+    private static ProviderModelInfo[] ParseModels(JsonElement modelsElement)
+    {
+        var result = new List<ProviderModelInfo>();
+
+        foreach (var model in modelsElement.EnumerateArray())
+        {
+            var id = model.GetProperty("id").GetString()!;
+            var displayName = model.TryGetProperty("display_name", out var nameElement)
+                ? nameElement.GetString()!
+                : id;
+
+            long? contextSize = null;
+            if (model.TryGetProperty("context_window_size", out var ctxElement))
+            {
+                contextSize = ctxElement.GetInt64();
+            }
+
+            result.Add(new ProviderModelInfo(id, displayName, contextSize));
+        }
+
+        return [.. result];
     }
 }

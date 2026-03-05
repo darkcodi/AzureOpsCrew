@@ -1,37 +1,46 @@
-using System.ClientModel;
-using AzureOpsCrew.Domain.Providers;
-using AzureOpsCrew.Domain.ProviderServices;
-using Microsoft.Extensions.AI;
-using OpenAI;
 using System.Diagnostics;
 using System.Text.Json;
-using AzureOpsCrew.Infrastructure.Ai.Clients;
+using AzureOpsCrew.Domain.Providers;
+using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
+using Microsoft.Extensions.AI;
 
-namespace AzureOpsCrew.Infrastructure.Ai.ProviderServices;
+namespace AzureOpsCrew.Infrastructure.Ai.ProviderFacades;
 
-public sealed class OllamaProviderFacade : IProviderFacade
+public sealed class OpenAIProviderFacade : IProviderFacade
 {
     private readonly HttpClient _httpClient;
 
-    public OllamaProviderFacade(HttpClient httpClient)
+    public OpenAIProviderFacade(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }
 
     public async Task<TestConnectionResult> TestConnectionAsync(Provider config, CancellationToken cancellationToken)
     {
+        // Validate API key
+        if (string.IsNullOrWhiteSpace(config.ApiKey))
+        {
+            return TestConnectionResult.ValidationFailed("API key is required");
+        }
+
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
             var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
-                ? "http://localhost:11434"
+                ? "https://api.openai.com/v1"
                 : config.ApiEndpoint;
 
-            var response = await _httpClient.GetAsync(
-                $"{endpoint}/api/tags",
-                cancellationToken);
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{endpoint}/models");
+            request.Headers.Add("Authorization", $"Bearer {config.ApiKey}");
+
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                return TestConnectionResult.AuthenticationFailed("Invalid API key");
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -40,20 +49,12 @@ public sealed class OllamaProviderFacade : IProviderFacade
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
             var doc = JsonDocument.Parse(json);
-
-            if (!doc.RootElement.TryGetProperty("models", out var modelsElement))
-            {
-                stopwatch.Stop();
-                return TestConnectionResult.Successful(stopwatch.ElapsedMilliseconds, []);
-            }
+            var modelsElement = doc.RootElement.GetProperty("data");
 
             var models = modelsElement.EnumerateArray()
                 .Select(m => new ProviderModelInfo(
-                    m.GetProperty("model").GetString()!,
-                    m.GetProperty("name").GetString()!,
-                    m.TryGetProperty("details", out var details) &&
-                     details.TryGetProperty("context_length", out var ctx)
-                        ? ctx.GetInt64() : null))
+                    m.GetProperty("id").GetString()!,
+                    m.GetProperty("id").GetString()!))
                 .ToArray();
 
             // Validate model if specified
@@ -90,39 +91,30 @@ public sealed class OllamaProviderFacade : IProviderFacade
     public async Task<ProviderModelInfo[]> ListModelsAsync(Provider config, CancellationToken cancellationToken)
     {
         var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
-            ? "http://localhost:11434"
+            ? "https://api.openai.com/v1"
             : config.ApiEndpoint;
 
-        var response = await _httpClient.GetAsync(
-            $"{endpoint}/api/tags",
-            cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{endpoint}/models");
+        request.Headers.Add("Authorization", $"Bearer {config.ApiKey}");
 
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
         var doc = JsonDocument.Parse(json);
 
-        var models = doc.RootElement.GetProperty("models");
+        var models = doc.RootElement.GetProperty("data");
 
         return models.EnumerateArray()
             .Select(m => new ProviderModelInfo(
-                m.GetProperty("model").GetString()!,
-                m.GetProperty("name").GetString()!,
-                m.TryGetProperty("details", out var details) &&
-                 details.TryGetProperty("context_length", out var ctx)
-                    ? ctx.GetInt64() : null))
+                m.GetProperty("id").GetString()!,
+                m.GetProperty("id").GetString()!))
             .ToArray();
     }
 
     public IChatClient CreateChatClient(Provider config, string model, CancellationToken cancellationToken)
     {
-        var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
-            ? "http://localhost:11434/v1"
-            : config.ApiEndpoint.TrimEnd('/') + "/v1";
-
-        // Ollama provides an OpenAI-compatible API endpoint at /v1
-        // Use dummy API key as it's required by OpenAIClient but ignored by Ollama
-        var options = new CustomOpenAiChatClientOptions(new Uri(endpoint), "ollama", model);
+        var options = new CustomOpenAiChatClientOptions(new Uri(config.ApiEndpoint!), config.ApiKey!, model) ;
         var chatClient = new CustomOpenAiChatClient(options);
 
         return chatClient;

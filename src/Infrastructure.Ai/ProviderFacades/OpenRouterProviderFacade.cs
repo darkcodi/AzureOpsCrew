@@ -1,23 +1,24 @@
-using AzureOpsCrew.Domain.Providers;
 using System.Diagnostics;
 using System.Text.Json;
-using Microsoft.Extensions.AI;
+using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
+using AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
+using Microsoft.Extensions.AI;
 
-namespace AzureOpsCrew.Infrastructure.Ai.ProviderServices;
+namespace AzureOpsCrew.Infrastructure.Ai.ProviderFacades;
 
-public sealed class AnthropicProviderFacade : IProviderFacade
+public sealed class OpenRouterProviderFacade : IProviderFacade
 {
+    private const string DefaultEndpoint = "https://openrouter.ai/api/v1";
     private readonly HttpClient _httpClient;
 
-    public AnthropicProviderFacade(HttpClient httpClient)
+    public OpenRouterProviderFacade(HttpClient httpClient)
     {
         _httpClient = httpClient;
     }
 
     public async Task<TestConnectionResult> TestConnectionAsync(Provider config, CancellationToken cancellationToken)
     {
-        // Validate API key
         if (string.IsNullOrWhiteSpace(config.ApiKey))
         {
             return TestConnectionResult.ValidationFailed("API key is required");
@@ -28,12 +29,11 @@ public sealed class AnthropicProviderFacade : IProviderFacade
         try
         {
             var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
-                ? "https://api.anthropic.com/v1"
+                ? DefaultEndpoint
                 : config.ApiEndpoint.TrimEnd('/');
 
             using var request = new HttpRequestMessage(HttpMethod.Get, $"{endpoint}/models");
-            request.Headers.Add("x-api-key", config.ApiKey);
-            request.Headers.Add("anthropic-version", "2023-06-01");
+            request.Headers.Add("Authorization", $"Bearer {config.ApiKey}");
 
             using var response = await _httpClient.SendAsync(request, cancellationToken);
 
@@ -51,9 +51,12 @@ public sealed class AnthropicProviderFacade : IProviderFacade
             var doc = JsonDocument.Parse(json);
             var modelsElement = doc.RootElement.GetProperty("data");
 
-            var models = ParseModels(modelsElement);
+            var models = modelsElement.EnumerateArray()
+                .Select(m => new ProviderModelInfo(
+                    m.GetProperty("id").GetString()!,
+                    m.GetProperty("id").GetString()!))
+                .ToArray();
 
-            // Validate model if specified
             if (!string.IsNullOrWhiteSpace(config.DefaultModel))
             {
                 var modelExists = models.Any(m => string.Equals(
@@ -87,12 +90,11 @@ public sealed class AnthropicProviderFacade : IProviderFacade
     public async Task<ProviderModelInfo[]> ListModelsAsync(Provider config, CancellationToken cancellationToken)
     {
         var endpoint = string.IsNullOrEmpty(config.ApiEndpoint)
-            ? "https://api.anthropic.com/v1"
+            ? DefaultEndpoint
             : config.ApiEndpoint.TrimEnd('/');
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"{endpoint}/models");
-        request.Headers.Add("x-api-key", config.ApiKey);
-        request.Headers.Add("anthropic-version", "2023-06-01");
+        request.Headers.Add("Authorization", $"Bearer {config.ApiKey}");
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -100,35 +102,20 @@ public sealed class AnthropicProviderFacade : IProviderFacade
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
         var doc = JsonDocument.Parse(json);
 
-        var modelsElement = doc.RootElement.GetProperty("data");
-        return ParseModels(modelsElement);
+        var models = doc.RootElement.GetProperty("data");
+
+        return models.EnumerateArray()
+            .Select(m => new ProviderModelInfo(
+                m.GetProperty("id").GetString()!,
+                m.GetProperty("id").GetString()!))
+            .ToArray();
     }
 
     public IChatClient CreateChatClient(Provider config, string model, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
-    }
+        var options = new CustomOpenAiChatClientOptions(new Uri(config.ApiEndpoint!), config.ApiKey!, model) ;
+        var chatClient = new CustomOpenAiChatClient(options);
 
-    private static ProviderModelInfo[] ParseModels(JsonElement modelsElement)
-    {
-        var result = new List<ProviderModelInfo>();
-
-        foreach (var model in modelsElement.EnumerateArray())
-        {
-            var id = model.GetProperty("id").GetString()!;
-            var displayName = model.TryGetProperty("display_name", out var nameElement)
-                ? nameElement.GetString()!
-                : id;
-
-            long? contextSize = null;
-            if (model.TryGetProperty("context_window_size", out var ctxElement))
-            {
-                contextSize = ctxElement.GetInt64();
-            }
-
-            result.Add(new ProviderModelInfo(id, displayName, contextSize));
-        }
-
-        return [.. result];
+        return chatClient;
     }
 }

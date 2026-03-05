@@ -20,7 +20,6 @@ public static class UsersEndpoints
         group.MapGet("", async (
             HttpContext httpContext,
             AzureOpsCrewContext context,
-            IChannelEventBroadcaster broadcaster,
             CancellationToken cancellationToken) =>
         {
             var now = DateTime.UtcNow;
@@ -40,15 +39,6 @@ public static class UsersEndpoints
             {
                 currentUser.MarkLogin();
                 await context.SaveChangesAsync(cancellationToken);
-
-                // Broadcast presence if user just came online
-                if (!wasOnline)
-                {
-                    _ = Task.Run(() => broadcaster.BroadcastUserPresenceAsync(
-                        currentUser.Id,
-                        currentUser.Username,
-                        true));
-                }
             }
 
             var users = await context.Users
