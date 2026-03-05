@@ -24,10 +24,8 @@
     [Parameter] public RenderFragment? MainArea { get; set; }
     [Parameter] public RenderFragment? RightSidebar { get; set; }
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        await AuthState.LoadFromLocalStorageAsync();
-
         if (!AuthState.IsAuthenticated)
         {
             var currentPath = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
