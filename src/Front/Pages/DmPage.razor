@@ -57,19 +57,11 @@
         await LoadMessagesIfNeeded();
     }
 
-    private async void OnStateChanged()
+    private void OnStateChanged() => InvokeAsync(async () =>
     {
-        try
-        {
-            await LoadMessagesIfNeeded();
-        }
-        catch
-        {
-            // ignored
-        }
-
-        await InvokeAsync(StateHasChanged);
-    }
+        await LoadMessagesIfNeeded();
+        StateHasChanged();
+    });
 
     public async ValueTask DisposeAsync()
     {

@@ -54,10 +54,10 @@
             .Combine(AppState.SubscribeChannels(OnStateChanged));
     }
 
-    private async void OnStateChanged()
+    private void OnStateChanged() => InvokeAsync(() =>
     {
-        await InvokeAsync(StateHasChanged);
-    }
+        StateHasChanged();
+    });
 
     public void Dispose()
     {
