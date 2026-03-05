@@ -28,6 +28,8 @@ public sealed class McpServerConfigurationEntityTypeConfiguration : IEntityTypeC
         builder.Property(x => x.IsEnabled)
             .HasDefaultValue(true);
 
+        builder.Property(x => x.ToolsSyncedAt);
+
         builder.Property(x => x.DateCreated)
             .IsRequired();
 
@@ -47,6 +49,12 @@ public sealed class McpServerConfigurationEntityTypeConfiguration : IEntityTypeC
 
             toolsBuilder.Property(x => x.Description)
                 .HasMaxLength(4000);
+
+            toolsBuilder.Property(x => x.InputSchemaJson)
+                .HasColumnType("nvarchar(max)");
+
+            toolsBuilder.Property(x => x.OutputSchemaJson)
+                .HasColumnType("nvarchar(max)");
 
             toolsBuilder.Property(x => x.IsEnabled)
                 .HasDefaultValue(true);

@@ -13,6 +13,7 @@ public sealed class McpServerConfiguration
         Id = id;
         Name = name.Trim();
         Url = url.Trim();
+        IsEnabled = true;
     }
 
     public Guid Id { get; private set; }
@@ -27,12 +28,23 @@ public sealed class McpServerConfiguration
 
     public List<McpServerToolConfiguration> Tools { get; private set; } = [];
 
+    public DateTime? ToolsSyncedAt { get; private set; }
+
     public DateTime DateCreated { get; private set; } = DateTime.UtcNow;
 
     public void Update(string name, string url)
     {
+        var normalizedUrl = url.Trim();
+        var urlChanged = !string.Equals(Url, normalizedUrl, StringComparison.Ordinal);
+
         Name = name.Trim();
-        Url = url.Trim();
+        Url = normalizedUrl;
+
+        if (urlChanged)
+        {
+            Tools = [];
+            ToolsSyncedAt = null;
+        }
     }
 
     public void SetEnabled(bool isEnabled)
@@ -40,8 +52,9 @@ public sealed class McpServerConfiguration
         IsEnabled = isEnabled;
     }
 
-    public void ReplaceTools(IEnumerable<McpServerToolConfiguration> tools)
+    public void ReplaceTools(IEnumerable<McpServerToolConfiguration> tools, DateTime syncedAt)
     {
         Tools = tools.ToList();
+        ToolsSyncedAt = syncedAt;
     }
 }

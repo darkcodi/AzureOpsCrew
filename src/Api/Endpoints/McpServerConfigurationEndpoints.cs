@@ -1,6 +1,7 @@
 using AzureOpsCrew.Api.Endpoints.Dtos.McpServerConfigurations;
 using AzureOpsCrew.Api.Endpoints.Filters;
 using AzureOpsCrew.Domain.McpServerConfigurations;
+using AzureOpsCrew.Infrastructure.Ai.Mcp;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 
@@ -58,6 +59,39 @@ public static class McpServerConfigurationEndpoints
         .Produces<McpServerConfiguration>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
+        group.MapPost("/{id}/sync-tools", async (
+            Guid id,
+            AzureOpsCrewContext context,
+            McpServerFacade mcpServerFacade,
+            CancellationToken cancellationToken) =>
+        {
+            var found = await context.McpServerConfigurations
+                .Include(x => x.Tools)
+                .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+            if (found is null)
+                return Results.NotFound();
+
+            var existingToolsByName = found.Tools
+                .GroupBy(x => x.Name, StringComparer.Ordinal)
+                .ToDictionary(x => x.Key, x => x.First(), StringComparer.Ordinal);
+
+            var discoveredTools = await mcpServerFacade.GetAvailableToolsAsync(found.Url, cancellationToken);
+
+            foreach (var tool in discoveredTools)
+            {
+                if (existingToolsByName.TryGetValue(tool.Name, out var existingTool))
+                    tool.IsEnabled = existingTool.IsEnabled;
+            }
+
+            found.ReplaceTools(discoveredTools, DateTime.UtcNow);
+            await context.SaveChangesAsync(cancellationToken);
+
+            return Results.Ok(found);
+        })
+        .Produces<McpServerConfiguration>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
         group.MapPut("/{id}", async (
             Guid id,
             UpdateMcpServerConfigurationBodyDto body,
@@ -73,6 +107,7 @@ public static class McpServerConfigurationEndpoints
 
             found.Update(body.Name, body.Url);
             found.Description = body.Description?.Trim();
+
             await context.SaveChangesAsync(cancellationToken);
 
             return Results.Ok(found);

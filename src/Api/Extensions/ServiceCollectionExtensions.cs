@@ -11,6 +11,7 @@ using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory;
+using AzureOpsCrew.Infrastructure.Ai.Mcp;
 using AzureOpsCrew.Infrastructure.Ai.ProviderFacades;
 using AzureOpsCrew.Infrastructure.Db;
 using AzureOpsCrew.Infrastructure.Db.Migrations;
@@ -85,6 +86,10 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(30);
         });
         services.AddHttpClient<OpenRouterProviderFacade>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+        services.AddHttpClient<McpServerFacade>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         });
@@ -240,3 +245,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IChannelEventBroadcaster, ChannelEventBroadcaster>();
     }
 }
+
+
+
+
+

@@ -18,6 +18,7 @@ public class M028_AddMcpServerConfigurations : Migration
             .WithColumn("Description").AsString(4000).Nullable()
             .WithColumn("Url").AsString(1000).NotNullable()
             .WithColumn("IsEnabled").AsBoolean().NotNullable().WithDefaultValue(true)
+            .WithColumn("ToolsSyncedAt").AsDateTime().Nullable()
             .WithColumn("DateCreated").AsDateTime().NotNullable();
 
         Create.Table(ToolsTableName)
@@ -25,6 +26,8 @@ public class M028_AddMcpServerConfigurations : Migration
             .WithColumn("McpServerConfigurationId").AsGuid().NotNullable()
             .WithColumn("Name").AsString(200).NotNullable()
             .WithColumn("Description").AsString(4000).Nullable()
+            .WithColumn("InputSchemaJson").AsString(int.MaxValue).Nullable()
+            .WithColumn("OutputSchemaJson").AsString(int.MaxValue).Nullable()
             .WithColumn("IsEnabled").AsBoolean().NotNullable().WithDefaultValue(true);
 
         Create.Index(ToolsConfigurationIdIndexName)
