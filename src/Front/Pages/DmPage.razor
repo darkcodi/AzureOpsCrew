@@ -67,7 +67,10 @@
     {
         _appStateSubscription?.Dispose();
         if (_hubClient != null)
+        {
+            _hubClient.MessageReceived -= OnMessageReceived;
             await _hubClient.DisposeAsync();
+        }
     }
 
     private async Task LoadMessagesIfNeeded()
@@ -100,7 +103,10 @@
     private async Task ConnectToDmHub(Guid dmId)
     {
         if (_hubClient != null)
+        {
+            _hubClient.MessageReceived -= OnMessageReceived;
             await _hubClient.DisposeAsync();
+        }
 
         _hubClient = ChatHubClient.ForDm(LoggerFactory);
         _hubClient.MessageReceived += OnMessageReceived;

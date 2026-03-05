@@ -54,7 +54,10 @@
     {
         _appStateSubscription?.Dispose();
         if (_hubClient != null)
+        {
+            _hubClient.MessageReceived -= OnMessageReceived;
             await _hubClient.DisposeAsync();
+        }
     }
 
     protected override async Task OnInitializedAsync()
@@ -87,7 +90,10 @@
     private async Task ConnectToChannelHub(Guid channelId)
     {
         if (_hubClient != null)
+        {
+            _hubClient.MessageReceived -= OnMessageReceived;
             await _hubClient.DisposeAsync();
+        }
 
         _hubClient = ChatHubClient.ForChannel(LoggerFactory);
         _hubClient.MessageReceived += OnMessageReceived;
