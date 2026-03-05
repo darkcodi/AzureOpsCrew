@@ -11,7 +11,7 @@ using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory;
-using AzureOpsCrew.Infrastructure.Ai.ProviderServices;
+using AzureOpsCrew.Infrastructure.Ai.ProviderFacades;
 using AzureOpsCrew.Infrastructure.Db;
 using AzureOpsCrew.Infrastructure.Db.Migrations;
 using FluentMigrator.Runner;
