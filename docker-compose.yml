@@ -31,22 +31,24 @@ services:
       - Seeding__AzureFoundrySeed__ApiEndpoint=${AZURE_OPENAI_API_ENDPOINT:-}
       - Seeding__AzureFoundrySeed__Key=${AZURE_OPENAI_API_KEY:-}
     ports:
-      - "5000:80"
+      - "42000:80"
     restart: on-failure
     depends_on:
       sqlserver:
         condition: service_healthy
 
   # Blazor WASM frontend (static files served by nginx).
-  # Dockerfile is in docker/ (not src/Front/) so VS Docker tooling
+  # Dockerfile is the Dockerfile.Front (not src/Front/Dockerfile) so VS Docker tooling
   # doesn't match it to Front.csproj and won't override the entrypoint.
   frontend:
     image: ${DOCKER_REGISTRY-}frontend
     build:
       context: .
-      dockerfile: Dockerfile.frontend
+      dockerfile: Dockerfile.Front
+      args:
+        API_BASE_URL: http://localhost:42000
     ports:
-      - "8080:80"
+      - "42080:80"
     restart: on-failure
     depends_on:
       - api
@@ -58,7 +60,7 @@ services:
       - ACCEPT_EULA=Y
       - SA_PASSWORD=YourStrong@Password
     ports:
-      - "41433:1433"
+      - "42433:1433"
     command:
       - /bin/bash
       - -c
