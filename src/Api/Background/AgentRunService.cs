@@ -79,7 +79,17 @@ public class AgentRunService
                         .OfType<AocTextContent>()
                         .LastOrDefault();
                     if (lastTextContent == null)
+                    {
+                        Log.Warning("[BACKGROUND] Agent {AgentId} did not produce any text content in chat {ChatId}", agentId, chatId);
                         break;
+                    }
+
+                    // Skip posting "SKIPPED" messages to the chat, these are used to indicate that the agent has decided to skip its turn and let other agents or the human take the lead.
+                    if (lastTextContent.Text?.Contains("SKIPPED") ?? false)
+                    {
+                        Log.Information("[BACKGROUND] Agent {AgentId} skipped its turn in chat {ChatId}", agentId, chatId);
+                        break;
+                    }
 
                     var message = await SaveLastMessage(agentId, data, lastTextContent, ct);
 
