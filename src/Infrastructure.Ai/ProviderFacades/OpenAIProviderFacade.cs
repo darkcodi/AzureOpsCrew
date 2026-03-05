@@ -57,19 +57,7 @@ public sealed class OpenAIProviderFacade : IProviderFacade
                     m.GetProperty("id").GetString()!))
                 .ToArray();
 
-            // Validate model if specified
-            if (!string.IsNullOrWhiteSpace(config.DefaultModel))
-            {
-                var modelExists = models.Any(m => string.Equals(
-                    m.Id,
-                    config.DefaultModel,
-                    StringComparison.Ordinal));
-
-                if (!modelExists)
-                {
-                    return TestConnectionResult.ValidationFailed($"Model '{config.DefaultModel}' not found in available models");
-                }
-            }
+            // Custom models are allowed even if the provider does not report them via /models.
 
             stopwatch.Stop();
             return TestConnectionResult.Successful(stopwatch.ElapsedMilliseconds, models);
