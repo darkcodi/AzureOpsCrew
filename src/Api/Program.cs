@@ -108,6 +108,7 @@ try
     app.MapUsersEndpoints();
     app.MapAgentEndpoints();
     app.MapChannelEndpoints();
+    app.MapMcpServerConfigurationEndpoints();
     app.MapDmEndpoints();
     app.MapProviderEndpoints();
 
@@ -131,3 +132,4 @@ finally
 {
     Log.CloseAndFlush();
 }
+

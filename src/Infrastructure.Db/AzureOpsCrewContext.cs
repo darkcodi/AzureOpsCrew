@@ -1,10 +1,12 @@
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
+using AzureOpsCrew.Domain.McpServerConfigurations;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Domain.Chats;
 using Microsoft.EntityFrameworkCore;
 using AgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AgentEntityTypeConfiguration;
 using ChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.ChannelEntityTypeConfiguration;
+using McpServerConfigurationConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.McpServerConfigurationEntityTypeConfiguration;
 using AiProviderConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.ProviderEntityTypeConfiguration;
 using PendingRegistrationConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.PendingRegistrationEntityTypeConfiguration;
 using UserConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.UserEntityTypeConfiguration;
@@ -25,6 +27,7 @@ public class AzureOpsCrewContext : DbContext
 
     public DbSet<Agent> Agents => Set<Agent>();
     public DbSet<Channel> Channels => Set<Channel>();
+    public DbSet<McpServerConfiguration> McpServerConfigurations => Set<McpServerConfiguration>();
     public DbSet<AiProvider> Providers => Set<AiProvider>();
     public DbSet<User> Users => Set<User>();
     public DbSet<PendingRegistration> PendingRegistrations => Set<PendingRegistration>();
@@ -37,6 +40,7 @@ public class AzureOpsCrewContext : DbContext
     {
         modelBuilder.ApplyConfiguration(new AgentConfig());
         modelBuilder.ApplyConfiguration(new ChannelConfig());
+        modelBuilder.ApplyConfiguration(new McpServerConfigurationConfig());
         modelBuilder.ApplyConfiguration(new AiProviderConfig());
         modelBuilder.ApplyConfiguration(new UserConfig());
         modelBuilder.ApplyConfiguration(new PendingRegistrationConfig());
@@ -46,3 +50,6 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new RawLlmHttpCallConfig());
     }
 }
+
+
+
