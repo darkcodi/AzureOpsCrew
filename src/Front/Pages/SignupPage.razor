@@ -151,16 +151,6 @@
 
     private string? _expiresInLabel;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await AuthState.LoadFromLocalStorageAsync();
-
-        if (AuthState.IsAuthenticated)
-        {
-            NavigationManager.NavigateTo("/");
-        }
-    }
-
     private async Task HandleRequestCode()
     {
         if (_isSubmitting) return;
