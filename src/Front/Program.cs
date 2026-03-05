@@ -25,7 +25,8 @@ try
     });
 
     // Configure HttpClient with API base URL and Authorization header handler
-    var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5000";
+    var apiBaseUrl = new Uri(builder.Configuration["ApiBaseUrl"] ?? throw new InvalidOperationException("ApiBaseUrl is not configured."));
+
     builder.Services.AddScoped<AuthHeaderHandler>();
     builder.Services.AddScoped(sp =>
     {
@@ -33,7 +34,7 @@ try
         handler.InnerHandler = new HttpClientHandler();
         return new HttpClient(handler)
         {
-            BaseAddress = new Uri(apiBaseUrl)
+            BaseAddress = apiBaseUrl
         };
     });
 
