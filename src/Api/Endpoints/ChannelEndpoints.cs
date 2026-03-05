@@ -40,7 +40,7 @@ public static class ChannelEndpoints
             var channel = new Channel(Guid.NewGuid(), body.Name)
             {
                 Description = body.Description,
-                AgentIds = body.AgentIds.Select(a => a.ToString("D")).ToArray()
+                AgentIds = body.AgentIds.ToArray()
             };
 
             await context.AddAsync(channel, cancellationToken);
@@ -69,7 +69,7 @@ public static class ChannelEndpoints
             if (!agentExists)
                 return Results.BadRequest($"Unknown agent with id: {body.AgentId}");
 
-            var agentId = body.AgentId.ToString("D");
+            var agentId = body.AgentId;
             if (!channel.AgentIds.Contains(agentId))
                 channel.AddAgent(agentId);
 
@@ -92,7 +92,7 @@ public static class ChannelEndpoints
             if (channel is null)
                 return Results.BadRequest($"Unknown channel with id: {id}");
 
-            channel.RemoveAgent(body.AgentId.ToString("D"));
+            channel.RemoveAgent(body.AgentId);
 
             await context.SaveChangesAsync(cancellationToken);
 
@@ -197,12 +197,9 @@ public static class ChannelEndpoints
             await channelEventBroadcaster.BroadcastMessageAddedAsync(channel.Id, message);
 
             // Trigger all agents in the channel
-            foreach (var agentIdString in channel.AgentIds)
+            foreach (var agentId in channel.AgentIds)
             {
-                if (Guid.TryParse(agentIdString, out var agentId))
-                {
-                    agentTriggerQueue.Enqueue(agentId, channel.Id);
-                }
+                agentTriggerQueue.Enqueue(agentId, channel.Id);
             }
 
             return Results.Created($"/api/channels/{id}/messages/{message.Id}", message);

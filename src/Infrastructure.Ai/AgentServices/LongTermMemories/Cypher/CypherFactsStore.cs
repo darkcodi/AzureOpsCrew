@@ -40,7 +40,7 @@ public class CypherFactsStore
             "CREATE FULLTEXT INDEX fact_fulltext IF NOT EXISTS FOR (n:Fact) ON EACH [n.text, n.category]");
     }
 
-    public async Task<CypherFactDto> AddFactAsync(string agentId, string text, string? category, CancellationToken cancellationToken = default)
+    public async Task<CypherFactDto> AddFactAsync(Guid agentId, string text, string? category, CancellationToken cancellationToken = default)
     {
         text = NormalizeText(text);
         category = NormalizeCategory(category);
@@ -84,7 +84,7 @@ public class CypherFactsStore
         });
     }
 
-    public async Task<CypherFactDto?> UpdateFactAsync(string agentId, string factId, string newText, string? categoryOrNullToKeep, CancellationToken cancellationToken = default)
+    public async Task<CypherFactDto?> UpdateFactAsync(Guid agentId, string factId, string newText, string? categoryOrNullToKeep, CancellationToken cancellationToken = default)
     {
         newText = NormalizeText(newText);
         var now = DateTimeOffset.UtcNow;
@@ -121,7 +121,7 @@ public class CypherFactsStore
         });
     }
 
-    public async Task<CypherFactDto?> DeleteFactAsync(string agentId, string factId, CancellationToken cancellationToken = default)
+    public async Task<CypherFactDto?> DeleteFactAsync(Guid agentId, string factId, CancellationToken cancellationToken = default)
     {
         await using var session = _driver.AsyncSession();
 
@@ -148,7 +148,7 @@ public class CypherFactsStore
         });
     }
 
-    public async Task<CypherFactSearchResult> SearchFactsAsync(string agentId, string query, int limit = 8, CancellationToken cancellationToken = default)
+    public async Task<CypherFactSearchResult> SearchFactsAsync(Guid agentId, string query, int limit = 8, CancellationToken cancellationToken = default)
     {
         limit = Math.Clamp(limit, 1, 50);
         query = (query ?? string.Empty).Trim();
@@ -187,7 +187,7 @@ public class CypherFactsStore
         });
     }
 
-    public async Task<IReadOnlyList<CypherFactDto>> ListFactsAsync(string agentId, int limit = 50, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<CypherFactDto>> ListFactsAsync(Guid agentId, int limit = 50, CancellationToken cancellationToken = default)
     {
         limit = Math.Clamp(limit, 1, 200);
 

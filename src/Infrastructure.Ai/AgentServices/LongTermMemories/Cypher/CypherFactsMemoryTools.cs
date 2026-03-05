@@ -5,9 +5,9 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
 public class CypherFactsMemoryTools
 {
     private readonly CypherFactsStore _store;
-    private readonly string _agentId;
+    private readonly Guid _agentId;
 
-    public CypherFactsMemoryTools(CypherFactsStore store, string agentId)
+    public CypherFactsMemoryTools(CypherFactsStore store, Guid agentId)
     {
         _store = store;
         _agentId = agentId;

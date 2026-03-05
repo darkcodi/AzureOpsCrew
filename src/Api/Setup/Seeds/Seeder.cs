@@ -79,7 +79,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             {
                 Description = "General discussion and collaboration",
                 ConversationId = null,
-                AgentIds = agents.Select(a => a.Id.ToString()).ToArray(),
+                AgentIds = agents.Select(a => a.Id).ToArray(),
                 DateCreated = DateTime.UtcNow
             };
             await AddChannelWithChatIfNotExists(generalChannel, agents.Select(a => a.Id).ToArray());

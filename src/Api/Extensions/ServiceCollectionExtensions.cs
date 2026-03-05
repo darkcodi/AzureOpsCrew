@@ -201,15 +201,17 @@ public static class ServiceCollectionExtensions
 
     public static void AddAgentFactory(this IServiceCollection services, IConfiguration configuration)
     {
-        //Add AiAgentFactory
+        // Add AiAgentFactory
         services.AddScoped<IAiAgentFactory, AiAgentFactory>();
 
-        //Add LongTermMemory
+        // Add LongTermMemory
         var memoryType = configuration["LongTermMemory:Type"] ?? "InMemory";
-        services.AddSingleton(p => new AgentAIContextProviderFactory(p, memoryType));
+        services.AddSingleton(p => new AgentAiContextProviderFactory(p, memoryType));
 
         if(string.Equals(memoryType, "InMemory", StringComparison.OrdinalIgnoreCase))
+        {
             services.AddSingleton<InMemoryFactsStore>();
+        }
         else if (string.Equals(memoryType, "Cypher", StringComparison.OrdinalIgnoreCase))
         {
             var uri = configuration["LongTermMemory:Neo4j:Uri"] ?? "bolt://localhost:7687";

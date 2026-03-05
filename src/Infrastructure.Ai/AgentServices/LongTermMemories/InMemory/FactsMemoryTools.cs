@@ -5,9 +5,9 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory
     public class FactsMemoryTools
     {
         private readonly InMemoryFactsStore _store;
-        private readonly string _agentId;
+        private readonly Guid _agentId;
 
-        public FactsMemoryTools(InMemoryFactsStore store, string agentId)
+        public FactsMemoryTools(InMemoryFactsStore store, Guid agentId)
         {
             _store = store;
             _agentId = agentId;

@@ -1,18 +1,19 @@
 using System.Text.Json;
-using AzureOpsCrew.Infrastructure.Ai.Models;
 
-namespace AzureOpsCrew.Infrastructure.Ai.Tools;
+namespace AzureOpsCrew.Domain.Tools;
 
 public static class FrontEndTools
 {
     public static List<ToolDeclaration> GetDeclarations()
     {
-        return new List<ToolDeclaration>() { ShowMyIpTool(), ShowDeploymentTool() };
+        // return new List<ToolDeclaration>() { ShowMyIpTool(), ShowDeploymentTool() };
+        return [];
     }
 
     public static bool IsFrontEndTool(string toolName)
     {
-        return GetDeclarations().Any(t => t.Name.Equals(toolName, StringComparison.OrdinalIgnoreCase));
+        // return GetDeclarations().Any(t => t.Name.Equals(toolName, StringComparison.OrdinalIgnoreCase));
+        return false;
     }
 
     private static ToolDeclaration ShowMyIpTool()
