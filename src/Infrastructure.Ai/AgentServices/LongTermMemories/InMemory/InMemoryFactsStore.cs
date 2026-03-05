@@ -41,13 +41,12 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory
 
         private const int MaxFactsPerAgent = 1000;
 
-        private readonly ConcurrentDictionary<string, AgentFactsBucket> _buckets =
-            new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<Guid, AgentFactsBucket> _buckets = new();
 
-        private AgentFactsBucket GetBucket(string agentId)
-            => _buckets.GetOrAdd(agentId ?? string.Empty, _ => new AgentFactsBucket());
+        private AgentFactsBucket GetBucket(Guid agentId)
+            => _buckets.GetOrAdd(agentId, _ => new AgentFactsBucket());
 
-        public FactDto AddFact(string agentId, string text, string? category)
+        public FactDto AddFact(Guid agentId, string text, string? category)
         {
             text = NormalizeText(text);
             category = NormalizeCategory(category);
@@ -88,7 +87,7 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory
             }
         }
 
-        public FactDto? UpdateFact(string agentId, string factId, string newText, string? categoryOrNullToKeep)
+        public FactDto? UpdateFact(Guid agentId, string factId, string newText, string? categoryOrNullToKeep)
         {
             newText = NormalizeText(newText);
             var bucket = GetBucket(agentId);
@@ -108,7 +107,7 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory
             }
         }
 
-        public FactDto? DeleteFact(string agentId, string factId)
+        public FactDto? DeleteFact(Guid agentId, string factId)
         {
             var bucket = GetBucket(agentId);
 
@@ -123,7 +122,7 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory
             }
         }
 
-        public FactSearchResult SearchFacts(string agentId, string query, int limit = 8)
+        public FactSearchResult SearchFacts(Guid agentId, string query, int limit = 8)
         {
             limit = Math.Clamp(limit, 1, 50);
             query = NormalizeQuery(query);
@@ -744,7 +743,7 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory
             return false;
         }
 
-        public IReadOnlyList<FactDto> ListFacts(string agentId, int limit = 50)
+        public IReadOnlyList<FactDto> ListFacts(Guid agentId, int limit = 50)
         {
             limit = Math.Clamp(limit, 1, 200);
             var bucket = GetBucket(agentId);

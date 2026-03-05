@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AzureOpsCrew.Domain.Tools;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Models.Content;
 

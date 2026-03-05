@@ -1,8 +1,7 @@
 using System.Text.Json;
-using AzureOpsCrew.Infrastructure.Ai.Tools;
 using Microsoft.Extensions.AI;
 
-namespace AzureOpsCrew.Infrastructure.Ai.Models;
+namespace AzureOpsCrew.Domain.Tools;
 
 public class ToolDeclaration
 {

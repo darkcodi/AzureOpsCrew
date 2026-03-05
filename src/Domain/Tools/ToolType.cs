@@ -1,4 +1,4 @@
-namespace AzureOpsCrew.Infrastructure.Ai.Tools;
+namespace AzureOpsCrew.Domain.Tools;
 
 public enum ToolType
 {

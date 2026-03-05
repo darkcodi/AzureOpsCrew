@@ -11,13 +11,10 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory
         private readonly string _memoryInstructions;
 
         public InMemoryFactsContextProvider(
-            string agentId,
+            Guid agentId,
             InMemoryFactsStore store,
             JsonSerializerOptions? jsonSerializerOptions = null)
         {
-            if (string.IsNullOrWhiteSpace(agentId))
-                throw new ArgumentException("agentId is required.", nameof(agentId));
-
             if (store is null)
                 throw new ArgumentNullException(nameof(store));
 

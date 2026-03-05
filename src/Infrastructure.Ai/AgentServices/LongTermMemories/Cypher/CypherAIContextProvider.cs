@@ -11,13 +11,10 @@ public sealed class CypherFactsContextProvider : AIContextProvider
     private readonly string _memoryInstructions;
 
     public CypherFactsContextProvider(
-        string agentId,
+        Guid agentId,
         CypherFactsStore store,
         JsonSerializerOptions? jsonSerializerOptions = null)
     {
-        if (string.IsNullOrWhiteSpace(agentId))
-            throw new ArgumentException("agentId is required.", nameof(agentId));
-
         ArgumentNullException.ThrowIfNull(store);
 
         var toolset = new CypherFactsMemoryTools(store, agentId);

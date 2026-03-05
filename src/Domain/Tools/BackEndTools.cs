@@ -1,7 +1,6 @@
 using System.Text.Json;
-using AzureOpsCrew.Infrastructure.Ai.Models;
 
-namespace AzureOpsCrew.Infrastructure.Ai.Tools;
+namespace AzureOpsCrew.Domain.Tools;
 
 public static class BackEndTools
 {

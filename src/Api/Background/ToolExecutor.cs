@@ -1,3 +1,4 @@
+using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Infrastructure.Ai.Models;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 

@@ -1,14 +1,16 @@
 using System.Runtime.CompilerServices;
 using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
+using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Infrastructure.Ai.Models;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
-using AzureOpsCrew.Infrastructure.Ai.Tools;
 using AzureOpsCrew.Infrastructure.Db;
+using Microsoft.Agents.AI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Serilog;
@@ -21,6 +23,7 @@ public class AgentRunService
     private readonly AzureOpsCrewContext _dbContext;
     private readonly IProviderFacadeResolver _providerFactory;
     private readonly ToolExecutor _toolExecutor;
+    private readonly IAiAgentFactory _aiAgentFactory;
     private readonly IChannelEventBroadcaster? _channelEventBroadcaster;
 
     public AgentRunService(IServiceProvider serviceProvider)
@@ -28,6 +31,7 @@ public class AgentRunService
         _dbContext = serviceProvider.GetRequiredService<AzureOpsCrewContext>();
         _providerFactory = serviceProvider.GetRequiredService<IProviderFacadeResolver>();
         _toolExecutor = serviceProvider.GetRequiredService<ToolExecutor>();
+        _aiAgentFactory = serviceProvider.GetRequiredService<IAiAgentFactory>();
         // Event broadcaster is optional - used for both channels and DMs
         _channelEventBroadcaster = serviceProvider.GetService<IChannelEventBroadcaster>();
     }
@@ -35,8 +39,6 @@ public class AgentRunService
     public async Task Run(Guid agentId, Guid chatId, CancellationToken ct)
     {
         Log.Information("[BACKGROUND] Starting agent run: {AgentId}, chat: {ChatId}", agentId, chatId);
-
-        var data = await LoadAgentRunData(agentId, chatId, ct);
 
         try
         {
@@ -48,18 +50,22 @@ public class AgentRunService
                 iteration++;
                 Log.Debug("[BACKGROUND] Agent {AgentId} iteration {Iteration}", agentId, iteration);
 
-                var prompt = await PreparePrompt(data);
+                // load new DB state for each iteration to get the latest messages and thoughts
+                var data = await LoadAgentRunData(agentId, chatId, ct);
 
+                // Make one LLM call
                 var newAgentThoughts = new List<AocAgentThought>();
-                await foreach (var agentThought in CallLlm(data, prompt, ct))
+                await foreach (var agentThought in CallLlm(data, ct))
                 {
                     newAgentThoughts.Add(agentThought);
                 }
 
+                // Compact text content and save to DB
                 await SaveRawLlmHttpCall(agentId, chatId, newAgentThoughts, ct);
-                ConcatTextContent(newAgentThoughts);
+                SquashTextContent(newAgentThoughts);
                 await SaveAgentThoughts(agentId, chatId, newAgentThoughts, ct);
 
+                // Execute tools and save results to DB
                 var toolCallResults = new List<AocAgentThought>();
                 await foreach (var toolCallResult in ExecuteToolCalls(data, newAgentThoughts, ct))
                 {
@@ -68,48 +74,20 @@ public class AgentRunService
                 }
                 await SaveAgentThoughts(agentId, chatId, toolCallResults, ct);
 
+                // If there are no tool calls, we can assume the agent has finished its run after one iteration.
+                // This is a simplification and can be improved by adding explicit signals in the future.
                 if (toolCallResults.Count == 0)
                 {
-                    // If there are no tool calls, we can assume the agent has finished its run after one iteration.
-                    // This is a simplification and can be improved by adding explicit signals in the future.
-
-                    // Send last text content to channel or DM
                     var lastTextContent = newAgentThoughts.Select(t => t.ContentDto.ToAocAiContent())
                         .OfType<AocTextContent>()
                         .LastOrDefault();
-                    if (lastTextContent != null)
-                    {
-                        var message = new Message
-                        {
-                            Id = Guid.NewGuid(),
-                            Text = lastTextContent.Text,
-                            PostedAt = DateTime.UtcNow,
-                            AgentId = agentId,
-                            AuthorName = data.Agent.Info.Username,
-                        };
+                    if (lastTextContent == null)
+                        break;
 
-                        if (data.Channel != null)
-                        {
-                            message.ChannelId = data.Channel.Id;
-                        }
-                        else
-                        {
-                            message.DmId = data.Dm!.Id;
-                        }
-                        _dbContext.Messages.Add(message);
-                        await _dbContext.SaveChangesAsync(ct);
-                        Log.Debug("[BACKGROUND] Saved message for agent {AgentId} to {ChatType}", agentId, data.Channel != null ? "channel" : "DM");
+                    var message = await SaveLastMessage(agentId, data, lastTextContent, ct);
 
-                        // Broadcast the message
-                        if (data.Channel != null && _channelEventBroadcaster != null)
-                        {
-                            await _channelEventBroadcaster.BroadcastMessageAddedAsync(data.Channel.Id, message);
-                        }
-                        else if (data.Dm != null && _channelEventBroadcaster != null)
-                        {
-                            await _channelEventBroadcaster.BroadcastDmMessageAddedAsync(data.Dm.Id, message);
-                        }
-                    }
+                    // Send last text content to channel or DM
+                    await Broadcast(data, message);
 
                     break;
                 }
@@ -127,6 +105,19 @@ public class AgentRunService
         }
 
         Log.Information("[BACKGROUND] Agent run completed: {AgentId}, chat: {ChatId}", agentId, chatId);
+    }
+
+    private async Task Broadcast(AgentRunData data, Message message)
+    {
+        // Broadcast the message
+        if (data.Channel != null && _channelEventBroadcaster != null)
+        {
+            await _channelEventBroadcaster.BroadcastMessageAddedAsync(data.Channel.Id, message);
+        }
+        else if (data.Dm != null && _channelEventBroadcaster != null)
+        {
+            await _channelEventBroadcaster.BroadcastDmMessageAddedAsync(data.Dm.Id, message);
+        }
     }
 
     private async Task<AgentRunData> LoadAgentRunData(Guid agentId, Guid chatId, CancellationToken ct)
@@ -193,62 +184,23 @@ public class AgentRunService
         };
     }
 
-    private async Task<string> PreparePrompt(AgentRunData data)
-    {
-        const string systemPrompt = "You are one of agents in group chat: agents + human. When you have tools available, use them proactively to present information visually instead of plain text. Do NOT issue several tool calls in a row, and always wait for the result of a tool call before issuing another tool call. If you want to issue multiple tool calls, please issue them one by one and wait for the result of each tool call.";
-
-        var beTools = string.Join("\n\n", data.Tools.Where(x => x.ToolType == ToolType.BackEnd).Select(t => t.FormatToolDeclaration()));
-        var feTools = string.Join("\n\n", data.Tools.Where(x => x.ToolType == ToolType.FrontEnd).Select(t => t.FormatToolDeclaration()));
-
-        if (string.IsNullOrEmpty(beTools))
-        {
-            beTools = "No backend tools available.";
-        }
-        if (string.IsNullOrEmpty(feTools))
-        {
-            feTools = "No frontend tools available.";
-        }
-
-        var prompt = $"""
-System prompt:
-{systemPrompt}
-
-Available backend tools:
-{beTools}
-
-Available frontend tools:
-{feTools}
-
-Your username is:
-{data.Agent.Info.Username}
-
-Your description is:
-{data.Agent.Info.Description}
-
-User prompt:
-{data.Agent.Info.Prompt}
-""";
-
-        return prompt;
-    }
-
-    private async IAsyncEnumerable<AocAgentThought> CallLlm(AgentRunData data, string prompt, [EnumeratorCancellation] CancellationToken ct)
+    private async IAsyncEnumerable<AocAgentThought> CallLlm(AgentRunData data, [EnumeratorCancellation] CancellationToken ct)
     {
         Log.Debug("[BACKGROUND] Calling LLM for agent {AgentId} with model {Model}", data.Agent.Id, data.Agent.Info.Model);
 
         var providerFacade = _providerFactory.GetService(data.Provider.ProviderType);
         var chatClient = providerFacade.CreateChatClient(data.Provider, data.Agent.Info.Model, CancellationToken.None);
         var fClient = new FunctionInvokingChatClient(chatClient);
-        var chatOptions = new ChatOptions
-        {
-            Instructions = prompt,
-            Tools = data.Tools.Select(x => (AITool)x.ToAiFunctionDeclaration()).ToArray(),
-        };
+
+        var aiAgent = _aiAgentFactory.Create(fClient, data);
+        var agentSession = await aiAgent.CreateSessionAsync(ct);
+        var runOptions = new AgentRunOptions { AllowBackgroundResponses = false };
+
         var chatMessages = data.ChatMessages.Select(m => m.ToChatMessage()).ToList();
         var thoughts = data.LlmThoughts.Select(x => AocAgentThought.FromDomain(x).ToChatMessage()).ToList();
         var allMessages = chatMessages.Concat(thoughts).OrderBy(x => x.CreatedAt).ToList();
 
-        await foreach (ChatResponseUpdate update in fClient.GetStreamingResponseAsync(allMessages, chatOptions, ct))
+        await foreach (AgentResponseUpdate update in aiAgent.RunStreamingAsync(allMessages, agentSession, runOptions, ct))
         {
             var contents = update.Contents;
             foreach (var content in contents)
@@ -296,8 +248,8 @@ User prompt:
         await _dbContext.SaveChangesAsync(ct);
     }
 
-    // If there are multiple text content in a row, we want to concat them into one content
-    private static void ConcatTextContent(List<AocAgentThought> messages)
+    // If there are multiple text content in a row, we want to squash them into one content
+    private static void SquashTextContent(List<AocAgentThought> messages)
     {
         for (int i = messages.Count - 1; i > 0; i--)
         {
@@ -329,6 +281,32 @@ User prompt:
         var newDomainThoughts = newAgentThoughts.Select(t => t.ToDomain(agentId, chatId, _runId)).ToList();
         _dbContext.AgentThoughts.AddRange(newDomainThoughts);
         await _dbContext.SaveChangesAsync(ct);
+    }
+
+    private async Task<Message> SaveLastMessage(Guid agentId, AgentRunData data, AocTextContent lastTextContent, CancellationToken ct)
+    {
+        var message = new Message
+        {
+            Id = Guid.NewGuid(),
+            Text = lastTextContent.Text,
+            PostedAt = DateTime.UtcNow,
+            AgentId = agentId,
+            AuthorName = data.Agent.Info.Username,
+        };
+
+        if (data.Channel != null)
+        {
+            message.ChannelId = data.Channel.Id;
+        }
+        else
+        {
+            message.DmId = data.Dm!.Id;
+        }
+        _dbContext.Messages.Add(message);
+        await _dbContext.SaveChangesAsync(ct);
+        Log.Debug("[BACKGROUND] Saved message for agent {AgentId} to {ChatType}", agentId, data.Channel != null ? "channel" : "DM");
+
+        return message;
     }
 
     private async IAsyncEnumerable<AocFunctionResultContent> ExecuteToolCalls(AgentRunData data,
@@ -402,13 +380,3 @@ User prompt:
     }
 }
 
-public class AgentRunData
-{
-    public Agent Agent { get; set; } = null!;
-    public Provider Provider { get; set; } = null!;
-    public Channel? Channel { get; set; }
-    public DirectMessageChannel? Dm { get; set; }
-    public List<Message> ChatMessages { get; set; } = null!;
-    public List<AgentThought> LlmThoughts { get; set; } = null!;
-    public List<ToolDeclaration> Tools { get; set; } = null!;
-}
