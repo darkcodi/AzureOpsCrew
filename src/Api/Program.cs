@@ -49,10 +49,7 @@ try
     builder.Services.AddEmailVerification(builder.Configuration);
     builder.Services.AddAgentFactory(builder.Configuration);
     builder.Services.AddAgentSchedulerBackgroundService();
-
-    // Configure AG-UI
     builder.Services.AddHttpClient();
-    builder.Services.AddAGUI();
 
     // Configure SignalR
     builder.Services.AddSignalR();
