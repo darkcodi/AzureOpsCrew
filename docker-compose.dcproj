@@ -9,5 +9,6 @@
     <None Include=".env.example" />
     <None Include="docker-compose.yml" />
     <None Include=".dockerignore" />
+    <None Include="Dockerfile.Front" />
   </ItemGroup>
 </Project>
