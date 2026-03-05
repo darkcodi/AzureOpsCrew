@@ -23,16 +23,16 @@ namespace AzureOpsCrew.Domain.Channels
         public string? ConversationId { get; set; }
 
 
-        public string[] AgentIds { get; set; } = [];
+        public Guid[] AgentIds { get; set; } = [];
 
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
 
-        public void AddAgent(string agentId)
+        public void AddAgent(Guid agentId)
         {
             AgentIds = AgentIds.Concat([agentId]).ToArray();
         }
 
-        public void RemoveAgent(string agentId)
+        public void RemoveAgent(Guid agentId)
         {
             AgentIds = AgentIds.Except([agentId]).ToArray();
         }

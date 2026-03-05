@@ -2,12 +2,9 @@ using System.Runtime.CompilerServices;
 using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.AgentServices;
-using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Chats;
-using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Domain.Tools;
-using AzureOpsCrew.Infrastructure.Ai.Models;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.Agents.AI;
@@ -114,9 +111,9 @@ public class AgentRunService
         {
             await _channelEventBroadcaster.BroadcastMessageAddedAsync(data.Channel.Id, message);
         }
-        else if (data.Dm != null && _channelEventBroadcaster != null)
+        else if (data.DmChannel != null && _channelEventBroadcaster != null)
         {
-            await _channelEventBroadcaster.BroadcastDmMessageAddedAsync(data.Dm.Id, message);
+            await _channelEventBroadcaster.BroadcastDmMessageAddedAsync(data.DmChannel.Id, message);
         }
     }
 
@@ -169,6 +166,12 @@ public class AgentRunService
             .Concat(frontEndTools)
             .ToList();
 
+        // load participant agents in the chat for context
+        var agentIds = isChannel
+            ? channel?.AgentIds ?? [] // todo: concat user ids when we have users in channels
+            : new List<Guid?> { dm!.Agent1Id, dm!.Agent2Id }.Where(id => id != null).Select(x => x!.Value).ToArray();
+        var participantAgents = await _dbContext.Agents.Where(a => agentIds.Contains(a.Id)).ToListAsync(ct);
+
         Log.Debug("[BACKGROUND] Loaded data for agent {AgentId}: {MessageCount} messages, {ThoughtCount} thoughts, {ToolCount} tools",
             agentId, chatMessages.Count, llmThoughts.Count, tools.Count);
 
@@ -177,10 +180,11 @@ public class AgentRunService
             Agent = agent,
             Provider = provider,
             Channel = channel,
-            Dm = dm,
+            DmChannel = dm,
             ChatMessages = chatMessages,
             LlmThoughts = llmThoughts,
             Tools = tools,
+            ParticipantAgents = participantAgents,
         };
     }
 
@@ -300,7 +304,7 @@ public class AgentRunService
         }
         else
         {
-            message.DmId = data.Dm!.Id;
+            message.DmId = data.DmChannel!.Id;
         }
         _dbContext.Messages.Add(message);
         await _dbContext.SaveChangesAsync(ct);

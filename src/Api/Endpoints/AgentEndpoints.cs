@@ -153,17 +153,15 @@ namespace AzureOpsCrew.Api.Endpoints
                 if (found is null)
                     return Results.NotFound();
 
-                var agentIdString = found.Id.ToString();
-
                 var userChannels = await context.Set<Channel>()
                     .ToListAsync(cancellationToken);
 
                 var channelsWithAgent = userChannels
-                    .Where(c => c.AgentIds.Contains(agentIdString))
+                    .Where(c => c.AgentIds.Contains(found.Id))
                     .ToList();
 
                 foreach (var channel in channelsWithAgent)
-                    channel.RemoveAgent(agentIdString);
+                    channel.RemoveAgent(found.Id);
 
                 context.Set<Agent>().Remove(found);
                 await context.SaveChangesAsync(cancellationToken);
