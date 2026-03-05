@@ -25,6 +25,7 @@
                     </label>
                     <InputText Id="username" @bind-Value="_signupModel.Username" class="form-input" autocomplete="username" />
                     <ValidationMessage For="() => _signupModel.Username" />
+                    <span class="helper-text">Lowercase letters and numbers only, 2-30 characters</span>
                 </div>
 
                 <div class="form-group">
@@ -172,9 +173,9 @@
             return;
         }
 
-        if (!Regex.IsMatch(_signupModel.Username, @"^[a-zA-Z0-9]+$"))
+        if (!Regex.IsMatch(_signupModel.Username, @"^[a-z0-9]+$"))
         {
-            _errorMessage = "Username must contain letters and numbers only";
+            _errorMessage = "Username must contain lowercase letters and numbers only";
             return;
         }
 
@@ -406,7 +407,7 @@
         [Required(ErrorMessage = "Username is required")]
         [MinLength(2, ErrorMessage = "Username must be at least 2 characters")]
         [MaxLength(30, ErrorMessage = "Username must be at most 30 characters")]
-        [RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "Letters and numbers only")]
+        [RegularExpression(@"^[a-z0-9]+$", ErrorMessage = "Lowercase letters and numbers only")]
         public string Username { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Email is required")]

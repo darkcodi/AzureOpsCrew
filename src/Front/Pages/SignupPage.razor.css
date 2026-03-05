@@ -118,6 +118,14 @@
     color: #f87171;
 }
 
+/* Helper text for form fields */
+::deep .helper-text {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: #64748b; /* slate-500 */
+}
+
 /* button: w-full rounded-md bg-sky-600 px-3 py-2 font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60 */
 .submit-button {
     width: 100%;
