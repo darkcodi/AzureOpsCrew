@@ -7,6 +7,7 @@
 @inject AgentService AgentService
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
+@inject ILogger<DmPage> Logger
 
 <MainLayout>
     <LeftSidebar>
@@ -59,8 +60,15 @@
 
     private void OnStateChanged() => InvokeAsync(async () =>
     {
-        await LoadMessagesIfNeeded();
-        StateHasChanged();
+        try
+        {
+            await LoadMessagesIfNeeded();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error in OnStateChanged");
+        }
     });
 
     public async ValueTask DisposeAsync()
