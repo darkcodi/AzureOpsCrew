@@ -170,7 +170,7 @@ public class AgentRunService
             .ToListAsync(ct);
 
         // load tools
-        var backendTools = BackEndTools.GetDeclarations();
+        var backendTools = BackEndTools.All.Select(t => t.GetDeclaration()).ToList();
         var frontEndTools = FrontEndTools.GetDeclarations();
         var tools = backendTools
             .Concat(frontEndTools)
@@ -370,7 +370,7 @@ public class AgentRunService
 
             try
             {
-                toolCallResult = await _toolExecutor.ExecuteTool(toolDeclaration, toolCall);
+                toolCallResult = await _toolExecutor.ExecuteTool(data.Agent, toolDeclaration, toolCall);
             }
             catch (Exception ex)
             {
@@ -384,7 +384,7 @@ public class AgentRunService
                 yield return new AocFunctionResultContent
                 {
                     CallId = toolCall.CallId,
-                    Result = new ToolCallResult(SerializedResult: $"{{\"ErrorMessage\":\"{toolError.Message}\"}}", IsError: true),
+                    Result = new ToolCallResult(CallId: toolCall.CallId, Result: new { ErrorMessage = toolError.Message }, IsError: true),
                 };
                 continue;
             }
