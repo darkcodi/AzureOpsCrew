@@ -58,7 +58,6 @@
                             <span class="status-icon">@((MarkupString)badge.Icon)</span>
                             @badge.Label
                         </span>
-                        <span class="default-label">&middot; @GetSyncSummary(selectedServer)</span>
                     </div>
                 </div>
                 <button type="button" role="switch" aria-checked="@selectedServer.IsEnabled"
@@ -235,8 +234,26 @@
 
             </div>
 
+            <div class="action-buttons">
+                <button type="button" class="btn btn-primary" disabled="@(!canSave)" @onclick="SaveCurrentMcpServerAsync">
+                    @(IsSavingMcpServer ? "Saving..." : "Save")
+                </button>
+                <button type="button" class="btn btn-secondary" disabled="@(!canSync)" @onclick="OnSyncMcpServer">
+                    @(IsSyncingMcpServer ? "Syncing..." : "Sync tools")
+                </button>
+                <button type="button" class="btn btn-secondary" disabled="@(!canReset)" @onclick="OnResetCurrentMcpServer">
+                    Reset
+                </button>
+                <button type="button" class="btn btn-danger" disabled="@(IsSavingMcpServer || IsSyncingMcpServer)" @onclick="OnRemoveCurrentMcpServer">
+                    Remove
+                </button>
+            </div>
+
             <div class="form-field">
-                <label class="form-label">Tools</label>
+                <div class="mcp-tools-header">
+                    <label class="form-label">Tools</label>
+                    <span class="mcp-tools-note">@GetSyncSummary(selectedServer)</span>
+                </div>
                 <div class="tool-chips-container">
                     @if (selectedServer.Tools.Count == 0)
                     {
@@ -250,6 +267,10 @@
                             <div class="tool-chip @(tool.IsEnabled ? string.Empty : "off")">
                                 <div class="tool-chip-content">
                                     <span class="tool-chip-name">@tool.Name</span>
+                                    <div class="mcp-tool-badges">
+                                        <span class="mcp-tool-badge">Input: @(string.IsNullOrWhiteSpace(tool.InputSchemaJson) ? "No" : "Yes")</span>
+                                        <span class="mcp-tool-badge">Output: @(string.IsNullOrWhiteSpace(tool.OutputSchemaJson) ? "No" : "Yes")</span>
+                                    </div>
                                     @if (!string.IsNullOrWhiteSpace(tool.Description))
                                     {
                                         <span class="tool-chip-description">@tool.Description</span>
@@ -267,46 +288,11 @@
                 <p class="form-description">This mirrors the provider selected-models pattern. Tool availability changes are saved through the backend immediately.</p>
             </div>
 
-            @if (selectedServer.Tools.Count > 0)
-            {
-                <div class="form-field">
-                    <label class="form-label">Tool metadata</label>
-                    <div class="mcp-tools-list compact">
-                        @foreach (var tool in selectedServer.Tools.OrderBy(tool => tool.Name, StringComparer.OrdinalIgnoreCase))
-                        {
-                            <div class="mcp-tool-row compact @(tool.IsEnabled ? string.Empty : "off")">
-                                <div class="mcp-tool-head compact">
-                                    <span class="mcp-tool-name">@tool.Name</span>
-                                    <div class="mcp-tool-badges">
-                                        <span class="mcp-tool-badge">Input: @(string.IsNullOrWhiteSpace(tool.InputSchemaJson) ? "No" : "Yes")</span>
-                                        <span class="mcp-tool-badge">Output: @(string.IsNullOrWhiteSpace(tool.OutputSchemaJson) ? "No" : "Yes")</span>
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
-
             @if (!string.IsNullOrEmpty(McpServerError))
             {
                 <p class="save-error">@McpServerError</p>
             }
 
-            <div class="action-buttons">
-                <button type="button" class="btn btn-primary" disabled="@(!canSave)" @onclick="SaveCurrentMcpServerAsync">
-                    @(IsSavingMcpServer ? "Saving..." : "Save")
-                </button>
-                <button type="button" class="btn btn-secondary" disabled="@(!canSync)" @onclick="OnSyncMcpServer">
-                    @(IsSyncingMcpServer ? "Syncing..." : "Sync tools")
-                </button>
-                <button type="button" class="btn btn-secondary" disabled="@(!canReset)" @onclick="OnResetCurrentMcpServer">
-                    Reset
-                </button>
-                <button type="button" class="btn btn-danger" disabled="@(IsSavingMcpServer || IsSyncingMcpServer)" @onclick="OnRemoveCurrentMcpServer">
-                    Remove
-                </button>
-            </div>
         </div>
     }
     else

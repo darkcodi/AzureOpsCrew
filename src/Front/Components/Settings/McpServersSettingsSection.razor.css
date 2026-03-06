@@ -231,7 +231,6 @@
 .provider-description-card,
 .mcp-summary-card,
 .mcp-empty-state,
-.mcp-tool-row,
 .tool-chip {
     background: hsl(228, 6%, 17%);
     border: 1px solid hsl(228, 6%, 28%);
@@ -335,6 +334,19 @@
     margin-top: 14px;
 }
 
+.mcp-tools-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.mcp-tools-header .form-label {
+    margin-bottom: 0;
+}
+
 .tool-chips-container {
     display: flex;
     flex-direction: column;
@@ -411,29 +423,6 @@
     gap: 8px;
 }
 
-.mcp-tool-row {
-    padding: 14px;
-}
-
-.mcp-tool-row.compact {
-    padding: 10px 12px;
-}
-
-.mcp-tool-row.off {
-    opacity: 0.72;
-}
-
-.mcp-tool-head {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    align-items: flex-start;
-}
-
-.mcp-tool-head.compact {
-    align-items: center;
-}
-
 .mcp-tool-badges {
     display: flex;
     flex-wrap: wrap;
@@ -449,12 +438,6 @@
     background: hsl(228, 6%, 20%);
     font-size: 11px;
     color: hsl(214, 5%, 70%);
-}
-
-.mcp-tool-name {
-    font-size: 14px;
-    font-weight: 600;
-    color: hsl(210, 3%, 94%);
 }
 
 .mcp-empty-state {
@@ -489,7 +472,8 @@
 .action-buttons {
     display: flex;
     gap: 12px;
-    margin-top: 18px;
+    flex-wrap: wrap;
+    margin: 18px 0;
 }
 
 .btn {
@@ -524,6 +508,11 @@
     color: hsl(210, 3%, 92%);
 }
 
+.btn-danger {
+    background-color: hsl(0, 70%, 45%);
+    color: #fff;
+}
+
 .save-error {
     margin: 6px 0 0;
     font-size: 13px;
@@ -543,8 +532,6 @@
     .provider-detail-header,
     .mcp-detail-actions,
     .tool-chip,
-    .mcp-tool-head,
-    .mcp-tool-head.compact {
         flex-direction: column;
         align-items: stretch;
     }
