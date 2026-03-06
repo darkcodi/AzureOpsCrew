@@ -25,7 +25,7 @@ public class AocAgentThought
         {
             Role = Role,
             AuthorName = AuthorName,
-            CreatedAt = CreatedAt,
+            CreatedAt = new DateTimeOffset(CreatedAt, TimeSpan.Zero),
         };
     }
 

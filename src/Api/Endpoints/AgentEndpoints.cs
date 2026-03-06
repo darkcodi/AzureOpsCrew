@@ -229,7 +229,7 @@ namespace AzureOpsCrew.Api.Endpoints
                             Id = msg.Id.ToString(),
                             Role = msg.Role.ToString(),
                             Content = textContent.Text,
-                            Timestamp = msg.CreatedAt
+                            Timestamp = new DateTimeOffset(msg.CreatedAt, TimeSpan.Zero),
                         });
                     }
                     else if (aiContent is AocTextReasoningContent reasoningContent)
@@ -240,7 +240,7 @@ namespace AzureOpsCrew.Api.Endpoints
                             Role = msg.Role.ToString(),
                             Content = null,
                             Reasoning = reasoningContent.Text,
-                            Timestamp = msg.CreatedAt
+                            Timestamp = new DateTimeOffset(msg.CreatedAt, TimeSpan.Zero),
                         });
                     }
                     else if (aiContent is AocFunctionCallContent functionCallContent
@@ -261,7 +261,7 @@ namespace AzureOpsCrew.Api.Endpoints
                             Id = functionCallContent.CallId,
                             Role = msg.Role.ToString(),
                             Content = "",
-                            Timestamp = msg.CreatedAt,
+                            Timestamp = new DateTimeOffset(msg.CreatedAt, TimeSpan.Zero),
                             Widget = new UiWidgetDto
                             {
                                 ToolName = functionCallContent.Name,

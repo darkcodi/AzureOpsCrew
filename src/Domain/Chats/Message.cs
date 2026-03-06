@@ -28,7 +28,7 @@ public class Message
         return new ChatMessage(role, aiContentList)
         {
             AuthorName = AuthorName,
-            CreatedAt = PostedAt,
+            CreatedAt = new DateTimeOffset(PostedAt, TimeSpan.Zero),
         };
     }
 }
