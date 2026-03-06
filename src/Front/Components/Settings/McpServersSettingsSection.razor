@@ -233,13 +233,6 @@
                     <p class="save-error">@_authValidationError</p>
                 }
 
-                <div class="mcp-auth-actions">
-                    <button type="button" class="btn btn-secondary"
-                            disabled="@(authInputsDisabled || !hasAuthChanges)"
-                            @onclick="ResetAuthEditorToSelectedServer">
-                        Reset auth form
-                    </button>
-                </div>
             </div>
 
             <div class="form-field">

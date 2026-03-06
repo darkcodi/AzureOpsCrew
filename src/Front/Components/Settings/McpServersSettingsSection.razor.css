@@ -629,11 +629,6 @@
     min-width: 0;
 }
 
-.mcp-auth-actions {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-}
 
 .mcp-inline-btn {
     white-space: nowrap;
@@ -651,8 +646,7 @@
 @media (max-width: 1100px) {
     .mcp-auth-input-row,
     .mcp-auth-headers-title-row,
-    .mcp-auth-header-row,
-    .mcp-auth-actions {
+    .mcp-auth-header-row {
         grid-template-columns: 1fr;
         flex-direction: column;
         align-items: stretch;
