@@ -73,14 +73,30 @@ public static class OpenAiRequestMapper
             }
             else if (contents.Count == 1)
             {
-                openAiMessage.Content = ConvertSingleContent(contents[0], out var toolCallId, out var toolCalls);
-                if (toolCallId != null)
+                var content = contents[0];
+                if (content is TextReasoningContent)
                 {
-                    openAiMessage.ToolCallId = toolCallId;
+                    openAiMessage.ReasoningContent = ConvertSingleContent(contents[0], out var toolCallId, out var toolCalls)?.ToString();
+                    if (toolCallId != null)
+                    {
+                        openAiMessage.ToolCallId = toolCallId;
+                    }
+                    if (toolCalls != null)
+                    {
+                        openAiMessage.ToolCalls = toolCalls;
+                    }
                 }
-                if (toolCalls != null)
+                else
                 {
-                    openAiMessage.ToolCalls = toolCalls;
+                    openAiMessage.Content = ConvertSingleContent(contents[0], out var toolCallId, out var toolCalls);
+                    if (toolCallId != null)
+                    {
+                        openAiMessage.ToolCallId = toolCallId;
+                    }
+                    if (toolCalls != null)
+                    {
+                        openAiMessage.ToolCalls = toolCalls;
+                    }
                 }
             }
             else
@@ -93,7 +109,7 @@ public static class OpenAiRequestMapper
                 }
             }
 
-            if (openAiMessage.Content != null || openAiMessage.ToolCalls != null)
+            if (openAiMessage.Content != null || openAiMessage.ReasoningContent != null || openAiMessage.ToolCalls != null)
             {
                 // Only add messages that have content or tool calls to avoid sending empty messages to OpenAI
                 result.Add(openAiMessage);
@@ -217,6 +233,9 @@ public static class OpenAiRequestMapper
         {
             case TextContent textContent:
                 return textContent.Text;
+
+            case TextReasoningContent textReasoningContent:
+                return textReasoningContent.Text;
 
             case FunctionCallContent functionCall:
                 // Serialize arguments to JSON string for OpenAI API
