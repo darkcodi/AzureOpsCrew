@@ -8,6 +8,7 @@
     font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    margin: 8px 48px 8px 72px;
 }
 
 .tool-call-card-header {
@@ -127,4 +128,10 @@
     font-size: 0.8125rem;
     font-style: italic;
     color: hsl(214, 5%, 55%);
+}
+
+@media (max-width: 768px) {
+    .tool-call-card {
+        margin: 8px 16px 8px 56px;
+    }
 }
