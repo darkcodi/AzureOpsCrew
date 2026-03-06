@@ -134,11 +134,7 @@ public class SettingsService(HttpClient http, IJSRuntime js)
         return await ReadMcpServerResponse(response, $"Failed to create MCP server {server.Name}");
     }
 
-    public async Task<McpServerConfigurationItem> GetMcpServerAsync(string backendId)
-    {
-        var response = await http.GetAsync($"/api/mcp-server-configurations/{backendId}");
-        return await ReadMcpServerResponse(response, "Failed to load MCP server.");
-    }
+
 
     public async Task<McpServerConfigurationItem> UpdateMcpServerAsync(McpServerConfigurationItem server)
     {

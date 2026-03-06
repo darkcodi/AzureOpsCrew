@@ -195,12 +195,15 @@
             {
                 if (!savedById.TryGetValue(server.Id, out var saved) || string.IsNullOrEmpty(server.BackendId)) return false;
                 return server.Name != saved.Name ||
-                       server.Description != saved.Description ||
+                       NormalizeOptionalMcpText(server.Description) != NormalizeOptionalMcpText(saved.Description) ||
                        server.Url != saved.Url;
             })
             .Select(server => server.Id)
             .ToHashSet();
     }
+
+    private static string? NormalizeOptionalMcpText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private void HandleSettingsChange(SettingsState updated)
     {
@@ -366,7 +369,7 @@
         ComputeModifiedMcpServerIds();
         StateHasChanged();
     }
-    private async Task HandleResetCurrentMcpServer()
+    private void HandleResetCurrentMcpServer()
     {
         if (_selectedMcpServerId == null) return;
 
@@ -374,23 +377,13 @@
         if (current == null || string.IsNullOrWhiteSpace(current.BackendId))
             return;
 
+        var saved = _savedMcpServers.FirstOrDefault(server => server.Id == current.Id);
+        if (saved == null)
+            return;
+
+        ApplyMcpServerSnapshot(current.Id, saved.Clone());
+        _mcpServerAuthResetKey++;
         _mcpServerError = null;
-        _isSavingMcpServer = true;
-        try
-        {
-            var refreshedSnapshot = await SettingsService.GetMcpServerAsync(current.BackendId);
-            ApplyMcpServerSnapshot(current.Id, refreshedSnapshot);
-            _mcpServerAuthResetKey++;
-            _mcpServerError = null;
-        }
-        catch (Exception ex)
-        {
-            _mcpServerError = ex.Message;
-        }
-        finally
-        {
-            _isSavingMcpServer = false;
-        }
     }
 
     private async Task HandleSyncMcpServer()

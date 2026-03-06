@@ -47,7 +47,7 @@
         var canToggleEnabled = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
         var canToggleTools = !IsSavingMcpServer && !IsSyncingMcpServer && !IsUpdatingMcpServerTool && !isDraft && !hasPendingChanges;
         var canReset = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && hasPendingChanges;
-        var authInputsDisabled = isDraft || hasConfigChanges || IsSavingMcpServer || IsSyncingMcpServer;
+        var authInputsDisabled = isDraft || IsSavingMcpServer || IsSyncingMcpServer;
 
         <div class="provider-detail">
             <div class="provider-detail-header">
@@ -125,10 +125,6 @@
                 @if (isDraft)
                 {
                     <p class="form-description">Save the server first before storing authorization.</p>
-                }
-                else if (hasPendingChanges)
-                {
-                    <p class="form-description">Save the current name or URL changes before updating authorization.</p>
                 }
 
                 @if (selectedServer.Auth.HasBearerToken || selectedServer.Auth.HasCustomHeaders)
