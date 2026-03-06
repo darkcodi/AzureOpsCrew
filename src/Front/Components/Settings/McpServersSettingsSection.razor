@@ -42,6 +42,7 @@
         var canSave = !IsSavingMcpServer && !string.IsNullOrWhiteSpace(selectedServer.Name) && !string.IsNullOrWhiteSpace(selectedServer.Url) && (hasPendingChanges || isDraft);
         var canSync = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
         var canToggleEnabled = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
+        var canToggleTools = !IsSavingMcpServer && !IsSyncingMcpServer && !IsUpdatingMcpServerTool && !isDraft && !hasPendingChanges;
         var enabledToolsCount = selectedServer.Tools.Count(tool => tool.IsEnabled);
 
         <div class="provider-detail">
@@ -66,7 +67,7 @@
 
             <div class="provider-description-card">
                 <h4 class="description-label">Server Snapshot</h4>
-                <p class="description-text">Save the connection first, then sync tools to refresh the local MCP snapshot. Tool activation is currently a UI preview until the backend endpoint is added.</p>
+                <p class="description-text">Save the connection first, then sync tools to refresh the local MCP snapshot. Tool activation is persisted immediately on the saved MCP server configuration.</p>
             </div>
 
             <div class="mcp-summary-grid">
@@ -78,7 +79,7 @@
                 <div class="mcp-summary-card">
                     <span class="mcp-summary-label">Enabled in UI</span>
                     <span class="mcp-summary-value">@enabledToolsCount</span>
-                    <span class="mcp-summary-note">Preview state until backend toggle lands</span>
+                    <span class="mcp-summary-note">Persisted tool availability</span>
                 </div>
                 <div class="mcp-summary-card">
                     <span class="mcp-summary-label">Authorization</span>
@@ -143,6 +144,7 @@
                     {
                         @foreach (var tool in selectedServer.Tools.OrderBy(tool => tool.Name, StringComparer.OrdinalIgnoreCase))
                         {
+                            var isUpdatingCurrentTool = IsUpdatingMcpServerTool && string.Equals(UpdatingMcpServerToolName, tool.Name, StringComparison.Ordinal);
                             <div class="tool-chip @(tool.IsEnabled ? string.Empty : "off")">
                                 <div class="tool-chip-content">
                                     <span class="tool-chip-name">@tool.Name</span>
@@ -151,14 +153,16 @@
                                         <span class="tool-chip-description">@tool.Description</span>
                                     }
                                 </div>
-                                <button type="button" class="tool-chip-action" @onclick="() => ToggleLocalToolAsync(tool.Name)">
-                                    @(tool.IsEnabled ? "Deactivate" : "Activate")
+                                <button type="button" class="tool-chip-action"
+                                        disabled="@(!canToggleTools)"
+                                        @onclick="() => OnToggleSelectedMcpServerTool.InvokeAsync(tool.Name)">
+                                    @(isUpdatingCurrentTool ? "Updating..." : tool.IsEnabled ? "Deactivate" : "Activate")
                                 </button>
                             </div>
                         }
                     }
                 </div>
-                <p class="form-description">This mirrors the provider selected-models pattern. The per-tool action is local-only until the backend toggle endpoint is implemented.</p>
+                <p class="form-description">This mirrors the provider selected-models pattern. Tool availability changes are saved through the backend immediately.</p>
             </div>
 
             @if (selectedServer.Tools.Count > 0)
@@ -224,8 +228,11 @@
     [Parameter] public EventCallback OnResetCurrentMcpServer { get; set; }
     [Parameter] public EventCallback OnSyncMcpServer { get; set; }
     [Parameter] public EventCallback OnToggleSelectedMcpServerEnabled { get; set; }
+    [Parameter] public EventCallback<string> OnToggleSelectedMcpServerTool { get; set; }
     [Parameter] public bool IsSavingMcpServer { get; set; }
     [Parameter] public bool IsSyncingMcpServer { get; set; }
+    [Parameter] public bool IsUpdatingMcpServerTool { get; set; }
+    [Parameter] public string? UpdatingMcpServerToolName { get; set; }
     [Parameter] public string? McpServerError { get; set; }
 
     private string _searchQuery = "";
@@ -291,20 +298,6 @@
         await OnMcpServersChange.InvokeAsync(McpServers.ToList());
     }
 
-    private async Task ToggleLocalToolAsync(string toolName)
-    {
-        if (SelectedMcpServer == null)
-            return;
-
-        var tool = SelectedMcpServer.Tools.FirstOrDefault(item => string.Equals(item.Name, toolName, StringComparison.Ordinal));
-        if (tool == null)
-            return;
-
-        tool.IsEnabled = !tool.IsEnabled;
-        StateHasChanged();
-        await OnMcpServersChange.InvokeAsync(McpServers.ToList());
-    }
-
     private (string Icon, string Color, string Label) GetStatusBadge(McpServerConfigurationItem server)
     {
         if (ModifiedMcpServerIds.Contains(server.Id))
@@ -355,9 +348,3 @@
     private const string SvgDraft =
         """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22h6a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v10"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 18h1"/><path d="M13 18h3"/></svg>""";
 }
-
-
-
-
-
-

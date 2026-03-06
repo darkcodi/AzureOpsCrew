@@ -162,6 +162,19 @@ public class SettingsService(HttpClient http, IJSRuntime js)
         return await ReadMcpServerResponse(response, "Failed to sync MCP tools.");
     }
 
+    public async Task<McpServerConfigurationItem> SetMcpServerToolEnabledAsync(string backendId, string toolName, bool isEnabled)
+    {
+        var response = await http.PostAsJsonAsync(
+            $"/api/mcp-server-configurations/{backendId}/tools/set-enable",
+            new
+            {
+                name = toolName,
+                isEnabled,
+            });
+
+        return await ReadMcpServerResponse(response, "Failed to update MCP tool availability.");
+    }
+
     public async Task<ProviderTestResult> TestProviderAsync(Provider provider)
     {
         var payload = new
