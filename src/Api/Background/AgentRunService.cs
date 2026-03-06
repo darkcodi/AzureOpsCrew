@@ -64,54 +64,43 @@ public class AgentRunService
                 await SaveAgentThoughts(agentId, chatId, newAgentThoughts, ct);
 
                 // Execute tools and save results to DB
-                var toolCallResults = new List<AocAgentThought>();
-                var toolCalls = newAgentThoughts
+                var newToolCallResults = new List<AocAgentThought>();
+                var newToolCalls = newAgentThoughts
                     .Select(m => m.ContentDto.ToAocAiContent())
                     .OfType<AocFunctionCallContent>()
                     .ToList();
 
                 // ToDo: Add support for parallel tool calls if needed. For now we execute them sequentially for simplicity.
-                foreach (var toolCall in toolCalls)
+                foreach (var toolCall in newToolCalls)
                 {
                     var toolCallResult = await ExecuteToolCall(toolCall, data);
                     var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow);
-                    toolCallResults.Add(toolResultMessage);
+                    newToolCallResults.Add(toolResultMessage);
                 }
-                await SaveAgentThoughts(agentId, chatId, toolCallResults, ct);
+                await SaveAgentThoughts(agentId, chatId, newToolCallResults, ct);
 
                 // If the agent called the skipTurn tool, we consider that it has finished its run and we stop the loop.
                 // This allows agents to explicitly signal that they want to skip their turn and let other agents or the human take the lead.
-                if (toolCalls.Any(c => string.Equals(c.Name, SkipTurnTool.ToolName, StringComparison.CurrentCultureIgnoreCase)))
+                if (newToolCalls.Any(c => string.Equals(c.Name, SkipTurnTool.ToolName, StringComparison.CurrentCultureIgnoreCase)))
                 {
                     Log.Information("[BACKGROUND] Agent {AgentId} decided to skip its turn in chat {ChatId}", agentId, chatId);
                     break;
                 }
 
+                var lastTextContent = newAgentThoughts.Select(t => t.ContentDto.ToAocAiContent())
+                    .OfType<AocTextContent>()
+                    .LastOrDefault();
+
+                if (lastTextContent != null)
+                {
+                    var message = await SaveLastMessage(agentId, data, lastTextContent, ct);
+                    await Broadcast(data, message);
+                }
+
                 // If there are no tool calls, we can assume the agent has finished its run after one iteration.
                 // This is a simplification and can be improved by adding explicit signals in the future.
-                if (toolCallResults.Count == 0)
+                if (newToolCalls.Count == 0)
                 {
-                    var lastTextContent = newAgentThoughts.Select(t => t.ContentDto.ToAocAiContent())
-                        .OfType<AocTextContent>()
-                        .LastOrDefault();
-                    if (lastTextContent == null)
-                    {
-                        Log.Warning("[BACKGROUND] Agent {AgentId} did not produce any text content in chat {ChatId}", agentId, chatId);
-                        break;
-                    }
-
-                    // Skip posting "SKIPPED" messages to the chat, these are used to indicate that the agent has decided to skip its turn and let other agents or the human take the lead.
-                    if (lastTextContent.Text?.Contains("SKIPPED") ?? false)
-                    {
-                        Log.Information("[BACKGROUND] Agent {AgentId} skipped its turn in chat {ChatId}", agentId, chatId);
-                        break;
-                    }
-
-                    var message = await SaveLastMessage(agentId, data, lastTextContent, ct);
-
-                    // Send last text content to channel or DM
-                    await Broadcast(data, message);
-
                     break;
                 }
             }
