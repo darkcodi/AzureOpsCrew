@@ -34,7 +34,7 @@
             {
                 <div class="tool-call-card-section">
                     <div class="tool-call-card-section-label">Result</div>
-                    <pre class="tool-call-card-json">@FormatJson(result)</pre>
+                    <pre class="tool-call-card-json">@FormatResult(result)</pre>
                 </div>
             }
             else if (ToolCall.Result is null)
@@ -80,5 +80,43 @@
         {
             return element.ToString();
         }
+    }
+
+    private static string FormatResult(JsonElement element)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+            return FormatJson(element);
+
+        JsonElement? resultProp = null;
+        foreach (var prop in element.EnumerateObject())
+        {
+            if (prop.Name.Equals("Result", StringComparison.OrdinalIgnoreCase))
+            {
+                resultProp = prop.Value;
+                break;
+            }
+        }
+
+        if (resultProp is not { } rp)
+            return FormatJson(element);
+
+        if (rp.ValueKind == JsonValueKind.String)
+        {
+            var str = rp.GetString();
+            if (!string.IsNullOrEmpty(str) && (str.TrimStart().StartsWith('{') || str.TrimStart().StartsWith('[')))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(str);
+                    return JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+                }
+                catch
+                {
+                    return str;
+                }
+            }
+            return str ?? string.Empty;
+        }
+        return FormatJson(rp);
     }
 }
