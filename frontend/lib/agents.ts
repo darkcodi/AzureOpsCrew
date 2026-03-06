@@ -23,6 +23,7 @@ export interface ChatMessage {
   role: "user" | "assistant"
   content: string
   agentId?: string
+  agentName?: string
   timestamp: Date
 }
 

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -49,6 +50,10 @@ public class McpToolProvider
     private const int MaxRetries = 2;
     private const int PerToolTimeoutSeconds = 30;
     private const int DiscoveryTimeoutSeconds = 15;
+
+    // Per-tool failure tracking: prevents the LLM from calling the same broken tool in a loop
+    private const int MaxConsecutiveToolFailures = 3;
+    private readonly ConcurrentDictionary<string, int> _toolFailureCounts = new();
 
     /// <summary>True if Azure MCP tools were actually discovered (not mocks).</summary>
     public bool AzureToolsAvailable => _azureTools is not null && !_azureCircuitOpen;
@@ -624,10 +629,49 @@ public class McpToolProvider
 
     #region AITool Creation
 
+    /// <summary>
+    /// Detect if an MCP tool uses compound argument format (command + parameters).
+    /// These tools require callers to specify a sub-command and its parameters,
+    /// e.g. { "command": "query", "parameters": { "query": "..." } }
+    /// </summary>
+    private static bool IsCompoundTool(JsonElement? inputSchema)
+    {
+        if (inputSchema == null || inputSchema.Value.ValueKind != JsonValueKind.Object)
+            return false;
+
+        if (!inputSchema.Value.TryGetProperty("properties", out var props))
+            return false;
+
+        return props.TryGetProperty("command", out _) && props.TryGetProperty("parameters", out _);
+    }
+
+    /// <summary>
+    /// Build enhanced description for compound MCP tools that require command + parameters format.
+    /// </summary>
+    private static string EnhanceCompoundToolDescription(string originalDescription, string toolName)
+    {
+        var sb = new System.Text.StringBuilder(originalDescription);
+        sb.AppendLine();
+        sb.AppendLine();
+        sb.AppendLine("IMPORTANT: This is a COMPOUND tool with multiple sub-commands.");
+        sb.AppendLine("To discover available sub-commands, call with: {\"learn\": true}");
+        sb.AppendLine("Then call with the specific command: {\"command\": \"<sub_command>\", \"parameters\": {<params>}}");
+        sb.AppendLine("Example flow:");
+        sb.AppendLine("  1. First call: {\"learn\": true} → returns list of available commands");
+        sb.AppendLine("  2. Then call: {\"command\": \"query\", \"parameters\": {\"query\": \"...\"}}");
+        sb.AppendLine("DO NOT pass the tool name as the command value. Use the specific sub-command from the learn response.");
+        return sb.ToString();
+    }
+
     private AITool CreateAiTool(McpToolDefinition mcpTool, McpServerSettings serverSettings, string serverPrefix)
     {
         var fullName = $"{serverPrefix}_{mcpTool.Name}";
-        var enhancedDescription = ApprovalPolicy.EnhanceToolDescription(fullName, mcpTool.Description);
+        var baseDescription = ApprovalPolicy.EnhanceToolDescription(fullName, mcpTool.Description);
+        
+        // Enhance description for compound tools (command + parameters schema)
+        var enhancedDescription = IsCompoundTool(mcpTool.InputSchema) 
+            ? EnhanceCompoundToolDescription(baseDescription, mcpTool.Name)
+            : baseDescription;
 
         return new McpAiFunction(
             name: fullName,
@@ -637,6 +681,16 @@ public class McpToolProvider
             {
                 var argsJson = JsonSerializer.SerializeToElement(args ?? new Dictionary<string, object?>());
                 Log.Information("Invoking MCP tool {Tool} with original args: {Args}", mcpTool.Name, argsJson.ToString());
+
+                // Per-tool failure circuit breaker: if this tool has failed too many times, reject immediately
+                var failureCount = _toolFailureCounts.GetValueOrDefault(fullName, 0);
+                if (failureCount >= MaxConsecutiveToolFailures)
+                {
+                    Log.Warning("Tool {Tool} blocked by per-tool circuit breaker ({Count} consecutive failures)", 
+                        fullName, failureCount);
+                    return $"⚠️ BLOCKED: Tool '{mcpTool.Name}' has failed {failureCount} consecutive times and is temporarily disabled. " +
+                           "DO NOT call this tool again. Try a completely different approach or report the issue to the user.";
+                }
 
                 // Approval policy check: block dangerous tools at runtime
                 if (ApprovalPolicy.RequiresApproval(fullName))
@@ -677,13 +731,38 @@ public class McpToolProvider
 
                         var result = await InvokeToolAsync(serverSettings, mcpTool.Name, currentArgs, cts.Token);
 
-                        // Check if result is an MCP error that we can auto-repair
-                        if (result.TryGetProperty("error", out var errorObj) || 
-                            (result.TryGetProperty("content", out var contentArray) && 
-                             contentArray.ValueKind == JsonValueKind.Array &&
-                             contentArray.EnumerateArray().Any(c => c.TryGetProperty("text", out var t) && 
-                                                                      t.GetString()?.Contains("error", StringComparison.OrdinalIgnoreCase) == true)))
+                        // Check if result is an MCP error that we can auto-repair.
+                        // Detection: explicit "error" property, OR content text containing "error",
+                        // OR content text matching known MCP failure patterns (e.g. "parameters are required when not learning")
+                        var resultText = FormatToolResult(result);
+                        
+                        // BYPASS: If result is a help/learn response (lists available commands),
+                        // treat it as SUCCESS — the LLM needs this info to make correct calls.
+                        if (McpArgumentNormalizer.IsLikelyHelpResponse(resultText))
                         {
+                            Log.Information("MCP tool {Tool}: received help/learn response (attempt {Attempt}), returning to agent as data",
+                                mcpTool.Name, attempt + 1);
+                            ClearToolFailure(fullName);
+                            return resultText;
+                        }
+                        
+                        var isExplicitError = result.TryGetProperty("error", out _);
+                        var isContentError = !isExplicitError && 
+                            result.TryGetProperty("content", out var contentArray) && 
+                            contentArray.ValueKind == JsonValueKind.Array &&
+                            contentArray.EnumerateArray().Any(c => c.TryGetProperty("text", out var t) && 
+                                                                     t.GetString()?.Contains("error", StringComparison.OrdinalIgnoreCase) == true);
+                        var isImplicitFailure = !isExplicitError && !isContentError && 
+                            McpArgumentNormalizer.IsLikelyMcpFailure(resultText);
+
+                        if (isExplicitError || isContentError || isImplicitFailure)
+                        {
+                            if (isImplicitFailure)
+                            {
+                                Log.Warning("MCP tool {Tool}: result text matches MCP failure pattern (attempt {Attempt}): {Text}",
+                                    mcpTool.Name, attempt + 1, resultText.Length > 300 ? resultText[..300] + "..." : resultText);
+                            }
+
                             var repairStrategy = McpArgumentNormalizer.ParseErrorAndSuggestRepair(fullName, result);
                             if (repairStrategy is not null && attempt < MaxRetries)
                             {
@@ -698,13 +777,23 @@ public class McpToolProvider
                                 // Retry immediately (no backoff delay for format errors)
                                 continue;
                             }
+
+                            // All repair attempts exhausted — return clear failure message
+                            // so the LLM doesn't keep retrying the same broken call
+                            var failureMsg = $"⚠️ TOOL CALL FAILED: '{mcpTool.Name}' returned an error after {attempt + 1} attempt(s). " +
+                                             $"MCP server response: {(resultText.Length > 400 ? resultText[..400] + "..." : resultText)} " +
+                                             "DO NOT retry this same tool call with the same arguments — it will fail again. " +
+                                             "Try a different approach, use a different tool, or report this limitation to the user.";
+                            Log.Warning("MCP tool {Tool}: all repair attempts exhausted, returning hard failure to agent", mcpTool.Name);
+                            TrackToolFailure(fullName);
+                            return failureMsg;
                         }
 
-                        // Success or non-repairable error
-                        var resultStr = FormatToolResult(result);
+                        // Success — real data returned
                         Log.Information("MCP tool {Tool} returned (attempt {Attempt}): {Result}",
-                            mcpTool.Name, attempt + 1, resultStr.Length > 500 ? resultStr[..500] + "..." : resultStr);
-                        return resultStr;
+                            mcpTool.Name, attempt + 1, resultText.Length > 500 ? resultText[..500] + "..." : resultText);
+                        ClearToolFailure(fullName);
+                        return resultText;
                     }
                     catch (OperationCanceledException) when (!ct.IsCancellationRequested)
                     {
@@ -767,6 +856,21 @@ public class McpToolProvider
             _gitopsCircuitOpen = true;
             _gitopsCircuitResetTime = DateTime.UtcNow.AddSeconds(CircuitBreakerCooldownSeconds);
             Log.Warning("Circuit breaker OPEN for GitOps MCP. Will retry after {ResetTime}", _gitopsCircuitResetTime);
+        }
+    }
+
+    private void TrackToolFailure(string toolName)
+    {
+        var count = _toolFailureCounts.AddOrUpdate(toolName, 1, (_, c) => c + 1);
+        Log.Warning("Per-tool failure tracker: {Tool} now at {Count} consecutive failures (max={Max})", 
+            toolName, count, MaxConsecutiveToolFailures);
+    }
+
+    private void ClearToolFailure(string toolName)
+    {
+        if (_toolFailureCounts.TryRemove(toolName, out var prev) && prev > 0)
+        {
+            Log.Information("Per-tool failure tracker: {Tool} cleared ({Count} previous failures)", toolName, prev);
         }
     }
 

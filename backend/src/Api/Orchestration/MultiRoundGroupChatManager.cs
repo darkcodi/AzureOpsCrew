@@ -196,6 +196,25 @@ public class MultiRoundGroupChatManager : GroupChatManager
             // ToolEnforcementResult.Pass - continue normally
             _workerResponsePending = false;
         }
+        
+        // Track non-tool turns: if the last agent spoke without calling any tools,
+        // increment the counter. This is crucial for detecting infinite text loops.
+        if (_workerResponsePending || (!_delegationParsedThisRound && _managerHasSpokenThisRound))
+        {
+            var lastAgentUsedTools = DetectWorkerToolUsage(history) || _workerUsedToolsThisTurn;
+            if (lastAgentUsedTools)
+            {
+                _consecutiveNonToolTurns = 0;
+            }
+            else
+            {
+                _consecutiveNonToolTurns++;
+                var agentName = _currentWorker?.Name ?? "Manager";
+                Log.Warning("[Run {RunId}] Non-tool turn #{Count} by {Agent}", 
+                    _runContext.RunId, _consecutiveNonToolTurns, agentName);
+            }
+            _workerResponsePending = false;
+        }
 
         // Parse delegation ONCE per round after Manager spoke
         if (!_delegationParsedThisRound && !_directAddressingMode)
@@ -305,18 +324,33 @@ public class MultiRoundGroupChatManager : GroupChatManager
     }
 
     /// <summary>
-    /// Detect if the current worker used any tools by examining chat history.
-    /// Looks for FunctionCallContent or FunctionResultContent from the worker.
+    /// Failure markers returned by MCP tool invocation when all retries are exhausted.
+    /// </summary>
+    private static readonly string[] ToolFailureMarkers = 
+    [
+        "⚠️ TOOL CALL FAILED",
+        "⚠️ BLOCKED"
+    ];
+
+    /// <summary>
+    /// Detect if the current worker SUCCESSFULLY used any tools by examining chat history.
+    /// Looks for FunctionCallContent and FunctionResultContent from the worker.
+    /// Returns true only if at least one tool call did NOT return a failure marker.
+    /// Failed tool calls (all returned ⚠️ BLOCKED / ⚠️ TOOL CALL FAILED) count as non-tool turns
+    /// to prevent infinite loops where the agent keeps calling broken tools.
     /// </summary>
     private bool DetectWorkerToolUsage(IReadOnlyList<ChatMessage> history)
     {
         if (_currentWorker == null) return false;
 
         var workerName = _currentWorker.Name;
+        var toolCallsFound = 0;
+        var failedToolResults = 0;
+        var totalToolResults = 0;
         
         // Scan recent history for tool usage by this worker
         // Look backwards from the end for efficiency
-        for (var i = history.Count - 1; i >= 0 && i >= history.Count - 10; i--)
+        for (var i = history.Count - 1; i >= 0 && i >= history.Count - 15; i--)
         {
             var msg = history[i];
             
@@ -331,34 +365,55 @@ public class MultiRoundGroupChatManager : GroupChatManager
             {
                 if (content is FunctionCallContent functionCall)
                 {
+                    toolCallsFound++;
                     Log.Debug("[ToolEnforcement] Detected tool call from {Worker}: {Tool}",
                         workerName, functionCall.Name);
-                    _workerUsedToolsThisTurn = true;
-                    _runContext.RecordToolCall(functionCall.Name, workerName, true);
-                    return true;
                 }
-                if (content is FunctionResultContent)
+                if (content is FunctionResultContent functionResult)
                 {
-                    // Tool result means a tool was called
-                    _workerUsedToolsThisTurn = true;
-                    return true;
+                    totalToolResults++;
+                    var resultText = functionResult.Result?.ToString() ?? "";
+                    if (ToolFailureMarkers.Any(marker => resultText.Contains(marker, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        failedToolResults++;
+                        Log.Debug("[ToolEnforcement] Tool result FAILED for {Worker}: {Preview}",
+                            workerName, resultText.Length > 100 ? resultText[..100] + "..." : resultText);
+                    }
                 }
             }
         }
 
-        return false;
+        if (toolCallsFound == 0)
+            return false;
+
+        // If ALL tool results are failures, treat as non-tool turn to prevent infinite loops
+        if (totalToolResults > 0 && failedToolResults == totalToolResults)
+        {
+            Log.Warning("[ToolEnforcement] Worker {Worker} called {Calls} tool(s) but ALL {Failed} returned failures — counting as non-tool turn",
+                workerName, toolCallsFound, failedToolResults);
+            _runContext.RecordAgentTurn(workerName ?? "unknown", usedTools: false);
+            return false;
+        }
+
+        // At least one tool succeeded
+        _workerUsedToolsThisTurn = true;
+        _runContext.RecordToolCall("(detected)", workerName ?? "unknown", true);
+        return true;
     }
 
     private enum ToolEnforcementResult { Pass, Retry, Fail }
 
     /// <summary>
     /// Should be called externally when a tool call is observed in the stream,
-    /// to reset the non-tool turn counter.
+    /// to reset the non-tool turn counter. Only resets the counter for SUCCESSFUL calls.
     /// </summary>
     public void RecordToolUsage(string agentName, string toolName, bool success)
     {
-        _consecutiveNonToolTurns = 0;
-        _workerUsedToolsThisTurn = true;
+        if (success)
+        {
+            _consecutiveNonToolTurns = 0;
+            _workerUsedToolsThisTurn = true;
+        }
         _runContext.RecordToolCall(toolName, agentName, success);
         
         // Track specific orchestrator tools

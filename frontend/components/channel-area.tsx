@@ -316,6 +316,7 @@ export function ChannelArea({
                         content: currentContent,
                         timestamp: new Date(),
                         agentId: agent?.id,
+                        agentName: currentAgentName ?? agent?.name,
                       }
                       setMessages((prev) => [...prev, agentMsg])
                     }
@@ -382,6 +383,7 @@ export function ChannelArea({
                       content: currentContent,
                       timestamp: new Date(),
                       agentId: agent?.id,
+                      agentName: currentAgentName ?? agent?.name,
                     }
                     setMessages((prev) => [...prev, agentMsg])
 
@@ -485,6 +487,7 @@ export function ChannelArea({
                       content: currentContent,
                       timestamp: new Date(),
                       agentId: agent?.id,
+                      agentName: currentAgentName ?? agent?.name,
                     }
                     setMessages((prev) => [...prev, agentMsg])
                   }

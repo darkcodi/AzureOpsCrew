@@ -227,16 +227,24 @@ internal sealed class ClaudiaChatClient : IChatClient
                 throw;
             }
 
-            // Retry without tools when tool_use input cannot be parsed by Claudia
-            Log.Warning(ex, "[ClaudiaChatClient] Tool input parse failed. Retrying without tools.");
-            request.Tools = null;
-            response = await _anthropic.Messages.CreateAsync(request, cancellationToken: cancellationToken);
+            // Claudia's DictionaryJsonConverter fails on tool_use inputs with nested objects.
+            // Instead of retrying WITHOUT tools (which makes the agent useless),
+            // we use raw HTTP to get the response and parse tool calls ourselves.
+            Log.Warning(ex, "[ClaudiaChatClient] Claudia DictionaryJsonConverter failed. Falling back to raw HTTP API for tool_use parsing.");
+            return await FallbackRawApiCallAsync(request, cancellationToken);
         }
         
         Log.Warning("[ClaudiaChatClient] Claude response: StopReason={StopReason}, ContentCount={ContentCount}", 
             response.StopReason, response.Content.Count);
         
-        // Process response content
+        return BuildChatResponse(response);
+    }
+    
+    /// <summary>
+    /// Build a ChatResponse from Claudia's MessageResponse.
+    /// </summary>
+    private static ChatResponse BuildChatResponse(MessageResponse response)
+    {
         var contentList = new List<AIContent>();
         var hasToolUse = false;
         
@@ -251,7 +259,6 @@ internal sealed class ClaudiaChatClient : IChatClient
                 hasToolUse = true;
                 try
                 {
-                    // Claudia uses ToolUseId, ToolUseName, ToolUseInput for tool_use content
                     var toolId = contentBlock.ToolUseId ?? Guid.NewGuid().ToString();
                     var toolName = contentBlock.ToolUseName ?? "unknown";
                     var toolInputObj = contentBlock.ToolUseInput as IDictionary<string, string>;
@@ -273,7 +280,6 @@ internal sealed class ClaudiaChatClient : IChatClient
             }
         }
         
-        // If we only have text, create a simple text response
         if (contentList.Count == 0)
         {
             contentList.Add(new TextContent(""));
@@ -295,6 +301,184 @@ internal sealed class ClaudiaChatClient : IChatClient
                 InputTokenCount = response.Usage.InputTokens,
                 OutputTokenCount = response.Usage.OutputTokens,
                 TotalTokenCount = response.Usage.InputTokens + response.Usage.OutputTokens
+            }
+        };
+    }
+    
+    /// <summary>
+    /// Fallback: call Anthropic API via raw HTTP when Claudia's DictionaryJsonConverter fails.
+    /// This bypasses Claudia's deserialization and parses tool_use inputs as JsonElement (not Dictionary&lt;string,string&gt;).
+    /// </summary>
+    private async Task<ChatResponse> FallbackRawApiCallAsync(MessageRequest request, CancellationToken ct)
+    {
+        var apiKey = _anthropic.ApiKey;
+        var endpoint = "https://api.anthropic.com/v1/messages";
+        
+        // Build the request body manually
+        var body = new JsonObject
+        {
+            ["model"] = request.Model,
+            ["max_tokens"] = request.MaxTokens
+        };
+        
+        if (!string.IsNullOrEmpty(request.System))
+        {
+            body["system"] = request.System;
+        }
+        
+        // Serialize messages
+        var messagesArray = new JsonArray();
+        foreach (var msg in request.Messages)
+        {
+            messagesArray.Add(new JsonObject
+            {
+                ["role"] = msg.Role,
+                ["content"] = msg.Content?.FirstOrDefault()?.Text ?? ""
+            });
+        }
+        body["messages"] = messagesArray;
+        
+        // Serialize tools
+        if (request.Tools is { Length: > 0 })
+        {
+            var toolsArray = new JsonArray();
+            foreach (var tool in request.Tools)
+            {
+                var toolObj = new JsonObject
+                {
+                    ["name"] = tool.Name,
+                    ["description"] = tool.Description ?? tool.Name
+                };
+                
+                // Serialize InputSchema
+                var schemaObj = new JsonObject { ["type"] = "object" };
+                if (tool.InputSchema?.Properties != null)
+                {
+                    var propsObj = new JsonObject();
+                    foreach (var kvp in tool.InputSchema.Properties)
+                    {
+                        var propObj = new JsonObject();
+                        if (kvp.Value.Type != null) propObj["type"] = kvp.Value.Type;
+                        if (kvp.Value.Description != null) propObj["description"] = kvp.Value.Description;
+                        propsObj[kvp.Key] = propObj;
+                    }
+                    schemaObj["properties"] = propsObj;
+                }
+                if (tool.InputSchema?.Required is { Length: > 0 })
+                {
+                    var reqArr = new JsonArray();
+                    foreach (var r in tool.InputSchema.Required)
+                        reqArr.Add(r);
+                    schemaObj["required"] = reqArr;
+                }
+                toolObj["input_schema"] = schemaObj;
+                toolsArray.Add(toolObj);
+            }
+            body["tools"] = toolsArray;
+        }
+        
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
+        httpRequest.Headers.Add("x-api-key", apiKey);
+        httpRequest.Headers.Add("anthropic-version", "2023-06-01");
+        httpRequest.Content = new StringContent(body.ToJsonString(), System.Text.Encoding.UTF8, "application/json");
+        
+        using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
+        using var httpResponse = await httpClient.SendAsync(httpRequest, ct);
+        
+        var responseJson = await httpResponse.Content.ReadAsStringAsync(ct);
+        
+        if (!httpResponse.IsSuccessStatusCode)
+        {
+            Log.Error("[ClaudiaChatClient] Raw API call failed: {StatusCode} {Body}",
+                httpResponse.StatusCode, responseJson.Length > 500 ? responseJson[..500] : responseJson);
+            throw new HttpRequestException($"Anthropic API error: {httpResponse.StatusCode}");
+        }
+        
+        // Parse response manually - this handles tool_use inputs as JsonElement (no DictionaryJsonConverter)
+        using var doc = JsonDocument.Parse(responseJson);
+        var root = doc.RootElement;
+        
+        var model = root.TryGetProperty("model", out var m) ? m.GetString() ?? _model : _model;
+        var stopReason = root.TryGetProperty("stop_reason", out var sr) ? sr.GetString() : "end_turn";
+        var inputTokens = 0;
+        var outputTokens = 0;
+        if (root.TryGetProperty("usage", out var usage))
+        {
+            inputTokens = usage.TryGetProperty("input_tokens", out var it) ? it.GetInt32() : 0;
+            outputTokens = usage.TryGetProperty("output_tokens", out var ot) ? ot.GetInt32() : 0;
+        }
+        
+        var contentList = new List<AIContent>();
+        var hasToolUse = false;
+        
+        if (root.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var block in contentArray.EnumerateArray())
+            {
+                var type = block.TryGetProperty("type", out var bt) ? bt.GetString() : null;
+                
+                if (type == "text")
+                {
+                    var text = block.TryGetProperty("text", out var txt) ? txt.GetString() : null;
+                    if (!string.IsNullOrEmpty(text))
+                        contentList.Add(new TextContent(text));
+                }
+                else if (type == "tool_use")
+                {
+                    hasToolUse = true;
+                    var toolId = block.TryGetProperty("id", out var tid) ? tid.GetString() ?? Guid.NewGuid().ToString() : Guid.NewGuid().ToString();
+                    var toolName = block.TryGetProperty("name", out var tn) ? tn.GetString() ?? "unknown" : "unknown";
+                    
+                    // Parse input as raw JSON - this is the key difference from Claudia's DictionaryJsonConverter
+                    var args = new Dictionary<string, object?>();
+                    if (block.TryGetProperty("input", out var inputElement) && inputElement.ValueKind == JsonValueKind.Object)
+                    {
+                        foreach (var prop in inputElement.EnumerateObject())
+                        {
+                            args[prop.Name] = prop.Value.ValueKind switch
+                            {
+                                JsonValueKind.String => prop.Value.GetString(),
+                                JsonValueKind.Number => prop.Value.GetRawText(),
+                                JsonValueKind.True => "true",
+                                JsonValueKind.False => "false",
+                                JsonValueKind.Null => null,
+                                // For nested objects/arrays, serialize to string
+                                _ => prop.Value.GetRawText()
+                            };
+                        }
+                    }
+                    
+                    var inputStr = JsonSerializer.Serialize(args);
+                    Log.Warning("[ClaudiaChatClient] [RawFallback] Tool call: name={Tool}, id={Id}, input={Input}",
+                        toolName, toolId, inputStr.Length > 200 ? inputStr[..200] : inputStr);
+                    
+                    contentList.Add(new FunctionCallContent(toolId, toolName, args));
+                }
+            }
+        }
+        
+        Log.Warning("[ClaudiaChatClient] [RawFallback] Parsed response: StopReason={StopReason}, ContentCount={Count}, HasToolUse={HasToolUse}",
+            stopReason, contentList.Count, hasToolUse);
+        
+        if (contentList.Count == 0)
+            contentList.Add(new TextContent(""));
+        
+        return new ChatResponse(new ChatMessage(ChatRole.Assistant, contentList))
+        {
+            ModelId = model,
+            FinishReason = hasToolUse ? ChatFinishReason.ToolCalls : stopReason switch
+            {
+                "end_turn" => ChatFinishReason.Stop,
+                "max_tokens" => ChatFinishReason.Length,
+                "stop_sequence" => ChatFinishReason.Stop,
+                "tool_use" => ChatFinishReason.ToolCalls,
+                _ => null
+            },
+            Usage = new UsageDetails
+            {
+                InputTokenCount = inputTokens,
+                OutputTokenCount = outputTokens,
+                TotalTokenCount = inputTokens + outputTokens
             }
         };
     }
@@ -505,7 +689,7 @@ internal sealed class ClaudiaChatClient : IChatClient
             {
                 propsDict[prop.Name] = new ToolProperty
                 {
-                    Type = prop.Value.TryGetProperty("type", out var t) ? t.GetString() : "string",
+                    Type = ExtractTypeString(prop.Value),
                     Description = prop.Value.TryGetProperty("description", out var desc) ? desc.GetString() : null
                 };
             }
@@ -538,6 +722,37 @@ internal sealed class ClaudiaChatClient : IChatClient
         }
         
         return inputSchema;
+    }
+    
+    /// <summary>
+    /// Extract type string from a JSON Schema property.
+    /// Handles both simple types ("string") and nullable types (["string", "null"]).
+    /// </summary>
+    private static string ExtractTypeString(JsonElement propSchema)
+    {
+        if (!propSchema.TryGetProperty("type", out var typeElement))
+            return "string";
+
+        // Simple string type: "type": "string"
+        if (typeElement.ValueKind == JsonValueKind.String)
+            return typeElement.GetString() ?? "string";
+
+        // Nullable type array: "type": ["string", "null"]  →  pick the non-null type
+        if (typeElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in typeElement.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.String)
+                {
+                    var val = item.GetString();
+                    if (val != null && !val.Equals("null", StringComparison.OrdinalIgnoreCase))
+                        return val;
+                }
+            }
+            return "string"; // fallback if all entries are "null"
+        }
+
+        return "string";
     }
 
     private static string? ExtractSystemPrompt(IList<ChatMessage> messages)

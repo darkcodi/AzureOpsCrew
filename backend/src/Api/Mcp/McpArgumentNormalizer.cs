@@ -11,6 +11,69 @@ namespace AzureOpsCrew.Api.Mcp;
 public static class McpArgumentNormalizer
 {
     /// <summary>
+    /// Patterns in MCP tool result text that indicate the call failed (even without the word "error").
+    /// Used by McpToolProvider to detect non-obvious failures.
+    /// NOTE: "run again with the" and "here are the available command" are NOT failures —
+    /// they are the MCP server returning help/documentation which the LLM should see.
+    /// </summary>
+    private static readonly string[] McpFailurePatterns =
+    [
+        "parameters are required",
+        "required when not learning",
+        "missing required",
+        "invalid arguments",
+        "unknown command",
+        "command not found",
+        "is not a valid",
+        "not recognized as",
+        "no such command"
+    ];
+
+    /// <summary>
+    /// Patterns that indicate the MCP response is a help/documentation response
+    /// (listing available commands). These should NOT be treated as failures — 
+    /// the LLM needs to see this data to learn the correct tool format.
+    /// </summary>
+    private static readonly string[] McpHelpResponsePatterns =
+    [
+        "here are the available command",
+        "available commands and their parameters",
+        "run again with the \"command\"",
+        "identify the command you want to execute"
+    ];
+
+    /// <summary>
+    /// Checks if MCP tool result text indicates a failed call (even without explicit "error" keyword).
+    /// Returns false for help/documentation responses — those should be passed to the LLM as valid data.
+    /// </summary>
+    public static bool IsLikelyMcpFailure(string resultText)
+    {
+        if (string.IsNullOrWhiteSpace(resultText)) return false;
+        var lower = resultText.ToLowerInvariant();
+
+        // If the response is a help/documentation response listing available commands,
+        // it is NOT a failure — return it to the LLM so it can learn the correct format.
+        if (McpHelpResponsePatterns.Any(pattern => lower.Contains(pattern)))
+        {
+            Log.Information("[McpNormalizer] Response is a help/documentation response (listing available commands), NOT a failure");
+            return false;
+        }
+
+        return McpFailurePatterns.Any(pattern => lower.Contains(pattern));
+    }
+
+    /// <summary>
+    /// Checks if MCP tool result text is a help/documentation response listing available commands.
+    /// These responses are NOT errors — they should be passed to the LLM as useful data.
+    /// </summary>
+    public static bool IsLikelyHelpResponse(string resultText)
+    {
+        if (string.IsNullOrWhiteSpace(resultText)) return false;
+        var lower = resultText.ToLowerInvariant();
+        return McpHelpResponsePatterns.Any(pattern => lower.Contains(pattern));
+    }
+
+    /// <summary>
     /// Normalizes and validates arguments against the MCP tool's inputSchema.
     /// Returns normalized arguments ready for MCP invocation, or throws if validation fails after repair attempts.
     /// </summary>
@@ -19,6 +82,9 @@ public static class McpArgumentNormalizer
         JsonElement inputSchema,
         JsonElement arguments)
     {
+        // Step 0: Fix stringified JSON values — Claude sometimes sends nested objects as JSON strings
+        arguments = FixStringifiedJsonValues(toolName, arguments);
+
         // Step 1: Check if inputSchema expects a specific root property (e.g., "parameters")
         if (inputSchema.ValueKind == JsonValueKind.Object &&
             inputSchema.TryGetProperty("properties", out var properties))
@@ -27,11 +93,31 @@ public static class McpArgumentNormalizer
             if (properties.TryGetProperty("parameters", out var parametersSchema))
             {
                 // Schema expects { "parameters": { ... } }
-                // If arguments is already wrapped, return as-is
+                // If arguments is already wrapped, check if the inner 'parameters' is valid
                 if (arguments.ValueKind == JsonValueKind.Object &&
-                    arguments.TryGetProperty("parameters", out _))
+                    arguments.TryGetProperty("parameters", out var existingParams))
                 {
-                    Log.Debug("[McpNormalizer] Tool {Tool}: arguments already have 'parameters' root, validation OK", toolName);
+                    // If 'parameters' is already a proper object, pass through
+                    if (existingParams.ValueKind == JsonValueKind.Object)
+                    {
+                        Log.Debug("[McpNormalizer] Tool {Tool}: arguments already have 'parameters' root with object value, validation OK", toolName);
+                        return arguments;
+                    }
+
+                    // If 'parameters' is a string (Claude sometimes stringifies nested JSON), parse it
+                    if (existingParams.ValueKind == JsonValueKind.String)
+                    {
+                        var parsedParams = TryParseJsonString(existingParams.GetString());
+                        if (parsedParams.HasValue)
+                        {
+                            Log.Information("[McpNormalizer] Tool {Tool}: parsed stringified 'parameters' JSON string into object", toolName);
+                            // Merge: take 'command' from siblings if present, merge with parsed params
+                            return RestructureWithParsedParameters(toolName, arguments, parsedParams.Value);
+                        }
+                    }
+                    
+                    // Parameters exists but is not object and not parseable string — pass through
+                    Log.Debug("[McpNormalizer] Tool {Tool}: arguments have 'parameters' root (non-object), passing through", toolName);
                     return arguments;
                 }
 
@@ -228,6 +314,14 @@ public static class McpArgumentNormalizer
             case RepairType.InferCommandWrapper:
                 if (!string.IsNullOrEmpty(toolName))
                 {
+                    // Prevent double-wrapping: if args already have a "command" key, don't wrap again
+                    if (originalArgs.ValueKind == JsonValueKind.Object &&
+                        originalArgs.TryGetProperty("command", out _))
+                    {
+                        Log.Warning("[McpNormalizer] Args already contain 'command' key, skipping InferCommandWrapper to avoid double-wrap");
+                        return originalArgs;
+                    }
+                    
                     var inferredCommand = InferCommandFromToolName(toolName);
                     if (!string.IsNullOrEmpty(inferredCommand))
                     {
@@ -235,7 +329,7 @@ public static class McpArgumentNormalizer
                         return JsonSerializer.SerializeToElement(new Dictionary<string, object?>
                         {
                             ["command"] = inferredCommand,
-                            ["args"] = JsonSerializer.Deserialize<Dictionary<string, object?>>(originalArgs)
+                            ["parameters"] = JsonSerializer.Deserialize<Dictionary<string, object?>>(originalArgs)
                         });
                     }
                 }
@@ -353,6 +447,114 @@ public static class McpArgumentNormalizer
         }
 
         return fields;
+    }
+
+    /// <summary>
+    /// Fix stringified JSON values within arguments.
+    /// Claude sometimes sends nested objects as JSON strings instead of proper objects.
+    /// e.g., {"parameters": "{\"key\":\"value\"}"} → {"parameters": {"key":"value"}}
+    /// Also fixes string booleans: {"learn": "true"} → {"learn": true}
+    /// </summary>
+    private static JsonElement FixStringifiedJsonValues(string toolName, JsonElement arguments)
+    {
+        if (arguments.ValueKind != JsonValueKind.Object) return arguments;
+
+        var modified = false;
+        var dict = new Dictionary<string, object?>();
+
+        foreach (var prop in arguments.EnumerateObject())
+        {
+            if (prop.Value.ValueKind == JsonValueKind.String)
+            {
+                var strVal = prop.Value.GetString();
+
+                // Fix string booleans: "true" → true, "false" → false
+                if (string.Equals(strVal, "true", StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Information("[McpNormalizer] Tool {Tool}: converting string 'true' → boolean true in field '{Field}'", toolName, prop.Name);
+                    dict[prop.Name] = true;
+                    modified = true;
+                    continue;
+                }
+                if (string.Equals(strVal, "false", StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Information("[McpNormalizer] Tool {Tool}: converting string 'false' → boolean false in field '{Field}'", toolName, prop.Name);
+                    dict[prop.Name] = false;
+                    modified = true;
+                    continue;
+                }
+
+                // Fix stringified JSON objects
+                if (strVal is not null && strVal.TrimStart().StartsWith('{') && strVal.TrimEnd().EndsWith('}'))
+                {
+                    var parsed = TryParseJsonString(strVal);
+                    if (parsed.HasValue)
+                    {
+                        Log.Information("[McpNormalizer] Tool {Tool}: parsed stringified JSON in field '{Field}'", toolName, prop.Name);
+                        dict[prop.Name] = JsonSerializer.Deserialize<object>(parsed.Value);
+                        modified = true;
+                        continue;
+                    }
+                }
+            }
+            dict[prop.Name] = JsonSerializer.Deserialize<object>(prop.Value);
+        }
+
+        return modified ? JsonSerializer.SerializeToElement(dict) : arguments;
+    }
+
+    /// <summary>
+    /// When arguments have { "command": "X", "parameters": {parsed obj}, ... },
+    /// restructure into { "parameters": { "command": "X", ...parsed fields... } }
+    /// which is the format MCP servers typically expect.
+    /// </summary>
+    private static JsonElement RestructureWithParsedParameters(string toolName, JsonElement originalArgs, JsonElement parsedParams)
+    {
+        var innerDict = parsedParams.ValueKind == JsonValueKind.Object
+            ? JsonSerializer.Deserialize<Dictionary<string, object?>>(parsedParams) ?? new()
+            : new Dictionary<string, object?>();
+
+        // Pull 'command' from sibling fields into the parameters object
+        if (originalArgs.TryGetProperty("command", out var commandEl))
+        {
+            var commandStr = commandEl.ValueKind == JsonValueKind.String ? commandEl.GetString() : commandEl.GetRawText();
+            if (!string.IsNullOrEmpty(commandStr))
+            {
+                innerDict["command"] = commandStr;
+            }
+        }
+
+        // Also transfer 'intent' if present (some MCP servers use it)
+        if (originalArgs.TryGetProperty("intent", out var intentEl) && intentEl.ValueKind == JsonValueKind.String)
+        {
+            innerDict["intent"] = intentEl.GetString();
+        }
+
+        var result = JsonSerializer.SerializeToElement(new Dictionary<string, object?>
+        {
+            ["parameters"] = innerDict
+        });
+
+        Log.Information("[McpNormalizer] Tool {Tool}: restructured args with parsed parameters. Keys: {Keys}",
+            toolName, string.Join(", ", innerDict.Keys));
+        return result;
+    }
+
+    /// <summary>
+    /// Attempts to parse a string as JSON, returns the parsed element or null.
+    /// </summary>
+    private static JsonElement? TryParseJsonString(string? jsonStr)
+    {
+        if (string.IsNullOrWhiteSpace(jsonStr)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(jsonStr);
+            return doc.RootElement.Clone();
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
 

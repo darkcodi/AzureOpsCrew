@@ -7,7 +7,7 @@ namespace AzureOpsCrew.Api.Settings;
 public record OrchestrationSettings
 {
     /// <summary>Max Manager↔Worker rounds per run (each round = Manager + delegated workers).</summary>
-    public int MaxRoundsPerRun { get; set; } = 5;
+    public int MaxRoundsPerRun { get; set; } = 3;
 
     /// <summary>Max consecutive messages without any tool call before forcing stop.</summary>
     public int MaxConsecutiveNonToolTurns { get; set; } = 3;
