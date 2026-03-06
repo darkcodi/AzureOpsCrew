@@ -57,10 +57,11 @@ public static class OpenAiRequestMapper
 
         foreach (var message in messages)
         {
+            var mappedRole = MapChatRole(message.Role);
             var openAiMessage = new OpenAiMessage
             {
-                Role = MapChatRole(message.Role),
-                Name = message.AuthorName
+                Role = mappedRole,
+                Name = mappedRole == "tool" ? null : message.AuthorName
             };
 
             // Handle content conversion
