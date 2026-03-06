@@ -87,13 +87,11 @@ public class AgentRunService
                     break;
                 }
 
-                var lastTextContent = newAgentThoughts.Select(t => t.ContentDto.ToAocAiContent())
-                    .OfType<AocTextContent>()
-                    .LastOrDefault();
-
+                var lastTextAgentThought = newAgentThoughts.LastOrDefault(t => t.ContentDto.ToAocAiContent() is AocTextContent);
+                var lastTextContent = lastTextAgentThought?.ContentDto.ToAocAiContent() as AocTextContent;
                 if (lastTextContent != null)
                 {
-                    var message = await SaveLastMessage(agentId, data, lastTextContent, ct);
+                    var message = await SaveLastMessage( data, lastTextContent.Text, lastTextAgentThought!.Id, ct);
                     await Broadcast(data, message);
                 }
 
@@ -215,7 +213,8 @@ public class AgentRunService
         var agentSession = await aiAgent.CreateSessionAsync(ct);
         var runOptions = new AgentRunOptions { AllowBackgroundResponses = false };
 
-        var chatMessages = data.ChatMessages.Select(m => m.ToChatMessage()).ToList();
+        var llmThoughtIds = data.LlmThoughts.Select(t => t.Id).ToHashSet();
+        var chatMessages = data.ChatMessages.Where(x => !llmThoughtIds.Contains(x.AgentThoughtId ?? Guid.Empty)).Select(m => m.ToChatMessage()).ToList();
         var thoughts = data.LlmThoughts.Select(x => AocAgentThought.FromDomain(x).ToChatMessage()).ToList();
         var allMessages = chatMessages.Concat(thoughts).OrderBy(x => x.CreatedAt).ToList();
 
@@ -302,15 +301,16 @@ public class AgentRunService
         await _dbContext.SaveChangesAsync(ct);
     }
 
-    private async Task<Message> SaveLastMessage(Guid agentId, AgentRunData data, AocTextContent lastTextContent, CancellationToken ct)
+    private async Task<Message> SaveLastMessage(AgentRunData data, string text, Guid agentThoughtId, CancellationToken ct)
     {
         var message = new Message
         {
             Id = Guid.NewGuid(),
-            Text = lastTextContent.Text,
+            Text = text,
             PostedAt = DateTime.UtcNow,
-            AgentId = agentId,
+            AgentId = data.Agent.Id,
             AuthorName = data.Agent.Info.Username,
+            AgentThoughtId = agentThoughtId,
         };
 
         if (data.Channel != null)
@@ -323,7 +323,7 @@ public class AgentRunService
         }
         _dbContext.Messages.Add(message);
         await _dbContext.SaveChangesAsync(ct);
-        Log.Debug("[BACKGROUND] Saved message for agent {AgentId} to {ChatType}", agentId, data.Channel != null ? "channel" : "DM");
+        Log.Debug("[BACKGROUND] Saved message for agent {AgentId} to {ChatType}", data.Agent.Id, data.Channel != null ? "channel" : "DM");
 
         return message;
     }

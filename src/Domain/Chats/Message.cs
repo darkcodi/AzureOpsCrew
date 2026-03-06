@@ -17,6 +17,9 @@ public class Message
     public Guid? ChannelId { get; set; }
     public Guid? DmId { get; set; }
 
+    // Reference to AgentThought if this message is from an agent
+    public Guid? AgentThoughtId { get; set; }
+
     public ChatMessage ToChatMessage()
     {
         var isAgentMessage = AgentId.HasValue;

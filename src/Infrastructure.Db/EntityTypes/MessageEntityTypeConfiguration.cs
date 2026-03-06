@@ -32,10 +32,14 @@ public sealed class MessageEntityTypeConfiguration : IEntityTypeConfiguration<Me
 
         builder.Property(m => m.DmId);
 
+        // Reference to AgentThought if this message is from an agent
+        builder.Property(m => m.AgentThoughtId);
+
         builder.HasIndex(m => m.PostedAt);
         builder.HasIndex(m => m.AgentId);
         builder.HasIndex(m => m.UserId);
         builder.HasIndex(m => m.ChannelId);
         builder.HasIndex(m => m.DmId);
+        builder.HasIndex(m => m.AgentThoughtId);
     }
 }
