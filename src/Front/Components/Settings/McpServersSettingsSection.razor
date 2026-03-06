@@ -37,15 +37,17 @@
     @if (SelectedMcpServer is { } selectedServer)
     {
         var badge = GetStatusBadge(selectedServer);
-        var hasPendingChanges = ModifiedMcpServerIds.Contains(selectedServer.Id);
+        var hasConfigChanges = ModifiedMcpServerIds.Contains(selectedServer.Id);
         var isDraft = string.IsNullOrWhiteSpace(selectedServer.BackendId);
         var enabledToolsCount = selectedServer.Tools.Count(tool => tool.IsEnabled);
         var hasAuthChanges = HasAuthChanges(selectedServer);
-        var canSave = !IsSavingMcpServer && !string.IsNullOrWhiteSpace(selectedServer.Name) && !string.IsNullOrWhiteSpace(selectedServer.Url) && (hasPendingChanges || isDraft || hasAuthChanges) && (!hasAuthChanges || IsAuthEditorValid());
+        var hasPendingChanges = hasConfigChanges || hasAuthChanges;
+        var canSave = !IsSavingMcpServer && !string.IsNullOrWhiteSpace(selectedServer.Name) && !string.IsNullOrWhiteSpace(selectedServer.Url) && (isDraft || hasPendingChanges) && (!hasAuthChanges || IsAuthEditorValid());
         var canSync = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
         var canToggleEnabled = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
         var canToggleTools = !IsSavingMcpServer && !IsSyncingMcpServer && !IsUpdatingMcpServerTool && !isDraft && !hasPendingChanges;
-        var authInputsDisabled = isDraft || hasPendingChanges || IsSavingMcpServer || IsSyncingMcpServer;
+        var canReset = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && hasPendingChanges;
+        var authInputsDisabled = isDraft || hasConfigChanges || IsSavingMcpServer || IsSyncingMcpServer;
 
         <div class="provider-detail">
             <div class="provider-detail-header">
@@ -309,6 +311,9 @@
                 <button type="button" class="btn btn-secondary" disabled="@(!canSync)" @onclick="OnSyncMcpServer">
                     @(IsSyncingMcpServer ? "Syncing..." : "Sync tools")
                 </button>
+                <button type="button" class="btn btn-secondary" disabled="@(!canReset)" @onclick="OnResetCurrentMcpServer">
+                    Reset
+                </button>
                 <button type="button" class="btn btn-danger" disabled="@(IsSavingMcpServer || IsSyncingMcpServer)" @onclick="OnRemoveCurrentMcpServer">
                     Remove
                 </button>
@@ -336,6 +341,7 @@
     [Parameter] public EventCallback<string> OnSelectMcpServer { get; set; }
     [Parameter] public EventCallback<List<McpServerConfigurationItem>> OnMcpServersChange { get; set; }
     [Parameter] public EventCallback<McpServerAuthEditorState?> OnSaveCurrentMcpServer { get; set; }
+    [Parameter] public EventCallback OnResetCurrentMcpServer { get; set; }
     [Parameter] public EventCallback OnRemoveCurrentMcpServer { get; set; }
     [Parameter] public EventCallback OnSyncMcpServer { get; set; }
     [Parameter] public EventCallback OnToggleSelectedMcpServerEnabled { get; set; }
@@ -677,9 +683,15 @@
         return "No stored credentials";
     }
 
+    private bool IsServerModified(McpServerConfigurationItem server)
+    {
+        return ModifiedMcpServerIds.Contains(server.Id)
+            || (SelectedMcpServer?.Id == server.Id && HasAuthChanges(server));
+    }
+
     private (string Icon, string Color, string Label) GetStatusBadge(McpServerConfigurationItem server)
     {
-        if (ModifiedMcpServerIds.Contains(server.Id))
+        if (IsServerModified(server))
             return (SvgPencil, "hsl(40, 85%, 55%)", "Modified");
         if (string.IsNullOrWhiteSpace(server.BackendId))
             return (SvgDraft, "hsl(214, 60%, 55%)", "Draft");

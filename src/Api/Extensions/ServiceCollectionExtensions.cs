@@ -245,8 +245,3 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IChannelEventBroadcaster, ChannelEventBroadcaster>();
     }
 }
-
-
-
-
-
