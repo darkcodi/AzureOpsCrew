@@ -4,3 +4,9 @@ root = true
 end_of_line = lf
 insert_final_newline = true
 charset = utf-8
+
+# Ban implicit DateTime -> DateTimeOffset conversions
+dotnet_diagnostic.MA0132.severity = error
+
+# Also warn when code relies on implicit conversion from DateTime.Now/UtcNow
+dotnet_diagnostic.MA0133.severity = warning
