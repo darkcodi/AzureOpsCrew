@@ -5,11 +5,13 @@ namespace AzureOpsCrew.Domain.Tools.BackEnd;
 
 public class SkipTurnTool : ITool
 {
+    public static string ToolName => "skipTurn";
+
     public ToolDeclaration GetDeclaration()
     {
         return new ToolDeclaration
         {
-            Name = "skipTurn",
+            Name = ToolName,
             Description = "Skips the agent's current turn without performing any action. Useful when the agent determines that it cannot or should not take any action during this turn. ",
             JsonSchema = JsonUtils.Schema("""
                                           {

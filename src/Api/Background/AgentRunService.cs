@@ -5,6 +5,7 @@ using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Domain.Tools;
+using AzureOpsCrew.Domain.Tools.BackEnd;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.Agents.AI;
@@ -64,12 +65,27 @@ public class AgentRunService
 
                 // Execute tools and save results to DB
                 var toolCallResults = new List<AocAgentThought>();
-                await foreach (var toolCallResult in ExecuteToolCalls(data, newAgentThoughts, ct))
+                var toolCalls = newAgentThoughts
+                    .Select(m => m.ContentDto.ToAocAiContent())
+                    .OfType<AocFunctionCallContent>()
+                    .ToList();
+
+                // ToDo: Add support for parallel tool calls if needed. For now we execute them sequentially for simplicity.
+                foreach (var toolCall in toolCalls)
                 {
+                    var toolCallResult = await ExecuteToolCall(toolCall, data);
                     var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow);
                     toolCallResults.Add(toolResultMessage);
                 }
                 await SaveAgentThoughts(agentId, chatId, toolCallResults, ct);
+
+                // If the agent called the skipTurn tool, we consider that it has finished its run and we stop the loop.
+                // This allows agents to explicitly signal that they want to skip their turn and let other agents or the human take the lead.
+                if (toolCalls.Any(c => string.Equals(c.Name, SkipTurnTool.ToolName, StringComparison.CurrentCultureIgnoreCase)))
+                {
+                    Log.Information("[BACKGROUND] Agent {AgentId} decided to skip its turn in chat {ChatId}", agentId, chatId);
+                    break;
+                }
 
                 // If there are no tool calls, we can assume the agent has finished its run after one iteration.
                 // This is a simplification and can be improved by adding explicit signals in the future.
@@ -323,74 +339,52 @@ public class AgentRunService
         return message;
     }
 
-    private async IAsyncEnumerable<AocFunctionResultContent> ExecuteToolCalls(AgentRunData data,
-        List<AocAgentThought> newAgentThoughts, [EnumeratorCancellation] CancellationToken ct)
+    private async Task<AocFunctionResultContent> ExecuteToolCall(AocFunctionCallContent toolCall, AgentRunData data)
     {
-        var tools = data.Tools;
-        var toolCalls = newAgentThoughts
-            .Select(m => m.ContentDto.ToAocAiContent())
-            .OfType<AocFunctionCallContent>()
-            .ToList();
-
-        if (toolCalls.Count > 0)
+        var toolName = toolCall.Name;
+        var toolDeclaration = data.Tools.FirstOrDefault(t => string.Equals(t.Name, toolName, StringComparison.OrdinalIgnoreCase));
+        if (toolDeclaration is null)
         {
-            Log.Debug("[BACKGROUND] Executing {ToolCount} tool calls for agent {AgentId}", toolCalls.Count, data.Agent.Id);
+            // If the tool declaration is not found, we return an error result for this tool call.
+            // This can happen if the LLM calls a tool that is not declared in the prompt or if there is a typo in the tool name.
+            Log.Warning("[BACKGROUND] Tool {ToolName} not found in declarations", toolName);
+
+            return AocFunctionResultContent.ToolDoesNotExist(toolCall.CallId);
         }
 
-        // ToDo: Add support for parallel tool calls if needed. For now we execute them sequentially for simplicity.
-        foreach (var toolCall in toolCalls)
+        if (toolDeclaration.ToolType == ToolType.FrontEnd)
         {
-            if (ct.IsCancellationRequested)
-                yield break;
+            Log.Debug("[BACKGROUND] Front-end tool {ToolName} called, returning empty result", toolName);
 
-            var toolName = toolCall.Name;
-            var toolDeclaration = tools.FirstOrDefault(t => t.Name == toolName);
-            if (toolDeclaration is null)
-            {
-                // If the tool declaration is not found, we return an error result for this tool call.
-                // This can happen if the LLM calls a tool that is not declared in the prompt or if there is a typo in the tool name.
-                Log.Warning("[BACKGROUND] Tool {ToolName} not found in declarations", toolName);
-
-                yield return AocFunctionResultContent.ToolDoesNotExist(toolCall.CallId);
-                continue;
-            }
-
-            if (toolDeclaration.ToolType == ToolType.FrontEnd)
-            {
-                Log.Debug("[BACKGROUND] Front-end tool {ToolName} called, returning empty result", toolName);
-
-                // For front-end tools, we can return an empty result immediately since the front-end will handle the rendering based on the tool declaration.
-                yield return AocFunctionResultContent.Empty(toolCall.CallId);
-                continue;
-            }
-
-            Log.Debug("[BACKGROUND] Executing tool {ToolName}", toolName);
-            AocFunctionResultContent? toolCallResult = null;
-            Exception? toolError = null;
-
-            try
-            {
-                toolCallResult = await _toolExecutor.ExecuteTool(data.Agent, toolDeclaration, toolCall);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "[BACKGROUND] Error executing tool {ToolName}", toolName);
-                toolError = ex;
-            }
-
-            if (toolError != null)
-            {
-                // Return an error result similar to ToolDoesNotExist pattern
-                yield return new AocFunctionResultContent
-                {
-                    CallId = toolCall.CallId,
-                    Result = new ToolCallResult(CallId: toolCall.CallId, Result: new { ErrorMessage = toolError.Message }, IsError: true),
-                };
-                continue;
-            }
-
-            yield return toolCallResult!;
+            // For front-end tools, we can return an empty result immediately since the front-end will handle the rendering based on the tool declaration.
+            return AocFunctionResultContent.Empty(toolCall.CallId);
         }
+
+        Log.Debug("[BACKGROUND] Executing tool {ToolName}", toolName);
+        AocFunctionResultContent? toolCallResult = null;
+        Exception? toolError = null;
+
+        try
+        {
+            toolCallResult = await _toolExecutor.ExecuteTool(data.Agent, toolDeclaration, toolCall);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[BACKGROUND] Error executing tool {ToolName}", toolName);
+            toolError = ex;
+        }
+
+        if (toolError != null)
+        {
+            // Return an error result similar to ToolDoesNotExist pattern
+            return new AocFunctionResultContent
+            {
+                CallId = toolCall.CallId,
+                Result = new ToolCallResult(CallId: toolCall.CallId, Result: new { ErrorMessage = toolError.Message }, IsError: true),
+            };
+        }
+
+        return toolCallResult!;
     }
 }
 
