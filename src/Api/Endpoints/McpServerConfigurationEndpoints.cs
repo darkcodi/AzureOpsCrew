@@ -12,8 +12,8 @@ public static class McpServerConfigurationEndpoints
     public static void MapMcpServerConfigurationEndpoints(this IEndpointRouteBuilder routeBuilder)
     {
         var group = routeBuilder.MapGroup("/api/mcp-server-configurations")
-            .WithTags("McpServerConfigurations");
-            //.RequireAuthorization();
+            .WithTags("McpServerConfigurations")
+            .RequireAuthorization();
 
         group.MapPost("/create", async (
             CreateMcpServerConfigurationBodyDto body,
