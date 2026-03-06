@@ -1,0 +1,84 @@
+@namespace Front.Components
+@using System.Text.Json
+
+<div class="tool-call-card">
+    <button type="button" class="tool-call-card-header" @onclick="ToggleExpanded">
+        <span class="tool-call-card-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+        </span>
+        <span class="tool-call-card-name">@ToolCall.ToolName</span>
+        <span class="tool-call-card-status @GetStatusClass()">@GetStatusLabel()</span>
+        <span class="tool-call-card-chevron @(_expanded ? "expanded" : "")" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        </span>
+    </button>
+
+    @if (_expanded)
+    {
+        <div class="tool-call-card-body">
+            @if (ToolCall.Args is { } args && args.ValueKind != JsonValueKind.Undefined)
+            {
+                <div class="tool-call-card-section">
+                    <div class="tool-call-card-section-label">Arguments</div>
+                    <pre class="tool-call-card-json">@FormatJson(args)</pre>
+                </div>
+            }
+
+            @if (ToolCall.Result is { } result && result.ValueKind != JsonValueKind.Undefined)
+            {
+                <div class="tool-call-card-section">
+                    <div class="tool-call-card-section-label">Result</div>
+                    <pre class="tool-call-card-json">@FormatJson(result)</pre>
+                </div>
+            }
+            else if (ToolCall.Result is null)
+            {
+                <div class="tool-call-card-section">
+                    <div class="tool-call-card-section-label">Result</div>
+                    <span class="tool-call-card-pending">Pending...</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ToolCallDto ToolCall { get; set; } = null!;
+
+    private bool _expanded;
+
+    private void ToggleExpanded() => _expanded = !_expanded;
+
+    private string GetStatusClass()
+    {
+        if (ToolCall.Result is null)
+            return "pending";
+        return "completed";
+    }
+
+    private string GetStatusLabel()
+    {
+        if (ToolCall.Result is null)
+            return "pending";
+        return "completed";
+    }
+
+    private static string FormatJson(JsonElement element)
+    {
+        try
+        {
+            return JsonSerializer.Serialize(element, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return element.ToString();
+        }
+    }
+}

@@ -13,6 +13,7 @@ public class AppState
     private readonly Reactive<DmChannelDto?> _selectedDm = new();
     private readonly Reactive<Guid?> _lastUsedChannel = new();
     private readonly Reactive<Guid?> _lastUsedDm = new();
+    private readonly Reactive<AgentMindResponseDto?> _currentAgentMind = new();
     public readonly ReactiveList<ServerInfoDto> Servers = new(ServerInfoDto.GetDefaultServers());
     public readonly ReactiveList<ChannelDto> Channels = new();
     public readonly ReactiveList<DmChannelDto> Dms = new();
@@ -68,6 +69,12 @@ public class AppState
         set => _lastUsedDm.Value = value;
     }
 
+    public AgentMindResponseDto? CurrentAgentMind
+    {
+        get => _currentAgentMind.Value;
+        set => _currentAgentMind.Value = value;
+    }
+
     public IDisposable SubscribeLastUsedChannel(Action handler) => _lastUsedChannel.Subscribe(handler);
     public IDisposable SubscribeLastUsedDm(Action handler) => _lastUsedDm.Subscribe(handler);
 
@@ -79,6 +86,7 @@ public class AppState
     public IDisposable SubscribeChannels(Action handler) => Channels.Subscribe(handler);
     public IDisposable SubscribeDms(Action handler) => Dms.Subscribe(handler);
     public IDisposable SubscribeAgents(Action handler) => Agents.Subscribe(handler);
+    public IDisposable SubscribeCurrentAgentMind(Action handler) => _currentAgentMind.Subscribe(handler);
 
     // Load data from backend
     public async Task LoadChannels(ChannelService channelService, bool forceReload = false)
@@ -111,5 +119,11 @@ public class AppState
 
         var agents = await agentService.GetAgentsAsync();
         Agents.ReplaceAll(agents);
+    }
+
+    public async Task LoadAgentMindAsync(AgentService agentService, Guid agentId)
+    {
+        var mindData = await agentService.GetAgentMindAsync(agentId);
+        CurrentAgentMind = mindData;
     }
 }

@@ -111,4 +111,17 @@ public class AgentService
             return false;
         }
     }
+
+    public async Task<AgentMindResponseDto?> GetAgentMindAsync(Guid id)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<AgentMindResponseDto>($"/api/agents/{id}/mind");
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error fetching agent mind {id}: {ex.Message}");
+            return null;
+        }
+    }
 }

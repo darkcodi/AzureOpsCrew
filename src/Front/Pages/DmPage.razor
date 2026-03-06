@@ -91,6 +91,7 @@
             if (agentId.HasValue)
             {
                 _messages = await DmService.GetAgentDmMessagesAsync(agentId.Value);
+                await AppState.LoadAgentMindAsync(AgentService, agentId.Value);
             }
             else
             {
