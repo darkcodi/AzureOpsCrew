@@ -2,7 +2,7 @@
 
 <div class="chat-area">
     <div class="messages-container" @ref="_messagesContainer">
-        @if (Messages.Count == 0)
+        @if (Messages.Count == 0 && ToolCalls.Count == 0)
         {
             <div class="no-messages">
                 <div class="welcome-icon">@EmptyIcon</div>
@@ -12,9 +12,16 @@
         }
         else
         {
-            @foreach (var group in GetMessageGroups())
+            @foreach (var entry in GetTimeline())
             {
-                <MessageBubble Message="@group.Message" IsGrouped="@group.IsGrouped" IsOwn="@group.IsOwn" />
+                if (entry.ToolCall is { } toolCall)
+                {
+                    <ToolCallCard ToolCall="toolCall" />
+                }
+                else if (entry.Message is { } msgGroup)
+                {
+                    <MessageBubble Message="@msgGroup.Message" IsGrouped="@msgGroup.IsGrouped" IsOwn="@msgGroup.IsOwn" />
+                }
             }
         }
     </div>
@@ -44,6 +51,7 @@
 
 @code {
     [Parameter] public List<ChatMessageDto> Messages { get; set; } = [];
+    [Parameter] public List<ToolCallDto> ToolCalls { get; set; } = [];
     [Parameter] public EventCallback<string> OnSendMessage { get; set; }
     [Parameter] public Guid? CurrentUserId { get; set; }
     [Parameter] public bool ShowInput { get; set; } = true;
@@ -55,33 +63,49 @@
     private ElementReference _messagesContainer;
     private string _messageText = string.Empty;
     private int _lastMessageCount;
+    private int _lastToolCallCount;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender || Messages.Count != _lastMessageCount)
+        if (firstRender || Messages.Count != _lastMessageCount || ToolCalls.Count != _lastToolCallCount)
         {
             _lastMessageCount = Messages.Count;
+            _lastToolCallCount = ToolCalls.Count;
             await ScrollToBottomAsync();
         }
     }
 
-    private List<(ChatMessageDto Message, bool IsGrouped, bool IsOwn)> GetMessageGroups()
-    {
-        var result = new List<(ChatMessageDto, bool, bool)>();
-        ChatMessageDto? previous = null;
+    private record TimelineEntry(
+        (ChatMessageDto Message, bool IsGrouped, bool IsOwn)? Message,
+        ToolCallDto? ToolCall,
+        DateTimeOffset Timestamp);
 
+    private List<TimelineEntry> GetTimeline()
+    {
+        var entries = new List<TimelineEntry>();
+
+        ChatMessageDto? previousMsg = null;
         foreach (var message in Messages)
         {
             var isOwn = message.UserId == CurrentUserId;
-            var isGrouped = previous != null
-                            && message.AuthorName == previous.AuthorName
-                            && (message.PostedAt - previous.PostedAt).TotalMinutes < 5;
+            var isGrouped = previousMsg != null
+                            && message.AuthorName == previousMsg.AuthorName
+                            && (message.PostedAt - previousMsg.PostedAt).TotalMinutes < 5;
 
-            result.Add((message, isGrouped, isOwn));
-            previous = message;
+            entries.Add(new TimelineEntry(
+                (message, isGrouped, isOwn),
+                null,
+                new DateTimeOffset(message.PostedAt, TimeSpan.Zero)));
+            previousMsg = message;
         }
 
-        return result;
+        foreach (var toolCall in ToolCalls)
+        {
+            entries.Add(new TimelineEntry(null, toolCall, toolCall.Timestamp));
+        }
+
+        entries.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+        return entries;
     }
 
     private async Task HandleKeyPress(KeyboardEventArgs e)

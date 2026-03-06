@@ -35,39 +35,3 @@
     min-height: 0;
 }
 
-.dm-right-pane-mind-btn {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    padding: 10px 12px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: hsl(210, 3%, 98%);
-    background-color: hsl(228, 6%, 22%);
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: opacity 0.15s ease;
-    font-family: inherit;
-}
-
-.dm-right-pane-mind-btn:hover {
-    opacity: 0.9;
-}
-
-.dm-right-pane-mind-icon {
-    flex-shrink: 0;
-    width: 16px;
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.dm-right-pane-mind-icon svg {
-    width: 16px;
-    height: 16px;
-}

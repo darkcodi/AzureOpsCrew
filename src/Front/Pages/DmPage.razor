@@ -1,6 +1,7 @@
 @page "/dms"
 @page "/dms/{dmId}"
 
+@using System.Text.Json
 @inject AppState AppState
 @implements IAsyncDisposable
 @inject DmService DmService
@@ -18,6 +19,7 @@
     </LeftSidebar>
     <MainArea>
         <ChatArea Messages="_messages"
+                  ToolCalls="_toolCalls"
                   CurrentUserId="AppState.CurrentUser?.Id"
                   ShowInput="AppState.SelectedDm != null"
                   Placeholder="@(AppState.SelectedDm != null ? $"Message @{GetDmName()}" : "")"
@@ -38,6 +40,7 @@
     public string? DmId { get; set; }
 
     private List<ChatMessageDto> _messages = [];
+    private List<ToolCallDto> _toolCalls = [];
     private Guid? _loadedDmId;
     private IDisposable? _appStateSubscription;
     private ChatHubClient? _hubClient;
@@ -49,7 +52,8 @@
         SetDmFromRoute();
         _appStateSubscription = AppState.SubscribeCurrentUser(OnStateChanged)
             .Combine(AppState.SubscribeSelectedDm(OnStateChanged))
-            .Combine(AppState.SubscribeDms(OnStateChanged));
+            .Combine(AppState.SubscribeDms(OnStateChanged))
+            .Combine(AppState.SubscribeCurrentAgentMind(OnMindChanged));
     }
 
     protected override async Task OnParametersSetAsync()
@@ -69,6 +73,12 @@
         {
             Logger.LogError(ex, "Error in OnStateChanged");
         }
+    });
+
+    private void OnMindChanged() => InvokeAsync(() =>
+    {
+        _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
+        StateHasChanged();
     });
 
     public async ValueTask DisposeAsync()
@@ -92,6 +102,7 @@
             {
                 _messages = await DmService.GetAgentDmMessagesAsync(agentId.Value);
                 await AppState.LoadAgentMindAsync(AgentService, agentId.Value);
+                _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
             }
             else
             {
@@ -103,6 +114,8 @@
                 {
                     _messages = await DmService.GetUserDmMessagesAsync(otherUserId.Value);
                 }
+                _toolCalls = [];
+                AppState.CurrentAgentMind = null;
             }
 
             await ConnectToDmHub(dmId.Value);
@@ -213,5 +226,23 @@
         }
 
         return "Unknown";
+    }
+
+    private static List<ToolCallDto> ExtractToolCalls(AgentMindResponseDto? mind)
+    {
+        if (mind?.Events is not { Count: > 0 })
+            return [];
+
+        return mind.Events
+            .Where(e => e.Widget != null)
+            .Select(e => new ToolCallDto
+            {
+                ToolName = e.Widget!.ToolName,
+                CallId = e.Widget.CallId,
+                Args = e.Widget.Args is JsonElement argsEl ? argsEl : null,
+                Result = e.Widget.Result is JsonElement resultEl ? resultEl : null,
+                Timestamp = e.Timestamp,
+            })
+            .ToList();
     }
 }

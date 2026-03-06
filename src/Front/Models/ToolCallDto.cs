@@ -8,4 +8,5 @@ public class ToolCallDto
     public string CallId { get; set; } = string.Empty;
     public JsonElement? Args { get; set; }
     public JsonElement? Result { get; set; }
+    public DateTimeOffset Timestamp { get; set; }
 }
