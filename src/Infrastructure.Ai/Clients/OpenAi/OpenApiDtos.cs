@@ -282,7 +282,7 @@ public class OpenAiDelta
     [JsonPropertyName("refusal")]
     public string? Refusal { get; set; }
 
-    [JsonPropertyName("reasoning")]
+    [JsonPropertyName("reasoning_content")]
     public string? Reasoning { get; set; }
 
     [JsonPropertyName("tool_calls")]

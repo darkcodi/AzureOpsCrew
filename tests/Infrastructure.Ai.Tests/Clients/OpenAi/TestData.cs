@@ -537,4 +537,19 @@ data: {"choices":[{"content_filter_results":{},"delta":{},"finish_reason":"tool_
   "system_fingerprint": "fp_eaab8d114b_prod0820_fp8_kvcache"
 }
 """;
+
+    /// <summary>
+    /// Streaming response with reasoning_content field in delta chunks.
+    /// Tests the scenario where the API streams reasoning_content followed by regular content.
+    /// </summary>
+    public const string STREAMING_RESPONSE_WITH_REASONING_CONTENT = """
+data: {"id":"63ba8d20-ead4-4b0b-a7c5-b82e75e4fce6","choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":""},"finish_reason":null,"logprobs":null}],"object":"chat.completion.chunk","created":1772835174,"model":"gpt-5.2-chat-latest","usage":null,"system_fingerprint":"fp_eaab8d114b_prod0820_fp8_kvcache"}
+
+data: {"id":"63ba8d20-ead4-4b0b-a7c5-b82e75e4fce6","choices":[{"index":0,"delta":{"reasoning_content":"Hello"},"finish_reason":null,"logprobs":null}],"object":"chat.completion.chunk","created":1772835174,"model":"gpt-5.2-chat-latest","usage":null,"system_fingerprint":"fp_eaab8d114b_prod0820_fp8_kvcache"}
+
+data: {"id":"63ba8d20-ead4-4b0b-a7c5-b82e75e4fce6","choices":[{"index":0,"delta":{"reasoning_content":"! I'm an Azure DevOps expert ready to help you with CI/CD pipelines, repos, boards, artifacts, release management, and more."},"finish_reason":null,"logprobs":null}],"object":"chat.completion.chunk","created":1772835174,"model":"gpt-5.2-chat-latest","usage":null,"system_fingerprint":"fp_eaab8d114b_prod0820_fp8_kvcache"}
+
+data: {"id":"63ba8d20-ead4-4b0b-a7c5-b82e75e4fce6","choices":[{"index":0,"delta":{"content":"Hello! I'm here to help with all things Azure DevOps - pipelines, CI/CD, repos, boards, artifacts, and release management. What can I assist you with today?"},"finish_reason":"stop","logprobs":null}],"object":"chat.completion.chunk","created":1772835174,"model":"gpt-5.2-chat-latest","usage":{"prompt_tokens":3866,"completion_tokens":102,"total_tokens":3968,"prompt_tokens_details":{"audio_tokens":0,"cached_tokens":3840},"completion_tokens_details":{"audio_tokens":0,"reasoning_tokens":65,"accepted_prediction_tokens":0,"rejected_prediction_tokens":0}},"system_fingerprint":"fp_eaab8d114b_prod0820_fp8_kvcache"}
+
+""";
 }

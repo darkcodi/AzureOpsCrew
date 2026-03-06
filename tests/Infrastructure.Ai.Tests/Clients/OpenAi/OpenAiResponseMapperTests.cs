@@ -161,4 +161,75 @@ public class OpenAiResponseMapperTests
         Assert.True(result.AdditionalProperties.TryGetValue("finish_reason", out var finishReason));
         Assert.Equal("stop", finishReason);
     }
+
+    [Fact]
+    public async Task StreamingResponse_WithReasoningContent_ParsesCorrectly()
+    {
+        // Arrange
+        var response = TestData.STREAMING_RESPONSE_WITH_REASONING_CONTENT;
+
+        // Act
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(response));
+        var results = new List<ChatResponseUpdate>();
+        var toolCallBuilder = new OpenAiStreamToolCallBuilder();
+        var isReasoning = false;
+        await foreach (var (data, chunk) in OpenAiSseParser.ParseStreamAsync(stream))
+        {
+            if (chunk != null)
+            {
+                var update = OpenAiResponseMapper.ToChatResponseUpdate(chunk, ref isReasoning, toolCallBuilder);
+                results.Add(update);
+            }
+        }
+
+        // Assert
+        Assert.NotEmpty(results);
+        Assert.Equal(4, results.Count);
+
+        // First chunk - role with empty reasoning_content
+        var firstChunk = results[0];
+        Assert.NotNull(firstChunk);
+        Assert.Equal("63ba8d20-ead4-4b0b-a7c5-b82e75e4fce6", firstChunk.MessageId);
+        Assert.Equal("gpt-5.2-chat-latest", firstChunk.ModelId);
+        Assert.Empty(firstChunk.Contents); // Empty reasoning_content produces no content
+
+        // Second chunk - "Hello" as reasoning_content
+        var reasoningChunk1 = results[1];
+        Assert.NotNull(reasoningChunk1);
+        Assert.Single(reasoningChunk1.Contents);
+        var reasoningContent1 = reasoningChunk1.Contents[0] as TextReasoningContent;
+        Assert.NotNull(reasoningContent1);
+        Assert.Equal("Hello", reasoningContent1.Text);
+
+        // Third chunk - more reasoning_content
+        var reasoningChunk2 = results[2];
+        Assert.NotNull(reasoningChunk2);
+        Assert.Single(reasoningChunk2.Contents);
+        var reasoningContent2 = reasoningChunk2.Contents[0] as TextReasoningContent;
+        Assert.NotNull(reasoningContent2);
+        Assert.Equal("! I'm an Azure DevOps expert ready to help you with CI/CD pipelines, repos, boards, artifacts, release management, and more.", reasoningContent2.Text);
+
+        // Fourth chunk - regular content + finish_reason + usage
+        var contentChunk = results[3];
+        Assert.NotNull(contentChunk);
+        Assert.Equal(2, contentChunk.Contents.Count);
+        // UsageContent is added first, then TextContent
+        var usageContent = contentChunk.Contents[0] as UsageContent;
+        Assert.NotNull(usageContent);
+        Assert.Equal(3866, usageContent.Details.InputTokenCount);
+        Assert.Equal(102, usageContent.Details.OutputTokenCount);
+        Assert.Equal(3968, usageContent.Details.TotalTokenCount);
+        Assert.Equal(3840, usageContent.Details.CachedInputTokenCount);
+        Assert.Equal(65, usageContent.Details.ReasoningTokenCount);
+        var textContent = contentChunk.Contents[1] as TextContent;
+        Assert.NotNull(textContent);
+        Assert.Equal("Hello! I'm here to help with all things Azure DevOps - pipelines, CI/CD, repos, boards, artifacts, and release management. What can I assist you with today?", textContent.Text);
+        Assert.NotNull(usageContent);
+        Assert.Equal(3866, usageContent.Details.InputTokenCount);
+        Assert.Equal(102, usageContent.Details.OutputTokenCount);
+        Assert.Equal(3968, usageContent.Details.TotalTokenCount);
+        Assert.Equal(3840, usageContent.Details.CachedInputTokenCount);
+        Assert.Equal(65, usageContent.Details.ReasoningTokenCount);
+        Assert.Equal(ChatFinishReason.Stop, contentChunk.FinishReason);
+    }
 }
