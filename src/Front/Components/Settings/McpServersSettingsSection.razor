@@ -309,7 +309,7 @@
                 <button type="button" class="btn btn-secondary" disabled="@(!canSync)" @onclick="OnSyncMcpServer">
                     @(IsSyncingMcpServer ? "Syncing..." : "Sync tools")
                 </button>
-                <button type="button" class="btn btn-danger" disabled="@(!isDraft || IsSavingMcpServer || IsSyncingMcpServer)" @onclick="OnResetCurrentMcpServer">
+                <button type="button" class="btn btn-danger" disabled="@(IsSavingMcpServer || IsSyncingMcpServer)" @onclick="OnRemoveCurrentMcpServer">
                     Remove
                 </button>
             </div>
@@ -336,7 +336,7 @@
     [Parameter] public EventCallback<string> OnSelectMcpServer { get; set; }
     [Parameter] public EventCallback<List<McpServerConfigurationItem>> OnMcpServersChange { get; set; }
     [Parameter] public EventCallback<McpServerAuthEditorState?> OnSaveCurrentMcpServer { get; set; }
-    [Parameter] public EventCallback OnResetCurrentMcpServer { get; set; }
+    [Parameter] public EventCallback OnRemoveCurrentMcpServer { get; set; }
     [Parameter] public EventCallback OnSyncMcpServer { get; set; }
     [Parameter] public EventCallback OnToggleSelectedMcpServerEnabled { get; set; }
     [Parameter] public EventCallback<string> OnToggleSelectedMcpServerTool { get; set; }

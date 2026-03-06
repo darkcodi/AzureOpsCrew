@@ -32,7 +32,7 @@
                              OnSelectMcpServer="HandleSelectMcpServer"
                              OnMcpServersChange="HandleMcpServersChange"
                              OnSaveCurrentMcpServer="HandleSaveCurrentMcpServer"
-                             OnResetCurrentMcpServer="HandleResetCurrentMcpServer"
+                             OnRemoveCurrentMcpServer="HandleRemoveCurrentMcpServer"
                              OnSyncMcpServer="HandleSyncMcpServer"
                              OnToggleSelectedMcpServerEnabled="HandleToggleSelectedMcpServerEnabled"
                              OnToggleSelectedMcpServerTool="HandleToggleSelectedMcpServerTool"
@@ -323,7 +323,7 @@
         }
     }
 
-    private void HandleResetCurrentMcpServer()
+    private async Task HandleRemoveCurrentMcpServer()
     {
         if (_selectedMcpServerId == null) return;
 
@@ -334,16 +334,32 @@
         if (string.IsNullOrWhiteSpace(current.BackendId))
         {
             _mcpServers.RemoveAt(currentIndex);
-            _selectedMcpServerId = _mcpServers.Count == 0
-                ? null
-                : _mcpServers[Math.Min(currentIndex, _mcpServers.Count - 1)].Id;
         }
         else
         {
-            var saved = _savedMcpServers.FirstOrDefault(server => server.Id == current.Id);
-            if (saved == null) return;
-            _mcpServers[currentIndex] = saved.Clone();
+            _mcpServerError = null;
+            _isSavingMcpServer = true;
+            try
+            {
+                await SettingsService.RemoveMcpServerAsync(current.BackendId);
+            }
+            catch (Exception ex)
+            {
+                _mcpServerError = ex.Message;
+                return;
+            }
+            finally
+            {
+                _isSavingMcpServer = false;
+            }
+
+            _mcpServers.RemoveAt(currentIndex);
+            _savedMcpServers.RemoveAll(server => server.Id == current.Id);
         }
+
+        _selectedMcpServerId = _mcpServers.Count == 0
+            ? null
+            : _mcpServers[Math.Min(currentIndex, _mcpServers.Count - 1)].Id;
 
         _mcpServerError = null;
         ComputeModifiedMcpServerIds();

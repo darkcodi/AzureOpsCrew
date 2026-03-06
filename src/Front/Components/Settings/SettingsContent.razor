@@ -15,7 +15,7 @@
                                                OnSelectMcpServer="OnSelectMcpServer"
                                                OnMcpServersChange="OnMcpServersChange"
                                                OnSaveCurrentMcpServer="OnSaveCurrentMcpServer"
-                                               OnResetCurrentMcpServer="OnResetCurrentMcpServer"
+                                               OnRemoveCurrentMcpServer="OnRemoveCurrentMcpServer"
                                                OnSyncMcpServer="OnSyncMcpServer"
                                                OnToggleSelectedMcpServerEnabled="OnToggleSelectedMcpServerEnabled"
                                                OnToggleSelectedMcpServerTool="OnToggleSelectedMcpServerTool"
@@ -151,7 +151,7 @@
     [Parameter] public EventCallback<string> OnSelectMcpServer { get; set; }
     [Parameter] public EventCallback<List<McpServerConfigurationItem>> OnMcpServersChange { get; set; }
     [Parameter] public EventCallback<McpServerAuthEditorState?> OnSaveCurrentMcpServer { get; set; }
-    [Parameter] public EventCallback OnResetCurrentMcpServer { get; set; }
+    [Parameter] public EventCallback OnRemoveCurrentMcpServer { get; set; }
     [Parameter] public EventCallback OnSyncMcpServer { get; set; }
     [Parameter] public EventCallback OnToggleSelectedMcpServerEnabled { get; set; }
     [Parameter] public EventCallback<string> OnToggleSelectedMcpServerTool { get; set; }

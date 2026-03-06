@@ -198,6 +198,12 @@ public class SettingsService(HttpClient http, IJSRuntime js)
         return await ReadMcpServerResponse(response, "Failed to update MCP authorization.");
     }
 
+    public async Task RemoveMcpServerAsync(string backendId)
+    {
+        var response = await http.DeleteAsync($"/api/mcp-server-configurations/{backendId}");
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<ProviderTestResult> TestProviderAsync(Provider provider)
     {
         var payload = new

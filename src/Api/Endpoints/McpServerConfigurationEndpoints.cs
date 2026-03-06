@@ -167,6 +167,25 @@ public static class McpServerConfigurationEndpoints
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status404NotFound);
 
+        group.MapDelete("/{id}", async (
+            Guid id,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var found = await context.McpServerConfigurations
+                .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+            if (found is null)
+                return Results.NotFound();
+
+            context.McpServerConfigurations.Remove(found);
+            await context.SaveChangesAsync(cancellationToken);
+
+            return Results.NoContent();
+        })
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status404NotFound);
+
         group.MapGet("/{id}", async (
             Guid id,
             AzureOpsCrewContext context,
