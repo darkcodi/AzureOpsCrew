@@ -10,3 +10,6 @@ dotnet_diagnostic.MA0132.severity = error
 
 # Also warn when code relies on implicit conversion from DateTime.Now/UtcNow
 dotnet_diagnostic.MA0133.severity = warning
+
+# Ignore MA0004: Use Task.ConfigureAwait(false) if the current SynchronizationContext is not needed
+dotnet_diagnostic.MA0004.severity = none
