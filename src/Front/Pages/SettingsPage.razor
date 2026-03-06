@@ -36,9 +36,7 @@
                              OnSyncMcpServer="HandleSyncMcpServer"
                              OnToggleSelectedMcpServerEnabled="HandleToggleSelectedMcpServerEnabled"
                              OnToggleSelectedMcpServerTool="HandleToggleSelectedMcpServerTool"
-                             OnSaveMcpServerAuth="HandleSaveMcpServerAuth"
                              IsSavingMcpServer="_isSavingMcpServer"
-                             IsSavingMcpServerAuth="_isSavingMcpServerAuth"
                              IsSyncingMcpServer="_isSyncingMcpServer"
                              IsUpdatingMcpServerTool="_isUpdatingMcpServerTool"
                              UpdatingMcpServerToolName="@_updatingMcpServerToolName"
@@ -63,7 +61,7 @@
                             Reset
                         </button>
                         <button type="button" class="unsaved-btn save-btn" disabled="@_isSaving" @onclick="HandleSaveAll">
-                            @(_isSaving ? "Saving…" : "Save")
+                            @(_isSaving ? "SavingР Р†Р вЂљР’В¦" : "Save")
                         </button>
                     </div>
                 </div>
@@ -96,7 +94,6 @@
     private HashSet<string> _modifiedMcpServerIds = [];
     private string? _mcpServerError;
     private bool _isSavingMcpServer;
-    private bool _isSavingMcpServerAuth;
     private bool _isSyncingMcpServer;
     private bool _isUpdatingMcpServerTool;
     private int _mcpServerAuthResetKey;
@@ -289,7 +286,7 @@
         }
     }
 
-    private async Task HandleSaveCurrentMcpServer()
+    private async Task HandleSaveCurrentMcpServer(McpServerAuthEditorState? auth)
     {
         if (_selectedMcpServerId == null) return;
         var current = _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
@@ -304,6 +301,17 @@
                 : await SettingsService.UpdateMcpServerAsync(current);
 
             ApplyMcpServerSnapshot(current.Id, savedSnapshot);
+
+            if (auth != null)
+            {
+                var savedCurrent = _mcpServers.FirstOrDefault(server => server.Id == current.Id);
+                if (!string.IsNullOrWhiteSpace(savedCurrent?.BackendId))
+                {
+                    var authSnapshot = await SettingsService.SetMcpServerAuthorizationAsync(savedCurrent.BackendId, auth);
+                    ApplyMcpServerSnapshot(current.Id, authSnapshot);
+                    _mcpServerAuthResetKey++;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -433,35 +441,6 @@
         }
     }
 
-    private async Task HandleSaveMcpServerAuth(McpServerAuthEditorState auth)
-    {
-        if (_selectedMcpServerId == null) return;
-        var current = _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
-        if (current == null || string.IsNullOrWhiteSpace(current.BackendId)) return;
-        if (_modifiedMcpServerIds.Contains(current.Id))
-        {
-            _mcpServerError = "Save name or URL changes before updating authorization.";
-            return;
-        }
-
-        _mcpServerError = null;
-        _isSavingMcpServerAuth = true;
-
-        try
-        {
-            var updatedSnapshot = await SettingsService.SetMcpServerAuthorizationAsync(current.BackendId, auth);
-            ApplyMcpServerSnapshot(current.Id, updatedSnapshot);
-            _mcpServerAuthResetKey++;
-        }
-        catch (Exception ex)
-        {
-            _mcpServerError = ex.Message;
-        }
-        finally
-        {
-            _isSavingMcpServerAuth = false;
-        }
-    }
 
     private void ApplyMcpServerSnapshot(string localId, McpServerConfigurationItem snapshot)
     {

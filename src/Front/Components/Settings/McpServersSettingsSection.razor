@@ -40,12 +40,12 @@
         var hasPendingChanges = ModifiedMcpServerIds.Contains(selectedServer.Id);
         var isDraft = string.IsNullOrWhiteSpace(selectedServer.BackendId);
         var enabledToolsCount = selectedServer.Tools.Count(tool => tool.IsEnabled);
-        var canSave = !IsSavingMcpServer && !IsSavingMcpServerAuth && !string.IsNullOrWhiteSpace(selectedServer.Name) && !string.IsNullOrWhiteSpace(selectedServer.Url) && (hasPendingChanges || isDraft);
-        var canSync = !IsSavingMcpServer && !IsSavingMcpServerAuth && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
-        var canToggleEnabled = !IsSavingMcpServer && !IsSavingMcpServerAuth && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
-        var canToggleTools = !IsSavingMcpServer && !IsSavingMcpServerAuth && !IsSyncingMcpServer && !IsUpdatingMcpServerTool && !isDraft && !hasPendingChanges;
-        var authInputsDisabled = isDraft || hasPendingChanges || IsSavingMcpServer || IsSavingMcpServerAuth || IsSyncingMcpServer;
-        var canSaveAuth = !authInputsDisabled && IsAuthEditorValid();
+        var hasAuthChanges = HasAuthChanges(selectedServer);
+        var canSave = !IsSavingMcpServer && !string.IsNullOrWhiteSpace(selectedServer.Name) && !string.IsNullOrWhiteSpace(selectedServer.Url) && (hasPendingChanges || isDraft || hasAuthChanges) && (!hasAuthChanges || IsAuthEditorValid());
+        var canSync = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
+        var canToggleEnabled = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
+        var canToggleTools = !IsSavingMcpServer && !IsSyncingMcpServer && !IsUpdatingMcpServerTool && !isDraft && !hasPendingChanges;
+        var authInputsDisabled = isDraft || hasPendingChanges || IsSavingMcpServer || IsSyncingMcpServer;
 
         <div class="provider-detail">
             <div class="provider-detail-header">
@@ -236,13 +236,8 @@
                 }
 
                 <div class="mcp-auth-actions">
-                    <button type="button" class="btn btn-primary"
-                            disabled="@(!canSaveAuth)"
-                            @onclick="SaveAuthAsync">
-                        @(IsSavingMcpServerAuth ? "Saving auth..." : "Save authorization")
-                    </button>
                     <button type="button" class="btn btn-secondary"
-                            disabled="@authInputsDisabled"
+                            disabled="@(authInputsDisabled || !hasAuthChanges)"
                             @onclick="ResetAuthEditorToSelectedServer">
                         Reset auth form
                     </button>
@@ -308,13 +303,13 @@
             }
 
             <div class="action-buttons">
-                <button type="button" class="btn btn-primary" disabled="@(!canSave)" @onclick="OnSaveCurrentMcpServer">
+                <button type="button" class="btn btn-primary" disabled="@(!canSave)" @onclick="SaveCurrentMcpServerAsync">
                     @(IsSavingMcpServer ? "Saving..." : "Save")
                 </button>
                 <button type="button" class="btn btn-secondary" disabled="@(!canSync)" @onclick="OnSyncMcpServer">
                     @(IsSyncingMcpServer ? "Syncing..." : "Sync tools")
                 </button>
-                <button type="button" class="btn btn-danger" disabled="@(!isDraft || IsSavingMcpServer || IsSavingMcpServerAuth || IsSyncingMcpServer)" @onclick="OnResetCurrentMcpServer">
+                <button type="button" class="btn btn-danger" disabled="@(!isDraft || IsSavingMcpServer || IsSyncingMcpServer)" @onclick="OnResetCurrentMcpServer">
                     Remove
                 </button>
             </div>
@@ -340,14 +335,12 @@
     [Parameter] public string? SelectedMcpServerId { get; set; }
     [Parameter] public EventCallback<string> OnSelectMcpServer { get; set; }
     [Parameter] public EventCallback<List<McpServerConfigurationItem>> OnMcpServersChange { get; set; }
-    [Parameter] public EventCallback OnSaveCurrentMcpServer { get; set; }
+    [Parameter] public EventCallback<McpServerAuthEditorState?> OnSaveCurrentMcpServer { get; set; }
     [Parameter] public EventCallback OnResetCurrentMcpServer { get; set; }
     [Parameter] public EventCallback OnSyncMcpServer { get; set; }
     [Parameter] public EventCallback OnToggleSelectedMcpServerEnabled { get; set; }
     [Parameter] public EventCallback<string> OnToggleSelectedMcpServerTool { get; set; }
-    [Parameter] public EventCallback<McpServerAuthEditorState> OnSaveMcpServerAuth { get; set; }
     [Parameter] public bool IsSavingMcpServer { get; set; }
-    [Parameter] public bool IsSavingMcpServerAuth { get; set; }
     [Parameter] public bool IsSyncingMcpServer { get; set; }
     [Parameter] public bool IsUpdatingMcpServerTool { get; set; }
     [Parameter] public string? UpdatingMcpServerToolName { get; set; }
@@ -434,16 +427,35 @@
         await OnMcpServersChange.InvokeAsync(McpServers.ToList());
     }
 
-    private async Task SaveAuthAsync()
+    private async Task SaveCurrentMcpServerAsync()
     {
-        if (!TryValidateAuthEditor(out var validationError))
+        var selectedServer = SelectedMcpServer;
+        if (selectedServer == null)
+            return;
+
+        if (!TryGetAuthSaveRequest(selectedServer, out var authSaveRequest, out var validationError))
         {
             _authValidationError = validationError;
             return;
         }
 
         _authValidationError = null;
-        await OnSaveMcpServerAuth.InvokeAsync(BuildAuthSaveRequest());
+        await OnSaveCurrentMcpServer.InvokeAsync(authSaveRequest);
+    }
+
+    private bool TryGetAuthSaveRequest(McpServerConfigurationItem server, out McpServerAuthEditorState? authSaveRequest, out string? validationError)
+    {
+        authSaveRequest = null;
+        validationError = null;
+
+        if (!HasAuthChanges(server))
+            return true;
+
+        if (!TryValidateAuthEditor(out validationError))
+            return false;
+
+        authSaveRequest = BuildAuthSaveRequest();
+        return true;
     }
 
     private void HandleAuthTypeChanged(ChangeEventArgs args)
@@ -541,6 +553,44 @@
         };
     }
 
+    private bool HasAuthChanges(McpServerConfigurationItem server)
+    {
+        var savedAuth = server.Auth ?? new McpServerAuthSummary();
+        var editorType = NormalizeAuthType(_authEditor.Type);
+        var savedType = NormalizeAuthType(savedAuth.Type);
+
+        if (!string.Equals(editorType, savedType, StringComparison.Ordinal))
+            return true;
+
+        if (string.Equals(editorType, "BearerToken", StringComparison.Ordinal))
+            return !string.IsNullOrWhiteSpace(_authEditor.BearerToken);
+
+        if (!string.Equals(editorType, "CustomHeaders", StringComparison.Ordinal))
+            return false;
+
+        if (_authEditor.Headers.Any(header => !string.IsNullOrWhiteSpace(header.Value)))
+            return true;
+
+        var editorNames = _authEditor.Headers
+            .Select(header => header.Name.Trim())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var savedNames = savedAuth.CustomHeaderNames
+            .Select(name => name.Trim())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return !editorNames.SequenceEqual(savedNames, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeAuthType(string? type) =>
+        string.IsNullOrWhiteSpace(type) ? "None" : type;
+
     private bool IsAuthEditorValid() => TryValidateAuthEditor(out _);
 
     private bool TryValidateAuthEditor(out string? validationError)
@@ -554,7 +604,7 @@
         {
             if (string.IsNullOrWhiteSpace(_authEditor.BearerToken))
             {
-                validationError = "Enter a bearer token before saving authorization.";
+                validationError = "Enter a bearer token before saving.";
                 return false;
             }
 
@@ -573,7 +623,7 @@
 
         if (populatedHeaders.Count == 0)
         {
-            validationError = "Add at least one custom header before saving authorization.";
+            validationError = "Add at least one custom header before saving.";
             return false;
         }
 
