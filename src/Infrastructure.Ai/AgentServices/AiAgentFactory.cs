@@ -52,7 +52,7 @@ Agent prompt: {agent.Info.Prompt}
 """;
             }
 
-            var chatParticipants = string.Join("\n", data.ParticipantAgents.Where(a => a != data.Agent).Select(FormatAgent));
+            var chatParticipants = string.Join("\n", data.ParticipantAgents.Where(a => a.Id != data.Agent.Id).Select(FormatAgent));
 
             var prompt = $"""
 # General
@@ -200,12 +200,24 @@ IMPORTANT: Always use the TodoWrite tool to plan and track tasks throughout the 
 
 ## Chat rules
 VERY IMPORTANT!
-1. Always respond in a way that is consistent with your agent description and prompt.
-2. Remember that you are not the only agent in the chat. Be mindful of other agents' personalities, descriptions, and prompts when crafting your responses.
-3. Do NOT try to respond to each message in the chat. Only respond when you have something valuable to contribute, whether it's a message or a tool call.
-4. If you see that message is not relevant to you, it's okay to ignore it and not respond. Just return SKIPPED in that case, and system will understand that you intentionally chose not to respond to that message.
-5. Remember that all agents run in parallel, so some agents can post in chat while you are thinking or calling tools. Do not assume that the chat history will remain the same between the time you read it and the time you respond.
-6. You can use the tools declared above to help you accomplish your goals. Each tool has a name, a description of what it does, and a JSON schema for the parameters it accepts.
+
+1. ROLE-PLAYING.
+Always respond in a way that is consistent with your agent description and prompt.
+
+2. WORK BALANCING & TURN SKIPPING.
+Remember that you are not the only agent in the chat. Be mindful of other agents' personalities, descriptions, and prompts when crafting your responses.
+Do NOT try to respond to each message in the chat.
+If you see that another agent is much better suited to answer a question or perform a task, it's often best to let that agent respond instead of you.
+If this case, use the SkipTurn tool to skip your turn and let the other agent respond.
+
+3. WAITING FOR OTHER AGENTS.
+If you think that you are the best agent to respond to a message or perform a task, respond immediately without waiting.
+In rare cases, if you think that multiple agents should respond to this, including you, then wait for a random significant duration (at least 10 seconds) using Wait tool to give the other agents a chance to respond, and then evaluate if you still need to respond or take action.
+If you waited a bit and then saw that other agent has already responded or taken action, then you should skip your turn and let the other agent handle it. If you waited and no other agent responded or took action, then you should go ahead and respond or take action.
+Remember that all agents run in parallel, so some agents can post in chat while you are thinking or calling tools. Do not assume that the chat history will remain the same between the time you read it and the time you respond. Someone can post while you are waiting.
+
+4. TOOLS.
+Use tools extensively to help you with your tasks. You have access to many tools that can help you with searching, coding, devops, and more. Use them!
 
 """;
     }

@@ -53,14 +53,16 @@ public static class OpenAiRequestMapper
 
     private static List<OpenAiMessage> ToOpenAiMessages(IEnumerable<ChatMessage> messages)
     {
+        var normalizedMessages = NormalizeToolMessageOrder(messages);
         var result = new List<OpenAiMessage>();
 
-        foreach (var message in messages)
+        foreach (var message in normalizedMessages)
         {
+            var mappedRole = MapChatRole(message.Role);
             var openAiMessage = new OpenAiMessage
             {
-                Role = MapChatRole(message.Role),
-                Name = message.AuthorName
+                Role = mappedRole,
+                Name = mappedRole == "tool" ? null : message.AuthorName
             };
 
             // Handle content conversion
@@ -91,10 +93,104 @@ public static class OpenAiRequestMapper
                 }
             }
 
-            result.Add(openAiMessage);
+            if (openAiMessage.Content != null || openAiMessage.ToolCalls != null)
+            {
+                // Only add messages that have content or tool calls to avoid sending empty messages to OpenAI
+                result.Add(openAiMessage);
+            }
         }
 
         return result;
+    }
+
+    private static List<ChatMessage> NormalizeToolMessageOrder(IEnumerable<ChatMessage> messages)
+    {
+        var orderedMessages = messages.ToList();
+        var toolResultIndexesByCallId = BuildToolResultIndexesByCallId(orderedMessages);
+        var emittedToolMessageIndexes = new HashSet<int>();
+        var normalizedMessages = new List<ChatMessage>(orderedMessages.Count);
+
+        for (var index = 0; index < orderedMessages.Count; index++)
+        {
+            if (emittedToolMessageIndexes.Contains(index))
+            {
+                continue;
+            }
+
+            var message = orderedMessages[index];
+            normalizedMessages.Add(message);
+
+            foreach (var toolCallId in GetToolCallIds(message))
+            {
+                if (!toolResultIndexesByCallId.TryGetValue(toolCallId, out var toolResultIndexes))
+                {
+                    continue;
+                }
+
+                foreach (var toolResultIndex in toolResultIndexes)
+                {
+                    if (toolResultIndex <= index || emittedToolMessageIndexes.Contains(toolResultIndex))
+                    {
+                        continue;
+                    }
+
+                    normalizedMessages.Add(orderedMessages[toolResultIndex]);
+                    emittedToolMessageIndexes.Add(toolResultIndex);
+                }
+            }
+        }
+
+        return normalizedMessages;
+    }
+
+    private static Dictionary<string, List<int>> BuildToolResultIndexesByCallId(IReadOnlyList<ChatMessage> messages)
+    {
+        var result = new Dictionary<string, List<int>>(StringComparer.Ordinal);
+
+        for (var index = 0; index < messages.Count; index++)
+        {
+            foreach (var toolCallId in GetToolResultCallIds(messages[index]))
+            {
+                if (!result.TryGetValue(toolCallId, out var indexes))
+                {
+                    indexes = [];
+                    result[toolCallId] = indexes;
+                }
+
+                indexes.Add(index);
+            }
+        }
+
+        return result;
+    }
+
+    private static IEnumerable<string> GetToolCallIds(ChatMessage message)
+    {
+        foreach (var content in message.Contents)
+        {
+            if (content is FunctionCallContent functionCall &&
+                !string.IsNullOrWhiteSpace(functionCall.CallId))
+            {
+                yield return functionCall.CallId;
+            }
+        }
+    }
+
+    private static IEnumerable<string> GetToolResultCallIds(ChatMessage message)
+    {
+        if (message.Role != ChatRole.Tool)
+        {
+            yield break;
+        }
+
+        foreach (var content in message.Contents)
+        {
+            if (content is FunctionResultContent functionResult &&
+                !string.IsNullOrWhiteSpace(functionResult.CallId))
+            {
+                yield return functionResult.CallId;
+            }
+        }
     }
 
     private static string MapChatRole(ChatRole role)
