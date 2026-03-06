@@ -496,4 +496,45 @@ data: {"choices":[{"content_filter_results":{},"delta":{},"finish_reason":"tool_
 
 
 """;
+
+    /// <summary>
+    /// Non-streaming response with reasoning_content field (DeepSeek-style response).
+    /// This tests the scenario where the API returns both content and reasoning_content
+    /// in the message object.
+    /// </summary>
+    public const string NON_STREAMING_RESPONSE_WITH_REASONING_CONTENT = """
+{
+  "id": "e6c388e7-8432-41bf-915e-09ddf26f62bb",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Hi! I'm an Azure DevOps expert. How can I help you with pipelines, CI/CD, repos, boards, artifacts, or release management today?",
+        "reasoning_content": "Hello! I'm an Azure DevOps expert ready to help with pipelines, CI/CD, repos, boards, artifacts, and release management. How can I assist you today? Since there's no specific request yet, I'll wait for your question or task. If you need help with anything Azure DevOps related, just let me know!"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "object": "chat.completion",
+  "created": 1772834690,
+  "model": "gpt-5.2-chat-latest",
+  "usage": {
+    "prompt_tokens": 3866,
+    "completion_tokens": 98,
+    "total_tokens": 3964,
+    "prompt_tokens_details": {
+      "audio_tokens": 0,
+      "cached_tokens": 3840
+    },
+    "completion_tokens_details": {
+      "audio_tokens": 0,
+      "reasoning_tokens": 66,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "system_fingerprint": "fp_eaab8d114b_prod0820_fp8_kvcache"
+}
+""";
 }

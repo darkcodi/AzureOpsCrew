@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
 using Microsoft.Extensions.AI;
 using Xunit.Abstractions;
@@ -113,5 +114,51 @@ public class OpenAiResponseMapperTests
         Assert.Equal("showMyIp", functionCallContent.Name);
         Assert.NotNull(functionCallContent.Arguments);
         Assert.Equal(20, functionCallContent.Arguments!.Count);
+    }
+
+    [Fact]
+    public void NonStreamingResponse_WithReasoningContent_ParsesCorrectly()
+    {
+        // Arrange
+        var jsonResponse = TestData.NON_STREAMING_RESPONSE_WITH_REASONING_CONTENT;
+        var openAiResponse = System.Text.Json.JsonSerializer.Deserialize<OpenAiChatCompletionResponse>(jsonResponse);
+
+        // Act
+        var result = OpenAiResponseMapper.ToChatResponse(openAiResponse!);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("gpt-5.2-chat-latest", result.ModelId);
+        Assert.Single(result.Messages);
+        Assert.Equal(ChatRole.Assistant, result.Messages[0].Role);
+        Assert.Equal("e6c388e7-8432-41bf-915e-09ddf26f62bb", result.Messages[0].MessageId);
+
+        // Should have 3 contents: TextContent, TextReasoningContent, and UsageContent
+        Assert.NotNull(result.Messages[0].Contents);
+        Assert.Equal(3, result.Messages[0].Contents.Count);
+
+        // First content should be TextContent
+        var textContent = result.Messages[0].Contents[0] as TextContent;
+        Assert.NotNull(textContent);
+        Assert.Equal("Hi! I'm an Azure DevOps expert. How can I help you with pipelines, CI/CD, repos, boards, artifacts, or release management today?", textContent.Text);
+
+        // Second content should be TextReasoningContent
+        var reasoningContent = result.Messages[0].Contents[1] as TextReasoningContent;
+        Assert.NotNull(reasoningContent);
+        Assert.Equal("Hello! I'm an Azure DevOps expert ready to help with pipelines, CI/CD, repos, boards, artifacts, and release management. How can I assist you today? Since there's no specific request yet, I'll wait for your question or task. If you need help with anything Azure DevOps related, just let me know!", reasoningContent.Text);
+
+        // Third content should be UsageContent
+        var usageContent = result.Messages[0].Contents[2] as UsageContent;
+        Assert.NotNull(usageContent);
+        Assert.Equal(3866, usageContent.Details.InputTokenCount);
+        Assert.Equal(98, usageContent.Details.OutputTokenCount);
+        Assert.Equal(3964, usageContent.Details.TotalTokenCount);
+        Assert.Equal(3840, usageContent.Details.CachedInputTokenCount);
+        Assert.Equal(66, usageContent.Details.ReasoningTokenCount);
+
+        // Additional properties should contain finish_reason
+        Assert.NotNull(result.AdditionalProperties);
+        Assert.True(result.AdditionalProperties.TryGetValue("finish_reason", out var finishReason));
+        Assert.Equal("stop", finishReason);
     }
 }
