@@ -702,14 +702,21 @@
     {
         if (string.IsNullOrWhiteSpace(server.ToolsSyncedAt))
             return "Tools not synced yet";
-        if (!DateTime.TryParse(server.ToolsSyncedAt, out var syncedAt))
+        if (!DateTime.TryParse(
+                server.ToolsSyncedAt,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AllowWhiteSpaces |
+                System.Globalization.DateTimeStyles.AssumeUniversal |
+                System.Globalization.DateTimeStyles.AdjustToUniversal,
+                out var syncedAtUtc))
             return server.ToolsSyncedAt;
 
-        var diff = DateTime.UtcNow - syncedAt.ToUniversalTime();
+        var diff = DateTime.UtcNow - syncedAtUtc;
+        if (diff < TimeSpan.Zero) diff = TimeSpan.Zero;
         if (diff.TotalMinutes < 1) return "Synced just now";
         if (diff.TotalHours < 1) return $"Synced {(int)diff.TotalMinutes} min ago";
         if (diff.TotalDays < 1) return $"Synced {(int)diff.TotalHours} h ago";
-        return $"Synced {syncedAt.ToLocalTime():g}";
+        return $"Synced {syncedAtUtc.ToLocalTime():g}";
     }
 
     private const string SvgSearch =
