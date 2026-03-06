@@ -77,6 +77,9 @@ public class OpenAiMessage
 
     [JsonPropertyName("tool_call_id")]
     public string? ToolCallId { get; set; }
+
+    [JsonPropertyName("reasoning_content")]
+    public string? ReasoningContent { get; set; }
 }
 
 /// <summary>

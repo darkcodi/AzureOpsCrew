@@ -240,6 +240,12 @@ public static class OpenAiResponseMapper
             }
         }
 
+        // Handle reasoning_content field (used by DeepSeek and other reasoning models)
+        if (!string.IsNullOrEmpty(message.ReasoningContent))
+        {
+            contents.Add(new TextReasoningContent(message.ReasoningContent));
+        }
+
         if (message.ToolCalls != null)
         {
             foreach (var toolCall in message.ToolCalls)
