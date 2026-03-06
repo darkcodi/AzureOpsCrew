@@ -60,6 +60,13 @@ public sealed class McpServerConfiguration
         Auth = auth;
     }
 
+    public void SetToolIsEnabled(string toolName, bool isEnabled)
+    {
+        var normalizedToolName = toolName.Trim();
+        var tool = Tools.Single(tool => string.Equals(tool.Name, normalizedToolName, StringComparison.Ordinal));
+        tool.IsEnabled = isEnabled;
+    }
+
     public void ReplaceTools(IEnumerable<McpServerToolConfiguration> tools, DateTime syncedAt)
     {
         Tools = tools.ToList();

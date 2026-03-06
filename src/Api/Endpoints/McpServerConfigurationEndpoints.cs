@@ -59,6 +59,33 @@ public static class McpServerConfigurationEndpoints
         .Produces<McpServerConfigurationResponseDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
+        group.MapPost("/{id}/tools/set-enable", async (
+            Guid id,
+            SetMcpServerToolEnabledBodyDto body,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var found = await context.McpServerConfigurations
+                .Include(x => x.Tools)
+                .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+            if (found is null)
+                return Results.NotFound();
+
+            var normalizedToolName = body.Name.Trim();
+            if (found.Tools.All(x => !string.Equals(x.Name, normalizedToolName, StringComparison.Ordinal)))
+                return Results.NotFound();
+
+            found.SetToolIsEnabled(normalizedToolName, body.IsEnabled);
+            await context.SaveChangesAsync(cancellationToken);
+
+            return Results.Ok(found.ToResponseDto());
+        })
+        .AddEndpointFilter<ValidationFilter<SetMcpServerToolEnabledBodyDto>>()
+        .Produces<McpServerConfigurationResponseDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status404NotFound);
+
         group.MapPost("/{id}/set-authorization", async (
             Guid id,
             SetAuthMcpServerConfigurationBodyDto body,
