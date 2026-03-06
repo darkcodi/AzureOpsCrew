@@ -92,7 +92,11 @@ public static class OpenAiRequestMapper
                 }
             }
 
-            result.Add(openAiMessage);
+            if (openAiMessage.Content != null || openAiMessage.ToolCalls != null)
+            {
+                // Only add messages that have content or tool calls to avoid sending empty messages to OpenAI
+                result.Add(openAiMessage);
+            }
         }
 
         return result;
