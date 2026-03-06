@@ -15,9 +15,10 @@ public class MarkTodoItemCompletedTool : ITool
                                           {
                                             "type": "object",
                                             "properties": {
-                                              "id": { "type": "string", "description": "The unique identifier of the to-do item to mark as completed" }
+                                              "id": { "type": "string", "description": "The unique identifier of the to-do item to mark as completed" },
+                                              "completionSummary": { "type": "string", "description": "The summary of how you completed the task and any important details about the completion. This will be stored with the to-do item and can be reviewed later." }
                                             },
-                                            "required": ["id"],
+                                            "required": ["id", "completionSummary"],
                                             "additionalProperties": false
                                           }
                                           """).ToString(),
@@ -48,13 +49,19 @@ public class MarkTodoItemCompletedTool : ITool
         {
             return Task.FromResult(new ToolCallResult(callId, new { ErrorMessage = "id param is missing or empty" }, true));
         }
+        if (!arguments.ContainsKey("completionSummary") || string.IsNullOrEmpty(arguments["completionSummary"]?.ToString()))
+        {
+            return Task.FromResult(new ToolCallResult(callId, new { ErrorMessage = "completionSummary param is missing or empty" }, true));
+        }
 
         var id = arguments["id"]?.ToString() ?? string.Empty;
+        var completionSummary = arguments["completionSummary"]?.ToString() ?? string.Empty;
 
         var itemToMark = toDoItems.FirstOrDefault(item => string.Equals(item.Id, id, StringComparison.InvariantCultureIgnoreCase));
         if (itemToMark != null)
         {
             itemToMark.IsCompleted = true;
+            itemToMark.CompletionSummary = completionSummary;
             return Task.FromResult(new ToolCallResult(callId, new { success = true }, false));
         }
         else

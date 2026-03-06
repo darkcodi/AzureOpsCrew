@@ -61,6 +61,7 @@ public class ListTodoItemsTool : ITool
                 title = item.Title,
                 description = item.Description,
                 isCompleted = item.IsCompleted,
+                completionSummary = item.CompletionSummary,
             }).ToList()
         };
 

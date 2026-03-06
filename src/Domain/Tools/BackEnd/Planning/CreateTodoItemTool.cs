@@ -58,6 +58,7 @@ public class CreateTodoItemTool : ITool
             Title = title,
             Description = description,
             IsCompleted = false,
+            CompletionSummary = null,
         };
         toDoItems.Add(newItem);
 
