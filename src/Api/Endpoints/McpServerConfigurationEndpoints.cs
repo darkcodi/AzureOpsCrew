@@ -12,8 +12,8 @@ public static class McpServerConfigurationEndpoints
     public static void MapMcpServerConfigurationEndpoints(this IEndpointRouteBuilder routeBuilder)
     {
         var group = routeBuilder.MapGroup("/api/mcp-server-configurations")
-            .WithTags("McpServerConfigurations")
-            .RequireAuthorization();
+            .WithTags("McpServerConfigurations");
+            //.RequireAuthorization();
 
         group.MapPost("/create", async (
             CreateMcpServerConfigurationBodyDto body,
@@ -31,10 +31,10 @@ public static class McpServerConfigurationEndpoints
             await context.AddAsync(configuration, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
-            return Results.Created($"/api/mcp-server-configurations/{configuration.Id}", configuration);
+            return Results.Created($"/api/mcp-server-configurations/{configuration.Id}", configuration.ToResponseDto());
         })
         .AddEndpointFilter<ValidationFilter<CreateMcpServerConfigurationBodyDto>>()
-        .Produces<McpServerConfiguration>(StatusCodes.Status201Created)
+        .Produces<McpServerConfigurationResponseDto>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest);
 
         group.MapPost("/{id}/set-enabled", async (
@@ -53,10 +53,33 @@ public static class McpServerConfigurationEndpoints
             found.SetEnabled(body.IsEnabled);
             await context.SaveChangesAsync(cancellationToken);
 
-            return Results.Ok(found);
+            return Results.Ok(found.ToResponseDto());
         })
         .AddEndpointFilter<ValidationFilter<SetMcpServerConfigurationEnabledBodyDto>>()
-        .Produces<McpServerConfiguration>(StatusCodes.Status200OK)
+        .Produces<McpServerConfigurationResponseDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("/{id}/set-authorization", async (
+            Guid id,
+            SetAuthMcpServerConfigurationBodyDto body,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var found = await context.McpServerConfigurations
+                .Include(x => x.Tools)
+                .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+            if (found is null)
+                return Results.NotFound();
+
+            found.SetAuth(body.ToDomainAuth());
+            await context.SaveChangesAsync(cancellationToken);
+
+            return Results.Ok(found.ToResponseDto());
+        })
+        .AddEndpointFilter<ValidationFilter<SetAuthMcpServerConfigurationBodyDto>>()
+        .Produces<McpServerConfigurationResponseDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status404NotFound);
 
         group.MapPost("/{id}/sync-tools", async (
@@ -76,7 +99,7 @@ public static class McpServerConfigurationEndpoints
                 .GroupBy(x => x.Name, StringComparer.Ordinal)
                 .ToDictionary(x => x.Key, x => x.First(), StringComparer.Ordinal);
 
-            var discoveredTools = await mcpServerFacade.GetAvailableToolsAsync(found.Url, cancellationToken);
+            var discoveredTools = await mcpServerFacade.GetAvailableToolsAsync(found.Url, found.Auth, cancellationToken);
 
             foreach (var tool in discoveredTools)
             {
@@ -87,9 +110,9 @@ public static class McpServerConfigurationEndpoints
             found.ReplaceTools(discoveredTools, DateTime.UtcNow);
             await context.SaveChangesAsync(cancellationToken);
 
-            return Results.Ok(found);
+            return Results.Ok(found.ToResponseDto());
         })
-        .Produces<McpServerConfiguration>(StatusCodes.Status200OK)
+        .Produces<McpServerConfigurationResponseDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
         group.MapPut("/{id}", async (
@@ -110,10 +133,10 @@ public static class McpServerConfigurationEndpoints
 
             await context.SaveChangesAsync(cancellationToken);
 
-            return Results.Ok(found);
+            return Results.Ok(found.ToResponseDto());
         })
         .AddEndpointFilter<ValidationFilter<UpdateMcpServerConfigurationBodyDto>>()
-        .Produces<McpServerConfiguration>(StatusCodes.Status200OK)
+        .Produces<McpServerConfigurationResponseDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status404NotFound);
 
@@ -126,9 +149,9 @@ public static class McpServerConfigurationEndpoints
                 .Include(x => x.Tools)
                 .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
 
-            return found is null ? Results.NotFound() : Results.Ok(found);
+            return found is null ? Results.NotFound() : Results.Ok(found.ToResponseDto());
         })
-        .Produces<McpServerConfiguration>(StatusCodes.Status200OK)
+        .Produces<McpServerConfigurationResponseDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
         group.MapGet("", async (
@@ -140,8 +163,8 @@ public static class McpServerConfigurationEndpoints
                 .OrderBy(x => x.DateCreated)
                 .ToListAsync(cancellationToken);
 
-            return Results.Ok(configurations);
+            return Results.Ok(configurations.ToResponseDtoArray());
         })
-        .Produces<McpServerConfiguration[]>(StatusCodes.Status200OK);
+        .Produces<McpServerConfigurationResponseDto[]>(StatusCodes.Status200OK);
     }
 }

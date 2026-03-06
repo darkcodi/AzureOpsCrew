@@ -20,7 +20,10 @@ public sealed class McpServerFacade
         _httpClient = httpClient;
     }
 
-    public async Task<McpServerToolConfiguration[]> GetAvailableToolsAsync(string url, CancellationToken cancellationToken)
+    public async Task<McpServerToolConfiguration[]> GetAvailableToolsAsync(
+        string url,
+        McpServerConfigurationAuth auth,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(url))
             throw new ArgumentException("MCP server URL is required.", nameof(url));
@@ -52,6 +55,7 @@ public sealed class McpServerFacade
                 },
                 sessionId,
                 protocolVersion: null,
+                auth,
                 cancellationToken);
 
             sessionId = initializeResponse.SessionId;
@@ -71,6 +75,7 @@ public sealed class McpServerFacade
                 },
                 sessionId,
                 negotiatedProtocolVersion,
+                auth,
                 cancellationToken);
 
             var tools = new List<McpServerToolConfiguration>();
@@ -93,6 +98,7 @@ public sealed class McpServerFacade
                     },
                     sessionId,
                     negotiatedProtocolVersion,
+                    auth,
                     cancellationToken);
 
                 if (!response.Result.TryGetProperty("tools", out var toolsElement) || toolsElement.ValueKind != JsonValueKind.Array)
@@ -133,7 +139,7 @@ public sealed class McpServerFacade
         finally
         {
             if (!string.IsNullOrWhiteSpace(sessionId))
-                await TryDeleteSessionAsync(endpoint, sessionId, cancellationToken);
+                await TryDeleteSessionAsync(endpoint, sessionId, auth, cancellationToken);
         }
     }
 
@@ -142,9 +148,10 @@ public sealed class McpServerFacade
         object payload,
         string? sessionId,
         string? protocolVersion,
+        McpServerConfigurationAuth auth,
         CancellationToken cancellationToken)
     {
-        using var request = CreateRequest(HttpMethod.Post, url, payload, sessionId, protocolVersion);
+        using var request = CreateRequest(HttpMethod.Post, url, payload, sessionId, protocolVersion, auth);
         using var response = await _httpClient.SendAsync(request, cancellationToken);
         var content = await ReadJsonPayloadAsync(response, cancellationToken);
 
@@ -170,9 +177,10 @@ public sealed class McpServerFacade
         object payload,
         string? sessionId,
         string protocolVersion,
+        McpServerConfigurationAuth auth,
         CancellationToken cancellationToken)
     {
-        using var request = CreateRequest(HttpMethod.Post, url, payload, sessionId, protocolVersion);
+        using var request = CreateRequest(HttpMethod.Post, url, payload, sessionId, protocolVersion, auth);
         using var response = await _httpClient.SendAsync(request, cancellationToken);
 
         if (response.IsSuccessStatusCode)
@@ -182,10 +190,15 @@ public sealed class McpServerFacade
         throw new InvalidOperationException($"MCP notification failed with status {(int)response.StatusCode}: {content}");
     }
 
-    private async Task TryDeleteSessionAsync(string url, string sessionId, CancellationToken cancellationToken)
+    private async Task TryDeleteSessionAsync(
+        string url,
+        string sessionId,
+        McpServerConfigurationAuth auth,
+        CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, url);
         request.Headers.Add(SessionHeaderName, sessionId);
+        ApplyAuthorization(request, auth);
 
         try
         {
@@ -197,7 +210,13 @@ public sealed class McpServerFacade
         }
     }
 
-    private static HttpRequestMessage CreateRequest(HttpMethod method, string url, object payload, string? sessionId, string? protocolVersion)
+    private static HttpRequestMessage CreateRequest(
+        HttpMethod method,
+        string url,
+        object payload,
+        string? sessionId,
+        string? protocolVersion,
+        McpServerConfigurationAuth auth)
     {
         var request = new HttpRequestMessage(method, url)
         {
@@ -213,7 +232,23 @@ public sealed class McpServerFacade
         if (!string.IsNullOrWhiteSpace(protocolVersion))
             request.Headers.Add(ProtocolHeaderName, protocolVersion);
 
+        ApplyAuthorization(request, auth);
+
         return request;
+    }
+
+    private static void ApplyAuthorization(HttpRequestMessage request, McpServerConfigurationAuth auth)
+    {
+        if (auth.Type == McpServerConfigurationAuthType.BearerToken && !string.IsNullOrWhiteSpace(auth.BearerToken))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.BearerToken);
+            return;
+        }
+
+        if (auth.Type == McpServerConfigurationAuthType.ApiKey && !string.IsNullOrWhiteSpace(auth.ApiKey))
+        {
+            request.Headers.Add(auth.ApiKeyHeaderName ?? "X-API-Key", auth.ApiKey);
+        }
     }
 
     private static JsonElement GetResponseRoot(JsonElement root)

@@ -33,6 +33,32 @@ public sealed class McpServerConfigurationEntityTypeConfiguration : IEntityTypeC
         builder.Property(x => x.DateCreated)
             .IsRequired();
 
+        builder.OwnsOne(x => x.Auth, authBuilder =>
+        {
+            authBuilder.Property(x => x.Type)
+                .HasColumnName("AuthType")
+                .HasConversion(
+                    value => value.ToString(),
+                    value => Enum.Parse<McpServerConfigurationAuthType>(value))
+                .HasMaxLength(50)
+                .IsRequired();
+
+            authBuilder.Property(x => x.BearerToken)
+                .HasColumnName("BearerToken")
+                .HasMaxLength(4000);
+
+            authBuilder.Property(x => x.ApiKey)
+                .HasColumnName("ApiKey")
+                .HasMaxLength(4000);
+
+            authBuilder.Property(x => x.ApiKeyHeaderName)
+                .HasColumnName("ApiKeyHeaderName")
+                .HasMaxLength(200);
+        });
+
+        builder.Navigation(x => x.Auth)
+            .IsRequired();
+
         builder.OwnsMany(x => x.Tools, toolsBuilder =>
         {
             toolsBuilder.ToTable("McpServerConfigurationTools");

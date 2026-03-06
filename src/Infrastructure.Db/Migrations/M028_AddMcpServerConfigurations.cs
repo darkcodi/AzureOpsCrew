@@ -19,6 +19,10 @@ public class M028_AddMcpServerConfigurations : Migration
             .WithColumn("Url").AsString(1000).NotNullable()
             .WithColumn("IsEnabled").AsBoolean().NotNullable().WithDefaultValue(true)
             .WithColumn("ToolsSyncedAt").AsDateTime().Nullable()
+            .WithColumn("AuthType").AsString(50).NotNullable().WithDefaultValue("None")
+            .WithColumn("BearerToken").AsString(4000).Nullable()
+            .WithColumn("ApiKey").AsString(4000).Nullable()
+            .WithColumn("ApiKeyHeaderName").AsString(200).Nullable()
             .WithColumn("DateCreated").AsDateTime().NotNullable();
 
         Create.Table(ToolsTableName)

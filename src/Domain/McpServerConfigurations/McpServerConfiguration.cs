@@ -14,6 +14,7 @@ public sealed class McpServerConfiguration
         Name = name.Trim();
         Url = url.Trim();
         IsEnabled = true;
+        Auth = new McpServerConfigurationAuth(McpServerConfigurationAuthType.None);
     }
 
     public Guid Id { get; private set; }
@@ -25,6 +26,8 @@ public sealed class McpServerConfiguration
     public string Url { get; private set; }
 
     public bool IsEnabled { get; private set; }
+
+    public McpServerConfigurationAuth Auth { get; private set; }
 
     public List<McpServerToolConfiguration> Tools { get; private set; } = [];
 
@@ -50,6 +53,11 @@ public sealed class McpServerConfiguration
     public void SetEnabled(bool isEnabled)
     {
         IsEnabled = isEnabled;
+    }
+
+    public void SetAuth(McpServerConfigurationAuth auth)
+    {
+        Auth = auth;
     }
 
     public void ReplaceTools(IEnumerable<McpServerToolConfiguration> tools, DateTime syncedAt)
