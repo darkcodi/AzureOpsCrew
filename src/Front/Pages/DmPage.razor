@@ -235,13 +235,21 @@
 
         return mind.Events
             .Where(e => e.Widget != null)
-            .Select(e => new ToolCallDto
+            .Select(e =>
             {
-                ToolName = e.Widget!.ToolName,
-                CallId = e.Widget.CallId,
-                Args = e.Widget.Args is JsonElement argsEl ? argsEl : null,
-                Result = e.Widget.Result is JsonElement resultEl ? resultEl : null,
-                Timestamp = e.Timestamp,
+                var resultEl = e.Widget!.Result is JsonElement re ? re : (JsonElement?)null;
+                var isError = false;
+                if (resultEl is { } r && r.ValueKind == JsonValueKind.Object && r.TryGetProperty("IsError", out var isErrorProp))
+                    isError = isErrorProp.ValueKind == JsonValueKind.True;
+                return new ToolCallDto
+                {
+                    ToolName = e.Widget!.ToolName,
+                    CallId = e.Widget.CallId,
+                    Args = e.Widget.Args is JsonElement argsEl ? argsEl : null,
+                    Result = resultEl,
+                    IsError = isError,
+                    Timestamp = e.Timestamp,
+                };
             })
             .ToList();
     }

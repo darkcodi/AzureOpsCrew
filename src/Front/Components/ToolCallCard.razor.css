@@ -74,6 +74,11 @@
     color: hsl(38, 96%, 64%);
 }
 
+.tool-call-card-status.failed {
+    background-color: hsla(0, 72%, 51%, 0.2);
+    color: hsl(0, 72%, 61%);
+}
+
 .tool-call-card-chevron {
     display: flex;
     align-items: center;
