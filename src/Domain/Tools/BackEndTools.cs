@@ -7,5 +7,7 @@ public static class BackEndTools
     public static readonly IReadOnlyList<ITool> All =
     [
         new GetMyIpTool(),
+        new SkipTurnTool(),
+        new WaitTool(),
     ];
 }
