@@ -9,6 +9,9 @@
                 case SettingsSection.Providers:
                     @RenderGeneralProviderInfo()
                     break;
+                case SettingsSection.McpServers:
+                    <McpServersInfoPanel SelectedMcpServer="SelectedMcpServer" />
+                    break;
                 case SettingsSection.Routing:
                     @RenderRoutingInfo()
                     break;
@@ -38,6 +41,7 @@
     [Parameter] public List<string> SelectedModels { get; set; } = [];
     [Parameter] public EventCallback<string> OnToggleSelectedModel { get; set; }
     [Parameter] public ProviderTestResult? ProviderTestResult { get; set; }
+    [Parameter] public McpServerConfigurationItem? SelectedMcpServer { get; set; }
 
     private bool _modelsExpanded;
     private string _modelsSearchQuery = "";

@@ -1,0 +1,363 @@
+<div class="section-header">
+    <h2 class="section-title">MCP Servers</h2>
+    <p class="section-description">Connect Model Context Protocol servers, sync their tools, and prepare the tool catalog your agents will use.</p>
+</div>
+
+<div class="search-bar">
+    <span class="search-icon">@((MarkupString)SvgSearch)</span>
+    <input type="text" @bind="_searchQuery" @bind:event="oninput" placeholder="Search MCP servers..." class="search-input" />
+</div>
+
+<div class="providers-layout">
+    <div class="provider-list">
+        <h3 class="provider-list-title">Servers</h3>
+        <div class="provider-list-items">
+            @foreach (var server in FilteredMcpServers)
+            {
+                var isSelected = SelectedMcpServer?.Id == server.Id;
+                var badge = GetStatusBadge(server);
+                <button type="button"
+                        class="provider-card @(isSelected ? "selected" : "")"
+                        @onclick="() => SelectMcpServerAsync(server.Id)">
+                    <span class="provider-card-name">@server.Name</span>
+                    <span class="provider-card-subtitle">@GetServerSubline(server)</span>
+                    <span class="provider-card-status" style="color: @badge.Color">
+                        <span class="status-icon">@((MarkupString)badge.Icon)</span>
+                        @badge.Label
+                    </span>
+                </button>
+            }
+            <button type="button" class="add-provider-btn" @onclick="AddMcpServerDraftAsync">
+                <span class="add-provider-icon">@((MarkupString)SvgPlus)</span>
+                <span>Add MCP Server</span>
+            </button>
+        </div>
+    </div>
+
+    @if (SelectedMcpServer is { } selectedServer)
+    {
+        var badge = GetStatusBadge(selectedServer);
+        var hasPendingChanges = ModifiedMcpServerIds.Contains(selectedServer.Id);
+        var isDraft = string.IsNullOrWhiteSpace(selectedServer.BackendId);
+        var canSave = !IsSavingMcpServer && !string.IsNullOrWhiteSpace(selectedServer.Name) && !string.IsNullOrWhiteSpace(selectedServer.Url) && (hasPendingChanges || isDraft);
+        var canSync = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
+        var canToggleEnabled = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
+        var enabledToolsCount = selectedServer.Tools.Count(tool => tool.IsEnabled);
+
+        <div class="provider-detail">
+            <div class="provider-detail-header">
+                <div>
+                    <h3 class="provider-detail-name">@selectedServer.Name</h3>
+                    <div class="provider-detail-status">
+                        <span class="provider-card-status" style="color: @badge.Color">
+                            <span class="status-icon">@((MarkupString)badge.Icon)</span>
+                            @badge.Label
+                        </span>
+                        <span class="default-label">&middot; @GetSyncSummary(selectedServer)</span>
+                    </div>
+                </div>
+                <button type="button" role="switch" aria-checked="@selectedServer.IsEnabled"
+                        class="toggle-switch @(selectedServer.IsEnabled ? "on" : "")"
+                        disabled="@(!canToggleEnabled)"
+                        @onclick="OnToggleSelectedMcpServerEnabled">
+                    <span class="toggle-knob"></span>
+                </button>
+            </div>
+
+            <div class="provider-description-card">
+                <h4 class="description-label">Server Snapshot</h4>
+                <p class="description-text">Save the connection first, then sync tools to refresh the local MCP snapshot. Tool activation is currently a UI preview until the backend endpoint is added.</p>
+            </div>
+
+            <div class="mcp-summary-grid">
+                <div class="mcp-summary-card">
+                    <span class="mcp-summary-label">Discovered tools</span>
+                    <span class="mcp-summary-value">@selectedServer.Tools.Count</span>
+                    <span class="mcp-summary-note">Current synced snapshot</span>
+                </div>
+                <div class="mcp-summary-card">
+                    <span class="mcp-summary-label">Enabled in UI</span>
+                    <span class="mcp-summary-value">@enabledToolsCount</span>
+                    <span class="mcp-summary-note">Preview state until backend toggle lands</span>
+                </div>
+                <div class="mcp-summary-card">
+                    <span class="mcp-summary-label">Authorization</span>
+                    <span class="mcp-summary-value">Later</span>
+                    <span class="mcp-summary-note">Layout placeholder only in this iteration</span>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Type</label>
+                <select class="form-select" disabled>
+                    <option>HTTP MCP Server</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-input" value="@selectedServer.Name" placeholder="Server display name"
+                       @oninput="e => UpdateMcpServerAsync(selectedServer.Id, item => item.Name = e.Value?.ToString() ?? string.Empty)" />
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Server URL</label>
+                <input type="text" class="form-input" value="@selectedServer.Url" placeholder="https://mcp.example.com"
+                       @oninput="e => UpdateMcpServerAsync(selectedServer.Id, item => item.Url = e.Value?.ToString() ?? string.Empty)" />
+                <p class="form-description">Use the MCP HTTP endpoint that supports initialization and tool discovery.</p>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Description</label>
+                <textarea class="mcp-textarea" rows="4" placeholder="Optional note about what this server exposes..."
+                          @oninput="e => UpdateMcpServerAsync(selectedServer.Id, item => item.Description = e.Value?.ToString())">@selectedServer.Description</textarea>
+            </div>
+
+            <div class="provider-description-card mcp-auth-placeholder">
+                <h4 class="description-label">Authorization</h4>
+                <p class="description-text">Auth fields stay disabled for now. After the layout is approved we can unlock None, Bearer token, and API key flows in this same area.</p>
+                <div class="mcp-auth-grid">
+                    <div class="form-field">
+                        <label class="form-label">Type</label>
+                        <select class="form-select" disabled>
+                            <option>None</option>
+                            <option>BearerToken</option>
+                            <option>ApiKey</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label">Credential</label>
+                        <input type="text" class="form-input" disabled placeholder="Coming in the next iteration" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Tools</label>
+                <div class="tool-chips-container">
+                    @if (selectedServer.Tools.Count == 0)
+                    {
+                        <span class="tool-chips-placeholder">Save the server and run sync to discover its tools.</span>
+                    }
+                    else
+                    {
+                        @foreach (var tool in selectedServer.Tools.OrderBy(tool => tool.Name, StringComparer.OrdinalIgnoreCase))
+                        {
+                            <div class="tool-chip @(tool.IsEnabled ? string.Empty : "off")">
+                                <div class="tool-chip-content">
+                                    <span class="tool-chip-name">@tool.Name</span>
+                                    @if (!string.IsNullOrWhiteSpace(tool.Description))
+                                    {
+                                        <span class="tool-chip-description">@tool.Description</span>
+                                    }
+                                </div>
+                                <button type="button" class="tool-chip-action" @onclick="() => ToggleLocalToolAsync(tool.Name)">
+                                    @(tool.IsEnabled ? "Deactivate" : "Activate")
+                                </button>
+                            </div>
+                        }
+                    }
+                </div>
+                <p class="form-description">This mirrors the provider selected-models pattern. The per-tool action is local-only until the backend toggle endpoint is implemented.</p>
+            </div>
+
+            @if (selectedServer.Tools.Count > 0)
+            {
+                <div class="form-field">
+                    <label class="form-label">Tool metadata</label>
+                    <div class="mcp-tools-list compact">
+                        @foreach (var tool in selectedServer.Tools.OrderBy(tool => tool.Name, StringComparer.OrdinalIgnoreCase))
+                        {
+                            <div class="mcp-tool-row compact @(tool.IsEnabled ? string.Empty : "off")">
+                                <div class="mcp-tool-head compact">
+                                    <span class="mcp-tool-name">@tool.Name</span>
+                                    <div class="mcp-tool-badges">
+                                        <span class="mcp-tool-badge">Input: @(string.IsNullOrWhiteSpace(tool.InputSchemaJson) ? "No" : "Yes")</span>
+                                        <span class="mcp-tool-badge">Output: @(string.IsNullOrWhiteSpace(tool.OutputSchemaJson) ? "No" : "Yes")</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(McpServerError))
+            {
+                <p class="save-error">@McpServerError</p>
+            }
+
+            <div class="action-buttons">
+                <button type="button" class="btn btn-primary" disabled="@(!canSave)" @onclick="OnSaveCurrentMcpServer">
+                    @(IsSavingMcpServer ? "Saving..." : "Save")
+                </button>
+                <button type="button" class="btn btn-secondary" disabled="@(!canSync)" @onclick="OnSyncMcpServer">
+                    @(IsSyncingMcpServer ? "Syncing..." : "Sync tools")
+                </button>
+                <button type="button" class="btn btn-danger" disabled="@(!isDraft || IsSavingMcpServer || IsSyncingMcpServer)" @onclick="OnResetCurrentMcpServer">
+                    Remove
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="provider-detail provider-detail-empty">
+            <div class="mcp-empty-state large">
+                <span class="mcp-empty-icon">@((MarkupString)SvgBoxes)</span>
+                <div>
+                    <strong>Select or create an MCP server.</strong>
+                    <p>The editable fields live here in the main area, similar to Providers.</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<McpServerConfigurationItem> McpServers { get; set; } = [];
+    [Parameter] public HashSet<string> ModifiedMcpServerIds { get; set; } = [];
+    [Parameter] public string? SelectedMcpServerId { get; set; }
+    [Parameter] public EventCallback<string> OnSelectMcpServer { get; set; }
+    [Parameter] public EventCallback<List<McpServerConfigurationItem>> OnMcpServersChange { get; set; }
+    [Parameter] public EventCallback OnSaveCurrentMcpServer { get; set; }
+    [Parameter] public EventCallback OnResetCurrentMcpServer { get; set; }
+    [Parameter] public EventCallback OnSyncMcpServer { get; set; }
+    [Parameter] public EventCallback OnToggleSelectedMcpServerEnabled { get; set; }
+    [Parameter] public bool IsSavingMcpServer { get; set; }
+    [Parameter] public bool IsSyncingMcpServer { get; set; }
+    [Parameter] public string? McpServerError { get; set; }
+
+    private string _searchQuery = "";
+    private McpServerConfigurationItem? _selectedMcpServer;
+
+    private McpServerConfigurationItem? SelectedMcpServer => _selectedMcpServer;
+
+    private List<McpServerConfigurationItem> FilteredMcpServers =>
+        McpServers
+            .Where(server => server.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)
+                || server.Url.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(server => server.DateCreated != null && DateTime.TryParse(server.DateCreated, out var createdAt) ? createdAt.Ticks : long.MaxValue)
+            .ToList();
+
+    protected override void OnParametersSet()
+    {
+        if (_selectedMcpServer != null)
+        {
+            _selectedMcpServer = McpServers.FirstOrDefault(server => server.Id == _selectedMcpServer.Id);
+        }
+
+        if (_selectedMcpServer == null && !string.IsNullOrWhiteSpace(SelectedMcpServerId))
+        {
+            _selectedMcpServer = McpServers.FirstOrDefault(server => server.Id == SelectedMcpServerId);
+        }
+    }
+
+    private async Task SelectMcpServerAsync(string id)
+    {
+        _selectedMcpServer = McpServers.FirstOrDefault(server => server.Id == id);
+        StateHasChanged();
+        await OnSelectMcpServer.InvokeAsync(id);
+    }
+
+    private async Task AddMcpServerDraftAsync()
+    {
+        var newServer = new McpServerConfigurationItem
+        {
+            Id = $"mcp-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}",
+            Name = "New MCP Server",
+            Url = "",
+            IsEnabled = true,
+            Auth = new McpServerAuthSummary(),
+            Tools = [],
+        };
+
+        McpServers.Add(newServer);
+        _selectedMcpServer = newServer;
+        StateHasChanged();
+        await OnMcpServersChange.InvokeAsync(McpServers.ToList());
+        await OnSelectMcpServer.InvokeAsync(newServer.Id);
+    }
+
+    private async Task UpdateMcpServerAsync(string id, Action<McpServerConfigurationItem> updater)
+    {
+        var server = McpServers.FirstOrDefault(item => item.Id == id);
+        if (server == null)
+            return;
+
+        updater(server);
+        _selectedMcpServer = server;
+        StateHasChanged();
+        await OnMcpServersChange.InvokeAsync(McpServers.ToList());
+    }
+
+    private async Task ToggleLocalToolAsync(string toolName)
+    {
+        if (SelectedMcpServer == null)
+            return;
+
+        var tool = SelectedMcpServer.Tools.FirstOrDefault(item => string.Equals(item.Name, toolName, StringComparison.Ordinal));
+        if (tool == null)
+            return;
+
+        tool.IsEnabled = !tool.IsEnabled;
+        StateHasChanged();
+        await OnMcpServersChange.InvokeAsync(McpServers.ToList());
+    }
+
+    private (string Icon, string Color, string Label) GetStatusBadge(McpServerConfigurationItem server)
+    {
+        if (ModifiedMcpServerIds.Contains(server.Id))
+            return (SvgPencil, "hsl(40, 85%, 55%)", "Modified");
+        if (string.IsNullOrWhiteSpace(server.BackendId))
+            return (SvgDraft, "hsl(214, 60%, 55%)", "Draft");
+        return server.IsEnabled
+            ? (SvgEnabled, "hsl(145, 65%, 45%)", "Enabled")
+            : (SvgDisabled, "hsl(214, 5%, 55%)", "Disabled");
+    }
+
+    private static string GetServerSubline(McpServerConfigurationItem server)
+    {
+        if (string.IsNullOrWhiteSpace(server.Url))
+            return "Draft configuration";
+
+        return Uri.TryCreate(server.Url, UriKind.Absolute, out var uri)
+            ? uri.Host
+            : server.Url;
+    }
+
+    private static string GetSyncSummary(McpServerConfigurationItem server)
+    {
+        if (string.IsNullOrWhiteSpace(server.ToolsSyncedAt))
+            return "Tools not synced yet";
+        if (!DateTime.TryParse(server.ToolsSyncedAt, out var syncedAt))
+            return server.ToolsSyncedAt;
+
+        var diff = DateTime.UtcNow - syncedAt.ToUniversalTime();
+        if (diff.TotalMinutes < 1) return "Synced just now";
+        if (diff.TotalHours < 1) return $"Synced {(int)diff.TotalMinutes} min ago";
+        if (diff.TotalDays < 1) return $"Synced {(int)diff.TotalHours} h ago";
+        return $"Synced {syncedAt.ToLocalTime():g}";
+    }
+
+    private const string SvgSearch =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>""";
+    private const string SvgPlus =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>""";
+    private const string SvgBoxes =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>""";
+    private const string SvgEnabled =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>""";
+    private const string SvgDisabled =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>""";
+    private const string SvgPencil =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>""";
+    private const string SvgDraft =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22h6a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v10"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 18h1"/><path d="M13 18h3"/></svg>""";
+}
+
+
+
+
+
+

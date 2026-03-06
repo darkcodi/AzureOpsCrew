@@ -1,0 +1,77 @@
+@if (SelectedMcpServer == null)
+{
+    <div class="info-section">
+        <h4 class="info-section-title">MCP Servers</h4>
+        <p class="info-muted-body">Select a server to edit its main configuration in the center panel, then sync tools when the endpoint is ready.</p>
+    </div>
+    <div class="info-section">
+        <h4 class="info-section-title">Quick tips</h4>
+        <ul class="note-list">
+            <li class="note-bullet"><span class="bullet">&bull;</span><span>Create or select a server from the list on the left.</span></li>
+            <li class="note-bullet"><span class="bullet">&bull;</span><span>Save name and URL changes before running tool sync.</span></li>
+            <li class="note-bullet"><span class="bullet">&bull;</span><span>Per-tool activation is a UI preview until the backend endpoint is added.</span></li>
+            <li class="note-bullet"><span class="bullet">&bull;</span><span>Authorization fields stay disabled in this first pass.</span></li>
+        </ul>
+    </div>
+}
+else
+{
+    <div class="info-section">
+        <h4 class="info-section-title">Current server</h4>
+        <div class="info-card">
+            <div class="info-row">
+                <span class="info-row-label">Name</span>
+                <span class="info-row-value">@SelectedMcpServer.Name</span>
+            </div>
+            <div class="info-row">
+                <span class="info-row-label">Host</span>
+                <span class="info-row-value">@GetServerHost(SelectedMcpServer.Url)</span>
+            </div>
+            <div class="info-row">
+                <span class="info-row-label">Last sync</span>
+                <span class="info-row-value">@FormatSyncTime(SelectedMcpServer.ToolsSyncedAt)</span>
+            </div>
+            <div class="info-row">
+                <span class="info-row-label">Discovered tools</span>
+                <span class="info-row-value">@SelectedMcpServer.Tools.Count</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <h4 class="info-section-title">Notes</h4>
+        <ul class="note-list">
+            <li class="note-bullet"><span class="bullet">&bull;</span><span>Main editing now lives in the center panel, similar to Providers.</span></li>
+            <li class="note-bullet"><span class="bullet">&bull;</span><span>Sync remains the source of truth for discovered MCP tools.</span></li>
+            <li class="note-bullet"><span class="bullet">&bull;</span><span>Auth will be enabled here later without changing the overall layout.</span></li>
+        </ul>
+    </div>
+}
+
+@code {
+    [Parameter] public McpServerConfigurationItem? SelectedMcpServer { get; set; }
+
+    private static string GetServerHost(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return "-";
+
+        return Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            ? uri.Host
+            : url;
+    }
+
+    private static string FormatSyncTime(string? timestamp)
+    {
+        if (string.IsNullOrWhiteSpace(timestamp))
+            return "Not synced";
+        if (!DateTime.TryParse(timestamp, out var parsed))
+            return timestamp;
+
+        var diff = DateTime.UtcNow - parsed.ToUniversalTime();
+        if (diff.TotalMinutes < 1) return "just now";
+        if (diff.TotalHours < 1) return $"{(int)diff.TotalMinutes} min ago";
+        if (diff.TotalDays < 1) return $"{(int)diff.TotalHours} h ago";
+        return parsed.ToLocalTime().ToString("g");
+    }
+}

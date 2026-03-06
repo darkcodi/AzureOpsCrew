@@ -70,6 +70,103 @@ public class Provider
     };
 }
 
+public class McpServerConfigurationItem
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = "";
+
+    [JsonPropertyName("backendId")]
+    public string? BackendId { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("url")]
+    public string Url { get; set; } = "";
+
+    [JsonPropertyName("isEnabled")]
+    public bool IsEnabled { get; set; } = true;
+
+    [JsonPropertyName("toolsSyncedAt")]
+    public string? ToolsSyncedAt { get; set; }
+
+    [JsonPropertyName("dateCreated")]
+    public string? DateCreated { get; set; }
+
+    [JsonPropertyName("auth")]
+    public McpServerAuthSummary Auth { get; set; } = new();
+
+    [JsonPropertyName("tools")]
+    public List<McpServerToolItem> Tools { get; set; } = [];
+
+    public McpServerConfigurationItem Clone() => new()
+    {
+        Id = Id,
+        BackendId = BackendId,
+        Name = Name,
+        Description = Description,
+        Url = Url,
+        IsEnabled = IsEnabled,
+        ToolsSyncedAt = ToolsSyncedAt,
+        DateCreated = DateCreated,
+        Auth = Auth.Clone(),
+        Tools = Tools.Select(tool => tool.Clone()).ToList(),
+    };
+}
+
+public class McpServerToolItem
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("inputSchemaJson")]
+    public string? InputSchemaJson { get; set; }
+
+    [JsonPropertyName("outputSchemaJson")]
+    public string? OutputSchemaJson { get; set; }
+
+    [JsonPropertyName("isEnabled")]
+    public bool IsEnabled { get; set; } = true;
+
+    public McpServerToolItem Clone() => new()
+    {
+        Name = Name,
+        Description = Description,
+        InputSchemaJson = InputSchemaJson,
+        OutputSchemaJson = OutputSchemaJson,
+        IsEnabled = IsEnabled,
+    };
+}
+
+public class McpServerAuthSummary
+{
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "None";
+
+    [JsonPropertyName("hasBearerToken")]
+    public bool HasBearerToken { get; set; }
+
+    [JsonPropertyName("hasApiKey")]
+    public bool HasApiKey { get; set; }
+
+    [JsonPropertyName("apiKeyHeaderName")]
+    public string? ApiKeyHeaderName { get; set; }
+
+    public McpServerAuthSummary Clone() => new()
+    {
+        Type = Type,
+        HasBearerToken = HasBearerToken,
+        HasApiKey = HasApiKey,
+        ApiKeyHeaderName = ApiKeyHeaderName,
+    };
+}
+
 public class ProviderTestResult
 {
     [JsonPropertyName("success")]
@@ -247,6 +344,7 @@ public enum SettingsSection
     Appearance,
     Notifications,
     Providers,
+    McpServers,
     Agents,
     Routing,
     Advanced,

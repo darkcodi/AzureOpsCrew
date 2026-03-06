@@ -8,6 +8,20 @@
                 case SettingsSection.Providers:
                     @RenderProviders()
                     break;
+                case SettingsSection.McpServers:
+                    <McpServersSettingsSection McpServers="McpServers"
+                                               ModifiedMcpServerIds="ModifiedMcpServerIds"
+                                               SelectedMcpServerId="SelectedMcpServerId"
+                                               OnSelectMcpServer="OnSelectMcpServer"
+                                               OnMcpServersChange="OnMcpServersChange"
+                                               OnSaveCurrentMcpServer="OnSaveCurrentMcpServer"
+                                               OnResetCurrentMcpServer="OnResetCurrentMcpServer"
+                                               OnSyncMcpServer="OnSyncMcpServer"
+                                               OnToggleSelectedMcpServerEnabled="OnToggleSelectedMcpServerEnabled"
+                                               IsSavingMcpServer="IsSavingMcpServer"
+                                               IsSyncingMcpServer="IsSyncingMcpServer"
+                                               McpServerError="McpServerError" />
+                    break;
                 case SettingsSection.Agents:
                     @RenderAgents()
                     break;
@@ -127,6 +141,18 @@
     [Parameter] public bool IsSaving { get; set; }
     [Parameter] public bool IsTesting { get; set; }
     [Parameter] public string? SaveError { get; set; }
+    [Parameter] public List<McpServerConfigurationItem> McpServers { get; set; } = [];
+    [Parameter] public HashSet<string> ModifiedMcpServerIds { get; set; } = [];
+    [Parameter] public string? SelectedMcpServerId { get; set; }
+    [Parameter] public EventCallback<string> OnSelectMcpServer { get; set; }
+    [Parameter] public EventCallback<List<McpServerConfigurationItem>> OnMcpServersChange { get; set; }
+    [Parameter] public EventCallback OnSaveCurrentMcpServer { get; set; }
+    [Parameter] public EventCallback OnResetCurrentMcpServer { get; set; }
+    [Parameter] public EventCallback OnSyncMcpServer { get; set; }
+    [Parameter] public EventCallback OnToggleSelectedMcpServerEnabled { get; set; }
+    [Parameter] public bool IsSavingMcpServer { get; set; }
+    [Parameter] public bool IsSyncingMcpServer { get; set; }
+    [Parameter] public string? McpServerError { get; set; }
     [Parameter] public IReadOnlyList<AgentDto>? Agents { get; set; }
     [Parameter] public EventCallback<AgentDto> OnEditAgent { get; set; }
     [Parameter] public EventCallback OnCreateAgent { get; set; }
