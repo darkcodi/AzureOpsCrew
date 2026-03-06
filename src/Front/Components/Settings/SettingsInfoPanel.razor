@@ -10,7 +10,7 @@
                     @RenderGeneralProviderInfo()
                     break;
                 case SettingsSection.McpServers:
-                    <McpServersInfoPanel SelectedMcpServer="SelectedMcpServer" />
+                    @RenderMcpServersInfo()
                     break;
                 case SettingsSection.Routing:
                     @RenderRoutingInfo()
@@ -73,7 +73,6 @@
                 ? "hsl(0, 70%, 55%)"
                 : "hsl(214, 5%, 55%)";
 
-        @* ── Test Result ── *@
         <div class="info-section">
             <h4 class="info-section-title">Test result</h4>
             <div class="test-result-card">
@@ -105,7 +104,6 @@
             </div>
         </div>
 
-        @* ── Available Models ── *@
         <div class="info-section">
             <h4 class="info-section-title">Available models</h4>
             <div class="models-list">
@@ -183,7 +181,6 @@
             </div>
         </div>
 
-        @* ── Notes ── *@
         <div class="info-section">
             <h4 class="info-section-title">Notes</h4>
             <ul class="note-list">
@@ -206,6 +203,32 @@
                 <li class="note-bullet"><span class="bullet">&bull;</span><span>Click a provider to see its details.</span></li>
                 <li class="note-bullet"><span class="bullet">&bull;</span><span>Use "Test" to verify connectivity.</span></li>
                 <li class="note-bullet"><span class="bullet">&bull;</span><span>The default provider is used for new agents.</span></li>
+            </ul>
+        </div>
+    };
+
+    private RenderFragment RenderMcpServersInfo() => __builder =>
+    {
+        <div class="info-section">
+            <h4 class="info-section-title">MCP Servers</h4>
+            <p class="info-muted-body">
+                @if (SelectedMcpServer == null)
+                {
+                    <span>Select an MCP server from the list to edit its configuration in the center panel.</span>
+                }
+                else
+                {
+                    <span><strong>@SelectedMcpServer.Name</strong> is selected. Use the center panel to edit its URL, description, and tool snapshot.</span>
+                }
+            </p>
+        </div>
+        <div class="info-section">
+            <h4 class="info-section-title">Quick tips</h4>
+            <ul class="note-list">
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>New MCP servers start as drafts until you save them.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Save name and URL changes before syncing tools.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Per-tool activation is still a frontend placeholder until the backend endpoint is added.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Authorization fields stay disabled in this iteration.</span></li>
             </ul>
         </div>
     };
