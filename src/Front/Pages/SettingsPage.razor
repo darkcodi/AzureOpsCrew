@@ -382,7 +382,6 @@
             ApplyMcpServerSnapshot(current.Id, refreshedSnapshot);
             _mcpServerAuthResetKey++;
             _mcpServerError = null;
-            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -488,24 +487,20 @@
 
     private void ApplyMcpServerSnapshot(string localId, McpServerConfigurationItem snapshot)
     {
-        var currentIndex = _mcpServers.FindIndex(server => server.Id == localId);
-        if (currentIndex < 0) return;
+        var current = _mcpServers.FirstOrDefault(server => server.Id == localId);
+        if (current == null) return;
 
-        var current = _mcpServers[currentIndex];
-        var updated = current.Clone();
-        updated.BackendId = string.IsNullOrWhiteSpace(snapshot.BackendId) ? snapshot.Id : snapshot.BackendId;
-        updated.Name = snapshot.Name;
-        updated.Description = snapshot.Description;
-        updated.Url = snapshot.Url;
-        updated.IsEnabled = snapshot.IsEnabled;
-        updated.ToolsSyncedAt = snapshot.ToolsSyncedAt;
-        updated.DateCreated = string.IsNullOrWhiteSpace(snapshot.DateCreated) ? current.DateCreated : snapshot.DateCreated;
-        updated.Auth = snapshot.Auth.Clone();
-        updated.Tools = snapshot.Tools.Select(tool => tool.Clone()).ToList();
+        current.BackendId = string.IsNullOrWhiteSpace(snapshot.BackendId) ? snapshot.Id : snapshot.BackendId;
+        current.Name = snapshot.Name;
+        current.Description = snapshot.Description;
+        current.Url = snapshot.Url;
+        current.IsEnabled = snapshot.IsEnabled;
+        current.ToolsSyncedAt = snapshot.ToolsSyncedAt;
+        current.DateCreated = string.IsNullOrWhiteSpace(snapshot.DateCreated) ? current.DateCreated : snapshot.DateCreated;
+        current.Auth = snapshot.Auth.Clone();
+        current.Tools = snapshot.Tools.Select(tool => tool.Clone()).ToList();
 
-        _mcpServers[currentIndex] = updated;
-
-        var savedClone = updated.Clone();
+        var savedClone = current.Clone();
         var savedIndex = _savedMcpServers.FindIndex(server => server.Id == localId);
         if (savedIndex >= 0)
             _savedMcpServers[savedIndex] = savedClone;
