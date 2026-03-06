@@ -1,7 +1,5 @@
 using AzureOpsCrew.Domain.McpServerConfigurations;
-
 namespace AzureOpsCrew.Api.Endpoints.Dtos.McpServerConfigurations;
-
 public static class McpServerConfigurationMappings
 {
     public static McpServerConfigurationResponseDto ToResponseDto(this McpServerConfiguration configuration)
@@ -19,8 +17,10 @@ public static class McpServerConfigurationMappings
             {
                 Type = configuration.Auth.Type.ToString(),
                 HasBearerToken = !string.IsNullOrWhiteSpace(configuration.Auth.BearerToken),
-                HasApiKey = !string.IsNullOrWhiteSpace(configuration.Auth.ApiKey),
-                ApiKeyHeaderName = configuration.Auth.ApiKeyHeaderName,
+                HasCustomHeaders = configuration.Auth.Headers.Count > 0,
+                CustomHeaderNames = configuration.Auth.Headers
+                    .Select(x => x.Name)
+                    .ToArray(),
             },
             Tools = configuration.Tools
                 .Select(tool => new McpServerToolConfigurationResponseDto
@@ -34,7 +34,6 @@ public static class McpServerConfigurationMappings
                 .ToArray()
         };
     }
-
     public static McpServerConfigurationResponseDto[] ToResponseDtoArray(this IEnumerable<McpServerConfiguration> configurations)
     {
         return configurations.Select(ToResponseDto).ToArray();

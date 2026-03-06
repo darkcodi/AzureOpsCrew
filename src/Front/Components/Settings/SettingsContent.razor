@@ -19,10 +19,13 @@
                                                OnSyncMcpServer="OnSyncMcpServer"
                                                OnToggleSelectedMcpServerEnabled="OnToggleSelectedMcpServerEnabled"
                                                OnToggleSelectedMcpServerTool="OnToggleSelectedMcpServerTool"
+                                               OnSaveMcpServerAuth="OnSaveMcpServerAuth"
                                                IsSavingMcpServer="IsSavingMcpServer"
+                                               IsSavingMcpServerAuth="IsSavingMcpServerAuth"
                                                IsSyncingMcpServer="IsSyncingMcpServer"
                                                IsUpdatingMcpServerTool="IsUpdatingMcpServerTool"
                                                UpdatingMcpServerToolName="UpdatingMcpServerToolName"
+                                               McpServerAuthResetKey="McpServerAuthResetKey"
                                                McpServerError="McpServerError" />
                     break;
                 case SettingsSection.Agents:
@@ -154,10 +157,13 @@
     [Parameter] public EventCallback OnSyncMcpServer { get; set; }
     [Parameter] public EventCallback OnToggleSelectedMcpServerEnabled { get; set; }
     [Parameter] public EventCallback<string> OnToggleSelectedMcpServerTool { get; set; }
+    [Parameter] public EventCallback<McpServerAuthEditorState> OnSaveMcpServerAuth { get; set; }
     [Parameter] public bool IsSavingMcpServer { get; set; }
+    [Parameter] public bool IsSavingMcpServerAuth { get; set; }
     [Parameter] public bool IsSyncingMcpServer { get; set; }
     [Parameter] public bool IsUpdatingMcpServerTool { get; set; }
     [Parameter] public string? UpdatingMcpServerToolName { get; set; }
+    [Parameter] public int McpServerAuthResetKey { get; set; }
     [Parameter] public string? McpServerError { get; set; }
     [Parameter] public IReadOnlyList<AgentDto>? Agents { get; set; }
     [Parameter] public EventCallback<AgentDto> OnEditAgent { get; set; }
@@ -1015,5 +1021,3 @@
         return u.Trim().ToUpperInvariant()[..1];
     }
 }
-
-

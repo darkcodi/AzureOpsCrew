@@ -244,13 +244,15 @@ public sealed class McpServerFacade
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.BearerToken);
             return;
         }
-
-        if (auth.Type == McpServerConfigurationAuthType.ApiKey && !string.IsNullOrWhiteSpace(auth.ApiKey))
+        if (auth.Type != McpServerConfigurationAuthType.CustomHeaders)
+            return;
+        foreach (var header in auth.Headers)
         {
-            request.Headers.Add(auth.ApiKeyHeaderName ?? "X-API-Key", auth.ApiKey);
+            if (string.IsNullOrWhiteSpace(header.Name) || string.IsNullOrWhiteSpace(header.Value))
+                continue;
+            request.Headers.TryAddWithoutValidation(header.Name, header.Value);
         }
     }
-
     private static JsonElement GetResponseRoot(JsonElement root)
     {
         if (root.ValueKind != JsonValueKind.Array)

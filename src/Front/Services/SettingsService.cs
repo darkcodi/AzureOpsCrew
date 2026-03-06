@@ -175,6 +175,29 @@ public class SettingsService(HttpClient http, IJSRuntime js)
         return await ReadMcpServerResponse(response, "Failed to update MCP tool availability.");
     }
 
+    public async Task<McpServerConfigurationItem> SetMcpServerAuthorizationAsync(string backendId, McpServerAuthEditorState auth)
+    {
+        var headers = auth.Headers
+            .Where(header => !string.IsNullOrWhiteSpace(header.Name) || !string.IsNullOrWhiteSpace(header.Value))
+            .Select(header => new
+            {
+                name = header.Name.Trim(),
+                value = header.Value.Trim(),
+            })
+            .ToArray();
+
+        var response = await http.PostAsJsonAsync(
+            $"/api/mcp-server-configurations/{backendId}/set-authorization",
+            new
+            {
+                type = auth.Type,
+                bearerToken = string.IsNullOrWhiteSpace(auth.BearerToken) ? (string?)null : auth.BearerToken.Trim(),
+                headers,
+            });
+
+        return await ReadMcpServerResponse(response, "Failed to update MCP authorization.");
+    }
+
     public async Task<ProviderTestResult> TestProviderAsync(Provider provider)
     {
         var payload = new

@@ -152,18 +152,47 @@ public class McpServerAuthSummary
     [JsonPropertyName("hasBearerToken")]
     public bool HasBearerToken { get; set; }
 
-    [JsonPropertyName("hasApiKey")]
-    public bool HasApiKey { get; set; }
+    [JsonPropertyName("hasCustomHeaders")]
+    public bool HasCustomHeaders { get; set; }
 
-    [JsonPropertyName("apiKeyHeaderName")]
-    public string? ApiKeyHeaderName { get; set; }
+    [JsonPropertyName("customHeaderNames")]
+    public List<string> CustomHeaderNames { get; set; } = [];
 
     public McpServerAuthSummary Clone() => new()
     {
         Type = Type,
         HasBearerToken = HasBearerToken,
-        HasApiKey = HasApiKey,
-        ApiKeyHeaderName = ApiKeyHeaderName,
+        HasCustomHeaders = HasCustomHeaders,
+        CustomHeaderNames = [..CustomHeaderNames],
+    };
+}
+
+public class McpServerAuthEditorState
+{
+    public string Type { get; set; } = "None";
+
+    public string BearerToken { get; set; } = "";
+
+    public List<McpServerAuthHeaderEditorItem> Headers { get; set; } = [];
+
+    public McpServerAuthEditorState Clone() => new()
+    {
+        Type = Type,
+        BearerToken = BearerToken,
+        Headers = Headers.Select(x => x.Clone()).ToList(),
+    };
+}
+
+public class McpServerAuthHeaderEditorItem
+{
+    public string Name { get; set; } = "";
+
+    public string Value { get; set; } = "";
+
+    public McpServerAuthHeaderEditorItem Clone() => new()
+    {
+        Name = Name,
+        Value = Value,
     };
 }
 
