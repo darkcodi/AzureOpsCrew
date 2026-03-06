@@ -39,18 +39,6 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices
 
         private string PreparePrompt(AgentRunData data)
         {
-            var beTools = string.Join("\n\n", data.Tools.Where(x => x.ToolType == ToolType.BackEnd).Select(t => t.FormatToolDeclaration()));
-            var feTools = string.Join("\n\n", data.Tools.Where(x => x.ToolType == ToolType.FrontEnd).Select(t => t.FormatToolDeclaration()));
-
-            if (string.IsNullOrEmpty(beTools))
-            {
-                beTools = "No backend tools available.";
-            }
-            if (string.IsNullOrEmpty(feTools))
-            {
-                feTools = "No frontend tools available.";
-            }
-
             var chatName = data.Channel?.Name ?? data.DmChannel?.GetDmChannelName();
 
             string FormatAgent(Agent agent)
@@ -84,12 +72,6 @@ You are in the chat:
 
 Here is a full list of all other AI agents in the chat:
 {chatParticipants}
-
-Available backend tools:
-{beTools}
-
-Available frontend tools:
-{feTools}
 
 VERY IMPORTANT!
 CHAT RULES:

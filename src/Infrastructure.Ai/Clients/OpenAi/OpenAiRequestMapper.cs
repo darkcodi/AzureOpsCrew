@@ -356,22 +356,11 @@ public static class OpenAiRequestMapper
         {
             if (tool is AIFunctionDeclaration functionDeclaration)
             {
-                // Try to get parameters from AdditionalProperties
+                // Get parameters from the JsonSchema property (set by AIFunctionFactory.CreateDeclaration)
                 object? parameters = null;
-                if (functionDeclaration.AdditionalProperties != null)
+                if (functionDeclaration.JsonSchema.ValueKind != JsonValueKind.Undefined)
                 {
-                    if (functionDeclaration.AdditionalProperties.TryGetValue("parameters", out var paramsValue))
-                    {
-                        parameters = paramsValue;
-                    }
-                    else if (functionDeclaration.AdditionalProperties.TryGetValue("schema", out var schemaValue))
-                    {
-                        parameters = schemaValue;
-                    }
-                    else if (functionDeclaration.AdditionalProperties.TryGetValue("jsonSchema", out var jsonSchemaValue))
-                    {
-                        parameters = JsonSerializer.Deserialize<object>(JsonSerializer.Serialize(jsonSchemaValue));
-                    }
+                    parameters = JsonSerializer.Deserialize<object>(JsonSerializer.Serialize(functionDeclaration.JsonSchema));
                 }
 
                 result.Add(new OpenAiTool
