@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
 using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.AgentServices;
@@ -76,6 +77,21 @@ public class AgentRunService
                     var toolCallResult = await ExecuteToolCall(toolCall, data);
                     var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow);
                     newToolCallResults.Add(toolResultMessage);
+
+                    if (data.DmChannel != null && _channelEventBroadcaster != null)
+                    {
+                        var isError = (toolCallResult.Result as ToolCallResult)?.IsError ?? false;
+                        var evt = new ToolCallCompletedEvent
+                        {
+                            ToolName = toolCall.Name,
+                            CallId = toolCall.CallId,
+                            Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
+                            Result = toolCallResult.Result,
+                            IsError = isError,
+                            Timestamp = DateTimeOffset.UtcNow,
+                        };
+                        await _channelEventBroadcaster.BroadcastDmToolCallCompletedAsync(data.DmChannel.Id, evt);
+                    }
                 }
                 await SaveAgentThoughts(agentId, chatId, newToolCallResults, ct);
 

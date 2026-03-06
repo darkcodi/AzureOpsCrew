@@ -31,11 +31,41 @@ public class MessageAddedEvent : ChannelEvent
 }
 
 /// <summary>
+/// Event fired when an agent completes a tool call.
+/// </summary>
+public class ToolCallCompletedEvent : ChannelEvent
+{
+    public ToolCallCompletedEvent()
+    {
+        Type = ChannelEventTypes.ToolCallCompleted;
+    }
+
+    [JsonPropertyName("toolName")]
+    public string ToolName { get; set; } = string.Empty;
+
+    [JsonPropertyName("callId")]
+    public string CallId { get; set; } = string.Empty;
+
+    [JsonPropertyName("args")]
+    public JsonElement? Args { get; set; }
+
+    [JsonPropertyName("result")]
+    public JsonElement? Result { get; set; }
+
+    [JsonPropertyName("isError")]
+    public bool IsError { get; set; }
+
+    [JsonPropertyName("timestamp")]
+    public DateTimeOffset Timestamp { get; set; }
+}
+
+/// <summary>
 /// Event type constants for channel events.
 /// </summary>
 public static class ChannelEventTypes
 {
     public const string MessageAdded = "MESSAGE_ADDED";
+    public const string ToolCallCompleted = "TOOL_CALL_COMPLETED";
 }
 
 /// <summary>
@@ -65,6 +95,7 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
         return discriminator switch
         {
             ChannelEventTypes.MessageAdded => jsonElement.Deserialize<MessageAddedEvent>(options),
+            ChannelEventTypes.ToolCallCompleted => jsonElement.Deserialize<ToolCallCompletedEvent>(options),
             _ => null
         };
     }

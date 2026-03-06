@@ -87,6 +87,7 @@
         if (_hubClient != null)
         {
             _hubClient.MessageReceived -= OnMessageReceived;
+            _hubClient.ToolCallReceived -= OnToolCallReceived;
             await _hubClient.DisposeAsync();
         }
     }
@@ -127,11 +128,13 @@
         if (_hubClient != null)
         {
             _hubClient.MessageReceived -= OnMessageReceived;
+            _hubClient.ToolCallReceived -= OnToolCallReceived;
             await _hubClient.DisposeAsync();
         }
 
         _hubClient = ChatHubClient.ForDm(LoggerFactory);
         _hubClient.MessageReceived += OnMessageReceived;
+        _hubClient.ToolCallReceived += OnToolCallReceived;
 
         var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/');
         var hubUrl = $"{baseUrl}/dms/{dmId}/events";
@@ -144,6 +147,15 @@
             return;
 
         _messages.Add(message);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnToolCallReceived(ToolCallDto toolCall)
+    {
+        if (_toolCalls.Any(t => t.CallId == toolCall.CallId))
+            return;
+
+        _toolCalls.Add(toolCall);
         await InvokeAsync(StateHasChanged);
     }
 

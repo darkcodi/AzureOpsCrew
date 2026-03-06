@@ -49,4 +49,9 @@ public static class ChannelEventTypes
     /// Agent status update (Idle, Running, Paused, Failed).
     /// </summary>
     public const string AgentStatus = "AGENT_STATUS";
+
+    /// <summary>
+    /// An agent completed a tool call (with result or error).
+    /// </summary>
+    public const string ToolCallCompleted = "TOOL_CALL_COMPLETED";
 }
