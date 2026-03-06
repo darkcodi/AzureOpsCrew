@@ -54,4 +54,9 @@ public static class ChannelEventTypes
     /// An agent completed a tool call (with result or error).
     /// </summary>
     public const string ToolCallCompleted = "TOOL_CALL_COMPLETED";
+
+    /// <summary>
+    /// Reasoning content produced by an agent during processing.
+    /// </summary>
+    public const string ReasoningContent = "REASONING_CONTENT";
 }

@@ -2,7 +2,7 @@
 
 <div class="chat-area">
     <div class="messages-container" @ref="_messagesContainer">
-        @if (Messages.Count == 0 && ToolCalls.Count == 0)
+        @if (Messages.Count == 0 && ToolCalls.Count == 0 && Reasonings.Count == 0)
         {
             <div class="no-messages">
                 <div class="welcome-icon">@EmptyIcon</div>
@@ -17,6 +17,10 @@
                 if (entry.ToolCall is { } toolCall)
                 {
                     <ToolCallCard ToolCall="toolCall" />
+                }
+                else if (entry.Reasoning is { } reasoning)
+                {
+                    <ReasoningCard Reasoning="reasoning" />
                 }
                 else if (entry.Message is { } msgGroup)
                 {
@@ -52,6 +56,7 @@
 @code {
     [Parameter] public List<ChatMessageDto> Messages { get; set; } = [];
     [Parameter] public List<ToolCallDto> ToolCalls { get; set; } = [];
+    [Parameter] public List<ReasoningDto> Reasonings { get; set; } = [];
     [Parameter] public EventCallback<string> OnSendMessage { get; set; }
     [Parameter] public Guid? CurrentUserId { get; set; }
     [Parameter] public bool ShowInput { get; set; } = true;
@@ -64,13 +69,15 @@
     private string _messageText = string.Empty;
     private int _lastMessageCount;
     private int _lastToolCallCount;
+    private int _lastReasoningCount;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender || Messages.Count != _lastMessageCount || ToolCalls.Count != _lastToolCallCount)
+        if (firstRender || Messages.Count != _lastMessageCount || ToolCalls.Count != _lastToolCallCount || Reasonings.Count != _lastReasoningCount)
         {
             _lastMessageCount = Messages.Count;
             _lastToolCallCount = ToolCalls.Count;
+            _lastReasoningCount = Reasonings.Count;
             await ScrollToBottomAsync();
         }
     }
@@ -78,6 +85,7 @@
     private record TimelineEntry(
         (ChatMessageDto Message, bool IsGrouped, bool IsOwn)? Message,
         ToolCallDto? ToolCall,
+        ReasoningDto? Reasoning,
         DateTimeOffset Timestamp);
 
     private List<TimelineEntry> GetTimeline()
@@ -95,13 +103,19 @@
             entries.Add(new TimelineEntry(
                 (message, isGrouped, isOwn),
                 null,
+                null,
                 new DateTimeOffset(message.PostedAt, TimeSpan.Zero)));
             previousMsg = message;
         }
 
         foreach (var toolCall in ToolCalls)
         {
-            entries.Add(new TimelineEntry(null, toolCall, toolCall.Timestamp));
+            entries.Add(new TimelineEntry(null, toolCall, null, toolCall.Timestamp));
+        }
+
+        foreach (var reasoning in Reasonings)
+        {
+            entries.Add(new TimelineEntry(null, null, reasoning, reasoning.Timestamp));
         }
 
         entries.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));

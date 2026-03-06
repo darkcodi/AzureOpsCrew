@@ -65,6 +65,23 @@ public class AgentRunService
                 SquashTextContent(newAgentThoughts);
                 await SaveAgentThoughts(agentId, chatId, newAgentThoughts, ct);
 
+                // Broadcast reasoning content via SignalR
+                if (data.DmChannel != null && _channelEventBroadcaster != null)
+                {
+                    foreach (var thought in newAgentThoughts)
+                    {
+                        if (thought.ContentDto.ToAocAiContent() is AocTextReasoningContent reasoning)
+                        {
+                            var evt = new ReasoningContentEvent
+                            {
+                                Text = reasoning.Text,
+                                Timestamp = DateTimeOffset.UtcNow,
+                            };
+                            await _channelEventBroadcaster.BroadcastDmReasoningContentAsync(data.DmChannel.Id, evt);
+                        }
+                    }
+                }
+
                 // Execute tools and save results to DB
                 var newToolCallResults = new List<AocAgentThought>();
                 var newToolCalls = newAgentThoughts

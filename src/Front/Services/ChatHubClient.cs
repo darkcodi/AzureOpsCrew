@@ -18,6 +18,7 @@ public sealed class ChatHubClient : IAsyncDisposable
 
     public event Action<ChatMessageDto>? MessageReceived;
     public event Action<ToolCallDto>? ToolCallReceived;
+    public event Action<ReasoningDto>? ReasoningReceived;
 
     private ChatHubClient(string joinMethod, string leaveMethod, ILogger logger)
     {
@@ -128,6 +129,16 @@ public sealed class ChatHubClient : IAsyncDisposable
                 Timestamp = toolEvt.Timestamp,
             };
             ToolCallReceived?.Invoke(dto);
+        }
+        else if (evt is ReasoningContentEvent reasoningEvt)
+        {
+            _logger.LogDebug("Received REASONING_CONTENT");
+            var dto = new ReasoningDto
+            {
+                Text = reasoningEvt.Text,
+                Timestamp = reasoningEvt.Timestamp,
+            };
+            ReasoningReceived?.Invoke(dto);
         }
     }
 

@@ -1,0 +1,29 @@
+@namespace Front.Components
+
+<div class="reasoning-card">
+    <button type="button" class="reasoning-card-header" @onclick="ToggleExpanded">
+        <span class="reasoning-card-label">Thought</span>
+        <span class="reasoning-card-chevron @(_expanded ? "expanded" : "")" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        </span>
+    </button>
+
+    @if (_expanded)
+    {
+        <div class="reasoning-card-body">
+            <pre class="reasoning-card-text">@Reasoning.Text</pre>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public ReasoningDto Reasoning { get; set; } = null!;
+
+    private bool _expanded;
+
+    private void ToggleExpanded() => _expanded = !_expanded;
+}

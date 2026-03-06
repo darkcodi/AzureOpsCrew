@@ -13,6 +13,7 @@ public interface IChannelEventBroadcaster
     Task BroadcastMessageAddedAsync(Guid channelId, Message message);
     Task BroadcastDmMessageAddedAsync(Guid dmId, Message message);
     Task BroadcastDmToolCallCompletedAsync(Guid dmId, ToolCallCompletedEvent evt);
+    Task BroadcastDmReasoningContentAsync(Guid dmId, ReasoningContentEvent evt);
 }
 
 /// <summary>
@@ -58,6 +59,13 @@ public class ChannelEventBroadcaster : IChannelEventBroadcaster
     {
         var groupName = GetDmGroupName(dmId);
         _logger.LogDebug("Broadcasting TOOL_CALL_COMPLETED to DM {DmId}", dmId);
+        return _dmHubContext.Clients.Group(groupName).SendAsync("event", evt);
+    }
+
+    public Task BroadcastDmReasoningContentAsync(Guid dmId, ReasoningContentEvent evt)
+    {
+        var groupName = GetDmGroupName(dmId);
+        _logger.LogDebug("Broadcasting REASONING_CONTENT to DM {DmId}", dmId);
         return _dmHubContext.Clients.Group(groupName).SendAsync("event", evt);
     }
 

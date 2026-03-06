@@ -20,6 +20,7 @@
     <MainArea>
         <ChatArea Messages="_messages"
                   ToolCalls="_toolCalls"
+                  Reasonings="_reasonings"
                   CurrentUserId="AppState.CurrentUser?.Id"
                   ShowInput="AppState.SelectedDm != null"
                   Placeholder="@(AppState.SelectedDm != null ? $"Message @{GetDmName()}" : "")"
@@ -41,6 +42,7 @@
 
     private List<ChatMessageDto> _messages = [];
     private List<ToolCallDto> _toolCalls = [];
+    private List<ReasoningDto> _reasonings = [];
     private Guid? _loadedDmId;
     private IDisposable? _appStateSubscription;
     private ChatHubClient? _hubClient;
@@ -78,6 +80,7 @@
     private void OnMindChanged() => InvokeAsync(() =>
     {
         _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
+        _reasonings = ExtractReasonings(AppState.CurrentAgentMind);
         StateHasChanged();
     });
 
@@ -88,6 +91,7 @@
         {
             _hubClient.MessageReceived -= OnMessageReceived;
             _hubClient.ToolCallReceived -= OnToolCallReceived;
+            _hubClient.ReasoningReceived -= OnReasoningReceived;
             await _hubClient.DisposeAsync();
         }
     }
@@ -104,6 +108,7 @@
                 _messages = await DmService.GetAgentDmMessagesAsync(agentId.Value);
                 await AppState.LoadAgentMindAsync(AgentService, agentId.Value);
                 _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
+                _reasonings = ExtractReasonings(AppState.CurrentAgentMind);
             }
             else
             {
@@ -116,6 +121,7 @@
                     _messages = await DmService.GetUserDmMessagesAsync(otherUserId.Value);
                 }
                 _toolCalls = [];
+                _reasonings = [];
                 AppState.CurrentAgentMind = null;
             }
 
@@ -129,12 +135,14 @@
         {
             _hubClient.MessageReceived -= OnMessageReceived;
             _hubClient.ToolCallReceived -= OnToolCallReceived;
+            _hubClient.ReasoningReceived -= OnReasoningReceived;
             await _hubClient.DisposeAsync();
         }
 
         _hubClient = ChatHubClient.ForDm(LoggerFactory);
         _hubClient.MessageReceived += OnMessageReceived;
         _hubClient.ToolCallReceived += OnToolCallReceived;
+        _hubClient.ReasoningReceived += OnReasoningReceived;
 
         var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/');
         var hubUrl = $"{baseUrl}/dms/{dmId}/events";
@@ -156,6 +164,12 @@
             return;
 
         _toolCalls.Add(toolCall);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnReasoningReceived(ReasoningDto reasoning)
+    {
+        _reasonings.Add(reasoning);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -262,6 +276,21 @@
                     IsError = isError,
                     Timestamp = e.Timestamp,
                 };
+            })
+            .ToList();
+    }
+
+    private static List<ReasoningDto> ExtractReasonings(AgentMindResponseDto? mind)
+    {
+        if (mind?.Events is not { Count: > 0 })
+            return [];
+
+        return mind.Events
+            .Where(e => !string.IsNullOrEmpty(e.Reasoning))
+            .Select(e => new ReasoningDto
+            {
+                Text = e.Reasoning!,
+                Timestamp = e.Timestamp,
             })
             .ToList();
     }

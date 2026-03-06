@@ -62,10 +62,28 @@ public class ToolCallCompletedEvent : ChannelEvent
 /// <summary>
 /// Event type constants for channel events.
 /// </summary>
+/// <summary>
+/// Event fired when an agent produces reasoning content.
+/// </summary>
+public class ReasoningContentEvent : ChannelEvent
+{
+    public ReasoningContentEvent()
+    {
+        Type = ChannelEventTypes.ReasoningContent;
+    }
+
+    [JsonPropertyName("text")]
+    public string Text { get; set; } = string.Empty;
+
+    [JsonPropertyName("timestamp")]
+    public DateTimeOffset Timestamp { get; set; }
+}
+
 public static class ChannelEventTypes
 {
     public const string MessageAdded = "MESSAGE_ADDED";
     public const string ToolCallCompleted = "TOOL_CALL_COMPLETED";
+    public const string ReasoningContent = "REASONING_CONTENT";
 }
 
 /// <summary>
@@ -96,6 +114,7 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
         {
             ChannelEventTypes.MessageAdded => jsonElement.Deserialize<MessageAddedEvent>(options),
             ChannelEventTypes.ToolCallCompleted => jsonElement.Deserialize<ToolCallCompletedEvent>(options),
+            ChannelEventTypes.ReasoningContent => jsonElement.Deserialize<ReasoningContentEvent>(options),
             _ => null
         };
     }
