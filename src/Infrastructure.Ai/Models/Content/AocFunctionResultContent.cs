@@ -13,7 +13,7 @@ public sealed class AocFunctionResultContent : AocAiContent
         return new AocFunctionResultContent
         {
             CallId = callId,
-            Result = new ToolCallResult(SerializedResult: "{\"ErrorMessage\":\"Tool does not exist\"}", IsError: true),
+            Result = new ToolCallResult(CallId: callId, Result: new { ErrorMessage = "Tool does not exist" }, IsError: true),
         };
     }
 
@@ -22,7 +22,7 @@ public sealed class AocFunctionResultContent : AocAiContent
         return new AocFunctionResultContent
         {
             CallId = callId,
-            Result = new ToolCallResult(SerializedResult: "{}", IsError: false),
+            Result = new ToolCallResult(CallId: callId, Result: null, IsError: false),
         };
     }
 }

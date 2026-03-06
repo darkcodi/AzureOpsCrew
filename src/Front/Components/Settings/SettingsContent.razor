@@ -196,9 +196,6 @@
 
     private Provider? SelectedProvider => Settings.Providers.FirstOrDefault(p => p.Id == SelectedProviderId);
 
-    private bool IsAzureFoundry =>
-        (SelectedProvider?.ProviderType ?? SelectedProvider?.Name) == "AzureFoundry";
-
     private List<Provider> FilteredProviders =>
         Settings.Providers
             .Where(p => p.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
@@ -647,9 +644,9 @@
                     <div class="form-field">
                         <label class="form-label">Selected models</label>
                         <div class="model-chips-container">
-                            @if ((sp.SelectedModels ?? []).Count == 0 && !IsAzureFoundry)
+                            @if ((sp.SelectedModels ?? []).Count == 0)
                             {
-                                <span class="model-chips-placeholder">Click models in the panel to select</span>
+                                <span class="model-chips-placeholder">Click models in the panel or add one manually</span>
                             }
                             @foreach (var modelId in sp.SelectedModels ?? [])
                             {
@@ -660,17 +657,14 @@
                                     </button>
                                 </span>
                             }
-                            @if (IsAzureFoundry)
-                            {
-                                <span class="custom-model-input-wrapper">
-                                    <input type="text" class="custom-model-input" @bind="_customModelInput" @bind:event="oninput"
-                                           placeholder="Type custom model name..."
-                                           @onkeydown="HandleCustomModelKeyDown" />
-                                    <button type="button" class="input-action-btn" @onclick="AddCustomModel" title="Add custom model">
-                                        @((MarkupString)SvgPlus)
-                                    </button>
-                                </span>
-                            }
+                            <span class="custom-model-input-wrapper">
+                                <input type="text" class="custom-model-input" @bind="_customModelInput" @bind:event="oninput"
+                                       placeholder="Type custom model name..."
+                                       @onkeydown="HandleCustomModelKeyDown" />
+                                <button type="button" class="input-action-btn" @onclick="AddCustomModel" title="Add custom model">
+                                    @((MarkupString)SvgPlus)
+                                </button>
+                            </span>
                         </div>
                     </div>
 

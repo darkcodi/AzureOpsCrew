@@ -42,7 +42,7 @@ public static class OpenAiResponseMapper
         var response = new ChatResponse(chatMessage)
         {
             ModelId = openAiResponse.Model,
-            CreatedAt = DateTimeOffset.FromUnixTimeSeconds(openAiResponse.Created).DateTime
+            CreatedAt = new DateTimeOffset(DateTimeOffset.FromUnixTimeSeconds(openAiResponse.Created).DateTime, TimeSpan.Zero),
         };
 
         // Add finish reason to additional properties

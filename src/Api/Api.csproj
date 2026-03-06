@@ -15,6 +15,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Meziantou.Analyzer" Version="3.0.19">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="3.0.0" />
     <PackageReference Include="Microsoft.Agents.AI.Hosting.AGUI.AspNetCore" Version="1.0.0-preview.260212.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.3" />
