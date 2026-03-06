@@ -52,7 +52,7 @@ Agent prompt: {agent.Info.Prompt}
 """;
             }
 
-            var chatParticipants = string.Join("\n", data.ParticipantAgents.Where(a => a != data.Agent).Select(FormatAgent));
+            var chatParticipants = string.Join("\n", data.ParticipantAgents.Where(a => a.Id != data.Agent.Id).Select(FormatAgent));
 
             var prompt = $"""
 # General
