@@ -180,6 +180,8 @@ else
     [Parameter] public string? UpdatingMcpServerToolName { get; set; }
     [Parameter] public int McpServerAuthResetKey { get; set; }
     [Parameter] public string? McpServerError { get; set; }
+    [Parameter] public bool McpReturnToListRequested { get; set; }
+    [Parameter] public EventCallback OnMcpReturnToListAcknowledged { get; set; }
 
     private readonly HashSet<string> _expandedServerIds = [];
     private string? _hoveredToolKey;
@@ -187,6 +189,15 @@ else
     private string _mcpSubView = "list"; // "list" | "form"
 
     private const int TooltipDelayMs = 400;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (McpReturnToListRequested)
+        {
+            _mcpSubView = "list";
+            await OnMcpReturnToListAcknowledged.InvokeAsync();
+        }
+    }
 
     private async Task OpenEditMcpServer(string serverId)
     {

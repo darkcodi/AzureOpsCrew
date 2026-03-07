@@ -44,6 +44,8 @@
                              UpdatingMcpServerToolName="@_updatingMcpServerToolName"
                              McpServerAuthResetKey="@_mcpServerAuthResetKey"
                              McpServerError="@_mcpServerError"
+                             McpReturnToListRequested="_mcpReturnToListRequested"
+                             OnMcpReturnToListAcknowledged="HandleMcpReturnToListAcknowledged"
                              Agents="@_agents"
                              OnDeleteAgent="HandleDeleteAgent"
                              OnAgentsChanged="HandleAgentsChanged" />
@@ -126,6 +128,7 @@
     private bool _isUpdatingMcpServerTool;
     private int _mcpServerAuthResetKey;
     private string? _updatingMcpServerToolName;
+    private bool _mcpReturnToListRequested;
 
     private Provider? SelectedProvider =>
         _settings.Providers.FirstOrDefault(p => p.Id == _selectedProviderId);
@@ -245,6 +248,12 @@
         StateHasChanged();
     }
 
+    private void HandleMcpReturnToListAcknowledged()
+    {
+        _mcpReturnToListRequested = false;
+        StateHasChanged();
+    }
+
     private void HandleMcpServersChange(List<McpServerConfigurationItem> updated)
     {
         var previousSelection = _selectedMcpServerId;
@@ -352,6 +361,9 @@
         {
             _isSavingMcpServer = false;
         }
+
+        if (_mcpServerError == null)
+            _mcpReturnToListRequested = true;
     }
 
     private async Task HandleRemoveCurrentMcpServer()
