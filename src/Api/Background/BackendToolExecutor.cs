@@ -4,7 +4,7 @@ using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 
 namespace AzureOpsCrew.Api.Background;
 
-public class ToolExecutor
+public class BackendToolExecutor
 {
     public async Task<AocFunctionResultContent> ExecuteTool(
         Agent agent,

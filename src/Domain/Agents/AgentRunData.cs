@@ -1,5 +1,6 @@
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.McpServerConfigurations;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.Tools;
 
@@ -17,6 +18,10 @@ public class AgentRunData
     public List<Message> ChatMessages { get; set; } = null!;
     public List<AgentThought> LlmThoughts { get; set; } = null!;
     public List<ToolDeclaration> Tools { get; set; } = null!;
+
+    // MCP server configurations whose tools are available to the agent.
+    // Used to resolve server connection details when executing MCP tool calls.
+    public List<McpServerConfiguration> McpServers { get; set; } = [];
 
     // List of all other agents in the channel or DM, including the current agent
     public List<Agent> ParticipantAgents { get; set; } = null!;

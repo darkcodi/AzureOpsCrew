@@ -5,7 +5,7 @@ namespace AzureOpsCrew.Domain.Tools;
 
 public static class BackEndTools
 {
-    public static readonly IReadOnlyList<ITool> All =
+    public static readonly IReadOnlyList<IBackendTool> All =
     [
         new GetMyIpTool(),
         new SkipTurnTool(),

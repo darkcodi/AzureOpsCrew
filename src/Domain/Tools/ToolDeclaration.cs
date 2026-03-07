@@ -11,6 +11,9 @@ public class ToolDeclaration
     public string ReturnJsonSchema { get; set; } = "{}";
     public ToolType ToolType { get; set; } = ToolType.BackEnd;
 
+    // Only set for ToolType.McpServer tools. References the McpServerConfiguration that owns this tool.
+    public Guid? McpServerConfigurationId { get; set; }
+
     public AIFunctionDeclaration ToAiFunctionDeclaration()
     {
         return AIFunctionFactory.CreateDeclaration(

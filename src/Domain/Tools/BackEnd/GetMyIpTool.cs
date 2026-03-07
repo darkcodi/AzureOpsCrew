@@ -3,7 +3,7 @@ using AzureOpsCrew.Domain.Utils;
 
 namespace AzureOpsCrew.Domain.Tools.BackEnd;
 
-public class GetMyIpTool : ITool
+public class GetMyIpTool : IBackendTool
 {
     private static readonly HttpClient HttpClient = new();
 

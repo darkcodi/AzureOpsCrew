@@ -143,6 +143,125 @@ public sealed class McpServerFacade
         }
     }
 
+    public async Task<McpToolCallResult> CallToolAsync(
+        string url,
+        McpServerConfigurationAuth auth,
+        string toolName,
+        IDictionary<string, object?>? arguments,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            throw new ArgumentException("MCP server URL is required.", nameof(url));
+
+        var endpoint = url.Trim();
+        var requestId = 1;
+        string? sessionId = null;
+        var negotiatedProtocolVersion = ProtocolVersion;
+
+        try
+        {
+            // Initialize session
+            var initializeResponse = await SendRequestAsync(
+                endpoint,
+                new
+                {
+                    jsonrpc = "2.0",
+                    id = requestId++,
+                    method = "initialize",
+                    @params = new
+                    {
+                        protocolVersion = ProtocolVersion,
+                        capabilities = new { },
+                        clientInfo = new
+                        {
+                            name = "AzureOpsCrew",
+                            version = "1.0.0"
+                        }
+                    }
+                },
+                sessionId,
+                protocolVersion: null,
+                auth,
+                cancellationToken);
+
+            sessionId = initializeResponse.SessionId;
+
+            if (initializeResponse.Result.TryGetProperty("protocolVersion", out var protocolVersionElement)
+                && protocolVersionElement.ValueKind == JsonValueKind.String)
+            {
+                negotiatedProtocolVersion = protocolVersionElement.GetString() ?? ProtocolVersion;
+            }
+
+            // Send initialized notification
+            await SendNotificationAsync(
+                endpoint,
+                new
+                {
+                    jsonrpc = "2.0",
+                    method = "notifications/initialized"
+                },
+                sessionId,
+                negotiatedProtocolVersion,
+                auth,
+                cancellationToken);
+
+            // Call the tool
+            var callResponse = await SendRequestAsync(
+                endpoint,
+                new
+                {
+                    jsonrpc = "2.0",
+                    id = requestId++,
+                    method = "tools/call",
+                    @params = new
+                    {
+                        name = toolName,
+                        arguments = arguments ?? new Dictionary<string, object?>()
+                    }
+                },
+                sessionId,
+                negotiatedProtocolVersion,
+                auth,
+                cancellationToken);
+
+            // Parse the result
+            var isError = callResponse.Result.TryGetProperty("isError", out var isErrorElement)
+                          && isErrorElement.ValueKind == JsonValueKind.True;
+
+            var contentText = ExtractContentText(callResponse.Result);
+
+            return new McpToolCallResult(contentText, isError);
+        }
+        finally
+        {
+            if (!string.IsNullOrWhiteSpace(sessionId))
+                await TryDeleteSessionAsync(endpoint, sessionId, auth, cancellationToken);
+        }
+    }
+
+    private static string ExtractContentText(JsonElement result)
+    {
+        if (!result.TryGetProperty("content", out var contentElement) || contentElement.ValueKind != JsonValueKind.Array)
+            return result.GetRawText();
+
+        var parts = new List<string>();
+        foreach (var item in contentElement.EnumerateArray())
+        {
+            if (item.TryGetProperty("text", out var textElement) && textElement.ValueKind == JsonValueKind.String)
+            {
+                parts.Add(textElement.GetString()!);
+            }
+            else
+            {
+                parts.Add(item.GetRawText());
+            }
+        }
+
+        return parts.Count == 1 ? parts[0] : string.Join("\n", parts);
+    }
+
+    public sealed record McpToolCallResult(string Content, bool IsError);
+
     private async Task<McpJsonRpcResponse> SendRequestAsync(
         string url,
         object payload,

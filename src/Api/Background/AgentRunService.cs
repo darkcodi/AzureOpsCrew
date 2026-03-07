@@ -5,6 +5,7 @@ using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.ProviderServices;
+using AzureOpsCrew.Domain.McpServerConfigurations;
 using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Domain.Tools.BackEnd;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
@@ -21,7 +22,8 @@ public class AgentRunService
     private readonly Guid _runId = Guid.NewGuid();
     private readonly AzureOpsCrewContext _dbContext;
     private readonly IProviderFacadeResolver _providerFactory;
-    private readonly ToolExecutor _toolExecutor;
+    private readonly BackendToolExecutor _backendToolExecutor;
+    private readonly McpServerToolExecutor _mcpServerToolExecutor;
     private readonly IAiAgentFactory _aiAgentFactory;
     private readonly IChannelEventBroadcaster? _channelEventBroadcaster;
 
@@ -29,7 +31,8 @@ public class AgentRunService
     {
         _dbContext = serviceProvider.GetRequiredService<AzureOpsCrewContext>();
         _providerFactory = serviceProvider.GetRequiredService<IProviderFacadeResolver>();
-        _toolExecutor = serviceProvider.GetRequiredService<ToolExecutor>();
+        _backendToolExecutor = serviceProvider.GetRequiredService<BackendToolExecutor>();
+        _mcpServerToolExecutor = serviceProvider.GetRequiredService<McpServerToolExecutor>();
         _aiAgentFactory = serviceProvider.GetRequiredService<IAiAgentFactory>();
         // Event broadcaster is optional - used for both channels and DMs
         _channelEventBroadcaster = serviceProvider.GetService<IChannelEventBroadcaster>();
@@ -213,6 +216,14 @@ public class AgentRunService
             .Concat(frontEndTools)
             .ToList();
 
+        // load MCP server configurations and their enabled tools
+        var mcpServers = await _dbContext.McpServerConfigurations
+            .Where(s => s.IsEnabled)
+            .ToListAsync(ct);
+
+        var mcpToolDeclarations = McpToolDeclarationBuilder.Build(mcpServers);
+        tools.AddRange(mcpToolDeclarations);
+
         // load participant agents in the chat for context
         var agentIds = isChannel
             ? channel?.AgentIds ?? [] // todo: concat user ids when we have users in channels
@@ -231,6 +242,7 @@ public class AgentRunService
             ChatMessages = chatMessages,
             LlmThoughts = llmThoughts,
             Tools = tools,
+            McpServers = mcpServers,
             ParticipantAgents = participantAgents,
         };
     }
@@ -412,13 +424,20 @@ public class AgentRunService
             return AocFunctionResultContent.Empty(toolCall.CallId);
         }
 
-        Log.Debug("[BACKGROUND] Executing tool {ToolName}", toolName);
+        Log.Debug("[BACKGROUND] Executing tool {ToolName} (type: {ToolType})", toolName, toolDeclaration.ToolType);
         AocFunctionResultContent? toolCallResult = null;
         Exception? toolError = null;
 
         try
         {
-            toolCallResult = await _toolExecutor.ExecuteTool(data.Agent, toolDeclaration, toolCall);
+            if (toolDeclaration.ToolType == ToolType.BackEnd)
+            {
+                toolCallResult = await _backendToolExecutor.ExecuteTool(data.Agent, toolDeclaration, toolCall);
+            }
+            else if (toolDeclaration.ToolType == ToolType.McpServer)
+            {
+                toolCallResult = await _mcpServerToolExecutor.ExecuteTool(data, toolDeclaration, toolCall);
+            }
         }
         catch (Exception ex)
         {
