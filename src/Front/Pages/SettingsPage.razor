@@ -26,6 +26,23 @@
                              IsSaving="_isSaving"
                              IsTesting="_isTesting"
                              SaveError="@_saveError"
+                             McpServers="_mcpServers"
+                             ModifiedMcpServerIds="_modifiedMcpServerIds"
+                             SelectedMcpServerId="@_selectedMcpServerId"
+                             OnSelectMcpServer="HandleSelectMcpServer"
+                             OnMcpServersChange="HandleMcpServersChange"
+                             OnSaveCurrentMcpServer="HandleSaveCurrentMcpServer"
+                             OnResetCurrentMcpServer="HandleResetCurrentMcpServer"
+                             OnRemoveCurrentMcpServer="HandleRemoveCurrentMcpServer"
+                             OnSyncMcpServer="HandleSyncMcpServer"
+                             OnToggleSelectedMcpServerEnabled="HandleToggleSelectedMcpServerEnabled"
+                             OnToggleSelectedMcpServerTool="HandleToggleSelectedMcpServerTool"
+                             IsSavingMcpServer="_isSavingMcpServer"
+                             IsSyncingMcpServer="_isSyncingMcpServer"
+                             IsUpdatingMcpServerTool="_isUpdatingMcpServerTool"
+                             UpdatingMcpServerToolName="@_updatingMcpServerToolName"
+                             McpServerAuthResetKey="@_mcpServerAuthResetKey"
+                             McpServerError="@_mcpServerError"
                              Agents="@_agents"
                              OnEditAgent="HandleEditAgent"
                              OnCreateAgent="HandleCreateAgent"
@@ -45,7 +62,7 @@
                             Reset
                         </button>
                         <button type="button" class="unsaved-btn save-btn" disabled="@_isSaving" @onclick="HandleSaveAll">
-                            @(_isSaving ? "Saving…" : "Save")
+                            @(_isSaving ? "Saving...." : "Save")
                         </button>
                     </div>
                 </div>
@@ -57,7 +74,8 @@
                            SelectedProvider="@SelectedProvider"
                            SelectedModels="@(SelectedProvider?.SelectedModels ?? [])"
                            OnToggleSelectedModel="HandleToggleSelectedModel"
-                           ProviderTestResult="@CurrentTestResult" />
+                           ProviderTestResult="@CurrentTestResult"
+                           SelectedMcpServer="@SelectedMcpServer" />
     </RightSidebar>
 </MainLayout>
 
@@ -71,8 +89,22 @@
     private bool _isSaving;
     private bool _isTesting;
 
+    private List<McpServerConfigurationItem> _mcpServers = [];
+    private List<McpServerConfigurationItem> _savedMcpServers = [];
+    private string? _selectedMcpServerId;
+    private HashSet<string> _modifiedMcpServerIds = [];
+    private string? _mcpServerError;
+    private bool _isSavingMcpServer;
+    private bool _isSyncingMcpServer;
+    private bool _isUpdatingMcpServerTool;
+    private int _mcpServerAuthResetKey;
+    private string? _updatingMcpServerToolName;
+
     private Provider? SelectedProvider =>
         _settings.Providers.FirstOrDefault(p => p.Id == _selectedProviderId);
+
+    private McpServerConfigurationItem? SelectedMcpServer =>
+        _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
 
     private ProviderTestResult? CurrentTestResult =>
         _selectedProviderId != null && _providerTestResults.TryGetValue(_selectedProviderId, out var r) ? r : null;
@@ -113,6 +145,24 @@
         _selectedProviderId = _settings.Providers.FirstOrDefault()?.Id;
         await SettingsService.SaveToLocalStorageAsync(_settings);
         ComputeModifiedIds();
+
+        try
+        {
+            var apiMcpServers = await SettingsService.GetMcpServersAsync();
+            _mcpServers = apiMcpServers
+                .OrderBy(server => server.DateCreated != null && DateTime.TryParse(server.DateCreated, out var createdAt) ? createdAt.Ticks : long.MaxValue)
+                .Select(server => server.Clone())
+                .ToList();
+        }
+        catch
+        {
+            _mcpServers = [];
+        }
+
+        _savedMcpServers = _mcpServers.Select(server => server.Clone()).ToList();
+        _selectedMcpServerId = _mcpServers.FirstOrDefault()?.Id;
+        ComputeModifiedMcpServerIds();
+
         await AppState.LoadAgents(AgentService);
         _agents = AppState.Agents.ToList();
     }
@@ -137,10 +187,48 @@
             .ToHashSet();
     }
 
+    private void ComputeModifiedMcpServerIds()
+    {
+        var savedById = _savedMcpServers.ToDictionary(server => server.Id);
+        _modifiedMcpServerIds = _mcpServers
+            .Where(server =>
+            {
+                if (!savedById.TryGetValue(server.Id, out var saved) || string.IsNullOrEmpty(server.BackendId)) return false;
+                return server.Name != saved.Name ||
+                       NormalizeOptionalMcpText(server.Description) != NormalizeOptionalMcpText(saved.Description) ||
+                       server.Url != saved.Url;
+            })
+            .Select(server => server.Id)
+            .ToHashSet();
+    }
+
+    private static string? NormalizeOptionalMcpText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     private void HandleSettingsChange(SettingsState updated)
     {
         _settings = updated;
         ComputeModifiedIds();
+        StateHasChanged();
+    }
+
+    private void HandleSelectMcpServer(string id)
+    {
+        _selectedMcpServerId = id;
+        StateHasChanged();
+    }
+
+    private void HandleMcpServersChange(List<McpServerConfigurationItem> updated)
+    {
+        var previousSelection = _selectedMcpServerId;
+        _mcpServers = updated;
+
+        if (string.IsNullOrWhiteSpace(previousSelection))
+            _selectedMcpServerId = _mcpServers.LastOrDefault()?.Id;
+        else if (_mcpServers.All(server => server.Id != previousSelection))
+            _selectedMcpServerId = _mcpServers.LastOrDefault()?.Id;
+
+        ComputeModifiedMcpServerIds();
         StateHasChanged();
     }
 
@@ -200,6 +288,220 @@
         {
             _isSaving = false;
         }
+    }
+
+    private async Task HandleSaveCurrentMcpServer(McpServerAuthEditorState? auth)
+    {
+        if (_selectedMcpServerId == null) return;
+        var current = _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
+        if (current == null) return;
+
+        _mcpServerError = null;
+        _isSavingMcpServer = true;
+        try
+        {
+            var savedSnapshot = string.IsNullOrWhiteSpace(current.BackendId)
+                ? await SettingsService.CreateMcpServerAsync(current)
+                : await SettingsService.UpdateMcpServerAsync(current);
+
+            ApplyMcpServerSnapshot(current.Id, savedSnapshot);
+
+            if (auth != null)
+            {
+                var savedCurrent = _mcpServers.FirstOrDefault(server => server.Id == current.Id);
+                if (!string.IsNullOrWhiteSpace(savedCurrent?.BackendId))
+                {
+                    var authSnapshot = await SettingsService.SetMcpServerAuthorizationAsync(savedCurrent.BackendId, auth);
+                    ApplyMcpServerSnapshot(current.Id, authSnapshot);
+                    _mcpServerAuthResetKey++;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _mcpServerError = ex.Message;
+        }
+        finally
+        {
+            _isSavingMcpServer = false;
+        }
+    }
+
+    private async Task HandleRemoveCurrentMcpServer()
+    {
+        if (_selectedMcpServerId == null) return;
+
+        var currentIndex = _mcpServers.FindIndex(server => server.Id == _selectedMcpServerId);
+        if (currentIndex < 0) return;
+
+        var current = _mcpServers[currentIndex];
+        if (string.IsNullOrWhiteSpace(current.BackendId))
+        {
+            _mcpServers.RemoveAt(currentIndex);
+        }
+        else
+        {
+            _mcpServerError = null;
+            _isSavingMcpServer = true;
+            try
+            {
+                await SettingsService.RemoveMcpServerAsync(current.BackendId);
+            }
+            catch (Exception ex)
+            {
+                _mcpServerError = ex.Message;
+                return;
+            }
+            finally
+            {
+                _isSavingMcpServer = false;
+            }
+
+            _mcpServers.RemoveAt(currentIndex);
+            _savedMcpServers.RemoveAll(server => server.Id == current.Id);
+        }
+
+        _selectedMcpServerId = _mcpServers.Count == 0
+            ? null
+            : _mcpServers[Math.Min(currentIndex, _mcpServers.Count - 1)].Id;
+
+        _mcpServerError = null;
+        ComputeModifiedMcpServerIds();
+        StateHasChanged();
+    }
+    private void HandleResetCurrentMcpServer()
+    {
+        if (_selectedMcpServerId == null) return;
+
+        var current = _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
+        if (current == null || string.IsNullOrWhiteSpace(current.BackendId))
+            return;
+
+        var saved = _savedMcpServers.FirstOrDefault(server => server.Id == current.Id);
+        if (saved == null)
+            return;
+
+        ApplyMcpServerSnapshot(current.Id, saved.Clone());
+        _mcpServerAuthResetKey++;
+        _mcpServerError = null;
+    }
+
+    private async Task HandleSyncMcpServer()
+    {
+        if (_selectedMcpServerId == null) return;
+        var current = _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
+        if (current == null || string.IsNullOrWhiteSpace(current.BackendId)) return;
+        if (_modifiedMcpServerIds.Contains(current.Id))
+        {
+            _mcpServerError = "Save name or URL changes before syncing tools.";
+            return;
+        }
+
+        _mcpServerError = null;
+        _isSyncingMcpServer = true;
+        try
+        {
+            var syncedSnapshot = await SettingsService.SyncMcpToolsAsync(current.BackendId);
+            ApplyMcpServerSnapshot(current.Id, syncedSnapshot);
+        }
+        catch (Exception ex)
+        {
+            _mcpServerError = ex.Message;
+        }
+        finally
+        {
+            _isSyncingMcpServer = false;
+        }
+    }
+
+    private async Task HandleToggleSelectedMcpServerEnabled()
+    {
+        if (_selectedMcpServerId == null) return;
+        var current = _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
+        if (current == null || string.IsNullOrWhiteSpace(current.BackendId)) return;
+        if (_modifiedMcpServerIds.Contains(current.Id))
+        {
+            _mcpServerError = "Save name or URL changes before toggling availability.";
+            return;
+        }
+
+        _mcpServerError = null;
+        _isSavingMcpServer = true;
+        try
+        {
+            var updatedSnapshot = await SettingsService.SetMcpServerEnabledAsync(current.BackendId, !current.IsEnabled);
+            ApplyMcpServerSnapshot(current.Id, updatedSnapshot);
+        }
+        catch (Exception ex)
+        {
+            _mcpServerError = ex.Message;
+        }
+        finally
+        {
+            _isSavingMcpServer = false;
+        }
+    }
+
+    private async Task HandleToggleSelectedMcpServerTool(string toolName)
+    {
+        if (_selectedMcpServerId == null) return;
+        var current = _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
+        if (current == null || string.IsNullOrWhiteSpace(current.BackendId)) return;
+        if (_modifiedMcpServerIds.Contains(current.Id))
+        {
+            _mcpServerError = "Save name or URL changes before changing tool availability.";
+            return;
+        }
+
+        var currentTool = current.Tools.FirstOrDefault(tool => string.Equals(tool.Name, toolName, StringComparison.Ordinal));
+        if (currentTool == null)
+            return;
+
+        _mcpServerError = null;
+        _isUpdatingMcpServerTool = true;
+        _updatingMcpServerToolName = toolName;
+
+        try
+        {
+            var updatedSnapshot = await SettingsService.SetMcpServerToolEnabledAsync(current.BackendId, toolName, !currentTool.IsEnabled);
+            ApplyMcpServerSnapshot(current.Id, updatedSnapshot);
+        }
+        catch (Exception ex)
+        {
+            _mcpServerError = ex.Message;
+        }
+        finally
+        {
+            _isUpdatingMcpServerTool = false;
+            _updatingMcpServerToolName = null;
+        }
+    }
+
+
+    private void ApplyMcpServerSnapshot(string localId, McpServerConfigurationItem snapshot)
+    {
+        var current = _mcpServers.FirstOrDefault(server => server.Id == localId);
+        if (current == null) return;
+
+        current.BackendId = string.IsNullOrWhiteSpace(snapshot.BackendId) ? snapshot.Id : snapshot.BackendId;
+        current.Name = snapshot.Name;
+        current.Description = snapshot.Description;
+        current.Url = snapshot.Url;
+        current.IsEnabled = snapshot.IsEnabled;
+        current.ToolsSyncedAt = snapshot.ToolsSyncedAt;
+        current.DateCreated = string.IsNullOrWhiteSpace(snapshot.DateCreated) ? current.DateCreated : snapshot.DateCreated;
+        current.Auth = snapshot.Auth.Clone();
+        current.Tools = snapshot.Tools.Select(tool => tool.Clone()).ToList();
+
+        var savedClone = current.Clone();
+        var savedIndex = _savedMcpServers.FindIndex(server => server.Id == localId);
+        if (savedIndex >= 0)
+            _savedMcpServers[savedIndex] = savedClone;
+        else
+            _savedMcpServers.Add(savedClone);
+
+        ComputeModifiedMcpServerIds();
+        StateHasChanged();
     }
 
     private async Task HandleTestProvider()

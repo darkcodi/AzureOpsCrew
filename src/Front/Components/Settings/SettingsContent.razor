@@ -8,6 +8,25 @@
                 case SettingsSection.Providers:
                     @RenderProviders()
                     break;
+                case SettingsSection.McpServers:
+                    <McpServersSettingsSection McpServers="McpServers"
+                                               ModifiedMcpServerIds="ModifiedMcpServerIds"
+                                               SelectedMcpServerId="@SelectedMcpServerId"
+                                               OnSelectMcpServer="OnSelectMcpServer"
+                                               OnMcpServersChange="OnMcpServersChange"
+                                               OnSaveCurrentMcpServer="OnSaveCurrentMcpServer"
+                                               OnResetCurrentMcpServer="OnResetCurrentMcpServer"
+                                               OnRemoveCurrentMcpServer="OnRemoveCurrentMcpServer"
+                                               OnSyncMcpServer="OnSyncMcpServer"
+                                               OnToggleSelectedMcpServerEnabled="OnToggleSelectedMcpServerEnabled"
+                                               OnToggleSelectedMcpServerTool="OnToggleSelectedMcpServerTool"
+                                               IsSavingMcpServer="IsSavingMcpServer"
+                                               IsSyncingMcpServer="IsSyncingMcpServer"
+                                               IsUpdatingMcpServerTool="IsUpdatingMcpServerTool"
+                                               UpdatingMcpServerToolName="@UpdatingMcpServerToolName"
+                                               McpServerAuthResetKey="McpServerAuthResetKey"
+                                               McpServerError="@McpServerError" />
+                    break;
                 case SettingsSection.Agents:
                     @RenderAgents()
                     break;
@@ -38,7 +57,7 @@
     </div>
 </div>
 
-@* ──── Add Provider Dialog ──── *@
+@* ---- Add Provider Dialog ---- *@
 @if (_addProviderDialogOpen)
 {
     <div class="dialog-overlay" @onclick="CloseAddProviderDialog">
@@ -60,7 +79,7 @@
     </div>
 }
 
-@* ──── Remove Provider Dialog ──── *@
+@* ---- Remove Provider Dialog ---- *@
 @if (_removeProviderPending != null)
 {
     <div class="dialog-overlay" @onclick="() => _removeProviderPending = null">
@@ -79,14 +98,14 @@
                 </button>
                 <button type="button" class="btn btn-danger" disabled="@_isRemovingProvider"
                         @onclick="ConfirmRemoveProvider">
-                    @(_isRemovingProvider ? "Removing…" : "Remove")
+                    @(_isRemovingProvider ? "Removing...." : "Remove")
                 </button>
             </div>
         </div>
     </div>
 }
 
-@* ──── Delete Agent Dialog ──── *@
+@* ---- Delete Agent Dialog ---- *@
 @if (_deleteAgentPending != null)
 {
     <div class="dialog-overlay" @onclick="() => _deleteAgentPending = null">
@@ -105,7 +124,7 @@
                 </button>
                 <button type="button" class="btn btn-danger" disabled="@_isDeletingAgent"
                         @onclick="ConfirmDeleteAgent">
-                    @(_isDeletingAgent ? "Deleting…" : "Delete Agent")
+                    @(_isDeletingAgent ? "Deleting...." : "Delete Agent")
                 </button>
             </div>
         </div>
@@ -127,6 +146,23 @@
     [Parameter] public bool IsSaving { get; set; }
     [Parameter] public bool IsTesting { get; set; }
     [Parameter] public string? SaveError { get; set; }
+    [Parameter] public List<McpServerConfigurationItem> McpServers { get; set; } = [];
+    [Parameter] public HashSet<string> ModifiedMcpServerIds { get; set; } = [];
+    [Parameter] public string? SelectedMcpServerId { get; set; }
+    [Parameter] public EventCallback<string> OnSelectMcpServer { get; set; }
+    [Parameter] public EventCallback<List<McpServerConfigurationItem>> OnMcpServersChange { get; set; }
+    [Parameter] public EventCallback<McpServerAuthEditorState?> OnSaveCurrentMcpServer { get; set; }
+    [Parameter] public EventCallback OnResetCurrentMcpServer { get; set; }
+    [Parameter] public EventCallback OnRemoveCurrentMcpServer { get; set; }
+    [Parameter] public EventCallback OnSyncMcpServer { get; set; }
+    [Parameter] public EventCallback OnToggleSelectedMcpServerEnabled { get; set; }
+    [Parameter] public EventCallback<string> OnToggleSelectedMcpServerTool { get; set; }
+    [Parameter] public bool IsSavingMcpServer { get; set; }
+    [Parameter] public bool IsSyncingMcpServer { get; set; }
+    [Parameter] public bool IsUpdatingMcpServerTool { get; set; }
+    [Parameter] public string? UpdatingMcpServerToolName { get; set; }
+    [Parameter] public int McpServerAuthResetKey { get; set; }
+    [Parameter] public string? McpServerError { get; set; }
     [Parameter] public IReadOnlyList<AgentDto>? Agents { get; set; }
     [Parameter] public EventCallback<AgentDto> OnEditAgent { get; set; }
     [Parameter] public EventCallback OnCreateAgent { get; set; }
@@ -142,7 +178,7 @@
     private bool _isDeletingAgent;
     private string _customModelInput = "";
 
-    // ──── Agents list vs form view ────
+    // ---- Agents list vs form view ----
     private string _agentsSubView = "list"; // "list" | "form"
     private AgentDto? _editingAgent;
     private string _agentName = "";
@@ -253,7 +289,7 @@
         _customModelInput = "";
     }
 
-    // ──── SVG Icons ────
+    // ---- SVG Icons ----
     private const string SvgSearch =
         """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>""";
     private const string SvgEye =
@@ -279,7 +315,7 @@
     private const string SvgSave =
         """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>""";
 
-    // ──── Agent form: enabled providers (have BackendId and status enabled) ────
+    // ---- Agent form: enabled providers (have BackendId and status enabled) ----
     private const string SvgBrain =
         """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></svg>""";
     private const string SvgCloud =
@@ -302,7 +338,7 @@
         new("openrouter", "OpenRouter", "OpenRouter", "https://openrouter.ai/api/v1", 30, 60, SvgGlobe),
     ];
 
-    // ──── Status badge helper ────
+    // ---- Status badge helper ----
     private (string Icon, string Color, string Label) GetStatusBadge(Provider p)
     {
         if (ModifiedProviderIds.Contains(p.Id))
@@ -317,7 +353,7 @@
         };
     }
 
-    // ──── Provider description helpers ────
+    // ---- Provider description helpers ----
     private static (string Desc, string Url, string UrlLabel)? GetProviderDescription(string? providerType) =>
         providerType switch
         {
@@ -484,7 +520,7 @@
         }
     }
 
-    // ──── Render Fragments ────
+    // ---- Render Fragments ----
 
     private RenderFragment RenderProviders() => __builder =>
     {
@@ -669,11 +705,11 @@
                         <button type="button" class="btn btn-primary"
                                 disabled="@(IsSaving || SelectedProviderId == null || !(ModifiedProviderIds.Contains(SelectedProviderId!) || string.IsNullOrEmpty(sp.BackendId)))"
                                 @onclick="OnSaveCurrentProvider">
-                            @(IsSaving ? "Saving…" : "Save")
+                            @(IsSaving ? "Saving...." : "Save")
                         </button>
                         <button type="button" class="btn btn-secondary" disabled="@(IsSaving || IsTesting)"
                                 @onclick="OnTestProvider">
-                            @(IsTesting ? "Testing…" : "Test")
+                            @(IsTesting ? "Testing...." : "Test")
                         </button>
                         <button type="button" class="btn btn-danger" disabled="@IsSaving"
                                 @onclick="HandleRemoveClick">

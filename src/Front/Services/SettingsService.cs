@@ -45,6 +45,25 @@ public class SettingsService(HttpClient http, IJSRuntime js)
         }
     }
 
+    public async Task<List<McpServerConfigurationItem>> GetMcpServersAsync()
+    {
+        try
+        {
+            var response = await http.GetAsync("/api/mcp-server-configurations");
+            if (!response.IsSuccessStatusCode) return [];
+
+            var servers = await response.Content.ReadFromJsonAsync<List<McpServerConfigurationItem>>();
+            if (servers == null) return [];
+
+            return servers.Select(NormalizeLoadedMcpServer).ToList();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to fetch MCP servers from API");
+            return [];
+        }
+    }
+
     public async Task<SaveProvidersResponse> SaveProvidersAsync(List<Provider> providers)
     {
         var results = new List<SavedProviderRef>();
@@ -100,6 +119,91 @@ public class SettingsService(HttpClient http, IJSRuntime js)
         }
 
         return new SaveProvidersResponse { Providers = results };
+    }
+
+    public async Task<McpServerConfigurationItem> CreateMcpServerAsync(McpServerConfigurationItem server)
+    {
+        var body = new
+        {
+            name = server.Name.Trim(),
+            description = string.IsNullOrWhiteSpace(server.Description) ? (string?)null : server.Description.Trim(),
+            url = server.Url.Trim(),
+        };
+
+        var response = await http.PostAsJsonAsync("/api/mcp-server-configurations/create", body);
+        return await ReadMcpServerResponse(response, $"Failed to create MCP server {server.Name}");
+    }
+
+
+
+    public async Task<McpServerConfigurationItem> UpdateMcpServerAsync(McpServerConfigurationItem server)
+    {
+        if (string.IsNullOrWhiteSpace(server.BackendId))
+            throw new InvalidOperationException("Backend ID is required to update an MCP server.");
+
+        var body = new
+        {
+            name = server.Name.Trim(),
+            description = string.IsNullOrWhiteSpace(server.Description) ? (string?)null : server.Description.Trim(),
+            url = server.Url.Trim(),
+        };
+
+        var response = await http.PutAsJsonAsync($"/api/mcp-server-configurations/{server.BackendId}", body);
+        return await ReadMcpServerResponse(response, $"Failed to update MCP server {server.Name}");
+    }
+
+    public async Task<McpServerConfigurationItem> SetMcpServerEnabledAsync(string backendId, bool isEnabled)
+    {
+        var response = await http.PostAsJsonAsync($"/api/mcp-server-configurations/{backendId}/set-enabled", new { isEnabled });
+        return await ReadMcpServerResponse(response, "Failed to update MCP server availability.");
+    }
+
+    public async Task<McpServerConfigurationItem> SyncMcpToolsAsync(string backendId)
+    {
+        var response = await http.PostAsync($"/api/mcp-server-configurations/{backendId}/sync-tools", null);
+        return await ReadMcpServerResponse(response, "Failed to sync MCP tools.");
+    }
+
+    public async Task<McpServerConfigurationItem> SetMcpServerToolEnabledAsync(string backendId, string toolName, bool isEnabled)
+    {
+        var response = await http.PostAsJsonAsync(
+            $"/api/mcp-server-configurations/{backendId}/tools/set-enable",
+            new
+            {
+                name = toolName,
+                isEnabled,
+            });
+
+        return await ReadMcpServerResponse(response, "Failed to update MCP tool availability.");
+    }
+
+    public async Task<McpServerConfigurationItem> SetMcpServerAuthorizationAsync(string backendId, McpServerAuthEditorState auth)
+    {
+        var headers = auth.Headers
+            .Where(header => !string.IsNullOrWhiteSpace(header.Name) || !string.IsNullOrWhiteSpace(header.Value))
+            .Select(header => new
+            {
+                name = header.Name.Trim(),
+                value = header.Value.Trim(),
+            })
+            .ToArray();
+
+        var response = await http.PostAsJsonAsync(
+            $"/api/mcp-server-configurations/{backendId}/set-authorization",
+            new
+            {
+                type = auth.Type,
+                bearerToken = string.IsNullOrWhiteSpace(auth.BearerToken) ? (string?)null : auth.BearerToken.Trim(),
+                headers,
+            });
+
+        return await ReadMcpServerResponse(response, "Failed to update MCP authorization.");
+    }
+
+    public async Task RemoveMcpServerAsync(string backendId)
+    {
+        var response = await http.DeleteAsync($"/api/mcp-server-configurations/{backendId}");
+        response.EnsureSuccessStatusCode();
     }
 
     public async Task<ProviderTestResult> TestProviderAsync(Provider provider)
@@ -158,5 +262,28 @@ public class SettingsService(HttpClient http, IJSRuntime js)
         {
             Log.Warning(ex, "Failed to persist settings to localStorage");
         }
+    }
+
+    private static McpServerConfigurationItem NormalizeLoadedMcpServer(McpServerConfigurationItem server)
+    {
+        server.BackendId = server.Id;
+        server.Tools ??= [];
+        server.Auth ??= new McpServerAuthSummary();
+        return server;
+    }
+
+    private async Task<McpServerConfigurationItem> ReadMcpServerResponse(HttpResponseMessage response, string fallbackErrorMessage)
+    {
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorText = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException(string.IsNullOrWhiteSpace(errorText) ? fallbackErrorMessage : errorText);
+        }
+
+        var server = await response.Content.ReadFromJsonAsync<McpServerConfigurationItem>();
+        if (server == null)
+            throw new HttpRequestException("MCP server response was empty.");
+
+        return NormalizeLoadedMcpServer(server);
     }
 }

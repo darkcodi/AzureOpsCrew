@@ -9,6 +9,9 @@
                 case SettingsSection.Providers:
                     @RenderGeneralProviderInfo()
                     break;
+                case SettingsSection.McpServers:
+                    @RenderMcpServersInfo()
+                    break;
                 case SettingsSection.Routing:
                     @RenderRoutingInfo()
                     break;
@@ -38,6 +41,7 @@
     [Parameter] public List<string> SelectedModels { get; set; } = [];
     [Parameter] public EventCallback<string> OnToggleSelectedModel { get; set; }
     [Parameter] public ProviderTestResult? ProviderTestResult { get; set; }
+    [Parameter] public McpServerConfigurationItem? SelectedMcpServer { get; set; }
 
     private bool _modelsExpanded;
     private string _modelsSearchQuery = "";
@@ -59,7 +63,6 @@
         if (diff.TotalDays < 1) return $"{(int)diff.TotalHours} h ago";
         return d.ToLocalTime().ToString("g");
     }
-
     private RenderFragment RenderProviderInfo() => __builder =>
     {
         var hasResult = ProviderTestResult != null;
@@ -189,13 +192,14 @@
             </ul>
         </div>
     };
-
     private RenderFragment RenderGeneralProviderInfo() => __builder =>
     {
+        @* ── Providers ── *@
         <div class="info-section">
             <h4 class="info-section-title">Providers</h4>
             <p class="info-muted-body">Select a provider from the list to view its test result, available models, and configuration details.</p>
         </div>
+        @* ── Quick Tips ── *@
         <div class="info-section">
             <h4 class="info-section-title">Quick tips</h4>
             <ul class="note-list">
@@ -206,8 +210,37 @@
         </div>
     };
 
+    private RenderFragment RenderMcpServersInfo() => __builder =>
+    {
+        @* ── MCP Servers ── *@
+        <div class="info-section">
+            <h4 class="info-section-title">MCP Servers</h4>
+            <p class="info-muted-body">
+                @if (SelectedMcpServer == null)
+                {
+                    <span>Select an MCP server from the list to edit its configuration in the center panel.</span>
+                }
+                else
+                {
+                    <span><strong>@SelectedMcpServer.Name</strong> is selected. Use the center panel to edit its URL, description, and tool snapshot.</span>
+                }
+            </p>
+        </div>
+        @* ── Quick Tips ── *@
+        <div class="info-section">
+            <h4 class="info-section-title">Quick tips</h4>
+            <ul class="note-list">
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>New MCP servers start as drafts until you save them.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Save name and URL changes before syncing tools.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Per-tool activation is stored on the server configuration after the first save.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Stored authorization values stay hidden; re-enter them to replace the current secret.</span></li>
+            </ul>
+        </div>
+    };
+
     private RenderFragment RenderRoutingInfo() => __builder =>
     {
+        @* ── Routing Strategies ── *@
         <div class="info-section">
             <h4 class="info-section-title">Routing strategies</h4>
             <ul class="note-list">
@@ -217,6 +250,7 @@
                 <li class="note-bullet"><span class="bullet">&bull;</span><span><strong>Latency Optimized:</strong> Routes to the fastest responding provider.</span></li>
             </ul>
         </div>
+        @* ── Notes ── *@
         <div class="info-section">
             <h4 class="info-section-title">Notes</h4>
             <ul class="note-list">
@@ -225,13 +259,14 @@
             </ul>
         </div>
     };
-
     private RenderFragment RenderAdvancedInfo() => __builder =>
     {
+        @* ── Caution ── *@
         <div class="info-section">
             <h4 class="info-section-title">Caution</h4>
             <p class="info-warning">Changing advanced settings may affect application stability. Only modify these if you understand the implications.</p>
         </div>
+        @* ── Notes ── *@
         <div class="info-section">
             <h4 class="info-section-title">Notes</h4>
             <ul class="note-list">
@@ -239,21 +274,22 @@
             </ul>
         </div>
     };
-
     private RenderFragment RenderAccountInfo() => __builder =>
     {
+        @* ── Account ── *@
         <div class="info-section">
             <h4 class="info-section-title">Account</h4>
             <p class="info-muted-body">Your account is stored locally. All settings and data persist in the local database.</p>
         </div>
     };
-
     private RenderFragment RenderAppearanceInfo() => __builder =>
     {
+        @* ── Theme ── *@
         <div class="info-section">
             <h4 class="info-section-title">Theme</h4>
             <p class="info-muted-body">The dark theme is optimized for extended use. Light and system themes are available for accessibility.</p>
         </div>
+        @* ── Notes ── *@
         <div class="info-section">
             <h4 class="info-section-title">Notes</h4>
             <ul class="note-list">
@@ -265,6 +301,7 @@
 
     private RenderFragment RenderNotificationsInfo() => __builder =>
     {
+        @* ── Notifications ── *@
         <div class="info-section">
             <h4 class="info-section-title">Notifications</h4>
             <ul class="note-list">
@@ -277,6 +314,7 @@
 
     private RenderFragment RenderAgentsInfo() => __builder =>
     {
+        @* ── Agents ── *@
         <div class="info-section">
             <h4 class="info-section-title">Agents</h4>
             <ul class="note-list">
