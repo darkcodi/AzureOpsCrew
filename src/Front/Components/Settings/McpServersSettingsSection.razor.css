@@ -107,11 +107,6 @@
     color: hsl(214, 5%, 75%);
 }
 
-.mcp-tools-toggle-dot {
-    display: inline-flex;
-    align-items: center;
-}
-
 .mcp-chevron {
     display: inline-flex;
     align-items: center;
