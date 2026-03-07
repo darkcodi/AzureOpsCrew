@@ -1,0 +1,236 @@
+/* Discord-themed Markdown Styles */
+
+.markdown-content {
+    color: var(--discord-text);
+    line-height: 1.5;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
+/* Headings */
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--discord-text);
+}
+
+.markdown-content h1 {
+    font-size: 2em;
+    border-bottom: 1px solid var(--discord-divider);
+    padding-bottom: 8px;
+}
+
+.markdown-content h2 {
+    font-size: 1.5em;
+    border-bottom: 1px solid var(--discord-divider);
+    padding-bottom: 6px;
+}
+
+.markdown-content h3 {
+    font-size: 1.25em;
+}
+
+.markdown-content h4 {
+    font-size: 1em;
+}
+
+.markdown-content h5 {
+    font-size: 0.875em;
+}
+
+.markdown-content h6 {
+    font-size: 0.85em;
+    color: var(--discord-muted);
+}
+
+/* Paragraphs */
+.markdown-content p {
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
+.markdown-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* Links */
+.markdown-content a {
+    color: var(--discord-blurple);
+    text-decoration: none;
+}
+
+.markdown-content a:hover {
+    text-decoration: underline;
+}
+
+/* Inline code */
+.markdown-content code {
+    background-color: var(--discord-not-black);
+    border: 1px solid var(--discord-divider);
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-family: "Consolas", "Monaco", "Courier New", monospace;
+    font-size: 0.875em;
+    color: var(--discord-text);
+}
+
+/* Code blocks */
+.markdown-content pre {
+    background-color: var(--discord-not-black);
+    border: 1px solid var(--discord-divider);
+    border-radius: 4px;
+    padding: 12px;
+    margin: 8px 0;
+    overflow-x: auto;
+    font-family: "Consolas", "Monaco", "Courier New", monospace;
+    font-size: 0.875em;
+    line-height: 1.45;
+}
+
+.markdown-content pre code {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    color: var(--discord-text);
+}
+
+/* Lists */
+.markdown-content ul,
+.markdown-content ol {
+    margin-top: 0;
+    margin-bottom: 8px;
+    padding-left: 24px;
+}
+
+.markdown-content li {
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+.markdown-content li > p {
+    margin-top: 4px;
+}
+
+.markdown-content ul ul,
+.markdown-content ul ol,
+.markdown-content ol ul,
+.markdown-content ol ol {
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+.markdown-content ul {
+    list-style-type: disc;
+}
+
+.markdown-content ul ul {
+    list-style-type: circle;
+}
+
+.markdown-content ul ul ul {
+    list-style-type: square;
+}
+
+/* Task lists */
+.markdown-content input[type="checkbox"] {
+    margin-right: 8px;
+    margin-top: 4px;
+    vertical-align: middle;
+}
+
+.markdown-content li:has(input[type="checkbox"]) {
+    list-style-type: none;
+    padding-left: 4px;
+}
+
+/* Blockquotes */
+.markdown-content blockquote {
+    margin: 8px 0;
+    padding: 4px 0 4px 12px;
+    border-left: 4px solid var(--discord-blurple);
+    color: var(--discord-muted);
+    background-color: transparent;
+}
+
+.markdown-content blockquote p {
+    margin: 0;
+}
+
+.markdown-content blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+/* Tables */
+.markdown-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 8px 0;
+    border-spacing: 0;
+    display: block;
+    overflow-x: auto;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+    padding: 6px 12px;
+    border: 1px solid var(--discord-divider);
+    text-align: left;
+}
+
+.markdown-content table th {
+    background-color: var(--discord-not-black);
+    font-weight: 700;
+}
+
+.markdown-content table tr:nth-child(even) {
+    background-color: var(--discord-bg-hover);
+}
+
+.markdown-content table tr:hover {
+    background-color: var(--discord-bg-active);
+}
+
+/* Horizontal rules */
+.markdown-content hr {
+    height: 1px;
+    border: none;
+    background-color: var(--discord-divider);
+    margin: 16px 0;
+}
+
+/* Strong and emphasis */
+.markdown-content strong {
+    font-weight: 700;
+}
+
+.markdown-content em {
+    font-style: italic;
+}
+
+/* Images */
+.markdown-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin: 8px 0;
+}
+
+/* Definition lists */
+.markdown-content dt {
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+.markdown-content dd {
+    margin-left: 24px;
+    margin-bottom: 8px;
+    color: var(--discord-muted);
+}
