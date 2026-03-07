@@ -405,6 +405,7 @@
             : _mcpServers[Math.Min(currentIndex, _mcpServers.Count - 1)].Id;
 
         _mcpServerError = null;
+        _mcpReturnToListRequested = true;
         ComputeModifiedMcpServerIds();
         StateHasChanged();
     }
