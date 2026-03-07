@@ -17,6 +17,8 @@ public sealed class ChatHubClient : IAsyncDisposable
     private Guid? _currentGroupId;
 
     public event Action<ChatMessageDto>? MessageReceived;
+    public event Action<ToolCallDto>? ToolCallReceived;
+    public event Action<ReasoningDto>? ReasoningReceived;
 
     private ChatHubClient(string joinMethod, string leaveMethod, ILogger logger)
     {
@@ -113,6 +115,30 @@ public sealed class ChatHubClient : IAsyncDisposable
         {
             _logger.LogDebug("Received MESSAGE_ADDED for message {Id}", msg.Message.Id);
             MessageReceived?.Invoke(msg.Message);
+        }
+        else if (evt is ToolCallCompletedEvent toolEvt)
+        {
+            _logger.LogDebug("Received TOOL_CALL_COMPLETED for {ToolName} {CallId}", toolEvt.ToolName, toolEvt.CallId);
+            var dto = new ToolCallDto
+            {
+                ToolName = toolEvt.ToolName,
+                CallId = toolEvt.CallId,
+                Args = toolEvt.Args,
+                Result = toolEvt.Result,
+                IsError = toolEvt.IsError,
+                Timestamp = toolEvt.Timestamp,
+            };
+            ToolCallReceived?.Invoke(dto);
+        }
+        else if (evt is ReasoningContentEvent reasoningEvt)
+        {
+            _logger.LogDebug("Received REASONING_CONTENT");
+            var dto = new ReasoningDto
+            {
+                Text = reasoningEvt.Text,
+                Timestamp = reasoningEvt.Timestamp,
+            };
+            ReasoningReceived?.Invoke(dto);
         }
     }
 

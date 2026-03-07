@@ -77,6 +77,9 @@ public class OpenAiMessage
 
     [JsonPropertyName("tool_call_id")]
     public string? ToolCallId { get; set; }
+
+    [JsonPropertyName("reasoning_content")]
+    public string? ReasoningContent { get; set; }
 }
 
 /// <summary>
@@ -279,7 +282,7 @@ public class OpenAiDelta
     [JsonPropertyName("refusal")]
     public string? Refusal { get; set; }
 
-    [JsonPropertyName("reasoning")]
+    [JsonPropertyName("reasoning_content")]
     public string? Reasoning { get; set; }
 
     [JsonPropertyName("tool_calls")]

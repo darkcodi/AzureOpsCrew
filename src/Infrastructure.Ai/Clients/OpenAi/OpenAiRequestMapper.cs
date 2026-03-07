@@ -59,6 +59,88 @@ public static class OpenAiRequestMapper
         foreach (var message in normalizedMessages)
         {
             var mappedRole = MapChatRole(message.Role);
+            var messageContents = message.Contents.ToList();
+
+            // Handle assistant messages that need to be split for DeepSeek format
+            if (mappedRole == "assistant" && messageContents.Count > 1)
+            {
+                // Check if this message has both reasoning and function calls
+                var hasReasoning = messageContents.OfType<TextReasoningContent>().Any();
+                var hasFunctionCalls = messageContents.OfType<FunctionCallContent>().Any();
+                var hasFunctionResults = messageContents.OfType<FunctionResultContent>().Any();
+
+                if (hasReasoning && hasFunctionCalls)
+                {
+                    // Create assistant message with reasoning + tool_calls (DeepSeek format)
+                    var reasoningContent = messageContents.OfType<TextReasoningContent>().FirstOrDefault();
+                    var functionCalls = messageContents.OfType<FunctionCallContent>().ToList();
+
+                    var assistantMessage = new OpenAiMessage
+                    {
+                        Role = mappedRole,
+                        Name = message.AuthorName,
+                        ReasoningContent = reasoningContent?.Text
+                    };
+
+                    var toolCalls = new List<OpenAiToolCall>();
+                    foreach (var functionCall in functionCalls)
+                    {
+                        var argsJson = functionCall.Arguments != null
+                            ? JsonSerializer.Serialize(functionCall.Arguments)
+                            : "{}";
+
+                        toolCalls.Add(new OpenAiToolCall
+                        {
+                            Id = functionCall.CallId,
+                            Type = "function",
+                            Function = new OpenAiFunctionCall
+                            {
+                                Name = functionCall.Name,
+                                Arguments = argsJson
+                            }
+                        });
+                    }
+                    assistantMessage.ToolCalls = toolCalls;
+
+                    result.Add(assistantMessage);
+
+                    // Create separate tool messages for function results
+                    foreach (var functionResult in messageContents.OfType<FunctionResultContent>())
+                    {
+                        result.Add(new OpenAiMessage
+                        {
+                            Role = "tool",
+                            ToolCallId = functionResult.CallId,
+                            Content = functionResult.Result?.ToString() ?? string.Empty
+                        });
+                    }
+
+                    continue;
+                }
+
+                // Handle messages with function results that should be separate tool messages
+                if (hasFunctionResults)
+                {
+                    var hasOtherContent = messageContents.Any(c => c is not FunctionResultContent and not UsageContent and not ErrorContent);
+
+                    if (!hasOtherContent)
+                    {
+                        // Only function results and metadata - create separate tool messages
+                        foreach (var functionResult in messageContents.OfType<FunctionResultContent>())
+                        {
+                            result.Add(new OpenAiMessage
+                            {
+                                Role = "tool",
+                                ToolCallId = functionResult.CallId,
+                                Content = functionResult.Result?.ToString() ?? string.Empty
+                            });
+                        }
+                        continue;
+                    }
+                }
+            }
+
+            // Default handling for other cases
             var openAiMessage = new OpenAiMessage
             {
                 Role = mappedRole,
@@ -66,34 +148,49 @@ public static class OpenAiRequestMapper
             };
 
             // Handle content conversion
-            var contents = message.Contents.ToList();
-            if (contents.Count == 0)
+            if (messageContents.Count == 0)
             {
                 openAiMessage.Content = string.Empty;
             }
-            else if (contents.Count == 1)
+            else if (messageContents.Count == 1)
             {
-                openAiMessage.Content = ConvertSingleContent(contents[0], out var toolCallId, out var toolCalls);
-                if (toolCallId != null)
+                var content = messageContents[0];
+                if (content is TextReasoningContent)
                 {
-                    openAiMessage.ToolCallId = toolCallId;
+                    openAiMessage.ReasoningContent = ConvertSingleContent(messageContents[0], out var toolCallId, out var toolCalls)?.ToString();
+                    if (toolCallId != null)
+                    {
+                        openAiMessage.ToolCallId = toolCallId;
+                    }
+                    if (toolCalls != null)
+                    {
+                        openAiMessage.ToolCalls = toolCalls;
+                    }
                 }
-                if (toolCalls != null)
+                else
                 {
-                    openAiMessage.ToolCalls = toolCalls;
+                    openAiMessage.Content = ConvertSingleContent(messageContents[0], out var toolCallId, out var toolCalls);
+                    if (toolCallId != null)
+                    {
+                        openAiMessage.ToolCallId = toolCallId;
+                    }
+                    if (toolCalls != null)
+                    {
+                        openAiMessage.ToolCalls = toolCalls;
+                    }
                 }
             }
             else
             {
                 // Multiple contents - convert to array format
-                openAiMessage.Content = ConvertMultipleContents(contents, out var toolCalls);
+                openAiMessage.Content = ConvertMultipleContents(messageContents, out var toolCalls);
                 if (toolCalls != null && toolCalls.Count > 0)
                 {
                     openAiMessage.ToolCalls = toolCalls;
                 }
             }
 
-            if (openAiMessage.Content != null || openAiMessage.ToolCalls != null)
+            if (openAiMessage.Content != null || openAiMessage.ReasoningContent != null || openAiMessage.ToolCalls != null)
             {
                 // Only add messages that have content or tool calls to avoid sending empty messages to OpenAI
                 result.Add(openAiMessage);
@@ -217,6 +314,9 @@ public static class OpenAiRequestMapper
         {
             case TextContent textContent:
                 return textContent.Text;
+
+            case TextReasoningContent textReasoningContent:
+                return textReasoningContent.Text;
 
             case FunctionCallContent functionCall:
                 // Serialize arguments to JSON string for OpenAI API

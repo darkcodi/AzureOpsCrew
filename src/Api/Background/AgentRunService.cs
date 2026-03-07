@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
 using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.AgentServices;
@@ -46,14 +47,15 @@ public class AgentRunService
             while (!ct.IsCancellationRequested && iteration < maxIterations)
             {
                 iteration++;
-                Log.Debug("[BACKGROUND] Agent {AgentId} iteration {Iteration}", agentId, iteration);
+                var chatMessageId = Guid.NewGuid(); // This will be used to link all thoughts from this iteration to the same message
+                Log.Debug("[BACKGROUND] Generated new ChatMessageId {ChatMessageId} for agent {AgentId} iteration {Iteration}", chatMessageId, agentId, iteration);
 
                 // load new DB state for each iteration to get the latest messages and thoughts
                 var data = await LoadAgentRunData(agentId, chatId, ct);
 
                 // Make one LLM call
                 var newAgentThoughts = new List<AocAgentThought>();
-                await foreach (var agentThought in CallLlm(data, ct))
+                await foreach (var agentThought in CallLlm(data, chatMessageId, ct))
                 {
                     newAgentThoughts.Add(agentThought);
                 }
@@ -62,6 +64,23 @@ public class AgentRunService
                 await SaveRawLlmHttpCall(agentId, chatId, newAgentThoughts, ct);
                 SquashTextContent(newAgentThoughts);
                 await SaveAgentThoughts(agentId, chatId, newAgentThoughts, ct);
+
+                // Broadcast reasoning content via SignalR
+                if (data.DmChannel != null && _channelEventBroadcaster != null)
+                {
+                    foreach (var thought in newAgentThoughts)
+                    {
+                        if (thought.ContentDto.ToAocAiContent() is AocTextReasoningContent reasoning)
+                        {
+                            var evt = new ReasoningContentEvent
+                            {
+                                Text = reasoning.Text,
+                                Timestamp = DateTimeOffset.UtcNow,
+                            };
+                            await _channelEventBroadcaster.BroadcastDmReasoningContentAsync(data.DmChannel.Id, evt);
+                        }
+                    }
+                }
 
                 // Execute tools and save results to DB
                 var newToolCallResults = new List<AocAgentThought>();
@@ -74,8 +93,23 @@ public class AgentRunService
                 foreach (var toolCall in newToolCalls)
                 {
                     var toolCallResult = await ExecuteToolCall(toolCall, data);
-                    var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow);
+                    var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow, chatMessageId);
                     newToolCallResults.Add(toolResultMessage);
+
+                    if (data.DmChannel != null && _channelEventBroadcaster != null)
+                    {
+                        var isError = (toolCallResult.Result as ToolCallResult)?.IsError ?? false;
+                        var evt = new ToolCallCompletedEvent
+                        {
+                            ToolName = toolCall.Name,
+                            CallId = toolCall.CallId,
+                            Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
+                            Result = toolCallResult.Result,
+                            IsError = isError,
+                            Timestamp = DateTimeOffset.UtcNow,
+                        };
+                        await _channelEventBroadcaster.BroadcastDmToolCallCompletedAsync(data.DmChannel.Id, evt);
+                    }
                 }
                 await SaveAgentThoughts(agentId, chatId, newToolCallResults, ct);
 
@@ -201,7 +235,7 @@ public class AgentRunService
         };
     }
 
-    private async IAsyncEnumerable<AocAgentThought> CallLlm(AgentRunData data, [EnumeratorCancellation] CancellationToken ct)
+    private async IAsyncEnumerable<AocAgentThought> CallLlm(AgentRunData data, Guid chatMessageId, [EnumeratorCancellation] CancellationToken ct)
     {
         Log.Debug("[BACKGROUND] Calling LLM for agent {AgentId} with model {Model}", data.Agent.Id, data.Agent.Info.Model);
 
@@ -213,10 +247,39 @@ public class AgentRunService
         var agentSession = await aiAgent.CreateSessionAsync(ct);
         var runOptions = new AgentRunOptions { AllowBackgroundResponses = false };
 
+        // Group thoughts by ChatMessageId to reconstruct proper multi-content messages
+        // Thoughts with the same ChatMessageId belong to the same original message
+        var thoughtGroups = new List<List<AocAgentThought>>();
+
+        var thoughtsByChatMessageId = data.LlmThoughts
+            .GroupBy(t => t.ChatMessageId)
+            .Select(g => g.OrderBy(t => t.CreatedAt).Select(AocAgentThought.FromDomain).ToList())
+            .ToList();
+
+        // Add groups with proper ChatMessageId
+        thoughtGroups.AddRange(thoughtsByChatMessageId);
+
+        var chatMessagesFromThoughts = new List<ChatMessage>();
+        foreach (var group in thoughtGroups)
+        {
+            var firstThought = group.First();
+            var allContents = group
+                .Select(t => t.ContentDto.ToAocAiContent()?.ToAiContent())
+                .Where(c => c != null)
+                .Cast<AIContent>()
+                .ToList();
+
+            chatMessagesFromThoughts.Add(new ChatMessage(firstThought.Role, allContents)
+            {
+                Role = firstThought.Role,
+                AuthorName = firstThought.AuthorName,
+                CreatedAt = new DateTimeOffset(firstThought.CreatedAt, TimeSpan.Zero),
+            });
+        }
+
         var llmThoughtIds = data.LlmThoughts.Select(t => t.Id).ToHashSet();
         var chatMessages = data.ChatMessages.Where(x => !llmThoughtIds.Contains(x.AgentThoughtId ?? Guid.Empty)).Select(m => m.ToChatMessage()).ToList();
-        var thoughts = data.LlmThoughts.Select(x => AocAgentThought.FromDomain(x).ToChatMessage()).ToList();
-        var allMessages = chatMessages.Concat(thoughts).OrderBy(x => x.CreatedAt).ToList();
+        var allMessages = chatMessages.Concat(chatMessagesFromThoughts).OrderBy(x => x.CreatedAt).ToList();
 
         await foreach (AgentResponseUpdate update in aiAgent.RunStreamingAsync(allMessages, agentSession, runOptions, ct))
         {
@@ -231,7 +294,7 @@ public class AgentRunService
                     await Task.Delay(TimeSpan.FromMilliseconds(1));
                     var now = DateTime.UtcNow;
 
-                    var newMessage = AocAgentThought.FromContent(parsedContent, update.Role ?? ChatRole.Assistant, data.Agent.Info.Username, now);
+                    var newMessage = AocAgentThought.FromContent(parsedContent, update.Role ?? ChatRole.Assistant, data.Agent.Info.Username, now, chatMessageId);
                     Log.Verbose("[BACKGROUND] LLM response: {Role} - {ContentType}", update.Role ?? ChatRole.Assistant, parsedContent.GetType().Name);
 
                     yield return newMessage;

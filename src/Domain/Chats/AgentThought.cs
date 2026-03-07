@@ -14,4 +14,5 @@ public class AgentThought
     public DateTime CreatedAt { get; set; }
     public LlmMessageContentType ContentType { get; set; } = LlmMessageContentType.None;
     public string ContentJson { get; set; } = string.Empty;
+    public Guid ChatMessageId { get; set; } = Guid.Empty;
 }

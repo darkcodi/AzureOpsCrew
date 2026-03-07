@@ -56,5 +56,11 @@ public sealed class AgentThoughtEntityTypeConfiguration : IEntityTypeConfigurati
 
         builder.HasIndex(m => m.AgentId);
         builder.HasIndex(m => m.CreatedAt);
+
+        builder.Property(m => m.ChatMessageId)
+               .IsRequired()
+               .HasDefaultValue(Guid.Empty);
+
+        builder.HasIndex(m => m.ChatMessageId);
     }
 }

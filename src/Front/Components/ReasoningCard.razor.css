@@ -1,0 +1,66 @@
+.reasoning-card {
+    display: flex;
+    flex-direction: column;
+    margin: 4px 48px 4px 72px;
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.reasoning-card-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: hsl(214, 5%, 55%);
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    text-align: left;
+    width: fit-content;
+    transition: color 0.15s ease;
+}
+
+.reasoning-card-header:hover {
+    color: hsl(214, 5%, 72%);
+}
+
+.reasoning-card-label {
+    font-style: italic;
+}
+
+.reasoning-card-chevron {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.reasoning-card-chevron.expanded {
+    transform: rotate(180deg);
+}
+
+.reasoning-card-body {
+    padding: 4px 0 6px 0;
+}
+
+.reasoning-card-text {
+    margin: 0;
+    padding: 0;
+    color: hsl(214, 5%, 48%);
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@media (max-width: 768px) {
+    .reasoning-card {
+        margin: 4px 16px 4px 56px;
+    }
+}

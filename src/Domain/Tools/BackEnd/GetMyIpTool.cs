@@ -67,7 +67,7 @@ public class GetMyIpTool : ITool
         }
         catch (Exception e)
         {
-            return new ToolCallResult(callId, new { ErrorMessage = $"Error calling showMyIp API: {e.Message}" }, IsError: true);
+            return new ToolCallResult(callId, new { ErrorMessage = e.Message }, IsError: true);
         }
     }
 }

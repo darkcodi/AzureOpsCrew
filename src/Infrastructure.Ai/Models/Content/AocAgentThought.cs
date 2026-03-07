@@ -13,6 +13,7 @@ public class AocAgentThought
     public DateTime CreatedAt { get; set; }
     public AocAiContentDto ContentDto { get; set; } = new AocAiContentDto();
     public bool IsHidden { get; set; }
+    public Guid ChatMessageId { get; set; } = Guid.Empty;
 
     public ChatMessage ToChatMessage()
     {
@@ -29,7 +30,7 @@ public class AocAgentThought
         };
     }
 
-    public static AocAgentThought FromContent(AocAiContent content, ChatRole role, string authorName, DateTime createdAt)
+    public static AocAgentThought FromContent(AocAiContent content, ChatRole role, string authorName, DateTime createdAt, Guid chatMessageId)
     {
         var contentDto = AocAiContentDto.FromAocAiContent(content);
 
@@ -44,6 +45,7 @@ public class AocAgentThought
             CreatedAt = createdAt,
             ContentDto = contentDto,
             IsHidden = isHidden,
+            ChatMessageId = chatMessageId,
         };
     }
 
@@ -61,6 +63,7 @@ public class AocAgentThought
             CreatedAt = CreatedAt,
             ContentType = Enum.Parse<LlmMessageContentType>(ContentDto.ContentType.ToString()),
             ContentJson = ContentDto.Content,
+            ChatMessageId = ChatMessageId,
         };
     }
 
@@ -79,6 +82,7 @@ public class AocAgentThought
             CreatedAt = domainMessage.CreatedAt,
             ContentDto = contentDto,
             IsHidden = domainMessage.IsHidden,
+            ChatMessageId = domainMessage.ChatMessageId,
         };
     }
 }
