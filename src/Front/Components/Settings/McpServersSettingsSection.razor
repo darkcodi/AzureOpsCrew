@@ -131,7 +131,7 @@ else
                 <span class="agents-back-icon">@((MarkupString)SvgChevronLeft)</span>
                 <span>Back to list</span>
             </button>
-            <button type="button" class="agent-row-btn agent-row-btn-delete" aria-label="Remove MCP server" @onclick="RemoveCurrentMcpServer">
+            <button type="button" class="agent-row-btn agent-row-btn-delete" aria-label="Remove MCP server" @onclick="() => _removeMcpServerPending = McpServers?.FirstOrDefault(s => s.Id == SelectedMcpServerId)">
                 @((MarkupString)SvgTrash2)
             </button>
         </div>
@@ -165,6 +165,32 @@ else
     }
 }
 
+@* ---- Remove MCP Server Dialog ---- *@
+@if (_removeMcpServerPending != null)
+{
+    <div class="dialog-overlay" @onclick="() => _removeMcpServerPending = null">
+        <div class="dialog-box" @onclick:stopPropagation="true" role="dialog" aria-labelledby="remove-mcp-server-title" aria-describedby="remove-mcp-server-desc">
+            <div class="dialog-header">
+                <h3 id="remove-mcp-server-title" class="dialog-title">Remove MCP Server</h3>
+                <div id="remove-mcp-server-desc" class="dialog-description">
+                    <p>Are you sure you want to remove <strong class="text-white">@(string.IsNullOrWhiteSpace(_removeMcpServerPending.Name) ? "this server" : _removeMcpServerPending.Name)</strong>?</p>
+                    <p>This cannot be undone.</p>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="btn btn-secondary" disabled="@_isRemovingMcpServer"
+                        @onclick="() => _removeMcpServerPending = null">
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-danger" disabled="@_isRemovingMcpServer"
+                        @onclick="ConfirmRemoveMcpServer">
+                    @(_isRemovingMcpServer ? "Removing..." : "Remove MCP Server")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public List<McpServerConfigurationItem> McpServers { get; set; } = [];
     [Parameter] public HashSet<string> ModifiedMcpServerIds { get; set; } = [];
@@ -190,6 +216,8 @@ else
     private string? _hoveredToolKey;
     private CancellationTokenSource? _tooltipCts;
     private string _mcpSubView = "list"; // "list" | "form"
+    private McpServerConfigurationItem? _removeMcpServerPending;
+    private bool _isRemovingMcpServer;
 
     private const int TooltipDelayMs = 400;
 
@@ -227,6 +255,21 @@ else
     private async Task RemoveCurrentMcpServer()
     {
         await OnRemoveCurrentMcpServer.InvokeAsync();
+    }
+
+    private async Task ConfirmRemoveMcpServer()
+    {
+        if (_removeMcpServerPending == null) return;
+        _isRemovingMcpServer = true;
+        try
+        {
+            await OnRemoveCurrentMcpServer.InvokeAsync();
+            _removeMcpServerPending = null;
+        }
+        finally
+        {
+            _isRemovingMcpServer = false;
+        }
     }
 
     private async Task ShowToolTooltip(string serverId, string toolName)
