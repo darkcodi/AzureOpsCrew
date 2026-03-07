@@ -296,8 +296,15 @@ else
 
     private List<McpServerConfigurationItem> FilteredMcpServers =>
         McpServers
-            .OrderBy(server => server.DateCreated != null && DateTime.TryParse(server.DateCreated, out var createdAt) ? createdAt.Ticks : long.MaxValue)
+            .OrderBy(server => GetSortKeyByDateCreated(server.DateCreated))
             .ToList();
+
+    /// <summary>Sort key for creation date: oldest first (ascending). Items without a parseable date go last.</summary>
+    private static long GetSortKeyByDateCreated(string? dateCreated)
+    {
+        if (string.IsNullOrWhiteSpace(dateCreated)) return long.MaxValue;
+        return DateTime.TryParse(dateCreated, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var dt) ? dt.Ticks : long.MaxValue;
+    }
 
     private void ToggleToolsExpanded(string serverId)
     {

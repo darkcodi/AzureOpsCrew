@@ -180,7 +180,7 @@
         {
             var apiMcpServers = await SettingsService.GetMcpServersAsync();
             _mcpServers = apiMcpServers
-                .OrderBy(server => server.DateCreated != null && DateTime.TryParse(server.DateCreated, out var createdAt) ? createdAt.Ticks : long.MaxValue)
+                .OrderBy(server => GetMcpServerSortKey(server.DateCreated))
                 .Select(server => server.Clone())
                 .ToList();
         }
@@ -234,6 +234,13 @@
 
     private static string? NormalizeOptionalMcpText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    /// <summary>Sort key for MCP server by creation date: oldest first. Items without a parseable date go last.</summary>
+    private static long GetMcpServerSortKey(string? dateCreated)
+    {
+        if (string.IsNullOrWhiteSpace(dateCreated)) return long.MaxValue;
+        return DateTime.TryParse(dateCreated, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var dt) ? dt.Ticks : long.MaxValue;
+    }
 
     private void HandleSettingsChange(SettingsState updated)
     {
