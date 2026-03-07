@@ -3,7 +3,7 @@ using FluentMigrator;
 namespace AzureOpsCrew.Infrastructure.Db.Migrations;
 
 [Migration(2026_03_06_22_45_00, "Add ChatMessageId column to AgentThoughts table")]
-public class M029_AddChatMessageIdToAgentThoughts : Migration
+public class M030_AddChatMessageIdToAgentThoughts : Migration
 {
     public override void Up()
     {
