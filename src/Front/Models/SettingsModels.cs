@@ -379,6 +379,44 @@ public enum SettingsSection
     Advanced,
 }
 
+public static class SettingsSectionRoutes
+{
+    private static readonly Dictionary<string, SettingsSection> SlugToSection = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["account"] = SettingsSection.Account,
+        ["appearance"] = SettingsSection.Appearance,
+        ["notifications"] = SettingsSection.Notifications,
+        ["providers"] = SettingsSection.Providers,
+        ["mcp-servers"] = SettingsSection.McpServers,
+        ["agents"] = SettingsSection.Agents,
+        ["routing"] = SettingsSection.Routing,
+        ["advanced"] = SettingsSection.Advanced,
+    };
+
+    private static readonly Dictionary<SettingsSection, string> SectionToSlug = new()
+    {
+        [SettingsSection.Account] = "account",
+        [SettingsSection.Appearance] = "appearance",
+        [SettingsSection.Notifications] = "notifications",
+        [SettingsSection.Providers] = "providers",
+        [SettingsSection.McpServers] = "mcp-servers",
+        [SettingsSection.Agents] = "agents",
+        [SettingsSection.Routing] = "routing",
+        [SettingsSection.Advanced] = "advanced",
+    };
+
+    public static SettingsSection FromSlug(string? slug) =>
+        !string.IsNullOrEmpty(slug) && SlugToSection.TryGetValue(slug, out var section)
+            ? section
+            : SettingsSection.Providers;
+
+    public static string ToSlug(SettingsSection section) =>
+        SectionToSlug.GetValueOrDefault(section, "providers");
+
+    public static string ToPath(SettingsSection section) =>
+        $"/settings/{ToSlug(section)}";
+}
+
 /// <summary>
 /// Matches the raw JSON shape returned by the backend GET /api/providers endpoint.
 /// Field names differ from the frontend <see cref="Provider"/> model.

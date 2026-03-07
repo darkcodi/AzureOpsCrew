@@ -1,4 +1,5 @@
 @page "/settings"
+@page "/settings/{SectionSlug}"
 
 @inject SettingsService SettingsService
 @inject NavigationManager Navigation
@@ -7,8 +8,7 @@
 
 <MainLayout>
     <LeftSidebar>
-        <SettingsSidebar ActiveSection="_activeSection"
-                         OnSectionChange="section => { _activeSection = section; StateHasChanged(); }" />
+        <SettingsSidebar ActiveSection="_activeSection" />
     </LeftSidebar>
     <MainArea>
         <div class="settings-main-area">
@@ -44,8 +44,6 @@
                              McpServerAuthResetKey="@_mcpServerAuthResetKey"
                              McpServerError="@_mcpServerError"
                              Agents="@_agents"
-                             OnEditAgent="HandleEditAgent"
-                             OnCreateAgent="HandleCreateAgent"
                              OnDeleteAgent="HandleDeleteAgent"
                              OnAgentsChanged="HandleAgentsChanged" />
 
@@ -80,7 +78,14 @@
 </MainLayout>
 
 @code {
+    [Parameter] public string? SectionSlug { get; set; }
+
     private SettingsSection _activeSection = SettingsSection.Providers;
+
+    protected override void OnParametersSet()
+    {
+        _activeSection = SettingsSectionRoutes.FromSlug(SectionSlug);
+    }
     private SettingsState _settings = new() { Providers = [] };
     private SettingsState _savedSettings = new() { Providers = [] };
     private string? _selectedProviderId;
@@ -599,16 +604,6 @@
             if (p.Status == "disabled") continue;
             p.Status = "enabled";
         }
-    }
-
-    private void HandleEditAgent(AgentDto agent)
-    {
-        // TODO: open edit agent dialog or navigate to agent management
-    }
-
-    private void HandleCreateAgent()
-    {
-        // TODO: open create agent dialog or navigate
     }
 
     private async Task HandleDeleteAgent(Guid agentId)

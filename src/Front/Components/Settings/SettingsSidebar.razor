@@ -1,3 +1,5 @@
+@inject NavigationManager Navigation
+
 <div class="settings-sidebar">
     <div class="sidebar-header">
         Settings
@@ -14,7 +16,7 @@
                         var isActive = ActiveSection == item.Section;
                         <button type="button"
                                 class="nav-item @(isActive ? "active" : "")"
-                                @onclick="() => OnSectionChange.InvokeAsync(item.Section)">
+                                @onclick="() => NavigateToSection(item.Section)">
                             <span class="nav-icon">@((MarkupString)item.SvgIcon)</span>
                             <span class="nav-label">@item.Label</span>
                             @if (isActive)
@@ -40,7 +42,9 @@
 
 @code {
     [Parameter] public SettingsSection ActiveSection { get; set; }
-    [Parameter] public EventCallback<SettingsSection> OnSectionChange { get; set; }
+
+    private void NavigateToSection(SettingsSection section) =>
+        Navigation.NavigateTo(SettingsSectionRoutes.ToPath(section));
 
     private record NavItem(SettingsSection Section, string Label, string SvgIcon);
     private record NavGroup(string Label, NavItem[] Items);
