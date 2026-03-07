@@ -1,3 +1,5 @@
+@inject Front.Services.MarkdownService MarkdownService
+
 <div class="message-group @GetGroupClass() @GetOwnClass()">
     @if (!IsGrouped)
     {
@@ -22,8 +24,8 @@
                 <span class="message-timestamp">@GetFormattedTimestamp()</span>
             </div>
         }
-        <div class="message-text">
-            @Message.Text
+        <div class="message-text markdown-content">
+            @((MarkupString)MarkdownService.ConvertToHtml(Message.Text))
         </div>
     </div>
 </div>

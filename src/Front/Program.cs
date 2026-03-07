@@ -47,6 +47,7 @@ try
     builder.Services.AddScoped<AgentService>();
     builder.Services.AddScoped<AuthenticationService>();
     builder.Services.AddScoped<SettingsService>();
+    builder.Services.AddScoped<MarkdownService>();
 
     await builder.Build().RunAsync();
 }
