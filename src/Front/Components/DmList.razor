@@ -1,5 +1,6 @@
 @inject AppState AppState
 @implements IDisposable
+@inject NavigationManager NavigationManager
 
 <div class="channels-list">
     <div class="channels-list-inner">
@@ -61,7 +62,16 @@
 
     private void SelectDm(DmChannelDto dm)
     {
-        AppState.SelectedDm = dm;
+        var serverId = AppState.SelectedServer?.Id ?? ServerInfoDto.GetDefaultServers().LastOrDefault()?.Id;
+        if (serverId.HasValue)
+        {
+            NavigationManager.NavigateTo($"/dms/{dm.Id}");
+        }
+        else
+        {
+            // Fallback to state-based navigation if no server is available
+            AppState.SelectedDm = dm;
+        }
     }
 
     private List<DmChannelDto> GetAgentDms()

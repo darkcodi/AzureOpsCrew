@@ -1,6 +1,8 @@
 @page "/dms"
 @page "/dms/{dmId}"
 
+<PageTitle>@(AppState.SelectedDm != null ? $"AOC - @{GetDmName()}" : "AzureOpsCrew")</PageTitle>
+
 @using System.Text.Json
 @inject AppState AppState
 @implements IAsyncDisposable
@@ -9,6 +11,7 @@
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
 @inject ILogger<DmPage> Logger
+@inject NavigationManager Navigation
 
 <MainLayout>
     <LeftSidebar>
@@ -49,9 +52,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        SetDmIdFromRoute();
         await AppState.LoadAgents(AgentService);
         await AppState.LoadDms(DmService);
-        SetDmFromRoute();
         _appStateSubscription = AppState.SubscribeCurrentUser(OnStateChanged)
             .Combine(AppState.SubscribeSelectedDm(OnStateChanged))
             .Combine(AppState.SubscribeDms(OnStateChanged))
@@ -60,7 +63,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        SetDmFromRoute();
+        SetDmIdFromRoute();
         await LoadMessagesIfNeeded();
     }
 
@@ -208,7 +211,7 @@
         }
     }
 
-    private void SetDmFromRoute()
+    private void SetDmIdFromRoute()
     {
         if (!string.IsNullOrEmpty(DmId) && Guid.TryParse(DmId, out var parsedDmId))
         {
@@ -224,16 +227,10 @@
         if (string.IsNullOrEmpty(DmId))
         {
             // Try to use the last used DM
-            if (AppState.LastUsedDm.HasValue)
+            if (AppState.LastUsedDmId.HasValue)
             {
-                var lastDm = AppState.Dms.FirstOrDefault(d => d.Id == AppState.LastUsedDm.Value);
-                if (lastDm != null)
-                {
-                    AppState.SelectedDm = lastDm;
-                    return;
-                }
+                Navigation.NavigateTo($"/dms/{AppState.LastUsedDmId.Value}");
             }
-            AppState.SelectedDm = null;
         }
     }
 

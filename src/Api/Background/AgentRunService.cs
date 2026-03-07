@@ -98,7 +98,7 @@ public class AgentRunService
                 foreach (var toolCall in newToolCalls)
                 {
                     var toolCallResult = await ExecuteToolCall(toolCall, data);
-                    var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow, chatMessageId);
+                    var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow, Guid.NewGuid());
                     newToolCallResults.Add(toolResultMessage);
 
                     if (data.DmChannel != null && _channelEventBroadcaster != null)
