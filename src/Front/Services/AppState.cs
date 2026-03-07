@@ -11,8 +11,8 @@ public class AppState
     private readonly Reactive<ServerInfoDto?> _selectedServer = new();
     private readonly Reactive<ChannelDto?> _selectedChannel = new();
     private readonly Reactive<DmChannelDto?> _selectedDm = new();
-    private readonly Reactive<Guid?> _lastUsedChannel = new();
-    private readonly Reactive<Guid?> _lastUsedDm = new();
+    private readonly Reactive<Guid?> _lastUsedChannelId = new();
+    private readonly Reactive<Guid?> _lastUsedDmId = new();
     private readonly Reactive<AgentMindResponseDto?> _currentAgentMind = new();
     public readonly ReactiveList<ServerInfoDto> Servers = new(ServerInfoDto.GetDefaultServers());
     public readonly ReactiveList<ChannelDto> Channels = new();
@@ -39,7 +39,7 @@ public class AppState
             _selectedChannel.Value = value;
             if (value != null)
             {
-                _lastUsedChannel.Value = value.Id;
+                _lastUsedChannelId.Value = value.Id;
             }
         }
     }
@@ -52,21 +52,21 @@ public class AppState
             _selectedDm.Value = value;
             if (value != null)
             {
-                _lastUsedDm.Value = value.Id;
+                _lastUsedDmId.Value = value.Id;
             }
         }
     }
 
-    public Guid? LastUsedChannel
+    public Guid? LastUsedChannelId
     {
-        get => _lastUsedChannel.Value;
-        set => _lastUsedChannel.Value = value;
+        get => _lastUsedChannelId.Value;
+        set => _lastUsedChannelId.Value = value;
     }
 
-    public Guid? LastUsedDm
+    public Guid? LastUsedDmId
     {
-        get => _lastUsedDm.Value;
-        set => _lastUsedDm.Value = value;
+        get => _lastUsedDmId.Value;
+        set => _lastUsedDmId.Value = value;
     }
 
     public AgentMindResponseDto? CurrentAgentMind
@@ -75,8 +75,8 @@ public class AppState
         set => _currentAgentMind.Value = value;
     }
 
-    public IDisposable SubscribeLastUsedChannel(Action handler) => _lastUsedChannel.Subscribe(handler);
-    public IDisposable SubscribeLastUsedDm(Action handler) => _lastUsedDm.Subscribe(handler);
+    public IDisposable SubscribeLastUsedChannel(Action handler) => _lastUsedChannelId.Subscribe(handler);
+    public IDisposable SubscribeLastUsedDm(Action handler) => _lastUsedDmId.Subscribe(handler);
 
     public IDisposable SubscribeCurrentUser(Action handler) => _currentUser.Subscribe(handler);
     public IDisposable SubscribeSelectedServer(Action handler) => _selectedServer.Subscribe(handler);

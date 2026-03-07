@@ -8,6 +8,7 @@
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
 @inject ILogger<ServerPage> Logger
+@inject NavigationManager Navigation
 
 <MainLayout>
     <LeftSidebar>
@@ -70,9 +71,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        SerServerIdAndChannelIdFromRoute();
         await AppState.LoadChannels(ChannelService);
         await AppState.LoadAgents(AgentService);
-        SetChannelAndServerFromRoute();
         _appStateSubscription = AppState.SubscribeCurrentUser(OnStateChanged)
             .Combine(AppState.SubscribeSelectedChannel(OnStateChanged))
             .Combine(AppState.SubscribeChannels(OnStateChanged));
@@ -80,7 +81,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        SetChannelAndServerFromRoute();
+        SerServerIdAndChannelIdFromRoute();
         await LoadMessagesIfNeeded();
     }
 
@@ -132,7 +133,7 @@
         }
     }
 
-    private void SetChannelAndServerFromRoute()
+    private void SerServerIdAndChannelIdFromRoute()
     {
         // Set server from route
         if (!string.IsNullOrEmpty(ServerId) && Guid.TryParse(ServerId, out var parsedServerId))
@@ -159,16 +160,10 @@
         if (string.IsNullOrEmpty(ChannelId))
         {
             // Try to use the last used channel
-            if (AppState.LastUsedChannel.HasValue)
+            if (AppState.LastUsedChannelId.HasValue)
             {
-                var lastChannel = AppState.Channels.FirstOrDefault(c => c.Id == AppState.LastUsedChannel.Value);
-                if (lastChannel != null)
-                {
-                    AppState.SelectedChannel = lastChannel;
-                    return;
-                }
+                Navigation.NavigateTo($"/servers/{AppState.SelectedServer?.Id}/channels/{AppState.LastUsedChannelId.Value}");
             }
-            AppState.SelectedChannel = null;
         }
     }
 }
