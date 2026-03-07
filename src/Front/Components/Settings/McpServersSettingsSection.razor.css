@@ -26,6 +26,11 @@
     border-color: hsl(228, 6%, 32%);
 }
 
+.mcp-server-card .agent-row-actions {
+    flex-shrink: 0;
+    align-self: center;
+}
+
 .mcp-avatar-wrapper {
     position: relative;
     flex-shrink: 0;

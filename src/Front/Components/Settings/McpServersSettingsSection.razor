@@ -78,6 +78,12 @@
                 }
             </div>
 
+            <div class="agent-row-actions">
+                <button type="button" class="agent-row-btn agent-row-btn-edit" title="Edit @(string.IsNullOrWhiteSpace(server.Name) ? "server" : server.Name)" @onclick="() => OnSelectMcpServer.InvokeAsync(server.Id)">
+                    @((MarkupString)SvgPencil)
+                </button>
+            </div>
+
             <button type="button" role="switch" aria-checked="@server.IsEnabled"
                     class="toggle-switch @(server.IsEnabled ? "on" : "")"
                     disabled="@(!canToggle)"
@@ -205,4 +211,6 @@
         """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>""";
     private const string SvgChevron =
         """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>""";
+    private const string SvgPencil =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>""";
 }
