@@ -23,6 +23,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using AzureOpsCrew.Api.Background.ToolExecutors;
 
 namespace AzureOpsCrew.Api.Extensions;
 

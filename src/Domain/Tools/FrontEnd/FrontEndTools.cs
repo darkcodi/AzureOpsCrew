@@ -1,7 +1,7 @@
 using System.Text.Json;
 using AzureOpsCrew.Domain.Utils;
 
-namespace AzureOpsCrew.Domain.Tools;
+namespace AzureOpsCrew.Domain.Tools.FrontEnd;
 
 public static class FrontEndTools
 {

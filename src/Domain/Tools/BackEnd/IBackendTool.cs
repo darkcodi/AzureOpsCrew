@@ -1,6 +1,6 @@
 using AzureOpsCrew.Domain.Agents;
 
-namespace AzureOpsCrew.Domain.Tools;
+namespace AzureOpsCrew.Domain.Tools.BackEnd;
 
 public interface IBackendTool
 {

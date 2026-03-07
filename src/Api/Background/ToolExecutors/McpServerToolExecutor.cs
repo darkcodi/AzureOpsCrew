@@ -4,7 +4,7 @@ using AzureOpsCrew.Infrastructure.Ai.Mcp;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using Serilog;
 
-namespace AzureOpsCrew.Api.Background;
+namespace AzureOpsCrew.Api.Background.ToolExecutors;
 
 public class McpServerToolExecutor
 {

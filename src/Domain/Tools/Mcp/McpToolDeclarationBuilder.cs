@@ -1,6 +1,6 @@
-using AzureOpsCrew.Domain.Tools;
+using AzureOpsCrew.Domain.McpServerConfigurations;
 
-namespace AzureOpsCrew.Domain.McpServerConfigurations;
+namespace AzureOpsCrew.Domain.Tools.Mcp;
 
 // Converts enabled MCP server tool configurations into ToolDeclarations that can be passed to the LLM as available tools.
 public static class McpToolDeclarationBuilder

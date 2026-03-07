@@ -5,7 +5,6 @@ using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.ProviderServices;
-using AzureOpsCrew.Domain.McpServerConfigurations;
 using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Domain.Tools.BackEnd;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
@@ -14,6 +13,9 @@ using Microsoft.Agents.AI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Serilog;
+using AzureOpsCrew.Domain.Tools.FrontEnd;
+using AzureOpsCrew.Domain.Tools.Mcp;
+using AzureOpsCrew.Api.Background.ToolExecutors;
 
 namespace AzureOpsCrew.Api.Background;
 
