@@ -1,6 +1,8 @@
 @page "/servers/{serverId}"
 @page "/servers/{serverId}/channels/{channelId}"
 
+<PageTitle>@(AppState.SelectedChannel != null ? $"AOC - #{AppState.SelectedChannel.Name}" : "AzureOpsCrew")</PageTitle>
+
 @inject AppState AppState
 @implements IAsyncDisposable
 @inject ChannelService ChannelService

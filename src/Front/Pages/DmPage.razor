@@ -1,6 +1,8 @@
 @page "/dms"
 @page "/dms/{dmId}"
 
+<PageTitle>@(AppState.SelectedDm != null ? $"AOC - @{GetDmName()}" : "AzureOpsCrew")</PageTitle>
+
 @using System.Text.Json
 @inject AppState AppState
 @implements IAsyncDisposable
