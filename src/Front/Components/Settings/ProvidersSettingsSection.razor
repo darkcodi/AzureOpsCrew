@@ -1,0 +1,451 @@
+<div class="section-header">
+    <h2 class="section-title">Settings</h2>
+    <p class="section-description">Connect model backends (cloud/local). Keys are stored locally and never shown again after save.</p>
+</div>
+
+<div class="search-bar">
+    <span class="search-icon">@((MarkupString)SvgSearch)</span>
+    <input type="text" @bind="_searchQuery" @bind:event="oninput" placeholder="Search settings..." class="search-input" />
+</div>
+
+<div class="providers-layout">
+    @* Provider list *@
+    <div class="provider-list">
+        <h3 class="provider-list-title">Providers</h3>
+        <div class="provider-list-items">
+            @foreach (var provider in FilteredProviders)
+            {
+                var isSelected = SelectedProviderId == provider.Id;
+                var badge = GetStatusBadge(provider);
+                <button type="button"
+                        class="provider-card @(isSelected ? "selected" : "")"
+                        @onclick="() => OnSelectProvider.InvokeAsync(provider.Id)">
+                    <span class="provider-card-name">@provider.Name</span>
+                    <span class="provider-card-status" style="color: @badge.Color">
+                        <span class="status-icon">@((MarkupString)badge.Icon)</span>
+                        @badge.Label
+                    </span>
+                </button>
+            }
+            <button type="button" class="add-provider-btn" @onclick="() => _addProviderDialogOpen = true">
+                <span class="add-provider-icon">@((MarkupString)SvgPlus)</span>
+                <span>Add Provider</span>
+            </button>
+        </div>
+    </div>
+
+    @* Provider detail form *@
+    @if (SelectedProvider is { } sp)
+    {
+        var badge = GetStatusBadge(sp);
+        var providerType = sp.ProviderType ?? sp.Name;
+        var description = GetProviderDescription(providerType);
+
+        <div class="provider-detail">
+            <div class="provider-detail-header">
+                <h3 class="provider-detail-name">@sp.Name</h3>
+                <div class="provider-detail-status">
+                    <span class="provider-card-status" style="color: @badge.Color">
+                        <span class="status-icon">@((MarkupString)badge.Icon)</span>
+                        @badge.Label
+                    </span>
+                    @if (sp.IsDefault)
+                    {
+                        <span class="default-label">&middot; Default provider for new agents</span>
+                    }
+                </div>
+            </div>
+
+            @if (description != null)
+            {
+                <div class="provider-description-card">
+                    <h4 class="description-label">Description</h4>
+                    <p class="description-text">
+                        @description.Value.Desc
+                        <a href="@description.Value.Url" target="_blank" rel="noopener noreferrer" class="description-link">@description.Value.UrlLabel</a>
+                    </p>
+                </div>
+            }
+
+            @* Type *@
+            <div class="form-field">
+                <label class="form-label">Type</label>
+                <select class="form-select" disabled value="@providerType">
+                    <option value="Anthropic">Anthropic</option>
+                    <option value="AzureFoundry">Azure Foundry</option>
+                    <option value="Ollama (Local)">Ollama (Local)</option>
+                    <option value="OpenAI">OpenAI</option>
+                    <option value="OpenRouter">OpenRouter</option>
+                </select>
+            </div>
+
+            @* Name *@
+            <div class="form-field">
+                <label class="form-label">Name</label>
+                <input type="text" class="form-input" value="@sp.Name" placeholder="Provider display name"
+                       @oninput="e => UpdateProvider(sp.Id, p => p.Name = e.Value?.ToString() ?? string.Empty)" />
+            </div>
+
+            @* API Key *@
+            <div class="form-field">
+                <label class="form-label">@GetApiKeyLabel(sp)</label>
+                <div class="input-with-action">
+                    <input type="@(_showApiKey ? "text" : "password")" class="form-input has-right-element"
+                           value="@sp.ApiKey"
+                           placeholder="@(!string.IsNullOrEmpty(sp.BackendId) && sp.HasApiKey == true ? "Enter new key only if you want to change it" : "Enter API key...")"
+                           @oninput="e => UpdateProvider(sp.Id, p => p.ApiKey = e.Value?.ToString() ?? string.Empty)" />
+                    <button type="button" class="input-action-btn" @onclick="() => _showApiKey = !_showApiKey"
+                            title="@(_showApiKey ? "Hide API key" : "Show API key")">
+                        @((MarkupString)(_showApiKey ? SvgEyeOff : SvgEye))
+                    </button>
+                </div>
+                <p class="form-description">
+                    @{ var apiKeyDesc = GetApiKeyDescription(providerType); }
+                    @apiKeyDesc.Text
+                    @if (apiKeyDesc.Url != null && apiKeyDesc.LinkText != null)
+                    {
+                        <a href="@apiKeyDesc.Url" target="_blank" rel="noopener noreferrer" class="description-link">@apiKeyDesc.LinkText</a>
+                    }
+                </p>
+            </div>
+
+            @* Base URL *@
+            <div class="form-field">
+                <label class="form-label">Base URL</label>
+                <input type="text" class="form-input" value="@sp.BaseUrl" placeholder="https://api.example.com/v1"
+                       @oninput="e => UpdateProvider(sp.Id, p => p.BaseUrl = e.Value?.ToString() ?? string.Empty)" />
+            </div>
+
+            @* Selected models *@
+            <div class="form-field">
+                <label class="form-label">Selected models</label>
+                <div class="model-chips-container">
+                    @if ((sp.SelectedModels ?? []).Count == 0)
+                    {
+                        <span class="model-chips-placeholder">Click models in the panel or add one manually</span>
+                    }
+                    @foreach (var modelId in sp.SelectedModels ?? [])
+                    {
+                        <span class="model-chip">
+                            @modelId
+                            <button type="button" class="model-chip-remove" @onclick="() => OnToggleSelectedModel.InvokeAsync(modelId)">
+                                @((MarkupString)SvgX)
+                            </button>
+                        </span>
+                    }
+                    <span class="custom-model-input-wrapper">
+                        <input type="text" class="custom-model-input" @bind="_customModelInput" @bind:event="oninput"
+                               placeholder="Type custom model name..."
+                               @onkeydown="HandleCustomModelKeyDown" />
+                        <button type="button" class="input-action-btn" @onclick="AddCustomModel" title="Add custom model">
+                            @((MarkupString)SvgPlus)
+                        </button>
+                    </span>
+                </div>
+            </div>
+
+            @* Default model *@
+            <div class="form-field">
+                <label class="form-label">Default model (optional)</label>
+                <select class="form-select"
+                        value="@(sp.SelectedModels?.Contains(sp.DefaultModel) == true ? sp.DefaultModel : "")"
+                        @onchange="e => UpdateProvider(sp.Id, p => p.DefaultModel = e.Value?.ToString() ?? string.Empty)">
+                    <option value="">None</option>
+                    @foreach (var m in sp.SelectedModels ?? [])
+                    {
+                        <option value="@m">@m</option>
+                    }
+                </select>
+                <p class="form-description">Choose from your selected models above.</p>
+            </div>
+
+            @* Enabled toggle *@
+            <div class="form-field">
+                <label class="form-label">Enabled</label>
+                <button type="button" role="switch" aria-checked="@(sp.Status != "disabled")"
+                        class="toggle-switch @(sp.Status != "disabled" ? "on" : "")"
+                        @onclick="() => ToggleProviderEnabled(sp)">
+                    <span class="toggle-knob"></span>
+                </button>
+                <p class="form-description">When off, this provider is disabled and won't be used.</p>
+            </div>
+
+            @if (!string.IsNullOrEmpty(SaveError))
+            {
+                <p class="save-error">@SaveError</p>
+            }
+
+            <div class="action-buttons">
+                <button type="button" class="btn btn-primary"
+                        disabled="@(IsSaving || SelectedProviderId == null || !(ModifiedProviderIds.Contains(SelectedProviderId!) || string.IsNullOrEmpty(sp.BackendId)))"
+                        @onclick="OnSaveCurrentProvider">
+                    @(IsSaving ? "Saving...." : "Save")
+                </button>
+                <button type="button" class="btn btn-secondary" disabled="@(IsSaving || IsTesting)"
+                        @onclick="OnTestProvider">
+                    @(IsTesting ? "Testing...." : "Test")
+                </button>
+                <button type="button" class="btn btn-danger" disabled="@IsSaving"
+                        @onclick="HandleRemoveClick">
+                    Remove
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@* ---- Add Provider Dialog ---- *@
+@if (_addProviderDialogOpen)
+{
+    <div class="dialog-overlay" @onclick="CloseAddProviderDialog">
+        <div class="dialog-box" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <h3 class="dialog-title">Add provider</h3>
+                <p class="dialog-description">Choose a provider to add to your settings.</p>
+            </div>
+            <div class="dialog-body">
+                @foreach (var kp in KnownProviders)
+                {
+                    <button type="button" class="provider-option" @onclick="() => AddProvider(kp)">
+                        <span class="provider-option-icon">@((MarkupString)kp.SvgIcon)</span>
+                        <span>@kp.Name</span>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@* ---- Remove Provider Dialog ---- *@
+@if (_removeProviderPending != null)
+{
+    <div class="dialog-overlay" @onclick="() => _removeProviderPending = null">
+        <div class="dialog-box" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <h3 class="dialog-title">Remove Provider</h3>
+                <div class="dialog-description">
+                    <p>Are you sure you want to remove <strong class="text-white">@_removeProviderPending.Name</strong>?</p>
+                    <p>This cannot be undone.</p>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="btn btn-secondary" disabled="@_isRemovingProvider"
+                        @onclick="() => _removeProviderPending = null">
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-danger" disabled="@_isRemovingProvider"
+                        @onclick="ConfirmRemoveProvider">
+                    @(_isRemovingProvider ? "Removing...." : "Remove")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public SettingsState Settings { get; set; } = new();
+    [Parameter] public SettingsState SavedSettings { get; set; } = new();
+    [Parameter] public HashSet<string> ModifiedProviderIds { get; set; } = [];
+    [Parameter] public string? SelectedProviderId { get; set; }
+    [Parameter] public EventCallback<string> OnSelectProvider { get; set; }
+    [Parameter] public EventCallback<SettingsState> OnSettingsChange { get; set; }
+    [Parameter] public EventCallback OnSaveCurrentProvider { get; set; }
+    [Parameter] public EventCallback OnTestProvider { get; set; }
+    [Parameter] public EventCallback<string> OnRemoveProvider { get; set; }
+    [Parameter] public EventCallback<string> OnToggleSelectedModel { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public bool IsTesting { get; set; }
+    [Parameter] public string? SaveError { get; set; }
+
+    private string _searchQuery = "";
+    private bool _showApiKey;
+    private bool _addProviderDialogOpen;
+    private Provider? _removeProviderPending;
+    private bool _isRemovingProvider;
+    private string _customModelInput = "";
+
+    private Provider? SelectedProvider => Settings.Providers.FirstOrDefault(p => p.Id == SelectedProviderId);
+
+    private List<Provider> FilteredProviders =>
+        Settings.Providers
+            .Where(p => p.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(p => p.DateCreated != null && DateTime.TryParse(p.DateCreated, out var d) ? d.Ticks : long.MaxValue)
+            .ToList();
+
+    private void UpdateProvider(string id, Action<Provider> updater)
+    {
+        var provider = Settings.Providers.FirstOrDefault(p => p.Id == id);
+        if (provider == null) return;
+        updater(provider);
+        OnSettingsChange.InvokeAsync(Settings);
+    }
+
+    private void CloseAddProviderDialog() => _addProviderDialogOpen = false;
+
+    private void AddProvider(KnownProvider kp)
+    {
+        var existingIds = Settings.Providers.Select(p => p.Id).ToHashSet();
+        var newId = existingIds.Contains(kp.Id) ? $"{kp.Id}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}" : kp.Id;
+        Settings.Providers.Add(new Provider
+        {
+            Id = newId,
+            Name = kp.Name,
+            ProviderType = kp.ProviderType,
+            Status = "draft",
+            ApiKey = "",
+            BaseUrl = kp.BaseUrl,
+            DefaultModel = "",
+            Timeout = kp.Timeout,
+            RateLimit = kp.RateLimit,
+        });
+        OnSelectProvider.InvokeAsync(newId);
+        OnSettingsChange.InvokeAsync(Settings);
+        _addProviderDialogOpen = false;
+    }
+
+    private async Task ConfirmRemoveProvider()
+    {
+        if (_removeProviderPending == null) return;
+        _isRemovingProvider = true;
+        try
+        {
+            await OnRemoveProvider.InvokeAsync(_removeProviderPending.Id);
+            _removeProviderPending = null;
+        }
+        finally
+        {
+            _isRemovingProvider = false;
+        }
+    }
+
+    private async Task HandleRemoveClick()
+    {
+        if (SelectedProvider == null) return;
+        if (string.IsNullOrEmpty(SelectedProvider.BackendId))
+        {
+            await OnRemoveProvider.InvokeAsync(SelectedProvider.Id);
+        }
+        else
+        {
+            _removeProviderPending = SelectedProvider;
+        }
+    }
+
+    private void AddCustomModel()
+    {
+        var name = _customModelInput.Trim();
+        if (string.IsNullOrEmpty(name) || SelectedProvider == null) return;
+        var current = SelectedProvider.SelectedModels ?? [];
+        if (current.Contains(name)) return;
+        SelectedProvider.SelectedModels = [..current, name];
+        OnSettingsChange.InvokeAsync(Settings);
+        _customModelInput = "";
+    }
+
+    private void ToggleProviderEnabled(Provider p)
+    {
+        var isEnabled = p.Status != "disabled";
+        if (isEnabled)
+        {
+            p.Status = "disabled";
+        }
+        else
+        {
+            p.Status = string.IsNullOrEmpty(p.BackendId) ? "draft" : "enabled";
+        }
+        OnSettingsChange.InvokeAsync(Settings);
+    }
+
+    private void HandleCustomModelKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") AddCustomModel();
+    }
+
+    // ---- SVG Icons ----
+    private const string SvgSearch =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>""";
+    private const string SvgEye =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>""";
+    private const string SvgEyeOff =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>""";
+    private const string SvgPlus =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>""";
+    private const string SvgX =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>""";
+    private const string SvgCircle =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>""";
+    private const string SvgXCircle =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>""";
+    private const string SvgFileEdit =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22h6a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v10"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 0 3 3L18 11l-3-3z"/><path d="m8 18-2.5.5.5-2.5z"/></svg>""";
+    private const string SvgPencil =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>""";
+
+    private const string SvgBrain =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></svg>""";
+    private const string SvgCloud =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>""";
+    private const string SvgServer =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>""";
+    private const string SvgSparkles =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>""";
+    private const string SvgGlobe =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>""";
+
+    // ---- Status badge helper ----
+    private (string Icon, string Color, string Label) GetStatusBadge(Provider p)
+    {
+        if (ModifiedProviderIds.Contains(p.Id))
+            return (SvgPencil, "hsl(40, 85%, 55%)", "Modified");
+        if (string.IsNullOrEmpty(p.BackendId))
+            return (SvgFileEdit, "hsl(214, 60%, 55%)", "Draft");
+        return p.Status switch
+        {
+            "enabled" => (SvgCircle, "hsl(145, 65%, 45%)", "Enabled"),
+            "disabled" => (SvgXCircle, "hsl(214, 5%, 55%)", "Disabled"),
+            _ => (SvgFileEdit, "hsl(214, 60%, 55%)", "Draft"),
+        };
+    }
+
+    // ---- Provider description helpers ----
+    private static (string Desc, string Url, string UrlLabel)? GetProviderDescription(string? providerType) =>
+        providerType switch
+        {
+            "OpenRouter" => ("OpenRouter is a unified API for LLMs. Use one API key to access many models with better prices and uptime.", "https://openrouter.ai/", "openrouter.ai"),
+            "OpenAI" => ("OpenAI provides GPT models and the ChatGPT API. Create an account and use the API for completions, embeddings, and more.", "https://platform.openai.com/", "platform.openai.com"),
+            "Anthropic" => ("Anthropic builds Claude, a family of AI assistants. Use the API for chat, long context, and tool use.", "https://www.anthropic.com/", "anthropic.com"),
+            "Ollama (Local)" => ("Ollama runs LLMs locally on your machine. No API key or cloud account needed\u2014install and pull models to get started.", "https://ollama.com/", "ollama.com"),
+            "AzureFoundry" => ("Azure AI Foundry (formerly Azure AI Studio) provides access to OpenAI models and other AI services hosted on Azure.", "https://ai.azure.com/", "ai.azure.com"),
+            _ => null,
+        };
+
+    private static (string Text, string? Url, string? LinkText) GetApiKeyDescription(string? providerType) =>
+        providerType switch
+        {
+            "OpenRouter" => ("Get your API key at ", "https://openrouter.ai/settings/keys", "openrouter.ai/settings/keys"),
+            "OpenAI" => ("Get your API key at ", "https://platform.openai.com/api-keys", "platform.openai.com/api-keys"),
+            "Anthropic" => ("Get your API key at ", "https://console.anthropic.com", "console.anthropic.com"),
+            "Ollama (Local)" => ("No API key needed for local use.", null, null),
+            "AzureFoundry" => ("Get your API key from your Azure OpenAI resource in the Azure Portal.", null, null),
+            _ => ("", null, null),
+        };
+
+    private static string GetApiKeyLabel(Provider p)
+    {
+        var pt = p.ProviderType ?? p.Name;
+        if (pt == "Ollama (Local)") return "API Key (optional)";
+        if (!string.IsNullOrEmpty(p.BackendId) && p.HasApiKey == true) return "New API Key (leave blank to keep existing)";
+        return "API Key";
+    }
+
+    private record KnownProvider(string Id, string Name, string ProviderType, string BaseUrl, int Timeout, int RateLimit, string SvgIcon);
+
+    private static readonly KnownProvider[] KnownProviders =
+    [
+        new("anthropic", "Anthropic", "Anthropic", "https://api.anthropic.com/v1", 30, 60, SvgBrain),
+        new("azure-foundry", "Azure Foundry", "AzureFoundry", "https://your-resource.openai.azure.com", 30, 60, SvgCloud),
+        new("ollama", "Ollama", "Ollama (Local)", "http://localhost:11434", 120, 0, SvgServer),
+        new("openai", "OpenAI", "OpenAI", "https://api.openai.com/v1", 30, 60, SvgSparkles),
+        new("openrouter", "OpenRouter", "OpenRouter", "https://openrouter.ai/api/v1", 30, 60, SvgGlobe),
+    ];
+}

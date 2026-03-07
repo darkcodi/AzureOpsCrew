@@ -1,0 +1,36 @@
+<div class="disabled-section">
+    <div class="section-header">
+        <h2 class="section-title">Appearance</h2>
+        <p class="section-description">Customize the look and feel of the application.</p>
+    </div>
+
+    <div class="form-field">
+        <label class="form-label">Theme</label>
+        <select class="form-select" value="@Settings.Appearance.Theme" disabled>
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+            <option value="system">System</option>
+        </select>
+    </div>
+
+    <div class="form-field">
+        <label class="form-label">Font size</label>
+        <select class="form-select" value="@Settings.Appearance.FontSize" disabled>
+            <option value="small">Small (13px)</option>
+            <option value="medium">Medium (15px)</option>
+            <option value="large">Large (18px)</option>
+        </select>
+    </div>
+
+    <div class="form-field">
+        <label class="form-label">Compact mode</label>
+        <button type="button" role="switch" class="toggle-switch @(Settings.Appearance.CompactMode ? "on" : "")" disabled>
+            <span class="toggle-knob"></span>
+        </button>
+        <p class="form-description">Reduce spacing between messages and UI elements.</p>
+    </div>
+</div>
+
+@code {
+    [Parameter] public SettingsState Settings { get; set; } = new();
+}

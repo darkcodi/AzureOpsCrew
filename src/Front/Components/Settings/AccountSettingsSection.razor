@@ -1,0 +1,29 @@
+@{
+    var initial = string.IsNullOrWhiteSpace(Settings.Account.Username)
+        ? "U"
+        : Settings.Account.Username.Trim().ToUpper()[..1];
+}
+
+<div class="section-header">
+    <h2 class="section-title">Account</h2>
+    <p class="section-description">Manage your account settings and preferences.</p>
+</div>
+
+<div class="account-card">
+    <div class="account-avatar">@initial</div>
+    <div>
+        <div class="account-name">@(string.IsNullOrWhiteSpace(Settings.Account.Username) ? "User" : Settings.Account.Username)</div>
+        <div class="account-subtitle">Local account</div>
+    </div>
+</div>
+
+<div class="form-field" style="margin-top: 24px;">
+    <label class="form-label">Username</label>
+    <input type="text" class="form-input" value="@Settings.Account.Username" placeholder="Your username"
+           @oninput="e => { Settings.Account.Username = e.Value?.ToString() ?? string.Empty; OnSettingsChange.InvokeAsync(Settings); }" />
+</div>
+
+@code {
+    [Parameter] public SettingsState Settings { get; set; } = new();
+    [Parameter] public EventCallback<SettingsState> OnSettingsChange { get; set; }
+}
