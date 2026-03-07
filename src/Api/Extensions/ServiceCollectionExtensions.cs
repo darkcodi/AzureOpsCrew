@@ -23,6 +23,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
+using AzureOpsCrew.Api.Background.ToolExecutors;
 
 namespace AzureOpsCrew.Api.Extensions;
 
@@ -239,7 +240,9 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<AgentScheduler>();
         services.AddSingleton<AgentTriggerQueue>();
         services.AddScoped<AgentRunService>();
-        services.AddScoped<ToolExecutor>();
+        services.AddScoped<BackendToolExecutor>();
+        services.AddScoped<McpServerToolExecutor>();
+        services.AddScoped<ToolCallRouter>();
 
         // Channel event broadcasting via SignalR
         services.AddSingleton<IChannelEventBroadcaster, ChannelEventBroadcaster>();

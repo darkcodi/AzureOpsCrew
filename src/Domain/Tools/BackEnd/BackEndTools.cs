@@ -1,11 +1,10 @@
-using AzureOpsCrew.Domain.Tools.BackEnd;
 using AzureOpsCrew.Domain.Tools.BackEnd.Planning;
 
-namespace AzureOpsCrew.Domain.Tools;
+namespace AzureOpsCrew.Domain.Tools.BackEnd;
 
 public static class BackEndTools
 {
-    public static readonly IReadOnlyList<ITool> All =
+    public static readonly IReadOnlyList<IBackendTool> All =
     [
         new GetMyIpTool(),
         new SkipTurnTool(),

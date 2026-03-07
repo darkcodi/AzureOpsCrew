@@ -3,7 +3,7 @@ using AzureOpsCrew.Domain.Utils;
 
 namespace AzureOpsCrew.Domain.Tools.BackEnd;
 
-public class WaitTool : ITool
+public class WaitTool : IBackendTool
 {
     public ToolDeclaration GetDeclaration()
     {

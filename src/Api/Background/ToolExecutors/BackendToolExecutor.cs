@@ -1,10 +1,11 @@
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Tools;
+using AzureOpsCrew.Domain.Tools.BackEnd;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 
-namespace AzureOpsCrew.Api.Background;
+namespace AzureOpsCrew.Api.Background.ToolExecutors;
 
-public class ToolExecutor
+public class BackendToolExecutor
 {
     public async Task<AocFunctionResultContent> ExecuteTool(
         Agent agent,

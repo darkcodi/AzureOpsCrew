@@ -13,6 +13,9 @@ using Microsoft.Agents.AI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Serilog;
+using AzureOpsCrew.Domain.Tools.FrontEnd;
+using AzureOpsCrew.Domain.Tools.Mcp;
+using AzureOpsCrew.Api.Background.ToolExecutors;
 
 namespace AzureOpsCrew.Api.Background;
 
@@ -21,7 +24,7 @@ public class AgentRunService
     private readonly Guid _runId = Guid.NewGuid();
     private readonly AzureOpsCrewContext _dbContext;
     private readonly IProviderFacadeResolver _providerFactory;
-    private readonly ToolExecutor _toolExecutor;
+    private readonly ToolCallRouter _toolCallRouter;
     private readonly IAiAgentFactory _aiAgentFactory;
     private readonly IChannelEventBroadcaster? _channelEventBroadcaster;
 
@@ -29,7 +32,7 @@ public class AgentRunService
     {
         _dbContext = serviceProvider.GetRequiredService<AzureOpsCrewContext>();
         _providerFactory = serviceProvider.GetRequiredService<IProviderFacadeResolver>();
-        _toolExecutor = serviceProvider.GetRequiredService<ToolExecutor>();
+        _toolCallRouter = serviceProvider.GetRequiredService<ToolCallRouter>();
         _aiAgentFactory = serviceProvider.GetRequiredService<IAiAgentFactory>();
         // Event broadcaster is optional - used for both channels and DMs
         _channelEventBroadcaster = serviceProvider.GetService<IChannelEventBroadcaster>();
@@ -62,7 +65,7 @@ public class AgentRunService
 
                 // Compact text content and save to DB
                 await SaveRawLlmHttpCall(agentId, chatId, newAgentThoughts, ct);
-                SquashTextContent(newAgentThoughts);
+                AgentThoughtHelper.SquashTextContent(newAgentThoughts);
                 await SaveAgentThoughts(agentId, chatId, newAgentThoughts, ct);
 
                 // Broadcast reasoning content via SignalR
@@ -92,7 +95,7 @@ public class AgentRunService
                 // ToDo: Add support for parallel tool calls if needed. For now we execute them sequentially for simplicity.
                 foreach (var toolCall in newToolCalls)
                 {
-                    var toolCallResult = await ExecuteToolCall(toolCall, data);
+                    var toolCallResult = await _toolCallRouter.ExecuteToolCall(toolCall, data);
                     var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow, Guid.NewGuid());
                     newToolCallResults.Add(toolResultMessage);
 
@@ -213,6 +216,14 @@ public class AgentRunService
             .Concat(frontEndTools)
             .ToList();
 
+        // load MCP server configurations and their enabled tools
+        var mcpServers = await _dbContext.McpServerConfigurations
+            .Where(s => s.IsEnabled)
+            .ToListAsync(ct);
+
+        var mcpToolDeclarations = McpToolDeclarationBuilder.Build(mcpServers);
+        tools.AddRange(mcpToolDeclarations);
+
         // load participant agents in the chat for context
         var agentIds = isChannel
             ? channel?.AgentIds ?? [] // todo: concat user ids when we have users in channels
@@ -231,6 +242,7 @@ public class AgentRunService
             ChatMessages = chatMessages,
             LlmThoughts = llmThoughts,
             Tools = tools,
+            McpServers = mcpServers,
             ParticipantAgents = participantAgents,
         };
     }
@@ -329,34 +341,6 @@ public class AgentRunService
         await _dbContext.SaveChangesAsync(ct);
     }
 
-    // If there are multiple text content in a row, we want to squash them into one content
-    private static void SquashTextContent(List<AocAgentThought> messages)
-    {
-        for (int i = messages.Count - 1; i > 0; i--)
-        {
-            var currentMessage = messages[i];
-            var previousMessage = messages[i - 1];
-
-            var currentContent = currentMessage.ContentDto.ToAocAiContent();
-            var previousContent = previousMessage.ContentDto.ToAocAiContent();
-
-            if (currentContent is AocTextContent currentTextContent && previousContent is AocTextContent previousTextContent &&
-                currentMessage.Role == previousMessage.Role)
-            {
-                previousTextContent.Text += currentTextContent.Text;
-                previousMessage.ContentDto = AocAiContentDto.FromAocAiContent(previousTextContent);
-                messages.RemoveAt(i);
-            }
-            if (currentContent is AocTextReasoningContent currentReasoningContent && previousContent is AocTextReasoningContent previousReasoningContent &&
-                currentMessage.Role == previousMessage.Role)
-            {
-                previousReasoningContent.Text += currentReasoningContent.Text;
-                previousMessage.ContentDto = AocAiContentDto.FromAocAiContent(previousReasoningContent);
-                messages.RemoveAt(i);
-            }
-        }
-    }
-
     private async Task SaveAgentThoughts(Guid agentId, Guid chatId, List<AocAgentThought> newAgentThoughts, CancellationToken ct)
     {
         var newDomainThoughts = newAgentThoughts.Select(t => t.ToDomain(agentId, chatId, _runId)).ToList();
@@ -391,52 +375,5 @@ public class AgentRunService
         return message;
     }
 
-    private async Task<AocFunctionResultContent> ExecuteToolCall(AocFunctionCallContent toolCall, AgentRunData data)
-    {
-        var toolName = toolCall.Name;
-        var toolDeclaration = data.Tools.FirstOrDefault(t => string.Equals(t.Name, toolName, StringComparison.OrdinalIgnoreCase));
-        if (toolDeclaration is null)
-        {
-            // If the tool declaration is not found, we return an error result for this tool call.
-            // This can happen if the LLM calls a tool that is not declared in the prompt or if there is a typo in the tool name.
-            Log.Warning("[BACKGROUND] Tool {ToolName} not found in declarations", toolName);
-
-            return AocFunctionResultContent.ToolDoesNotExist(toolCall.CallId);
-        }
-
-        if (toolDeclaration.ToolType == ToolType.FrontEnd)
-        {
-            Log.Debug("[BACKGROUND] Front-end tool {ToolName} called, returning empty result", toolName);
-
-            // For front-end tools, we can return an empty result immediately since the front-end will handle the rendering based on the tool declaration.
-            return AocFunctionResultContent.Empty(toolCall.CallId);
-        }
-
-        Log.Debug("[BACKGROUND] Executing tool {ToolName}", toolName);
-        AocFunctionResultContent? toolCallResult = null;
-        Exception? toolError = null;
-
-        try
-        {
-            toolCallResult = await _toolExecutor.ExecuteTool(data.Agent, toolDeclaration, toolCall);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[BACKGROUND] Error executing tool {ToolName}", toolName);
-            toolError = ex;
-        }
-
-        if (toolError != null)
-        {
-            // Return an error result similar to ToolDoesNotExist pattern
-            return new AocFunctionResultContent
-            {
-                CallId = toolCall.CallId,
-                Result = new ToolCallResult(CallId: toolCall.CallId, Result: new { ErrorMessage = toolError.Message }, IsError: true),
-            };
-        }
-
-        return toolCallResult!;
-    }
 }
 

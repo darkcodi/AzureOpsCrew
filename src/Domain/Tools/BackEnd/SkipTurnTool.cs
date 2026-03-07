@@ -3,7 +3,7 @@ using AzureOpsCrew.Domain.Utils;
 
 namespace AzureOpsCrew.Domain.Tools.BackEnd;
 
-public class SkipTurnTool : ITool
+public class SkipTurnTool : IBackendTool
 {
     public static string ToolName => "skipTurn";
 

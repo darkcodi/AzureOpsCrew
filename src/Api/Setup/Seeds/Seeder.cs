@@ -1,4 +1,4 @@
-﻿using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Providers;

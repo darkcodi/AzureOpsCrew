@@ -3,7 +3,7 @@ using AzureOpsCrew.Domain.Utils;
 
 namespace AzureOpsCrew.Domain.Tools.BackEnd.Planning;
 
-public class CreateTodoItemTool : ITool
+public class CreateTodoItemTool : IBackendTool
 {
     public ToolDeclaration GetDeclaration()
     {
