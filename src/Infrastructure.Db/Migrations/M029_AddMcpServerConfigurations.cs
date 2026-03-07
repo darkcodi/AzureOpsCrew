@@ -2,13 +2,18 @@ using FluentMigrator;
 
 namespace AzureOpsCrew.Infrastructure.Db.Migrations;
 
-[Migration(2026_03_06_09_30_00, "Add MCP server configuration tables")]
-public class M028_AddMcpServerConfigurations : Migration
+[Migration(2026_03_06_16_00_00, "Add MCP server configuration tables")]
+public class M029_AddMcpServerConfigurations : Migration
 {
     private const string ConfigurationsTableName = "McpServerConfigurations";
     private const string ToolsTableName = "McpServerConfigurationTools";
+    private const string AuthHeadersTableName = "McpServerConfigurationAuthHeaders";
+
     private const string ToolsForeignKeyName = "FK_McpServerConfigurationTools_McpServerConfigurations";
     private const string ToolsConfigurationIdIndexName = "IX_McpServerConfigurationTools_McpServerConfigurationId";
+
+    private const string AuthHeadersForeignKeyName = "FK_McpServerConfigurationAuthHeaders_McpServerConfigurations";
+    private const string AuthHeadersConfigurationIdIndexName = "IX_McpServerConfigurationAuthHeaders_McpServerConfigurationId";
 
     public override void Up()
     {
@@ -21,9 +26,22 @@ public class M028_AddMcpServerConfigurations : Migration
             .WithColumn("ToolsSyncedAt").AsDateTime().Nullable()
             .WithColumn("AuthType").AsString(50).NotNullable().WithDefaultValue("None")
             .WithColumn("BearerToken").AsString(4000).Nullable()
-            .WithColumn("ApiKey").AsString(4000).Nullable()
-            .WithColumn("ApiKeyHeaderName").AsString(200).Nullable()
             .WithColumn("DateCreated").AsDateTime().NotNullable();
+
+        Create.Table(AuthHeadersTableName)
+            .WithColumn("Id").AsInt32().PrimaryKey().Identity()
+            .WithColumn("McpServerConfigurationId").AsGuid().NotNullable()
+            .WithColumn("Name").AsString(200).NotNullable()
+            .WithColumn("Value").AsString(4000).NotNullable();
+
+        Create.Index(AuthHeadersConfigurationIdIndexName)
+            .OnTable(AuthHeadersTableName)
+            .OnColumn("McpServerConfigurationId");
+
+        Create.ForeignKey(AuthHeadersForeignKeyName)
+            .FromTable(AuthHeadersTableName).ForeignColumn("McpServerConfigurationId")
+            .ToTable(ConfigurationsTableName).PrimaryColumn("Id")
+            .OnDelete(System.Data.Rule.Cascade);
 
         Create.Table(ToolsTableName)
             .WithColumn("Id").AsInt32().PrimaryKey().Identity()
@@ -53,6 +71,14 @@ public class M028_AddMcpServerConfigurations : Migration
             .OnTable(ToolsTableName);
 
         Delete.Table(ToolsTableName);
+
+        Delete.ForeignKey(AuthHeadersForeignKeyName)
+            .OnTable(AuthHeadersTableName);
+
+        Delete.Index(AuthHeadersConfigurationIdIndexName)
+            .OnTable(AuthHeadersTableName);
+
+        Delete.Table(AuthHeadersTableName);
         Delete.Table(ConfigurationsTableName);
     }
 }
