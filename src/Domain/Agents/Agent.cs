@@ -35,5 +35,33 @@ namespace AzureOpsCrew.Domain.Agents
             ProviderId = providerId;
             Color = color ?? "#43b581";
         }
+
+        // Adds or replaces MCP server tool availability for this agent.
+        // If a binding for the same McpServerConfigurationId already exists, it is replaced in-place.
+        public void SetAvailableMcpServer(AgentMcpServerToolAvailability availability)
+        {
+            var current = Info.AvailableMcpServerTools;
+            var index = Array.FindIndex(current, x => x.McpServerConfigurationId == availability.McpServerConfigurationId);
+
+            if (index >= 0)
+            {
+                var updated = current.ToArray();
+                updated[index] = availability;
+                Info = Info with { AvailableMcpServerTools = updated };
+            }
+            else
+            {
+                Info = Info with { AvailableMcpServerTools = [..current, availability] };
+            }
+        }
+
+        public void RemoveAvailableMcpServer(Guid mcpServerConfigurationId)
+        {
+            var filtered = Info.AvailableMcpServerTools
+                .Where(x => x.McpServerConfigurationId != mcpServerConfigurationId)
+                .ToArray();
+
+            Info = Info with { AvailableMcpServerTools = filtered };
+        }
     }
 }

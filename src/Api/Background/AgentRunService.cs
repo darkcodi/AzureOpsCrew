@@ -216,12 +216,15 @@ public class AgentRunService
             .Concat(frontEndTools)
             .ToList();
 
-        // load MCP server configurations and their enabled tools
+        // load MCP server configurations filtered by agent's bindings
+        var agentMcpBindings = agent.Info.AvailableMcpServerTools;
+        var agentMcpServerIds = agentMcpBindings.Select(b => b.McpServerConfigurationId).ToHashSet();
+
         var mcpServers = await _dbContext.McpServerConfigurations
-            .Where(s => s.IsEnabled)
+            .Where(s => s.IsEnabled && agentMcpServerIds.Contains(s.Id))
             .ToListAsync(ct);
 
-        var mcpToolDeclarations = McpToolDeclarationBuilder.Build(mcpServers);
+        var mcpToolDeclarations = McpToolDeclarationBuilder.Build(mcpServers, agentMcpBindings);
         tools.AddRange(mcpToolDeclarations);
 
         // load participant agents in the chat for context
