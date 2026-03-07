@@ -38,6 +38,8 @@
     }
     else
     {
+        var statusBadge = GetAgentStatusBadge();
+
         <div class="agents-back-bar">
             <button type="button" class="agents-back-btn" @onclick="BackToAgentList" aria-label="Back to list">
                 <span class="agents-back-icon">@((MarkupString)SvgChevronLeft)</span>
@@ -45,6 +47,12 @@
             </button>
         </div>
         <div class="agent-form">
+            <div class="agent-form-status">
+                <span class="provider-card-status" style="color: @statusBadge.Color">
+                    <span class="status-icon">@((MarkupString)statusBadge.Icon)</span>
+                    @statusBadge.Label
+                </span>
+            </div>
             <div class="agent-form-field">
                 <label for="agent-name" class="agent-form-label">Agent Name</label>
                 <input id="agent-name" type="text" class="agent-form-input" placeholder="e.g. researchassistant"
@@ -108,11 +116,7 @@
                     </div>
                 </div>
 
-                @if (_editingAgent == null)
-                {
-                    <div class="agent-form-message">Create the agent first, then return here to enable MCP servers and tools.</div>
-                }
-                else if (AgentAssignableMcpServers.Count == 0)
+                @if (AgentAssignableMcpServers.Count == 0)
                 {
                     <div class="agent-form-message">No saved and enabled MCP servers are available yet. Configure them in the MCP Servers section first.</div>
                 }
@@ -124,7 +128,8 @@
                             var isServerEnabledForAgent = IsAgentMcpServerEnabled(server);
                             var enabledToolNames = GetAgentEnabledToolNames(server);
                             var tools = GetAgentVisibleTools(server);
-                            var canToggleServer = !_isSavingAgent && !_isUpdatingAgentMcpServer && !_isUpdatingAgentMcpTool && (server.IsEnabled || isServerEnabledForAgent);
+                            var canToggleServer = !_isSavingAgent && (server.IsEnabled || isServerEnabledForAgent);
+                            var canToggleTool = !_isSavingAgent;
 
                             <div class="agent-mcp-server @(isServerEnabledForAgent ? "selected" : "")">
                                 <div class="agent-mcp-server-header">
@@ -142,7 +147,7 @@
                                     <button type="button" role="switch" aria-checked="@isServerEnabledForAgent"
                                             class="toggle-switch @(isServerEnabledForAgent ? "on" : "")"
                                             disabled="@(!canToggleServer)"
-                                            @onclick="() => ToggleAgentMcpServerAsync(server)">
+                                            @onclick="() => ToggleAgentMcpServer(server)">
                                         <span class="toggle-knob"></span>
                                     </button>
                                 </div>
@@ -158,11 +163,7 @@
                                         {
                                             @foreach (var tool in tools)
                                             {
-                                                var isUpdatingCurrentTool = _isUpdatingAgentMcpTool
-                                                    && string.Equals(_updatingAgentMcpToolServerId, server.Id, StringComparison.Ordinal)
-                                                    && string.Equals(_updatingAgentMcpToolName, tool.Name, StringComparison.Ordinal);
                                                 var isToolEnabledForAgent = enabledToolNames.Contains(tool.Name);
-                                                var canToggleTool = !_isSavingAgent && !_isUpdatingAgentMcpServer && !_isUpdatingAgentMcpTool;
 
                                                 <div class="agent-mcp-tool @(isToolEnabledForAgent ? string.Empty : "off")">
                                                     <div class="agent-mcp-tool-content">
@@ -178,8 +179,8 @@
                                                     </div>
                                                     <button type="button" class="agent-mcp-tool-action"
                                                             disabled="@(!canToggleTool)"
-                                                            @onclick="() => ToggleAgentMcpToolAsync(server, tool)">
-                                                        @(isUpdatingCurrentTool ? "Updating..." : isToolEnabledForAgent ? "Deactivate" : "Activate")
+                                                            @onclick="() => ToggleAgentMcpTool(server, tool)">
+                                                        @(isToolEnabledForAgent ? "Deactivate" : "Activate")
                                                     </button>
                                                 </div>
                                             }
@@ -192,15 +193,11 @@
                 }
             </div>
             <button type="button" class="btn btn-primary agent-form-save"
-                    disabled="@(string.IsNullOrWhiteSpace(_agentName) || _isSavingAgent || string.IsNullOrEmpty(_agentProviderId))"
+                    disabled="@(!CanSaveAgent)"
                     @onclick="SaveAgent">
                 <span class="agent-form-save-icon">@((MarkupString)SvgSave)</span>
-                <span>@(_isSavingAgent ? "Saving..." : _editingAgent == null ? "Create Agent" : "Save Changes")</span>
+                <span>@(_isSavingAgent ? "Saving..." : IsDraftAgent ? "Create Agent" : "Save Changes")</span>
             </button>
-            @if (!string.IsNullOrEmpty(_agentMcpError))
-            {
-                <div class="agent-form-error">@_agentMcpError</div>
-            }
             @if (!string.IsNullOrEmpty(_agentSaveError))
             {
                 <div class="agent-form-error">@_agentSaveError</div>
@@ -253,12 +250,13 @@
     private string _agentPrompt = "";
     private string? _agentSaveError;
     private bool _isSavingAgent;
-    private string? _agentMcpError;
-    private bool _isUpdatingAgentMcpServer;
-    private string? _updatingAgentMcpServerId;
-    private bool _isUpdatingAgentMcpTool;
-    private string? _updatingAgentMcpToolServerId;
-    private string? _updatingAgentMcpToolName;
+    private string _savedAgentName = "";
+    private string _savedAgentColor = "#43b581";
+    private string _savedAgentProviderId = "";
+    private string _savedAgentModel = "";
+    private string _savedAgentPrompt = "";
+    private List<AgentMcpServerToolAvailabilityDto> _savedAgentMcpServerTools = [];
+    private List<AgentMcpServerToolAvailabilityDto> _draftAgentMcpServerTools = [];
 
     private static readonly string[] AgentColors =
     [
@@ -284,9 +282,9 @@
     {
         get
         {
-            var selectedIds = _editingAgent?.AvailableMcpServerTools
+            var selectedIds = _draftAgentMcpServerTools
                 .Select(item => item.McpServerConfigurationId)
-                .ToHashSet() ?? [];
+                .ToHashSet();
 
             return McpServers
                 .Where(server => TryGetMcpServerConfigurationId(server, out var configId) && (server.IsEnabled || selectedIds.Contains(configId)))
@@ -295,20 +293,37 @@
         }
     }
 
-    private AgentMcpServerToolAvailabilityDto? GetAgentMcpServerAvailability(McpServerConfigurationItem server)
+    private bool IsDraftAgent => _editingAgent == null;
+
+    private bool CanSaveAgent =>
+        !string.IsNullOrWhiteSpace(_agentName)
+        && !_isSavingAgent
+        && !string.IsNullOrEmpty(_agentProviderId)
+        && (IsDraftAgent || HasAgentChanges);
+
+    private bool HasAgentChanges =>
+        IsDraftAgent
+            || _agentName != _savedAgentName
+            || _agentColor != _savedAgentColor
+            || _agentProviderId != _savedAgentProviderId
+            || _agentModel != _savedAgentModel
+            || _agentPrompt != _savedAgentPrompt
+            || SerializeAgentMcpServerTools(_draftAgentMcpServerTools) != SerializeAgentMcpServerTools(_savedAgentMcpServerTools);
+
+    private AgentMcpServerToolAvailabilityDto? GetDraftMcpServerAvailability(McpServerConfigurationItem server)
     {
-        if (_editingAgent == null || !TryGetMcpServerConfigurationId(server, out var configId))
+        if (!TryGetMcpServerConfigurationId(server, out var configId))
             return null;
 
-        return _editingAgent.AvailableMcpServerTools
+        return _draftAgentMcpServerTools
             .FirstOrDefault(item => item.McpServerConfigurationId == configId);
     }
 
     private bool IsAgentMcpServerEnabled(McpServerConfigurationItem server) =>
-        GetAgentMcpServerAvailability(server) != null;
+        GetDraftMcpServerAvailability(server) != null;
 
     private HashSet<string> GetAgentEnabledToolNames(McpServerConfigurationItem server) =>
-        GetAgentMcpServerAvailability(server)?.EnabledToolNames.ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+        GetDraftMcpServerAvailability(server)?.EnabledToolNames.ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
 
     private List<McpServerToolItem> GetAgentVisibleTools(McpServerConfigurationItem server) =>
         server.Tools
@@ -319,21 +334,55 @@
     private static bool TryGetMcpServerConfigurationId(McpServerConfigurationItem server, out Guid mcpServerConfigurationId) =>
         Guid.TryParse(server.BackendId, out mcpServerConfigurationId);
 
-    private void ApplyUpdatedEditingAgent(AgentDto updatedAgent)
+    private static List<AgentMcpServerToolAvailabilityDto> CloneAgentMcpServerTools(IEnumerable<AgentMcpServerToolAvailabilityDto> source) =>
+        source
+            .Select(item => new AgentMcpServerToolAvailabilityDto
+            {
+                McpServerConfigurationId = item.McpServerConfigurationId,
+                EnabledToolNames = [..item.EnabledToolNames],
+            })
+            .ToList();
+
+    private static string SerializeAgentMcpServerTools(IEnumerable<AgentMcpServerToolAvailabilityDto> source) =>
+        string.Join(
+            "|",
+            source
+                .OrderBy(item => item.McpServerConfigurationId)
+                .Select(item => $"{item.McpServerConfigurationId}:{string.Join(",", item.EnabledToolNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase))}"));
+
+    private static bool HaveSameEnabledToolNames(AgentMcpServerToolAvailabilityDto left, AgentMcpServerToolAvailabilityDto right) =>
+        string.Equals(
+            string.Join(",", left.EnabledToolNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)),
+            string.Join(",", right.EnabledToolNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)),
+            StringComparison.Ordinal);
+
+    private void SetSavedAgentSnapshot(AgentDto? agent, string providerId)
     {
-        if (_editingAgent?.Id == updatedAgent.Id)
-            _editingAgent = updatedAgent;
+        if (agent == null)
+        {
+            _savedAgentName = "";
+            _savedAgentColor = "#43b581";
+            _savedAgentProviderId = "";
+            _savedAgentModel = "";
+            _savedAgentPrompt = "";
+            _savedAgentMcpServerTools = [];
+            return;
+        }
+
+        _savedAgentName = agent.Username;
+        _savedAgentColor = agent.Color;
+        _savedAgentProviderId = providerId;
+        _savedAgentModel = agent.Model;
+        _savedAgentPrompt = agent.Prompt;
+        _savedAgentMcpServerTools = CloneAgentMcpServerTools(agent.AvailableMcpServerTools);
     }
 
-    private void ResetAgentMcpState()
-    {
-        _agentMcpError = null;
-        _isUpdatingAgentMcpServer = false;
-        _updatingAgentMcpServerId = null;
-        _isUpdatingAgentMcpTool = false;
-        _updatingAgentMcpToolServerId = null;
-        _updatingAgentMcpToolName = null;
-    }
+    private (string Icon, string Color, string Label) GetAgentStatusBadge() =>
+        IsDraftAgent
+            ? (SvgFileEdit, "hsl(214, 60%, 55%)", "Draft")
+            : HasAgentChanges
+                ? (SvgPencil, "hsl(40, 85%, 55%)", "Modified")
+                : (SvgCircle, "hsl(145, 65%, 45%)", "Saved");
 
     private void OpenCreateAgent()
     {
@@ -342,7 +391,6 @@
         _agentName = "";
         _agentPrompt = "";
         _agentSaveError = null;
-        ResetAgentMcpState();
         var first = EnabledProviders.FirstOrDefault();
         if (first != null)
         {
@@ -358,6 +406,8 @@
             _agentModel = "";
         }
         _agentColor = AgentColors[(Agents?.Count ?? 0) % AgentColors.Length];
+        _draftAgentMcpServerTools = [];
+        SetSavedAgentSnapshot(null, string.Empty);
     }
 
     private void OpenEditAgent(AgentDto agent)
@@ -369,11 +419,13 @@
         _agentColor = agent.Color;
         _agentModel = agent.Model;
         _agentSaveError = null;
-        ResetAgentMcpState();
         var matching = EnabledProviders.FirstOrDefault(p => (p.SelectedModels ?? []).Contains(agent.Model));
         _agentProviderId = matching?.BackendId ?? EnabledProviders.FirstOrDefault()?.BackendId ?? "";
         if (string.IsNullOrEmpty(_agentProviderId))
             _agentModel = "";
+
+        _draftAgentMcpServerTools = CloneAgentMcpServerTools(agent.AvailableMcpServerTools);
+        SetSavedAgentSnapshot(agent, _agentProviderId);
     }
 
     private void BackToAgentList()
@@ -381,7 +433,7 @@
         _agentsSubView = "list";
         _editingAgent = null;
         _agentSaveError = null;
-        ResetAgentMcpState();
+        _draftAgentMcpServerTools = [];
     }
 
     private void OnAgentProviderChanged(ChangeEventArgs e)
@@ -395,6 +447,40 @@
                 ? provider!.DefaultModel
                 : models.FirstOrDefault() ?? "";
         }
+    }
+
+    private void ToggleAgentMcpServer(McpServerConfigurationItem server)
+    {
+        if (!TryGetMcpServerConfigurationId(server, out var configId))
+            return;
+
+        var current = _draftAgentMcpServerTools.FirstOrDefault(item => item.McpServerConfigurationId == configId);
+        if (current == null)
+        {
+            _draftAgentMcpServerTools.Add(new AgentMcpServerToolAvailabilityDto
+            {
+                McpServerConfigurationId = configId,
+                EnabledToolNames = [],
+            });
+            return;
+        }
+
+        _draftAgentMcpServerTools.Remove(current);
+    }
+
+    private void ToggleAgentMcpTool(McpServerConfigurationItem server, McpServerToolItem tool)
+    {
+        var availability = GetDraftMcpServerAvailability(server);
+        if (availability == null)
+            return;
+
+        var enabledToolNames = availability.EnabledToolNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!enabledToolNames.Add(tool.Name))
+            enabledToolNames.Remove(tool.Name);
+
+        availability.EnabledToolNames = enabledToolNames
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private async Task SaveAgent()
@@ -427,28 +513,29 @@
                 ? $"You are {name}, a helpful AI assistant."
                 : _agentPrompt.Trim();
 
-            if (_editingAgent == null)
+            AgentDto? savedAgent = _editingAgent == null
+                ? await AgentService.CreateAgentAsync(name, prompt, _agentModel, providerGuid, _agentColor, null)
+                : await AgentService.UpdateAgentAsync(_editingAgent.Id, name, prompt, _agentModel, providerGuid, _agentColor, _editingAgent.Description);
+
+            if (savedAgent == null)
             {
-                var created = await AgentService.CreateAgentAsync(name, prompt, _agentModel, providerGuid, _agentColor, null);
-                if (created != null)
-                {
-                    await OnAgentsChanged.InvokeAsync();
-                    BackToAgentList();
-                }
-                else
-                    _agentSaveError = "Failed to create agent";
+                _agentSaveError = _editingAgent == null
+                    ? "Failed to create agent"
+                    : "Failed to update agent";
+                return;
             }
-            else
-            {
-                var updated = await AgentService.UpdateAgentAsync(_editingAgent.Id, name, prompt, _agentModel, providerGuid, _agentColor, _editingAgent.Description);
-                if (updated != null)
-                {
-                    await OnAgentsChanged.InvokeAsync();
-                    BackToAgentList();
-                }
-                else
-                    _agentSaveError = "Failed to update agent";
-            }
+
+            _editingAgent = savedAgent;
+            SetSavedAgentSnapshot(savedAgent, _agentProviderId);
+
+            var mcpSaved = await SaveAgentMcpServersAsync(savedAgent.Id);
+            await OnAgentsChanged.InvokeAsync();
+
+            if (!mcpSaved)
+                return;
+
+            _draftAgentMcpServerTools = CloneAgentMcpServerTools(_savedAgentMcpServerTools);
+            BackToAgentList();
         }
         catch (Exception ex)
         {
@@ -460,108 +547,49 @@
         }
     }
 
-    private async Task ToggleAgentMcpServerAsync(McpServerConfigurationItem server)
+    private async Task<bool> SaveAgentMcpServersAsync(Guid agentId)
     {
-        if (_editingAgent == null)
+        var savedByServerId = _savedAgentMcpServerTools.ToDictionary(item => item.McpServerConfigurationId);
+        var draftByServerId = _draftAgentMcpServerTools.ToDictionary(item => item.McpServerConfigurationId);
+        AgentDto? latestAgent = _editingAgent;
+
+        foreach (var removedServerId in savedByServerId.Keys.Except(draftByServerId.Keys).OrderBy(id => id))
         {
-            _agentMcpError = "Save the agent first before assigning MCP servers.";
-            return;
-        }
-
-        if (!TryGetMcpServerConfigurationId(server, out var mcpServerConfigurationId))
-            return;
-
-        var isEnabledForAgent = IsAgentMcpServerEnabled(server);
-        if (!server.IsEnabled && !isEnabledForAgent)
-            return;
-
-        _agentMcpError = null;
-        _isUpdatingAgentMcpServer = true;
-        _updatingAgentMcpServerId = server.Id;
-
-        try
-        {
-            AgentDto? updatedAgent = isEnabledForAgent
-                ? await AgentService.RemoveAvailableMcpServerAsync(_editingAgent.Id, mcpServerConfigurationId)
-                : await AgentService.SetAvailableMcpServerAsync(_editingAgent.Id, mcpServerConfigurationId, []);
-
-            if (updatedAgent == null)
+            latestAgent = await AgentService.RemoveAvailableMcpServerAsync(agentId, removedServerId);
+            if (latestAgent == null)
             {
-                _agentMcpError = isEnabledForAgent
-                    ? "Failed to remove MCP server from the agent."
-                    : "Failed to add MCP server to the agent.";
-                return;
+                _agentSaveError = "Agent was saved, but removing an MCP server failed.";
+                return false;
             }
 
-            ApplyUpdatedEditingAgent(updatedAgent);
-            await OnAgentsChanged.InvokeAsync();
-        }
-        catch (Exception ex)
-        {
-            _agentMcpError = ex.Message;
-        }
-        finally
-        {
-            _isUpdatingAgentMcpServer = false;
-            _updatingAgentMcpServerId = null;
-        }
-    }
-
-    private async Task ToggleAgentMcpToolAsync(McpServerConfigurationItem server, McpServerToolItem tool)
-    {
-        if (_editingAgent == null)
-        {
-            _agentMcpError = "Save the agent first before choosing MCP tools.";
-            return;
+            _editingAgent = latestAgent;
+            SetSavedAgentSnapshot(latestAgent, _agentProviderId);
         }
 
-        if (!TryGetMcpServerConfigurationId(server, out var mcpServerConfigurationId))
-            return;
-
-        var availability = GetAgentMcpServerAvailability(server);
-        if (availability == null)
+        foreach (var draftBinding in draftByServerId.Values.OrderBy(item => item.McpServerConfigurationId))
         {
-            _agentMcpError = "Enable the MCP server for this agent first.";
-            return;
-        }
-
-        var enabledToolNames = availability.EnabledToolNames
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        if (!enabledToolNames.Add(tool.Name))
-            enabledToolNames.Remove(tool.Name);
-
-        _agentMcpError = null;
-        _isUpdatingAgentMcpTool = true;
-        _updatingAgentMcpToolServerId = server.Id;
-        _updatingAgentMcpToolName = tool.Name;
-
-        try
-        {
-            var updatedAgent = await AgentService.SetAvailableMcpServerAsync(
-                _editingAgent.Id,
-                mcpServerConfigurationId,
-                enabledToolNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
-
-            if (updatedAgent == null)
+            if (savedByServerId.TryGetValue(draftBinding.McpServerConfigurationId, out var savedBinding)
+                && HaveSameEnabledToolNames(savedBinding, draftBinding))
             {
-                _agentMcpError = "Failed to update MCP tool availability.";
-                return;
+                continue;
             }
 
-            ApplyUpdatedEditingAgent(updatedAgent);
-            await OnAgentsChanged.InvokeAsync();
+            latestAgent = await AgentService.SetAvailableMcpServerAsync(
+                agentId,
+                draftBinding.McpServerConfigurationId,
+                draftBinding.EnabledToolNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
+
+            if (latestAgent == null)
+            {
+                _agentSaveError = "Agent was saved, but updating MCP tools failed.";
+                return false;
+            }
+
+            _editingAgent = latestAgent;
+            SetSavedAgentSnapshot(latestAgent, _agentProviderId);
         }
-        catch (Exception ex)
-        {
-            _agentMcpError = ex.Message;
-        }
-        finally
-        {
-            _isUpdatingAgentMcpTool = false;
-            _updatingAgentMcpToolServerId = null;
-            _updatingAgentMcpToolName = null;
-        }
+
+        return true;
     }
 
     private async Task ConfirmDeleteAgent()
@@ -596,4 +624,8 @@
         """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>""";
     private const string SvgSave =
         """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>""";
+    private const string SvgFileEdit =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22h6a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v10"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 0 3 3L18 11l-3-3z"/><path d="m8 18-2.5.5.5-2.5z"/></svg>""";
+    private const string SvgCircle =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>""";
 }
