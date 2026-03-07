@@ -269,6 +269,9 @@ public class SettingsService(HttpClient http, IJSRuntime js)
         server.BackendId = server.Id;
         server.Tools ??= [];
         server.Auth ??= new McpServerAuthSummary();
+        server.Headers = server.Auth?.CustomHeaderNames?
+            .Select(name => new McpServerAuthHeaderEditorItem { Name = name ?? "", Value = "" })
+            .ToList() ?? [];
         return server;
     }
 

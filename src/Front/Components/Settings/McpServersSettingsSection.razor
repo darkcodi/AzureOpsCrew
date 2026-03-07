@@ -151,6 +151,28 @@ else
                 <textarea id="mcp-server-description" class="agent-form-textarea" rows="4" placeholder="Optional description of this MCP server..."
                           @bind="selectedServer.Description" @bind:event="oninput"></textarea>
             </div>
+            <div class="agent-form-field mcp-headers-field">
+                <label class="agent-form-label">Headers (optional)</label>
+                <p class="mcp-headers-hint">Sent with each request. Values are not re-displayed after save.</p>
+                <div class="mcp-headers-list">
+                    @foreach (var header in selectedServer.Headers)
+                    {
+                        <div class="mcp-header-row">
+                            <input type="text" class="agent-form-input mcp-header-name" placeholder="Name (e.g. X-Api-Key)"
+                                   @bind="header.Name" @bind:event="oninput" />
+                            <input type="text" class="agent-form-input mcp-header-value" placeholder="Value"
+                                   @bind="header.Value" @bind:event="oninput" />
+                            <button type="button" class="agent-row-btn agent-row-btn-delete mcp-header-remove" aria-label="Remove header"
+                                    @onclick="() => RemoveHeader(selectedServer, header)">
+                                @((MarkupString)SvgTrash2)
+                            </button>
+                        </div>
+                    }
+                </div>
+                <button type="button" class="btn btn-secondary mcp-add-header-btn" @onclick="() => AddHeader(selectedServer)">
+                    Add header
+                </button>
+            </div>
             <button type="button" class="btn btn-primary agent-form-save"
                     disabled="@(string.IsNullOrWhiteSpace(selectedServer.Name) || IsSavingMcpServer)"
                     @onclick="SaveCurrentMcpServer">
@@ -249,7 +271,46 @@ else
 
     private async Task SaveCurrentMcpServer()
     {
-        await OnSaveCurrentMcpServer.InvokeAsync(null);
+        var selectedServer = McpServers?.FirstOrDefault(s => s.Id == SelectedMcpServerId);
+        McpServerAuthEditorState? authState = null;
+        if (selectedServer != null)
+        {
+            var filledHeaders = selectedServer.Headers
+                .Where(h => !string.IsNullOrWhiteSpace(h.Name) && !string.IsNullOrWhiteSpace(h.Value))
+                .Select(h => new McpServerAuthHeaderEditorItem { Name = h.Name!.Trim(), Value = h.Value!.Trim() })
+                .ToList();
+            if (filledHeaders.Count > 0)
+            {
+                authState = new McpServerAuthEditorState
+                {
+                    Type = "CustomHeaders",
+                    BearerToken = "",
+                    Headers = filledHeaders,
+                };
+            }
+            else if (selectedServer.Auth?.HasCustomHeaders == true)
+            {
+                authState = new McpServerAuthEditorState
+                {
+                    Type = "None",
+                    BearerToken = "",
+                    Headers = [],
+                };
+            }
+        }
+        await OnSaveCurrentMcpServer.InvokeAsync(authState);
+    }
+
+    private async Task AddHeader(McpServerConfigurationItem server)
+    {
+        server.Headers.Add(new McpServerAuthHeaderEditorItem { Name = "", Value = "" });
+        await OnMcpServersChange.InvokeAsync(McpServers!.ToList());
+    }
+
+    private async Task RemoveHeader(McpServerConfigurationItem server, McpServerAuthHeaderEditorItem header)
+    {
+        server.Headers.Remove(header);
+        await OnMcpServersChange.InvokeAsync(McpServers!.ToList());
     }
 
     private async Task RemoveCurrentMcpServer()

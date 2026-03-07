@@ -102,6 +102,9 @@ public class McpServerConfigurationItem
     [JsonPropertyName("tools")]
     public List<McpServerToolItem> Tools { get; set; } = [];
 
+    /// <summary>Editable header list for the form. Populated from Auth.CustomHeaderNames on load (values not returned by API).</summary>
+    public List<McpServerAuthHeaderEditorItem> Headers { get; set; } = [];
+
     public McpServerConfigurationItem Clone() => new()
     {
         Id = Id,
@@ -114,6 +117,7 @@ public class McpServerConfigurationItem
         DateCreated = DateCreated,
         Auth = Auth.Clone(),
         Tools = Tools.Select(tool => tool.Clone()).ToList(),
+        Headers = Headers.Select(x => x.Clone()).ToList(),
     };
 }
 
