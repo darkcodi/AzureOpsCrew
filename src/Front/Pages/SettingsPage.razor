@@ -84,6 +84,11 @@
 
     protected override void OnParametersSet()
     {
+        if (string.IsNullOrEmpty(SectionSlug))
+        {
+            Navigation.NavigateTo(SettingsSectionRoutes.ToPath(SettingsSection.Providers), replace: true);
+            return;
+        }
         _activeSection = SettingsSectionRoutes.FromSlug(SectionSlug);
     }
     private SettingsState _settings = new() { Providers = [] };
