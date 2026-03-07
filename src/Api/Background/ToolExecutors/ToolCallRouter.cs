@@ -44,14 +44,14 @@ public class ToolCallRouter
 
                 return await _backendToolExecutor.ExecuteTool(data.Agent, toolDeclaration, toolCall);
             }
-            else if (toolDeclaration.ToolType == ToolType.McpServer)
+            if (toolDeclaration.ToolType == ToolType.McpServer)
             {
                 Log.Debug("[BACKGROUND] Executing tool {ToolName} (type: {ToolType})", toolName, toolDeclaration.ToolType);
 
                 return await _mcpServerToolExecutor.ExecuteTool(data, toolDeclaration, toolCall);
             }
-            else
-                return AocFunctionResultContent.ToolDoesNotExist(toolCall.CallId);
+
+            return AocFunctionResultContent.ToolDoesNotExist(toolCall.CallId);
         }
         catch (Exception ex)
         {
