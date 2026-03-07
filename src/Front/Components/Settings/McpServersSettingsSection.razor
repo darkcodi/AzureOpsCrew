@@ -1,313 +1,93 @@
-<div class="section-header">
-    <h2 class="section-title">MCP Servers</h2>
-    <p class="section-description">Connect Model Context Protocol servers, sync their tools, and prepare the tool catalog your agents will use.</p>
-</div>
+<h3 class="mcp-installed-title">Installed MCP Servers</h3>
 
-<div class="search-bar">
-    <span class="search-icon">@((MarkupString)SvgSearch)</span>
-    <input type="text" @bind="_searchQuery" @bind:event="oninput" placeholder="Search MCP servers..." class="search-input" />
-</div>
-
-<div class="providers-layout">
-    <div class="provider-list">
-        <h3 class="provider-list-title">Servers</h3>
-        <div class="provider-list-items">
-            @foreach (var server in FilteredMcpServers)
-            {
-                var isSelected = SelectedMcpServer?.Id == server.Id;
-                var badge = GetStatusBadge(server);
-                <button type="button"
-                        class="provider-card @(isSelected ? "selected" : "")"
-                        @onclick="() => SelectMcpServerAsync(server.Id)">
-                    <span class="provider-card-name">@server.Name</span>
-                    <span class="provider-card-subtitle">@GetServerSubline(server)</span>
-                    <span class="provider-card-status" style="color: @badge.Color">
-                        <span class="status-icon">@((MarkupString)badge.Icon)</span>
-                        @badge.Label
-                    </span>
-                </button>
-            }
-            <button type="button" class="add-provider-btn" @onclick="AddMcpServerDraftAsync">
-                <span class="add-provider-icon">@((MarkupString)SvgPlus)</span>
-                <span>Add MCP Server</span>
-            </button>
-        </div>
-    </div>
-
-    @if (SelectedMcpServer is { } selectedServer)
+<div class="mcp-server-list">
+    @foreach (var server in FilteredMcpServers)
     {
-        var badge = GetStatusBadge(selectedServer);
-        var hasConfigChanges = ModifiedMcpServerIds.Contains(selectedServer.Id);
-        var isDraft = string.IsNullOrWhiteSpace(selectedServer.BackendId);
-        var enabledToolsCount = selectedServer.Tools.Count(tool => tool.IsEnabled);
-        var hasAuthChanges = HasAuthChanges(selectedServer);
-        var hasPendingChanges = hasConfigChanges || hasAuthChanges;
-        var canSave = !IsSavingMcpServer && !string.IsNullOrWhiteSpace(selectedServer.Name) && !string.IsNullOrWhiteSpace(selectedServer.Url) && (isDraft || hasPendingChanges) && (!hasAuthChanges || IsAuthEditorValid());
-        var canSync = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
-        var canToggleEnabled = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && !hasPendingChanges;
-        var canToggleTools = !IsSavingMcpServer && !IsSyncingMcpServer && !IsUpdatingMcpServerTool && !isDraft && !hasPendingChanges;
-        var canReset = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && hasPendingChanges;
-        var authInputsDisabled = isDraft || IsSavingMcpServer || IsSyncingMcpServer;
+        var isDraft = string.IsNullOrWhiteSpace(server.BackendId);
+        var enabledToolsCount = server.Tools.Count(t => t.IsEnabled);
+        var isExpanded = _expandedServerIds.Contains(server.Id);
+        var hasTools = server.Tools.Count > 0;
+        var canToggle = !IsSavingMcpServer && !IsSyncingMcpServer && !isDraft && !ModifiedMcpServerIds.Contains(server.Id);
 
-        <div class="provider-detail">
-            <div class="provider-detail-header">
-                <div>
-                    <h3 class="provider-detail-name">@selectedServer.Name</h3>
-                    <div class="provider-detail-status">
-                        <span class="provider-card-status" style="color: @badge.Color">
-                            <span class="status-icon">@((MarkupString)badge.Icon)</span>
-                            @badge.Label
-                        </span>
-                    </div>
-                </div>
-                <button type="button" role="switch" aria-checked="@selectedServer.IsEnabled"
-                        class="toggle-switch @(selectedServer.IsEnabled ? "on" : "")"
-                        disabled="@(!canToggleEnabled)"
-                        @onclick="OnToggleSelectedMcpServerEnabled">
-                    <span class="toggle-knob"></span>
-                </button>
-            </div>
-
-            <div class="provider-description-card">
-                <h4 class="description-label">Server Snapshot</h4>
-                <p class="description-text">Save the connection first, then sync tools to refresh the local MCP snapshot. Authorization and per-tool activation are stored on the saved MCP server configuration.</p>
-            </div>
-
-            <div class="mcp-summary-grid">
-                <div class="mcp-summary-card">
-                    <span class="mcp-summary-label">Discovered tools</span>
-                    <span class="mcp-summary-value">@selectedServer.Tools.Count</span>
-                    <span class="mcp-summary-note">Current synced snapshot</span>
-                </div>
-                <div class="mcp-summary-card">
-                    <span class="mcp-summary-label">Enabled in UI</span>
-                    <span class="mcp-summary-value">@enabledToolsCount</span>
-                    <span class="mcp-summary-note">Persisted tool availability</span>
-                </div>
-                <div class="mcp-summary-card">
-                    <span class="mcp-summary-label">Authorization</span>
-                    <span class="mcp-summary-value">@GetAuthorizationValue(selectedServer.Auth)</span>
-                    <span class="mcp-summary-note">@GetAuthorizationNote(selectedServer.Auth)</span>
-                </div>
-            </div>
-
-            <div class="form-field">
-                <label class="form-label">Type</label>
-                <select class="form-select" disabled>
-                    <option>HTTP MCP Server</option>
-                </select>
-            </div>
-
-            <div class="form-field">
-                <label class="form-label">Name</label>
-                <input type="text" class="form-input" value="@selectedServer.Name" placeholder="Server display name"
-                       @oninput="e => UpdateMcpServerAsync(selectedServer.Id, item => item.Name = e.Value?.ToString() ?? string.Empty)" />
-            </div>
-
-            <div class="form-field">
-                <label class="form-label">Server URL</label>
-                <input type="text" class="form-input" value="@selectedServer.Url" placeholder="https://mcp.example.com"
-                       @oninput="e => UpdateMcpServerAsync(selectedServer.Id, item => item.Url = e.Value?.ToString() ?? string.Empty)" />
-                <p class="form-description">Use the MCP HTTP endpoint that supports initialization and tool discovery.</p>
-            </div>
-
-            <div class="form-field">
-                <label class="form-label">Description</label>
-                <textarea class="mcp-textarea" rows="4" placeholder="Optional note about what this server exposes..."
-                          @oninput="e => UpdateMcpServerAsync(selectedServer.Id, item => item.Description = e.Value?.ToString())">@selectedServer.Description</textarea>
-            </div>
-
-            <div class="provider-description-card mcp-auth-card">
-                <h4 class="description-label">Authorization</h4>
-                <p class="description-text">Configure how this MCP server receives credentials. Stored secret values stay hidden; re-enter them to replace the current value.</p>
-
-                @if (isDraft)
+        <div class="mcp-server-card">
+            <div class="mcp-avatar-wrapper">
+                <span class="mcp-avatar" style="background: @GetAvatarBackground(server.Name)">
+                    @GetAvatarLetter(server.Name)
+                </span>
+                @if (server.IsEnabled && !isDraft)
                 {
-                    <p class="form-description">Save the server first before storing authorization.</p>
+                    <span class="mcp-status-dot"></span>
                 }
-
-                @if (selectedServer.Auth.HasBearerToken || selectedServer.Auth.HasCustomHeaders)
-                {
-                    <div class="mcp-auth-state">
-                        <span class="mcp-summary-label">Stored authorization</span>
-                        <div class="mcp-auth-state-list">
-                            @if (selectedServer.Auth.HasBearerToken)
-                            {
-                                <span class="mcp-auth-state-chip">Bearer token stored</span>
-                            }
-                            @foreach (var headerName in selectedServer.Auth.CustomHeaderNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
-                            {
-                                <span class="mcp-auth-state-chip">@headerName</span>
-                            }
-                        </div>
-                    </div>
-                }
-
-                <div class="mcp-auth-grid">
-                    <div class="form-field">
-                        <label class="form-label">Type</label>
-                        <select class="form-select" value="@_authEditor.Type" disabled="@authInputsDisabled" @onchange="HandleAuthTypeChanged">
-                            <option value="None">None</option>
-                            <option value="BearerToken">BearerToken</option>
-                            <option value="CustomHeaders">CustomHeaders</option>
-                        </select>
-                    </div>
-                </div>
-
-                @if (string.Equals(_authEditor.Type, "BearerToken", StringComparison.Ordinal))
-                {
-                    <div class="mcp-auth-input-row">
-                        <div class="form-field mcp-auth-input-field">
-                            <label class="form-label">Bearer token</label>
-                            <input type="@(_showBearerToken ? "text" : "password")"
-                                   class="form-input"
-                                   value="@_authEditor.BearerToken"
-                                   placeholder="Paste bearer token"
-                                   disabled="@authInputsDisabled"
-                                   @oninput="e => UpdateBearerToken(e.Value?.ToString() ?? string.Empty)" />
-                        </div>
-                        <button type="button" class="btn btn-secondary mcp-inline-btn"
-                                disabled="@authInputsDisabled"
-                                @onclick="ToggleBearerTokenVisibility">
-                            @(_showBearerToken ? "Hide" : "Show")
-                        </button>
-                    </div>
-                }
-                else if (string.Equals(_authEditor.Type, "CustomHeaders", StringComparison.Ordinal))
-                {
-                    <div class="mcp-auth-headers">
-                        <div class="mcp-auth-headers-title-row">
-                            <span class="mcp-summary-label">Headers</span>
-                            <button type="button" class="btn btn-secondary mcp-inline-btn"
-                                    disabled="@authInputsDisabled"
-                                    @onclick="AddAuthHeaderRow">
-                                Add header
-                            </button>
-                        </div>
-                        @if (_authEditor.Headers.Count == 0)
-                        {
-                            <div class="mcp-empty-state">
-                                <span class="mcp-empty-icon">@((MarkupString)SvgPlus)</span>
-                                <div>
-                                    <strong>No headers yet.</strong>
-                                    <p>Add one or more static headers such as <code>x-api-key</code>.</p>
-                                </div>
-                            </div>
-                        }
-                        else
-                        {
-                            @for (var i = 0; i < _authEditor.Headers.Count; i++)
-                            {
-                                var index = i;
-                                <div class="mcp-auth-header-row">
-                                    <div class="form-field mcp-auth-header-field">
-                                        <label class="form-label">Header name</label>
-                                        <input type="text" class="form-input"
-                                               value="@_authEditor.Headers[index].Name"
-                                               placeholder="x-api-key"
-                                               disabled="@authInputsDisabled"
-                                               @oninput="e => UpdateHeaderName(index, e.Value?.ToString() ?? string.Empty)" />
-                                    </div>
-                                    <div class="form-field mcp-auth-header-field">
-                                        <label class="form-label">Header value</label>
-                                        <input type="password" class="form-input"
-                                               value="@_authEditor.Headers[index].Value"
-                                               placeholder="Header value"
-                                               disabled="@authInputsDisabled"
-                                               @oninput="e => UpdateHeaderValue(index, e.Value?.ToString() ?? string.Empty)" />
-                                    </div>
-                                    <button type="button" class="btn btn-secondary mcp-inline-btn mcp-inline-danger"
-                                            disabled="@authInputsDisabled"
-                                            @onclick="() => RemoveAuthHeaderRow(index)">
-                                        Remove
-                                    </button>
-                                </div>
-                            }
-                        }
-                    </div>
-                }
-
-                @if (!string.IsNullOrWhiteSpace(_authValidationError))
-                {
-                    <p class="save-error">@_authValidationError</p>
-                }
-
             </div>
 
-            <div class="action-buttons">
-                <button type="button" class="btn btn-primary" disabled="@(!canSave)" @onclick="SaveCurrentMcpServerAsync">
-                    @(IsSavingMcpServer ? "Saving..." : "Save")
-                </button>
-                <button type="button" class="btn btn-secondary" disabled="@(!canSync)" @onclick="OnSyncMcpServer">
-                    @(IsSyncingMcpServer ? "Syncing..." : "Sync tools")
-                </button>
-                <button type="button" class="btn btn-secondary" disabled="@(!canReset)" @onclick="OnResetCurrentMcpServer">
-                    Reset
-                </button>
-                <button type="button" class="btn btn-danger" disabled="@(IsSavingMcpServer || IsSyncingMcpServer)" @onclick="OnRemoveCurrentMcpServer">
-                    Remove
-                </button>
-            </div>
-
-            <div class="form-field">
-                <div class="mcp-tools-header">
-                    <label class="form-label">Tools</label>
-                    <span class="mcp-tools-note">@GetSyncSummary(selectedServer)</span>
-                </div>
-                <div class="tool-chips-container">
-                    @if (selectedServer.Tools.Count == 0)
+            <div class="mcp-card-body">
+                <div class="mcp-name-row">
+                    <span class="mcp-server-name">@server.Name</span>
+                    @if (!server.IsEnabled && !isDraft)
                     {
-                        <span class="tool-chips-placeholder">Save the server and run sync to discover its tools.</span>
+                        <span class="mcp-server-status-text">Disabled</span>
+                    }
+                    else if (isDraft)
+                    {
+                        <span class="mcp-server-status-text">Draft</span>
+                    }
+                </div>
+
+                @if (hasTools)
+                {
+                    @if (!isExpanded)
+                    {
+                        <button type="button" class="mcp-tools-toggle" @onclick="() => ToggleToolsExpanded(server.Id)">
+                            <span class="mcp-tools-toggle-dot">@((MarkupString)SvgDotSmall)</span>
+                            @enabledToolsCount tools enabled
+                            <span class="mcp-chevron">@((MarkupString)SvgChevron)</span>
+                        </button>
                     }
                     else
                     {
-                        @foreach (var tool in selectedServer.Tools.OrderBy(tool => tool.Name, StringComparer.OrdinalIgnoreCase))
-                        {
-                            var isUpdatingCurrentTool = IsUpdatingMcpServerTool && string.Equals(UpdatingMcpServerToolName, tool.Name, StringComparison.Ordinal);
-                            <div class="tool-chip @(tool.IsEnabled ? string.Empty : "off")">
-                                <div class="tool-chip-content">
-                                    <span class="tool-chip-name">@tool.Name</span>
-                                    <div class="mcp-tool-badges">
-                                        <span class="mcp-tool-badge">Input: @(string.IsNullOrWhiteSpace(tool.InputSchemaJson) ? "No" : "Yes")</span>
-                                        <span class="mcp-tool-badge">Output: @(string.IsNullOrWhiteSpace(tool.OutputSchemaJson) ? "No" : "Yes")</span>
-                                    </div>
-                                    @if (!string.IsNullOrWhiteSpace(tool.Description))
-                                    {
-                                        <span class="tool-chip-description">@tool.Description</span>
-                                    }
-                                </div>
-                                <button type="button" class="tool-chip-action"
-                                        disabled="@(!canToggleTools)"
-                                        @onclick="() => OnToggleSelectedMcpServerTool.InvokeAsync(tool.Name)">
-                                    @(isUpdatingCurrentTool ? "Updating..." : tool.IsEnabled ? "Deactivate" : "Activate")
-                                </button>
-                            </div>
-                        }
+                        <div class="mcp-tools-expanded">
+                            @foreach (var tool in server.Tools.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
+                            {
+                                <span class="mcp-tool-chip @(tool.IsEnabled ? "" : "disabled")"
+                                      title="@tool.Description">@tool.Name</span>
+                            }
+                        </div>
+                        <button type="button" class="mcp-tools-toggle" @onclick="() => ToggleToolsExpanded(server.Id)">
+                            Show less
+                            <span class="mcp-chevron up">@((MarkupString)SvgChevron)</span>
+                        </button>
                     }
-                </div>
-                <p class="form-description">This mirrors the provider selected-models pattern. Tool availability changes are saved through the backend immediately.</p>
+                }
+                else if (!isDraft)
+                {
+                    <span class="mcp-tools-empty">No tools synced</span>
+                }
             </div>
 
-            @if (!string.IsNullOrEmpty(McpServerError))
-            {
-                <p class="save-error">@McpServerError</p>
-            }
+            <button type="button" role="switch" aria-checked="@server.IsEnabled"
+                    class="toggle-switch @(server.IsEnabled ? "on" : "")"
+                    disabled="@(!canToggle)"
+                    @onclick="() => ToggleServerEnabledAsync(server.Id)">
+                <span class="toggle-knob"></span>
+            </button>
+        </div>
+    }
 
+    <button type="button" class="mcp-server-card mcp-add-card" @onclick="AddMcpServerDraftAsync">
+        <div class="mcp-avatar-wrapper">
+            <span class="mcp-avatar mcp-avatar-add">@((MarkupString)SvgPlus)</span>
         </div>
-    }
-    else
-    {
-        <div class="provider-detail provider-detail-empty">
-            <div class="mcp-empty-state large">
-                <span class="mcp-empty-icon">@((MarkupString)SvgBoxes)</span>
-                <div>
-                    <strong>Select or create an MCP server.</strong>
-                    <p>The editable fields live here in the main area, similar to Providers.</p>
-                </div>
-            </div>
+        <div class="mcp-card-body">
+            <span class="mcp-server-name">New MCP Server</span>
+            <span class="mcp-add-subtitle">Add a Custom MCP Server</span>
         </div>
-    }
+    </button>
 </div>
+
+@if (!string.IsNullOrEmpty(McpServerError))
+{
+    <p class="mcp-error">@McpServerError</p>
+}
 
 @code {
     [Parameter] public List<McpServerConfigurationItem> McpServers { get; set; } = [];
@@ -328,51 +108,23 @@
     [Parameter] public int McpServerAuthResetKey { get; set; }
     [Parameter] public string? McpServerError { get; set; }
 
-    private string _searchQuery = "";
-    private McpServerConfigurationItem? _selectedMcpServer;
-    private McpServerAuthEditorState _authEditor = new();
-    private string? _authEditorServerId;
-    private int _appliedMcpServerAuthResetKey = -1;
-    private bool _showBearerToken;
-    private string? _authValidationError;
-
-    private McpServerConfigurationItem? SelectedMcpServer => _selectedMcpServer;
+    private readonly HashSet<string> _expandedServerIds = [];
 
     private List<McpServerConfigurationItem> FilteredMcpServers =>
         McpServers
-            .Where(server => server.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)
-                || server.Url.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
             .OrderBy(server => server.DateCreated != null && DateTime.TryParse(server.DateCreated, out var createdAt) ? createdAt.Ticks : long.MaxValue)
             .ToList();
 
-    protected override void OnParametersSet()
+    private void ToggleToolsExpanded(string serverId)
     {
-        if (_selectedMcpServer != null)
-        {
-            _selectedMcpServer = McpServers.FirstOrDefault(server => server.Id == _selectedMcpServer.Id);
-        }
-
-        if (_selectedMcpServer == null && !string.IsNullOrWhiteSpace(SelectedMcpServerId))
-        {
-            _selectedMcpServer = McpServers.FirstOrDefault(server => server.Id == SelectedMcpServerId);
-        }
-
-        var selectedId = _selectedMcpServer?.Id;
-        if (_authEditorServerId != selectedId || _appliedMcpServerAuthResetKey != McpServerAuthResetKey)
-        {
-            ResetAuthEditorToSelectedServer();
-            _authEditorServerId = selectedId;
-            _appliedMcpServerAuthResetKey = McpServerAuthResetKey;
-        }
+        if (!_expandedServerIds.Remove(serverId))
+            _expandedServerIds.Add(serverId);
     }
 
-    private async Task SelectMcpServerAsync(string id)
+    private async Task ToggleServerEnabledAsync(string serverId)
     {
-        _selectedMcpServer = McpServers.FirstOrDefault(server => server.Id == id);
-        ResetAuthEditorToSelectedServer();
-        _authEditorServerId = _selectedMcpServer?.Id;
-        StateHasChanged();
-        await OnSelectMcpServer.InvokeAsync(id);
+        await OnSelectMcpServer.InvokeAsync(serverId);
+        await OnToggleSelectedMcpServerEnabled.InvokeAsync();
     }
 
     private async Task AddMcpServerDraftAsync()
@@ -388,336 +140,25 @@
         };
 
         McpServers.Add(newServer);
-        _selectedMcpServer = newServer;
-        ResetAuthEditorToSelectedServer();
-        _authEditorServerId = newServer.Id;
         StateHasChanged();
         await OnMcpServersChange.InvokeAsync(McpServers.ToList());
         await OnSelectMcpServer.InvokeAsync(newServer.Id);
     }
 
-    private async Task UpdateMcpServerAsync(string id, Action<McpServerConfigurationItem> updater)
-    {
-        var server = McpServers.FirstOrDefault(item => item.Id == id);
-        if (server == null)
-            return;
+    private static char GetAvatarLetter(string name) =>
+        string.IsNullOrWhiteSpace(name) ? '?' : char.ToUpperInvariant(name[0]);
 
-        updater(server);
-        _selectedMcpServer = server;
-        StateHasChanged();
-        await OnMcpServersChange.InvokeAsync(McpServers.ToList());
+    private static string GetAvatarBackground(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "hsl(214, 20%, 28%)";
+        var hue = (name[0] * 37) % 360;
+        return $"hsl({hue}, 20%, 28%)";
     }
 
-    private async Task SaveCurrentMcpServerAsync()
-    {
-        var selectedServer = SelectedMcpServer;
-        if (selectedServer == null)
-            return;
-
-        if (!TryGetAuthSaveRequest(selectedServer, out var authSaveRequest, out var validationError))
-        {
-            _authValidationError = validationError;
-            return;
-        }
-
-        _authValidationError = null;
-        await OnSaveCurrentMcpServer.InvokeAsync(authSaveRequest);
-    }
-
-    private bool TryGetAuthSaveRequest(McpServerConfigurationItem server, out McpServerAuthEditorState? authSaveRequest, out string? validationError)
-    {
-        authSaveRequest = null;
-        validationError = null;
-
-        if (!HasAuthChanges(server))
-            return true;
-
-        if (!TryValidateAuthEditor(out validationError))
-            return false;
-
-        authSaveRequest = BuildAuthSaveRequest();
-        return true;
-    }
-
-    private void HandleAuthTypeChanged(ChangeEventArgs args)
-    {
-        _authEditor.Type = args.Value?.ToString() ?? "None";
-        if (string.Equals(_authEditor.Type, "CustomHeaders", StringComparison.Ordinal) && _authEditor.Headers.Count == 0)
-        {
-            _authEditor.Headers.Add(new McpServerAuthHeaderEditorItem());
-        }
-
-        _authValidationError = null;
-    }
-
-    private void ToggleBearerTokenVisibility() => _showBearerToken = !_showBearerToken;
-
-    private void UpdateBearerToken(string value)
-    {
-        _authEditor.BearerToken = value;
-        _authValidationError = null;
-    }
-
-    private void AddAuthHeaderRow()
-    {
-        _authEditor.Headers.Add(new McpServerAuthHeaderEditorItem());
-        _authValidationError = null;
-    }
-
-    private void RemoveAuthHeaderRow(int index)
-    {
-        if (index < 0 || index >= _authEditor.Headers.Count)
-            return;
-
-        _authEditor.Headers.RemoveAt(index);
-        _authValidationError = null;
-    }
-
-    private void UpdateHeaderName(int index, string value)
-    {
-        if (index < 0 || index >= _authEditor.Headers.Count)
-            return;
-
-        _authEditor.Headers[index].Name = value;
-        _authValidationError = null;
-    }
-
-    private void UpdateHeaderValue(int index, string value)
-    {
-        if (index < 0 || index >= _authEditor.Headers.Count)
-            return;
-
-        _authEditor.Headers[index].Value = value;
-        _authValidationError = null;
-    }
-
-    private void ResetAuthEditorToSelectedServer()
-    {
-        _authEditor = CreateAuthEditorState(SelectedMcpServer);
-        _showBearerToken = false;
-        _authValidationError = null;
-    }
-
-    private McpServerAuthEditorState CreateAuthEditorState(McpServerConfigurationItem? server)
-    {
-        if (server == null)
-            return new McpServerAuthEditorState();
-
-        var auth = server.Auth ?? new McpServerAuthSummary();
-        var state = new McpServerAuthEditorState
-        {
-            Type = string.IsNullOrWhiteSpace(auth.Type) ? "None" : auth.Type,
-            BearerToken = "",
-            Headers = auth.CustomHeaderNames
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Select(name => new McpServerAuthHeaderEditorItem { Name = name, Value = "" })
-                .ToList(),
-        };
-
-        if (string.Equals(state.Type, "CustomHeaders", StringComparison.Ordinal) && state.Headers.Count == 0)
-        {
-            state.Headers.Add(new McpServerAuthHeaderEditorItem());
-        }
-
-        return state;
-    }
-
-    private McpServerAuthEditorState BuildAuthSaveRequest()
-    {
-        return new McpServerAuthEditorState
-        {
-            Type = _authEditor.Type,
-            BearerToken = string.Equals(_authEditor.Type, "BearerToken", StringComparison.Ordinal) ? _authEditor.BearerToken : "",
-            Headers = string.Equals(_authEditor.Type, "CustomHeaders", StringComparison.Ordinal)
-                ? _authEditor.Headers.Select(header => header.Clone()).ToList()
-                : [],
-        };
-    }
-
-    private bool HasAuthChanges(McpServerConfigurationItem server)
-    {
-        var savedAuth = server.Auth ?? new McpServerAuthSummary();
-        var editorType = NormalizeAuthType(_authEditor.Type);
-        var savedType = NormalizeAuthType(savedAuth.Type);
-
-        if (!string.Equals(editorType, savedType, StringComparison.Ordinal))
-            return true;
-
-        if (string.Equals(editorType, "BearerToken", StringComparison.Ordinal))
-            return !string.IsNullOrWhiteSpace(_authEditor.BearerToken);
-
-        if (!string.Equals(editorType, "CustomHeaders", StringComparison.Ordinal))
-            return false;
-
-        if (_authEditor.Headers.Any(header => !string.IsNullOrWhiteSpace(header.Value)))
-            return true;
-
-        var editorNames = _authEditor.Headers
-            .Select(header => header.Name.Trim())
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var savedNames = savedAuth.CustomHeaderNames
-            .Select(name => name.Trim())
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        return !editorNames.SequenceEqual(savedNames, StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static string NormalizeAuthType(string? type) =>
-        string.IsNullOrWhiteSpace(type) ? "None" : type;
-
-    private bool IsAuthEditorValid() => TryValidateAuthEditor(out _);
-
-    private bool TryValidateAuthEditor(out string? validationError)
-    {
-        validationError = null;
-
-        if (string.Equals(_authEditor.Type, "None", StringComparison.Ordinal))
-            return true;
-
-        if (string.Equals(_authEditor.Type, "BearerToken", StringComparison.Ordinal))
-        {
-            if (string.IsNullOrWhiteSpace(_authEditor.BearerToken))
-            {
-                validationError = "Enter a bearer token before saving.";
-                return false;
-            }
-
-            return true;
-        }
-
-        if (!string.Equals(_authEditor.Type, "CustomHeaders", StringComparison.Ordinal))
-        {
-            validationError = "Unsupported authorization type.";
-            return false;
-        }
-
-        var populatedHeaders = _authEditor.Headers
-            .Where(header => !string.IsNullOrWhiteSpace(header.Name) || !string.IsNullOrWhiteSpace(header.Value))
-            .ToList();
-
-        if (populatedHeaders.Count == 0)
-        {
-            validationError = "Add at least one custom header before saving.";
-            return false;
-        }
-
-        var seenHeaderNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var header in populatedHeaders)
-        {
-            var name = header.Name.Trim();
-            var value = header.Value.Trim();
-
-            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(value))
-            {
-                validationError = "Each custom header must include both a name and a value.";
-                return false;
-            }
-
-            if (string.Equals(name, "Authorization", StringComparison.OrdinalIgnoreCase))
-            {
-                validationError = "Use BearerToken instead of a custom Authorization header.";
-                return false;
-            }
-
-            if (!seenHeaderNames.Add(name))
-            {
-                validationError = $"Duplicate header '{name}' is not allowed.";
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static string GetAuthorizationValue(McpServerAuthSummary auth)
-    {
-        if (string.Equals(auth.Type, "BearerToken", StringComparison.Ordinal))
-            return "Bearer token";
-        if (string.Equals(auth.Type, "CustomHeaders", StringComparison.Ordinal))
-            return "Custom headers";
-        return "None";
-    }
-
-    private static string GetAuthorizationNote(McpServerAuthSummary auth)
-    {
-        if (string.Equals(auth.Type, "BearerToken", StringComparison.Ordinal) && auth.HasBearerToken)
-            return "Stored token hidden in responses";
-        if (string.Equals(auth.Type, "CustomHeaders", StringComparison.Ordinal) && auth.HasCustomHeaders)
-        {
-            var count = auth.CustomHeaderNames.Count;
-            return count == 1 ? "1 stored header" : $"{count} stored headers";
-        }
-
-        return "No stored credentials";
-    }
-
-    private bool IsServerModified(McpServerConfigurationItem server)
-    {
-        return ModifiedMcpServerIds.Contains(server.Id)
-            || (SelectedMcpServer?.Id == server.Id && HasAuthChanges(server));
-    }
-
-    private (string Icon, string Color, string Label) GetStatusBadge(McpServerConfigurationItem server)
-    {
-        if (IsServerModified(server))
-            return (SvgPencil, "hsl(40, 85%, 55%)", "Modified");
-        if (string.IsNullOrWhiteSpace(server.BackendId))
-            return (SvgDraft, "hsl(214, 60%, 55%)", "Draft");
-        return server.IsEnabled
-            ? (SvgEnabled, "hsl(145, 65%, 45%)", "Enabled")
-            : (SvgDisabled, "hsl(214, 5%, 55%)", "Disabled");
-    }
-
-    private static string GetServerSubline(McpServerConfigurationItem server)
-    {
-        if (string.IsNullOrWhiteSpace(server.Url))
-            return "Draft configuration";
-
-        return Uri.TryCreate(server.Url, UriKind.Absolute, out var uri)
-            ? uri.Host
-            : server.Url;
-    }
-
-    private static string GetSyncSummary(McpServerConfigurationItem server)
-    {
-        if (string.IsNullOrWhiteSpace(server.ToolsSyncedAt))
-            return "Tools not synced yet";
-        if (!DateTime.TryParse(
-                server.ToolsSyncedAt,
-                System.Globalization.CultureInfo.InvariantCulture,
-                System.Globalization.DateTimeStyles.AllowWhiteSpaces |
-                System.Globalization.DateTimeStyles.AssumeUniversal |
-                System.Globalization.DateTimeStyles.AdjustToUniversal,
-                out var syncedAtUtc))
-            return server.ToolsSyncedAt;
-
-        var diff = DateTime.UtcNow - syncedAtUtc;
-        if (diff < TimeSpan.Zero) diff = TimeSpan.Zero;
-        if (diff.TotalMinutes < 1) return "Synced just now";
-        if (diff.TotalHours < 1) return $"Synced {(int)diff.TotalMinutes} min ago";
-        if (diff.TotalDays < 1) return $"Synced {(int)diff.TotalHours} h ago";
-        return $"Synced {syncedAtUtc.ToLocalTime():g}";
-    }
-
-    private const string SvgSearch =
-        """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>""";
     private const string SvgPlus =
         """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>""";
-    private const string SvgBoxes =
-        """<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>""";
-    private const string SvgEnabled =
-        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>""";
-    private const string SvgDisabled =
-        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>""";
-    private const string SvgPencil =
-        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>""";
-    private const string SvgDraft =
-        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22h6a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v10"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 18h1"/><path d="M13 18h3"/></svg>""";
+    private const string SvgChevron =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>""";
+    private const string SvgDotSmall =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="hsl(145, 65%, 45%)"/></svg>""";
 }
