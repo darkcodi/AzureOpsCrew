@@ -121,9 +121,15 @@ public class AppState
         Agents.ReplaceAll(agents);
     }
 
-    public async Task LoadAgentMindAsync(AgentService agentService, Guid agentId)
+    public async Task LoadAgentMindForDmAsync(AgentService agentService, Guid dmId, Guid agentId)
     {
-        var mindData = await agentService.GetAgentMindAsync(agentId);
+        var mindData = await agentService.GetAgentMindForDmAsync(dmId, agentId);
+        CurrentAgentMind = mindData;
+    }
+
+    public async Task LoadAgentMindForChannelAsync(AgentService agentService, Guid channelId, Guid agentId)
+    {
+        var mindData = await agentService.GetAgentMindForChannelAsync(channelId, agentId);
         CurrentAgentMind = mindData;
     }
 }

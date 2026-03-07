@@ -1,10 +1,13 @@
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Background;
+using AzureOpsCrew.Api.Endpoints.Dtos.Agents;
 using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
 using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -84,6 +87,123 @@ public static class DmEndpoints
             return Results.Ok(messages);
         })
         .Produces<List<Message>>(StatusCodes.Status200OK);
+
+        // GET: /api/dms/{dmId}/agents/{agentId}/mind - Returns agent thoughts scoped to a specific DM
+        group.MapGet("/{dmId}/agents/{agentId}/mind", async (
+            Guid dmId,
+            Guid agentId,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            // Verify DM exists
+            var dmExists = await context.Dms
+                .AnyAsync(dm => dm.Id == dmId, cancellationToken);
+
+            if (!dmExists)
+                return Results.NotFound();
+
+            // Filter by both AgentId and ThreadId (which equals dmId)
+            var messages = await context.AgentThoughts
+                .Where(m => m.AgentId == agentId && m.ThreadId == dmId && !m.IsHidden)
+                .OrderBy(m => m.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+            var historyMessages = new List<AgentMindEventDto>();
+
+            // First pass: collect tool result content by CallId (from tool-role messages)
+            var toolResultsByCallId = new Dictionary<(Guid threadId, Guid runId, string callId), string>();
+            foreach (var msg in messages)
+            {
+                if (msg.Role.ToString() != "tool")
+                    continue;
+                var contentDto = new AocAiContentDto
+                {
+                    Content = msg.ContentJson,
+                    ContentType = msg.ContentType
+                };
+                var aiContent = contentDto.ToAocAiContent();
+                if (aiContent is AocFunctionResultContent functionResult)
+                {
+                    var resultStr = functionResult.Result switch
+                    {
+                        null => "<null>",
+                        string s => s,
+                        JsonElement el => el.GetRawText(),
+                        _ => JsonSerializer.Serialize(functionResult.Result)
+                    };
+                    toolResultsByCallId[(msg.ThreadId, msg.RunId, functionResult.CallId)] = resultStr ?? "";
+                }
+            }
+
+            foreach (var msg in messages)
+            {
+                // Skip tool role messages (internal function calls)
+                if (msg.Role.ToString() == "tool")
+                    continue;
+
+                // Deserialize content
+                var contentDto = new AocAiContentDto
+                {
+                    Content = msg.ContentJson,
+                    ContentType = msg.ContentType
+                };
+                var aiContent = contentDto.ToAocAiContent();
+
+                if (aiContent is AocTextContent textContent)
+                {
+                    historyMessages.Add(new AgentMindEventDto
+                    {
+                        Id = msg.Id.ToString(),
+                        Role = msg.Role.ToString(),
+                        Content = textContent.Text,
+                        Timestamp = new DateTimeOffset(msg.CreatedAt, TimeSpan.Zero),
+                    });
+                }
+                else if (aiContent is AocTextReasoningContent reasoningContent)
+                {
+                    historyMessages.Add(new AgentMindEventDto
+                    {
+                        Id = msg.Id.ToString(),
+                        Role = msg.Role.ToString(),
+                        Content = null,
+                        Reasoning = reasoningContent.Text,
+                        Timestamp = new DateTimeOffset(msg.CreatedAt, TimeSpan.Zero),
+                    });
+                }
+                else if (aiContent is AocFunctionCallContent functionCallContent
+                         && toolResultsByCallId.TryGetValue((msg.ThreadId, msg.RunId, functionCallContent.CallId), out var resultStr))
+                {
+                    object? resultObj;
+                    try
+                    {
+                        resultObj = JsonSerializer.Deserialize<JsonElement>(resultStr);
+                    }
+                    catch
+                    {
+                        resultObj = new Dictionary<string, object?> { ["raw"] = resultStr };
+                    }
+
+                    historyMessages.Add(new AgentMindEventDto
+                    {
+                        Id = functionCallContent.CallId,
+                        Role = msg.Role.ToString(),
+                        Content = "",
+                        Timestamp = new DateTimeOffset(msg.CreatedAt, TimeSpan.Zero),
+                        Widget = new UiWidgetDto
+                        {
+                            ToolName = functionCallContent.Name,
+                            CallId = functionCallContent.CallId,
+                            Args = functionCallContent.Arguments ?? new Dictionary<string, object?>(),
+                            Result = resultObj
+                        }
+                    });
+                }
+            }
+
+            return Results.Ok(new AgentMindResponseDto { Events = historyMessages });
+        })
+        .Produces<AgentMindResponseDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
 
         // POST: /api/dms/agents/{agentId}/ensure-channel - Returns or creates a DM channel between the user and an agent
         group.MapPost("/agents/{agentId}/ensure-channel", async (

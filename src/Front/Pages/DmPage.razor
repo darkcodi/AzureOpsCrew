@@ -106,7 +106,7 @@
             if (agentId.HasValue)
             {
                 _messages = await DmService.GetAgentDmMessagesAsync(agentId.Value);
-                await AppState.LoadAgentMindAsync(AgentService, agentId.Value);
+                await AppState.LoadAgentMindForDmAsync(AgentService, dmId.Value, agentId.Value);
                 _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
                 _reasonings = ExtractReasonings(AppState.CurrentAgentMind);
             }

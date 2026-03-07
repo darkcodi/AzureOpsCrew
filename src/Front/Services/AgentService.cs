@@ -112,15 +112,28 @@ public class AgentService
         }
     }
 
-    public async Task<AgentMindResponseDto?> GetAgentMindAsync(Guid id)
+    public async Task<AgentMindResponseDto?> GetAgentMindForDmAsync(Guid dmId, Guid agentId)
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<AgentMindResponseDto>($"/api/agents/{id}/mind");
+            return await _httpClient.GetFromJsonAsync<AgentMindResponseDto>($"/api/dms/{dmId}/agents/{agentId}/mind");
         }
         catch (Exception ex)
         {
-            Log.Error($"Error fetching agent mind {id}: {ex.Message}");
+            Log.Error($"Error fetching agent mind for DM {dmId}, agent {agentId}: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<AgentMindResponseDto?> GetAgentMindForChannelAsync(Guid channelId, Guid agentId)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<AgentMindResponseDto>($"/api/channels/{channelId}/agents/{agentId}/mind");
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error fetching agent mind for channel {channelId}, agent {agentId}: {ex.Message}");
             return null;
         }
     }
