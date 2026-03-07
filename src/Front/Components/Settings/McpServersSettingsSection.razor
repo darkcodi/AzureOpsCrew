@@ -1,5 +1,7 @@
 @inject MarkdownService MarkdownSvc
 
+@if (_mcpSubView == "list")
+{
 <h3 class="mcp-installed-title">Installed MCP Servers</h3>
 
 <div class="mcp-server-list">
@@ -79,7 +81,7 @@
             </div>
 
             <div class="agent-row-actions">
-                <button type="button" class="agent-row-btn agent-row-btn-edit" title="Edit @(string.IsNullOrWhiteSpace(server.Name) ? "server" : server.Name)" @onclick="() => OnSelectMcpServer.InvokeAsync(server.Id)">
+                <button type="button" class="agent-row-btn agent-row-btn-edit" title="Edit @(string.IsNullOrWhiteSpace(server.Name) ? "server" : server.Name)" @onclick="() => OpenEditMcpServer(server.Id)">
                     @((MarkupString)SvgPencil)
                 </button>
             </div>
@@ -93,7 +95,7 @@
         </div>
     }
 
-    <button type="button" class="mcp-server-card mcp-add-card" @onclick="AddMcpServerDraftAsync">
+    <button type="button" class="mcp-server-card mcp-add-card" @onclick="AddMcpServerDraftAndOpenFormAsync">
         <div class="mcp-avatar-wrapper">
             <span class="mcp-avatar mcp-avatar-add">@((MarkupString)SvgPlus)</span>
         </div>
@@ -107,6 +109,57 @@
 @if (!string.IsNullOrEmpty(McpServerError))
 {
     <p class="mcp-error">@McpServerError</p>
+}
+}
+else
+{
+    var selectedServer = McpServers?.FirstOrDefault(s => s.Id == SelectedMcpServerId);
+    @if (selectedServer == null)
+    {
+        <div class="agents-back-bar">
+            <button type="button" class="agents-back-btn" @onclick="BackToMcpList" aria-label="Back to list">
+                <span class="agents-back-icon">@((MarkupString)SvgChevronLeft)</span>
+                <span>Back to list</span>
+            </button>
+        </div>
+        <p class="mcp-error">No server selected. Go back to list and select a server to edit.</p>
+    }
+    else
+    {
+        <div class="agents-back-bar">
+            <button type="button" class="agents-back-btn" @onclick="BackToMcpList" aria-label="Back to list">
+                <span class="agents-back-icon">@((MarkupString)SvgChevronLeft)</span>
+                <span>Back to list</span>
+            </button>
+        </div>
+        <div class="agent-form">
+            <div class="agent-form-field">
+                <label for="mcp-server-name" class="agent-form-label">Server Name</label>
+                <input id="mcp-server-name" type="text" class="agent-form-input" placeholder="e.g. Azure MCP"
+                       @bind="selectedServer.Name" @bind:event="oninput" />
+            </div>
+            <div class="agent-form-field">
+                <label for="mcp-server-url" class="agent-form-label">URL</label>
+                <input id="mcp-server-url" type="text" class="agent-form-input" placeholder="e.g. https://example.com/mcp"
+                       @bind="selectedServer.Url" @bind:event="oninput" />
+            </div>
+            <div class="agent-form-field">
+                <label for="mcp-server-description" class="agent-form-label">Description</label>
+                <textarea id="mcp-server-description" class="agent-form-textarea" rows="4" placeholder="Optional description of this MCP server..."
+                          @bind="selectedServer.Description" @bind:event="oninput"></textarea>
+            </div>
+            <button type="button" class="btn btn-primary agent-form-save"
+                    disabled="@(string.IsNullOrWhiteSpace(selectedServer.Name) || IsSavingMcpServer)"
+                    @onclick="SaveCurrentMcpServer">
+                <span class="agent-form-save-icon">@((MarkupString)SvgSave)</span>
+                <span>@(IsSavingMcpServer ? "Saving..." : "Save")</span>
+            </button>
+            @if (!string.IsNullOrEmpty(McpServerError))
+            {
+                <div class="agent-form-error">@McpServerError</div>
+            }
+        </div>
+    }
 }
 
 @code {
@@ -131,8 +184,31 @@
     private readonly HashSet<string> _expandedServerIds = [];
     private string? _hoveredToolKey;
     private CancellationTokenSource? _tooltipCts;
+    private string _mcpSubView = "list"; // "list" | "form"
 
     private const int TooltipDelayMs = 400;
+
+    private async Task OpenEditMcpServer(string serverId)
+    {
+        await OnSelectMcpServer.InvokeAsync(serverId);
+        _mcpSubView = "form";
+    }
+
+    private void BackToMcpList()
+    {
+        _mcpSubView = "list";
+    }
+
+    private async Task AddMcpServerDraftAndOpenFormAsync()
+    {
+        await AddMcpServerDraftAsync();
+        _mcpSubView = "form";
+    }
+
+    private async Task SaveCurrentMcpServer()
+    {
+        await OnSaveCurrentMcpServer.InvokeAsync(null);
+    }
 
     private async Task ShowToolTooltip(string serverId, string toolName)
     {
@@ -213,4 +289,8 @@
         """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>""";
     private const string SvgPencil =
         """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>""";
+    private const string SvgChevronLeft =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>""";
+    private const string SvgSave =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>""";
 }
