@@ -138,13 +138,24 @@
     transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
+.mcp-tool-chip.clickable {
+    cursor: pointer;
+}
+
 .mcp-tool-chip:hover {
     background: hsl(228, 6%, 26%);
     border-color: hsl(228, 6%, 36%);
 }
 
 .mcp-tool-chip.disabled {
-    opacity: 0.5;
+    background: hsl(228, 6%, 14%);
+    border-color: hsl(228, 6%, 24%);
+    color: hsl(210, 3%, 58%);
+}
+
+.mcp-tool-chip.disabled:hover {
+    background: hsl(228, 6%, 16%);
+    border-color: hsl(228, 6%, 26%);
 }
 
 .mcp-tool-chip-wrapper {

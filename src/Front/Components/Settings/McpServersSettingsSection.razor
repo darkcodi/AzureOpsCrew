@@ -49,10 +49,12 @@
                         <div class="mcp-tools-expanded">
                             @foreach (var tool in server.Tools.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
                             {
+                                var canToggleTool = canToggle && !IsUpdatingMcpServerTool;
                                 <div class="mcp-tool-chip-wrapper">
-                                    <span class="mcp-tool-chip @(tool.IsEnabled ? "" : "disabled")"
+                                    <span class="mcp-tool-chip @(tool.IsEnabled ? "" : "disabled") @(canToggleTool ? "clickable" : "")"
                                           @onmouseenter="() => ShowToolTooltip(server.Id, tool.Name)"
-                                          @onmouseleave="HideToolTooltip">@tool.Name</span>
+                                          @onmouseleave="HideToolTooltip"
+                                          @onclick="() => ToggleToolAsync(server.Id, tool.Name)">@tool.Name</span>
                                     @if (_hoveredToolKey == $"{server.Id}|{tool.Name}" && !string.IsNullOrWhiteSpace(tool.Description))
                                     {
                                         <div class="mcp-tool-tooltip">
@@ -163,6 +165,12 @@
     {
         await OnSelectMcpServer.InvokeAsync(serverId);
         await OnToggleSelectedMcpServerEnabled.InvokeAsync();
+    }
+
+    private async Task ToggleToolAsync(string serverId, string toolName)
+    {
+        await OnSelectMcpServer.InvokeAsync(serverId);
+        await OnToggleSelectedMcpServerTool.InvokeAsync(toolName);
     }
 
     private async Task AddMcpServerDraftAsync()
