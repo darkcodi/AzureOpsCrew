@@ -19,7 +19,7 @@
     padding: 24px 32px;
 }
 
-/* ──── Section Header ──── */
+/* Section Header */
 
 .section-header {
     margin-bottom: 24px;
@@ -40,7 +40,7 @@
     margin: 0;
 }
 
-/* ──── Search Bar ──── */
+/* Search Bar */
 
 .search-bar {
     position: relative;
@@ -81,7 +81,7 @@
     color: hsl(214, 5%, 45%);
 }
 
-/* ──── Providers Layout ──── */
+/* Providers Layout */
 
 .providers-layout {
     display: flex;
@@ -156,7 +156,7 @@
     flex-shrink: 0;
 }
 
-/* ──── Add Provider Button ──── */
+/* Add Provider Button */
 
 .add-provider-btn {
     display: flex;
@@ -191,7 +191,7 @@
     flex-shrink: 0;
 }
 
-/* ──── Provider Detail ──── */
+/* Provider Detail */
 
 .provider-detail {
     min-width: 0;
@@ -221,7 +221,7 @@
     color: hsl(214, 5%, 55%);
 }
 
-/* ──── Provider Description Card ──── */
+/* Provider Description Card */
 
 .provider-description-card {
     margin-bottom: 16px;
@@ -258,7 +258,7 @@
     opacity: 0.8;
 }
 
-/* ──── Form Fields ──── */
+/* Form Fields */
 
 .form-field {
     margin-bottom: 16px;
@@ -345,7 +345,7 @@
     color: hsl(214, 5%, 55%);
 }
 
-/* ──── Input with Action ──── */
+/* Input with Action */
 
 .input-with-action {
     position: relative;
@@ -372,7 +372,7 @@
     background-color: hsl(228, 6%, 35%);
 }
 
-/* ──── Toggle Switch ──── */
+/* Toggle Switch */
 
 .toggle-switch {
     position: relative;
@@ -412,7 +412,7 @@
     transform: translateX(24px);
 }
 
-/* ──── Model Chips ──── */
+/* Model Chips */
 
 .model-chips-container {
     display: flex;
@@ -488,7 +488,7 @@
     color: hsl(214, 5%, 45%);
 }
 
-/* ──── Action Buttons ──── */
+/* Action Buttons */
 
 .action-buttons {
     display: flex;
@@ -537,7 +537,7 @@
     color: hsl(0, 70%, 55%);
 }
 
-/* ──── Dialog / Modal ──── */
+/* Dialog / Modal */
 
 .dialog-overlay {
     position: fixed;
@@ -624,7 +624,7 @@
     color: hsl(214, 5%, 65%);
 }
 
-/* ──── Account Card ──── */
+/* Account Card */
 
 .account-card {
     display: flex;
@@ -660,7 +660,7 @@
     color: hsl(214, 5%, 55%);
 }
 
-/* ──── Disabled Section ──── */
+/* Disabled Section */
 
 .disabled-section {
     pointer-events: none;
@@ -668,7 +668,7 @@
     opacity: 0.6;
 }
 
-/* ──── WIP Banner ──── */
+/* WIP Banner */
 
 .wip-banner {
     margin-top: 40px;
@@ -681,7 +681,7 @@
     text-align: center;
 }
 
-/* ──── Misc ──── */
+/* Misc */
 
 .text-white {
     color: #fff;
@@ -692,7 +692,7 @@
     color: hsl(214, 5%, 55%);
 }
 
-/* ──── Agents Section (match Next.js ManageAgentsDialog embedded list) ──── */
+/* Agents Section */
 
 .agents-section {
     display: flex;
@@ -832,7 +832,7 @@
     flex-shrink: 0;
 }
 
-/* ──── Agents Back bar + Form (create/edit) ──── */
+/* Agents Back bar and Form */
 
 .agents-back-bar {
     flex-shrink: 0;
@@ -991,6 +991,180 @@
     text-align: center;
 }
 
+.agent-mcp-field {
+    padding-top: 8px;
+    border-top: 1px solid hsl(228, 6%, 26%);
+}
+
+.agent-mcp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.agent-mcp-subtitle {
+    margin: 4px 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: hsl(214, 5%, 66%);
+}
+
+.agent-mcp-servers {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.agent-mcp-server {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid hsl(228, 6%, 28%);
+    background: hsl(228, 6%, 17%);
+}
+
+.agent-mcp-server.selected {
+    border-color: hsl(235, 86%, 65%);
+    box-shadow: 0 0 0 1px hsl(235, 50%, 35%);
+}
+
+.agent-mcp-server-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.agent-mcp-server-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.agent-mcp-server-title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.agent-mcp-server-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: hsl(210, 3%, 94%);
+}
+
+.agent-mcp-server-state,
+.agent-mcp-server-note,
+.agent-mcp-server-url {
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.agent-mcp-server-state {
+    color: hsl(35, 85%, 68%);
+}
+
+.agent-mcp-server-url,
+.agent-mcp-server-note {
+    color: hsl(214, 5%, 66%);
+}
+
+.agent-mcp-tools {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid hsl(228, 6%, 28%);
+    background: hsl(228, 7%, 14%);
+}
+
+.agent-mcp-empty {
+    font-size: 12px;
+    line-height: 1.5;
+    color: hsl(214, 5%, 60%);
+}
+
+.agent-mcp-tool {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid hsl(228, 6%, 28%);
+    background: hsl(228, 6%, 17%);
+}
+
+.agent-mcp-tool.off {
+    border-color: hsl(228, 6%, 24%);
+    background: hsl(228, 6%, 15%);
+}
+
+.agent-mcp-tool-content {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.agent-mcp-tool-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: hsl(210, 3%, 94%);
+}
+
+.agent-mcp-tool-description {
+    font-size: 12px;
+    line-height: 1.5;
+    color: hsl(214, 5%, 66%);
+}
+
+.agent-mcp-tool-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.agent-mcp-tool-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid hsl(228, 6%, 30%);
+    background: hsl(228, 6%, 20%);
+    font-size: 11px;
+    color: hsl(214, 5%, 70%);
+}
+
+.agent-mcp-tool-action {
+    border: 1px solid hsl(228, 6%, 30%);
+    background: hsl(228, 6%, 22%);
+    color: hsl(210, 3%, 90%);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
+    font-family: inherit;
+}
+
+.agent-mcp-tool-action:hover {
+    border-color: hsl(235, 86%, 65%);
+    background: hsl(233, 24%, 24%);
+}
+
+.agent-mcp-tool-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
 /* Scrollbar for content area */
 .settings-content-scroll::-webkit-scrollbar {
     width: 8px;
@@ -1009,7 +1183,7 @@
     background-color: hsl(214, 5%, 55%);
 }
 
-/* ──── Agent Form Helper Text ──── */
+/* Agent Form Helper Text */
 
 ::deep .agent-form-helper {
     display: block;

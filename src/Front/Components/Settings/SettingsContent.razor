@@ -188,6 +188,12 @@
     private string _agentPrompt = "";
     private string? _agentSaveError;
     private bool _isSavingAgent;
+    private string? _agentMcpError;
+    private bool _isUpdatingAgentMcpServer;
+    private string? _updatingAgentMcpServerId;
+    private bool _isUpdatingAgentMcpTool;
+    private string? _updatingAgentMcpToolServerId;
+    private string? _updatingAgentMcpToolName;
 
     private static readonly string[] AgentColors =
     [
@@ -397,6 +403,165 @@
     private List<string> AgentFormProviderModels =>
         AgentFormSelectedProvider?.SelectedModels ?? [];
 
+    private List<McpServerConfigurationItem> AgentAssignableMcpServers
+    {
+        get
+        {
+            var selectedIds = _editingAgent?.AvailableMcpServerTools
+                .Select(item => item.McpServerConfigurationId)
+                .ToHashSet() ?? [];
+
+            return McpServers
+                .Where(server => TryGetMcpServerConfigurationId(server, out var configId) && (server.IsEnabled || selectedIds.Contains(configId)))
+                .OrderBy(server => server.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+    }
+
+    private AgentMcpServerToolAvailabilityDto? GetAgentMcpServerAvailability(McpServerConfigurationItem server)
+    {
+        if (_editingAgent == null || !TryGetMcpServerConfigurationId(server, out var configId))
+            return null;
+
+        return _editingAgent.AvailableMcpServerTools
+            .FirstOrDefault(item => item.McpServerConfigurationId == configId);
+    }
+
+    private bool IsAgentMcpServerEnabled(McpServerConfigurationItem server) =>
+        GetAgentMcpServerAvailability(server) != null;
+
+    private HashSet<string> GetAgentEnabledToolNames(McpServerConfigurationItem server) =>
+        GetAgentMcpServerAvailability(server)?.EnabledToolNames.ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+
+    private List<McpServerToolItem> GetAgentVisibleTools(McpServerConfigurationItem server) =>
+        server.Tools
+            .Where(tool => tool.IsEnabled)
+            .OrderBy(tool => tool.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static bool TryGetMcpServerConfigurationId(McpServerConfigurationItem server, out Guid mcpServerConfigurationId) =>
+        Guid.TryParse(server.BackendId, out mcpServerConfigurationId);
+
+    private void ApplyUpdatedEditingAgent(AgentDto updatedAgent)
+    {
+        if (_editingAgent?.Id == updatedAgent.Id)
+            _editingAgent = updatedAgent;
+    }
+
+    private void ResetAgentMcpState()
+    {
+        _agentMcpError = null;
+        _isUpdatingAgentMcpServer = false;
+        _updatingAgentMcpServerId = null;
+        _isUpdatingAgentMcpTool = false;
+        _updatingAgentMcpToolServerId = null;
+        _updatingAgentMcpToolName = null;
+    }
+
+    private async Task ToggleAgentMcpServerAsync(McpServerConfigurationItem server)
+    {
+        if (_editingAgent == null)
+        {
+            _agentMcpError = "Save the agent first before assigning MCP servers.";
+            return;
+        }
+
+        if (!TryGetMcpServerConfigurationId(server, out var mcpServerConfigurationId))
+            return;
+
+        var isEnabledForAgent = IsAgentMcpServerEnabled(server);
+        if (!server.IsEnabled && !isEnabledForAgent)
+            return;
+
+        _agentMcpError = null;
+        _isUpdatingAgentMcpServer = true;
+        _updatingAgentMcpServerId = server.Id;
+
+        try
+        {
+            AgentDto? updatedAgent = isEnabledForAgent
+                ? await AgentService.RemoveAvailableMcpServerAsync(_editingAgent.Id, mcpServerConfigurationId)
+                : await AgentService.SetAvailableMcpServerAsync(_editingAgent.Id, mcpServerConfigurationId, []);
+
+            if (updatedAgent == null)
+            {
+                _agentMcpError = isEnabledForAgent
+                    ? "Failed to remove MCP server from the agent."
+                    : "Failed to add MCP server to the agent.";
+                return;
+            }
+
+            ApplyUpdatedEditingAgent(updatedAgent);
+            await OnAgentsChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _agentMcpError = ex.Message;
+        }
+        finally
+        {
+            _isUpdatingAgentMcpServer = false;
+            _updatingAgentMcpServerId = null;
+        }
+    }
+
+    private async Task ToggleAgentMcpToolAsync(McpServerConfigurationItem server, McpServerToolItem tool)
+    {
+        if (_editingAgent == null)
+        {
+            _agentMcpError = "Save the agent first before choosing MCP tools.";
+            return;
+        }
+
+        if (!TryGetMcpServerConfigurationId(server, out var mcpServerConfigurationId))
+            return;
+
+        var availability = GetAgentMcpServerAvailability(server);
+        if (availability == null)
+        {
+            _agentMcpError = "Enable the MCP server for this agent first.";
+            return;
+        }
+
+        var enabledToolNames = availability.EnabledToolNames
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (!enabledToolNames.Add(tool.Name))
+            enabledToolNames.Remove(tool.Name);
+
+        _agentMcpError = null;
+        _isUpdatingAgentMcpTool = true;
+        _updatingAgentMcpToolServerId = server.Id;
+        _updatingAgentMcpToolName = tool.Name;
+
+        try
+        {
+            var updatedAgent = await AgentService.SetAvailableMcpServerAsync(
+                _editingAgent.Id,
+                mcpServerConfigurationId,
+                enabledToolNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
+
+            if (updatedAgent == null)
+            {
+                _agentMcpError = "Failed to update MCP tool availability.";
+                return;
+            }
+
+            ApplyUpdatedEditingAgent(updatedAgent);
+            await OnAgentsChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _agentMcpError = ex.Message;
+        }
+        finally
+        {
+            _isUpdatingAgentMcpTool = false;
+            _updatingAgentMcpToolServerId = null;
+            _updatingAgentMcpToolName = null;
+        }
+    }
+
     private void OpenCreateAgent()
     {
         _agentsSubView = "form";
@@ -404,6 +569,7 @@
         _agentName = "";
         _agentPrompt = "";
         _agentSaveError = null;
+        ResetAgentMcpState();
         var first = EnabledProviders.FirstOrDefault();
         if (first != null)
         {
@@ -430,6 +596,7 @@
         _agentColor = agent.Color;
         _agentModel = agent.Model;
         _agentSaveError = null;
+        ResetAgentMcpState();
         var matching = EnabledProviders.FirstOrDefault(p => (p.SelectedModels ?? []).Contains(agent.Model));
         _agentProviderId = matching?.BackendId ?? EnabledProviders.FirstOrDefault()?.BackendId ?? "";
         if (string.IsNullOrEmpty(_agentProviderId))
@@ -441,6 +608,7 @@
         _agentsSubView = "list";
         _editingAgent = null;
         _agentSaveError = null;
+        ResetAgentMcpState();
     }
 
     private void OnAgentProviderChanged(ChangeEventArgs e)
@@ -726,7 +894,7 @@
         <div class="agents-section">
             <div class="section-header">
                 <h2 class="section-title">Agents</h2>
-                <p class="section-description">Configure default agent behaviors, model assignments, and system prompts.</p>
+                <p class="section-description">Configure default agent behaviors, model assignments, system prompts, and MCP tools.</p>
             </div>
             @if (_agentsSubView == "list")
             {
@@ -823,12 +991,107 @@
                         <textarea id="agent-prompt" class="agent-form-textarea" rows="4" placeholder="Describe the agent's role and behavior..."
                                   @bind="_agentPrompt" @bind:event="oninput"></textarea>
                     </div>
+                    <div class="agent-form-field agent-mcp-field">
+                        <div class="agent-mcp-header">
+                            <div>
+                                <label class="agent-form-label">MCP Servers</label>
+                                <p class="agent-mcp-subtitle">Attach globally enabled MCP servers to this agent and choose which synced tools it can use.</p>
+                            </div>
+                        </div>
+
+                        @if (_editingAgent == null)
+                        {
+                            <div class="agent-form-message">Create the agent first, then return here to enable MCP servers and tools.</div>
+                        }
+                        else if (AgentAssignableMcpServers.Count == 0)
+                        {
+                            <div class="agent-form-message">No saved and enabled MCP servers are available yet. Configure them in the MCP Servers section first.</div>
+                        }
+                        else
+                        {
+                            <div class="agent-mcp-servers">
+                                @foreach (var server in AgentAssignableMcpServers)
+                                {
+                                    var isServerEnabledForAgent = IsAgentMcpServerEnabled(server);
+                                    var enabledToolNames = GetAgentEnabledToolNames(server);
+                                    var tools = GetAgentVisibleTools(server);
+                                    var canToggleServer = !_isSavingAgent && !_isUpdatingAgentMcpServer && !_isUpdatingAgentMcpTool && (server.IsEnabled || isServerEnabledForAgent);
+
+                                    <div class="agent-mcp-server @(isServerEnabledForAgent ? "selected" : "")">
+                                        <div class="agent-mcp-server-header">
+                                            <div class="agent-mcp-server-meta">
+                                                <div class="agent-mcp-server-title-row">
+                                                    <span class="agent-mcp-server-name">@server.Name</span>
+                                                    @if (!server.IsEnabled)
+                                                    {
+                                                        <span class="agent-mcp-server-state">Disabled in MCP Servers</span>
+                                                    }
+                                                </div>
+                                                <span class="agent-mcp-server-url">@server.Url</span>
+                                                <span class="agent-mcp-server-note">@tools.Count available tool(s)</span>
+                                            </div>
+                                            <button type="button" role="switch" aria-checked="@isServerEnabledForAgent"
+                                                    class="toggle-switch @(isServerEnabledForAgent ? "on" : "")"
+                                                    disabled="@(!canToggleServer)"
+                                                    @onclick="() => ToggleAgentMcpServerAsync(server)">
+                                                <span class="toggle-knob"></span>
+                                            </button>
+                                        </div>
+
+                                        @if (isServerEnabledForAgent)
+                                        {
+                                            <div class="agent-mcp-tools">
+                                                @if (tools.Count == 0)
+                                                {
+                                                    <div class="agent-mcp-empty">No globally enabled tools are available on this MCP server yet.</div>
+                                                }
+                                                else
+                                                {
+                                                    @foreach (var tool in tools)
+                                                    {
+                                                        var isUpdatingCurrentTool = _isUpdatingAgentMcpTool
+                                                            && string.Equals(_updatingAgentMcpToolServerId, server.Id, StringComparison.Ordinal)
+                                                            && string.Equals(_updatingAgentMcpToolName, tool.Name, StringComparison.Ordinal);
+                                                        var isToolEnabledForAgent = enabledToolNames.Contains(tool.Name);
+                                                        var canToggleTool = !_isSavingAgent && !_isUpdatingAgentMcpServer && !_isUpdatingAgentMcpTool;
+
+                                                        <div class="agent-mcp-tool @(isToolEnabledForAgent ? string.Empty : "off")">
+                                                            <div class="agent-mcp-tool-content">
+                                                                <span class="agent-mcp-tool-name">@tool.Name</span>
+                                                                <div class="agent-mcp-tool-badges">
+                                                                    <span class="agent-mcp-tool-badge">Input: @(string.IsNullOrWhiteSpace(tool.InputSchemaJson) ? "No" : "Yes")</span>
+                                                                    <span class="agent-mcp-tool-badge">Output: @(string.IsNullOrWhiteSpace(tool.OutputSchemaJson) ? "No" : "Yes")</span>
+                                                                </div>
+                                                                @if (!string.IsNullOrWhiteSpace(tool.Description))
+                                                                {
+                                                                    <span class="agent-mcp-tool-description">@tool.Description</span>
+                                                                }
+                                                            </div>
+                                                            <button type="button" class="agent-mcp-tool-action"
+                                                                    disabled="@(!canToggleTool)"
+                                                                    @onclick="() => ToggleAgentMcpToolAsync(server, tool)">
+                                                                @(isUpdatingCurrentTool ? "Updating..." : isToolEnabledForAgent ? "Deactivate" : "Activate")
+                                                            </button>
+                                                        </div>
+                                                    }
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
                     <button type="button" class="btn btn-primary agent-form-save"
                             disabled="@(string.IsNullOrWhiteSpace(_agentName) || _isSavingAgent || string.IsNullOrEmpty(_agentProviderId))"
                             @onclick="SaveAgent">
                         <span class="agent-form-save-icon">@((MarkupString)SvgSave)</span>
                         <span>@(_isSavingAgent ? "Saving..." : _editingAgent == null ? "Create Agent" : "Save Changes")</span>
                     </button>
+                    @if (!string.IsNullOrEmpty(_agentMcpError))
+                    {
+                        <div class="agent-form-error">@_agentMcpError</div>
+                    }
                     @if (!string.IsNullOrEmpty(_agentSaveError))
                     {
                         <div class="agent-form-error">@_agentSaveError</div>
