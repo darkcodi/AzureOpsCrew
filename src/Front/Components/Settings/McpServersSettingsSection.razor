@@ -122,12 +122,31 @@
 
     private readonly HashSet<string> _expandedServerIds = [];
     private string? _hoveredToolKey;
+    private CancellationTokenSource? _tooltipCts;
 
-    private void ShowToolTooltip(string serverId, string toolName) =>
-        _hoveredToolKey = $"{serverId}|{toolName}";
+    private const int TooltipDelayMs = 400;
 
-    private void HideToolTooltip() =>
+    private async Task ShowToolTooltip(string serverId, string toolName)
+    {
+        _tooltipCts?.Cancel();
+        _tooltipCts = new CancellationTokenSource();
+        var key = $"{serverId}|{toolName}";
+        try
+        {
+            await Task.Delay(TooltipDelayMs, _tooltipCts.Token);
+            _hoveredToolKey = key;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void HideToolTooltip()
+    {
+        _tooltipCts?.Cancel();
+        _tooltipCts = null;
         _hoveredToolKey = null;
+        StateHasChanged();
+    }
 
     private List<McpServerConfigurationItem> FilteredMcpServers =>
         McpServers
