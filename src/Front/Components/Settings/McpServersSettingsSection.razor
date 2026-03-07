@@ -1,3 +1,5 @@
+@inject MarkdownService MarkdownSvc
+
 <h3 class="mcp-installed-title">Installed MCP Servers</h3>
 
 <div class="mcp-server-list">
@@ -47,8 +49,19 @@
                         <div class="mcp-tools-expanded">
                             @foreach (var tool in server.Tools.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
                             {
-                                <span class="mcp-tool-chip @(tool.IsEnabled ? "" : "disabled")"
-                                      title="@tool.Description">@tool.Name</span>
+                                <div class="mcp-tool-chip-wrapper">
+                                    <span class="mcp-tool-chip @(tool.IsEnabled ? "" : "disabled")"
+                                          @onmouseenter="() => ShowToolTooltip(server.Id, tool.Name)"
+                                          @onmouseleave="HideToolTooltip">@tool.Name</span>
+                                    @if (_hoveredToolKey == $"{server.Id}|{tool.Name}" && !string.IsNullOrWhiteSpace(tool.Description))
+                                    {
+                                        <div class="mcp-tool-tooltip">
+                                            <div class="markdown-content">
+                                                @((MarkupString)MarkdownSvc.ConvertToHtml(tool.Description))
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
                             }
                         </div>
                         <button type="button" class="mcp-tools-toggle" @onclick="() => ToggleToolsExpanded(server.Id)">
@@ -108,6 +121,13 @@
     [Parameter] public string? McpServerError { get; set; }
 
     private readonly HashSet<string> _expandedServerIds = [];
+    private string? _hoveredToolKey;
+
+    private void ShowToolTooltip(string serverId, string toolName) =>
+        _hoveredToolKey = $"{serverId}|{toolName}";
+
+    private void HideToolTooltip() =>
+        _hoveredToolKey = null;
 
     private List<McpServerConfigurationItem> FilteredMcpServers =>
         McpServers
