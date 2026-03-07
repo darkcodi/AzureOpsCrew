@@ -6,6 +6,7 @@
 @inject AppState AppState
 @inject AgentService AgentService
 
+<PageTitle>@GetSettingsPageTitle()</PageTitle>
 <MainLayout>
     <LeftSidebar>
         <SettingsSidebar ActiveSection="_activeSection" />
@@ -91,6 +92,22 @@
         }
         _activeSection = SettingsSectionRoutes.FromSlug(SectionSlug);
     }
+
+    private static string GetSettingsPageTitle(SettingsSection section) => section switch
+    {
+        SettingsSection.Account => "Settings - Account",
+        SettingsSection.Appearance => "Settings - Appearance",
+        SettingsSection.Notifications => "Settings - Notifications",
+        SettingsSection.Providers => "Settings - Providers",
+        SettingsSection.McpServers => "Settings - MCP Servers",
+        SettingsSection.Agents => "Settings - Agents",
+        SettingsSection.Routing => "Settings - Routing",
+        SettingsSection.Advanced => "Settings - Advanced",
+        _ => "Settings"
+    };
+
+    private string GetSettingsPageTitle() => GetSettingsPageTitle(_activeSection);
+
     private SettingsState _settings = new() { Providers = [] };
     private SettingsState _savedSettings = new() { Providers = [] };
     private string? _selectedProviderId;
