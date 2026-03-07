@@ -20,8 +20,6 @@ namespace AzureOpsCrew.Api.Endpoints.Dtos.Agents
 
         public string? Description { get; set; }
 
-        public AgentTool[] AvailableTools { get; set; } = [];
-
         public Guid ProviderId { get; set; }
 
         public string Color { get; set; } = "#43b581";
@@ -31,7 +29,6 @@ namespace AzureOpsCrew.Api.Endpoints.Dtos.Agents
             return new AgentInfo(Username, Prompt, Model)
             {
                 Description = Description,
-                AvailableTools = AvailableTools
             };
         }
     }

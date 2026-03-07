@@ -170,6 +170,51 @@ namespace AzureOpsCrew.Api.Endpoints
             })
             .Produces(StatusCodes.Status204NoContent)
             .Produces(StatusCodes.Status404NotFound);
+
+            group.MapPost("/{id}/set-available-mcp-server", async (
+                Guid id,
+                SetAvailableMcpServerBodyDto body,
+                AzureOpsCrewContext context,
+                CancellationToken cancellationToken) =>
+            {
+                var found = await context.Set<Agent>()
+                    .SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+                if (found is null)
+                    return Results.NotFound();
+
+                var availability = new AgentMcpServerToolAvailability(body.McpServerConfigurationId)
+                {
+                    EnabledToolNames = body.EnabledToolNames ?? []
+                };
+
+                found.SetAvailableMcpServer(availability);
+                await context.SaveChangesAsync(cancellationToken);
+
+                return Results.Ok(found);
+            })
+            .Produces<Agent>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound);
+
+            group.MapPost("/{id}/remove-available-mcp-server", async (
+                Guid id,
+                RemoveAvailableMcpServerBodyDto body,
+                AzureOpsCrewContext context,
+                CancellationToken cancellationToken) =>
+            {
+                var found = await context.Set<Agent>()
+                    .SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+                if (found is null)
+                    return Results.NotFound();
+
+                found.RemoveAvailableMcpServer(body.McpServerConfigurationId);
+                await context.SaveChangesAsync(cancellationToken);
+
+                return Results.Ok(found);
+            })
+            .Produces<Agent>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound);
         }
     }
 }

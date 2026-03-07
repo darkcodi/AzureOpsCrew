@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AzureOpsCrew.Domain.Agents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -6,6 +7,8 @@ namespace AzureOpsCrew.Infrastructure.Db.EntityTypes;
 
 public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agent>
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     public void Configure(EntityTypeBuilder<Agent> builder)
     {
         builder.ToTable("Agents");
@@ -35,10 +38,13 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
 
             infoBuilder.Property(i => i.Description);
 
-            infoBuilder.Property(i => i.AvailableTools)
+            infoBuilder.Property(i => i.AvailableMcpServerTools)
                        .HasConversion(
-                           v => v == null ? null : string.Join(',', v.Select(x => x.ToString())),
-                           s => (string.IsNullOrEmpty(s) || s == "[]") ? System.Array.Empty<AgentTool>() : s.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => Enum.Parse<AgentTool>(x)).ToArray());
+                           v => JsonSerializer.Serialize(v ?? Array.Empty<AgentMcpServerToolAvailability>(), JsonOptions),
+                           s => string.IsNullOrEmpty(s)
+                               ? Array.Empty<AgentMcpServerToolAvailability>()
+                               : JsonSerializer.Deserialize<AgentMcpServerToolAvailability[]>(s, JsonOptions) ?? Array.Empty<AgentMcpServerToolAvailability>())
+                       .HasColumnName("Info_AvailableMcpServerTools");
         });
 
         builder.Property(a => a.ProviderId)
