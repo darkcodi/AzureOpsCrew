@@ -123,29 +123,6 @@ public class AgentService
         }
     }
 
-    public async Task<AgentDto?> RemoveAvailableMcpServerAsync(Guid agentId, Guid mcpServerConfigurationId)
-    {
-        try
-        {
-            var response = await _httpClient.PostAsJsonAsync($"/api/agents/{agentId}/remove-available-mcp-server",
-                new
-                {
-                    McpServerConfigurationId = mcpServerConfigurationId
-                });
-
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<AgentDto>();
-            }
-
-            return null;
-        }
-        catch (Exception ex)
-        {
-            Log.Error($"Error removing available MCP server for agent {agentId}: {ex.Message}");
-            return null;
-        }
-    }
     public async Task<bool> DeleteAgentAsync(Guid id)
     {
         try

@@ -183,12 +183,22 @@ namespace AzureOpsCrew.Api.Endpoints
                 if (found is null)
                     return Results.NotFound();
 
-                var availability = new AgentMcpServerToolAvailability(body.McpServerConfigurationId)
+                var enabledToolNames = body.EnabledToolNames ?? [];
+
+                if (enabledToolNames.Length == 0)
                 {
-                    EnabledToolNames = body.EnabledToolNames ?? []
-                };
+                    found.RemoveAvailableMcpServer(body.McpServerConfigurationId);
+                }
+                else
+                {
+                    var availability = new AgentMcpServerToolAvailability(body.McpServerConfigurationId)
+                    {
+                        EnabledToolNames = enabledToolNames,
+                    };
 
-                found.SetAvailableMcpServer(availability);
+                    found.SetAvailableMcpServer(availability);
+                }
+
                 await context.SaveChangesAsync(cancellationToken);
 
                 return Results.Ok(found);
@@ -196,25 +206,6 @@ namespace AzureOpsCrew.Api.Endpoints
             .Produces<Agent>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
 
-            group.MapPost("/{id}/remove-available-mcp-server", async (
-                Guid id,
-                RemoveAvailableMcpServerBodyDto body,
-                AzureOpsCrewContext context,
-                CancellationToken cancellationToken) =>
-            {
-                var found = await context.Set<Agent>()
-                    .SingleOrDefaultAsync(a => a.Id == id, cancellationToken);
-
-                if (found is null)
-                    return Results.NotFound();
-
-                found.RemoveAvailableMcpServer(body.McpServerConfigurationId);
-                await context.SaveChangesAsync(cancellationToken);
-
-                return Results.Ok(found);
-            })
-            .Produces<Agent>(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status404NotFound);
         }
     }
 }
