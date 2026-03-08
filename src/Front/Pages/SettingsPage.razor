@@ -6,6 +6,7 @@
 @inject AppState AppState
 @inject AgentService AgentService
 
+<PageTitle>@GetSettingsPageTitle()</PageTitle>
 <MainLayout>
     <LeftSidebar>
         <SettingsSidebar ActiveSection="_activeSection" />
@@ -43,6 +44,8 @@
                              UpdatingMcpServerToolName="@_updatingMcpServerToolName"
                              McpServerAuthResetKey="@_mcpServerAuthResetKey"
                              McpServerError="@_mcpServerError"
+                             McpReturnToListRequested="_mcpReturnToListRequested"
+                             OnMcpReturnToListAcknowledged="HandleMcpReturnToListAcknowledged"
                              Agents="@_agents"
                              OnDeleteAgent="HandleDeleteAgent"
                              OnAgentsChanged="HandleAgentsChanged" />
@@ -91,6 +94,22 @@
         }
         _activeSection = SettingsSectionRoutes.FromSlug(SectionSlug);
     }
+
+    private static string GetSettingsPageTitle(SettingsSection section) => section switch
+    {
+        SettingsSection.Account => "Settings - Account",
+        SettingsSection.Appearance => "Settings - Appearance",
+        SettingsSection.Notifications => "Settings - Notifications",
+        SettingsSection.Providers => "Settings - Providers",
+        SettingsSection.McpServers => "Settings - MCP Servers",
+        SettingsSection.Agents => "Settings - Agents",
+        SettingsSection.Routing => "Settings - Routing",
+        SettingsSection.Advanced => "Settings - Advanced",
+        _ => "Settings"
+    };
+
+    private string GetSettingsPageTitle() => GetSettingsPageTitle(_activeSection);
+
     private SettingsState _settings = new() { Providers = [] };
     private SettingsState _savedSettings = new() { Providers = [] };
     private string? _selectedProviderId;
@@ -109,6 +128,7 @@
     private bool _isUpdatingMcpServerTool;
     private int _mcpServerAuthResetKey;
     private string? _updatingMcpServerToolName;
+    private bool _mcpReturnToListRequested;
 
     private Provider? SelectedProvider =>
         _settings.Providers.FirstOrDefault(p => p.Id == _selectedProviderId);
@@ -160,7 +180,7 @@
         {
             var apiMcpServers = await SettingsService.GetMcpServersAsync();
             _mcpServers = apiMcpServers
-                .OrderBy(server => server.DateCreated != null && DateTime.TryParse(server.DateCreated, out var createdAt) ? createdAt.Ticks : long.MaxValue)
+                .OrderBy(server => GetMcpServerSortKey(server.DateCreated))
                 .Select(server => server.Clone())
                 .ToList();
         }
@@ -215,6 +235,13 @@
     private static string? NormalizeOptionalMcpText(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    /// <summary>Sort key for MCP server by creation date: oldest first. Items without a parseable date go last.</summary>
+    private static long GetMcpServerSortKey(string? dateCreated)
+    {
+        if (string.IsNullOrWhiteSpace(dateCreated)) return long.MaxValue;
+        return DateTime.TryParse(dateCreated, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var dt) ? dt.Ticks : long.MaxValue;
+    }
+
     private void HandleSettingsChange(SettingsState updated)
     {
         _settings = updated;
@@ -225,6 +252,12 @@
     private void HandleSelectMcpServer(string id)
     {
         _selectedMcpServerId = id;
+        StateHasChanged();
+    }
+
+    private void HandleMcpReturnToListAcknowledged()
+    {
+        _mcpReturnToListRequested = false;
         StateHasChanged();
     }
 
@@ -310,22 +343,20 @@
         _isSavingMcpServer = true;
         try
         {
+            // Set auth on current before saving (so Create/Update can read it)
+            current.Auth = new McpServerAuthSummary { Type = auth?.Type ?? "None" };
+            current.BearerToken = auth?.BearerToken ?? "";
+            current.Headers = auth?.Headers?.Select(h => new McpServerAuthHeaderEditorItem { Name = h.Name, Value = h.Value }).ToList() ?? [];
+
+            // Find saved server for auth comparison
+            var savedServer = _savedMcpServers.FirstOrDefault(s => s.Id == current.Id);
+
             var savedSnapshot = string.IsNullOrWhiteSpace(current.BackendId)
                 ? await SettingsService.CreateMcpServerAsync(current)
-                : await SettingsService.UpdateMcpServerAsync(current);
+                : await SettingsService.UpdateMcpServerAsync(current, savedServer);
 
             ApplyMcpServerSnapshot(current.Id, savedSnapshot);
-
-            if (auth != null)
-            {
-                var savedCurrent = _mcpServers.FirstOrDefault(server => server.Id == current.Id);
-                if (!string.IsNullOrWhiteSpace(savedCurrent?.BackendId))
-                {
-                    var authSnapshot = await SettingsService.SetMcpServerAuthorizationAsync(savedCurrent.BackendId, auth);
-                    ApplyMcpServerSnapshot(current.Id, authSnapshot);
-                    _mcpServerAuthResetKey++;
-                }
-            }
+            _mcpServerAuthResetKey++;
         }
         catch (Exception ex)
         {
@@ -335,6 +366,9 @@
         {
             _isSavingMcpServer = false;
         }
+
+        if (_mcpServerError == null)
+            _mcpReturnToListRequested = true;
     }
 
     private async Task HandleRemoveCurrentMcpServer()
@@ -376,6 +410,7 @@
             : _mcpServers[Math.Min(currentIndex, _mcpServers.Count - 1)].Id;
 
         _mcpServerError = null;
+        _mcpReturnToListRequested = true;
         ComputeModifiedMcpServerIds();
         StateHasChanged();
     }

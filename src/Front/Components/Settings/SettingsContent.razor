@@ -35,7 +35,9 @@
                                                IsUpdatingMcpServerTool="IsUpdatingMcpServerTool"
                                                UpdatingMcpServerToolName="@UpdatingMcpServerToolName"
                                                McpServerAuthResetKey="McpServerAuthResetKey"
-                                               McpServerError="@McpServerError" />
+                                               McpServerError="@McpServerError"
+                                               McpReturnToListRequested="McpReturnToListRequested"
+                                               OnMcpReturnToListAcknowledged="OnMcpReturnToListAcknowledged" />
                     break;
                 case SettingsSection.Agents:
                     <AgentsSettingsSection Settings="Settings"
@@ -105,6 +107,8 @@
     [Parameter] public string? UpdatingMcpServerToolName { get; set; }
     [Parameter] public int McpServerAuthResetKey { get; set; }
     [Parameter] public string? McpServerError { get; set; }
+    [Parameter] public bool McpReturnToListRequested { get; set; }
+    [Parameter] public EventCallback OnMcpReturnToListAcknowledged { get; set; }
     [Parameter] public IReadOnlyList<AgentDto>? Agents { get; set; }
     [Parameter] public EventCallback<Guid> OnDeleteAgent { get; set; }
     [Parameter] public EventCallback OnAgentsChanged { get; set; }

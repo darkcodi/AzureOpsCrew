@@ -18,6 +18,7 @@ public static class McpServerConfigurationEndpoints
         group.MapPost("/create", async (
             CreateMcpServerConfigurationBodyDto body,
             AzureOpsCrewContext context,
+            McpServerFacade mcpServerFacade,
             CancellationToken cancellationToken) =>
         {
             var configuration = new McpServerConfiguration(
@@ -27,6 +28,16 @@ public static class McpServerConfigurationEndpoints
             {
                 Description = body.Description?.Trim(),
             };
+
+            configuration.SetAuth(body.Auth.ToDomainAuth());
+
+            // Sync tools from the MCP server
+            var discoveredTools = await mcpServerFacade.GetAvailableToolsAsync(
+                configuration.Url,
+                configuration.Auth,
+                cancellationToken);
+
+            configuration.ReplaceTools(discoveredTools, DateTime.UtcNow);
 
             await context.AddAsync(configuration, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
@@ -86,29 +97,6 @@ public static class McpServerConfigurationEndpoints
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status404NotFound);
 
-        group.MapPost("/{id}/set-authorization", async (
-            Guid id,
-            SetAuthMcpServerConfigurationBodyDto body,
-            AzureOpsCrewContext context,
-            CancellationToken cancellationToken) =>
-        {
-            var found = await context.McpServerConfigurations
-                .Include(x => x.Tools)
-                .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
-
-            if (found is null)
-                return Results.NotFound();
-
-            found.SetAuth(body.ToDomainAuth());
-            await context.SaveChangesAsync(cancellationToken);
-
-            return Results.Ok(found.ToResponseDto());
-        })
-        .AddEndpointFilter<ValidationFilter<SetAuthMcpServerConfigurationBodyDto>>()
-        .Produces<McpServerConfigurationResponseDto>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status400BadRequest)
-        .Produces(StatusCodes.Status404NotFound);
-
         group.MapPost("/{id}/sync-tools", async (
             Guid id,
             AzureOpsCrewContext context,
@@ -146,6 +134,7 @@ public static class McpServerConfigurationEndpoints
             Guid id,
             UpdateMcpServerConfigurationBodyDto body,
             AzureOpsCrewContext context,
+            McpServerFacade mcpServerFacade,
             CancellationToken cancellationToken) =>
         {
             var found = await context.McpServerConfigurations
@@ -157,6 +146,27 @@ public static class McpServerConfigurationEndpoints
 
             found.Update(body.Name, body.Url);
             found.Description = body.Description?.Trim();
+
+            // Only update auth if explicitly provided
+            if (body.Auth is not null)
+            {
+                found.SetAuth(body.Auth.ToDomainAuth());
+            }
+
+            // Re-sync tools from the MCP server
+            var existingToolsByName = found.Tools
+                .GroupBy(x => x.Name, StringComparer.Ordinal)
+                .ToDictionary(x => x.Key, x => x.First(), StringComparer.Ordinal);
+
+            var discoveredTools = await mcpServerFacade.GetAvailableToolsAsync(found.Url, found.Auth, cancellationToken);
+
+            foreach (var tool in discoveredTools)
+            {
+                if (existingToolsByName.TryGetValue(tool.Name, out var existingTool))
+                    tool.IsEnabled = existingTool.IsEnabled;
+            }
+
+            found.ReplaceTools(discoveredTools, DateTime.UtcNow);
 
             await context.SaveChangesAsync(cancellationToken);
 

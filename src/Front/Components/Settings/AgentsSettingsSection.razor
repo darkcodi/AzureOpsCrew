@@ -1,4 +1,5 @@
 @inject AgentService AgentService
+@inject MarkdownService MarkdownSvc
 
 <div class="agents-section">
     <div class="section-header">
@@ -122,71 +123,87 @@
                 }
                 else
                 {
-                    <div class="agent-mcp-servers">
+                    <div class="mcp-server-list">
                         @foreach (var server in AgentAssignableMcpServers)
                         {
                             var isServerEnabledForAgent = IsAgentMcpServerEnabled(server);
                             var enabledToolNames = GetAgentEnabledToolNames(server);
                             var tools = GetAgentVisibleTools(server);
                             var canToggleServer = !_isSavingAgent && (server.IsEnabled || isServerEnabledForAgent);
-                            var canToggleTool = !_isSavingAgent;
+                            var canToggleTool = !_isSavingAgent && isServerEnabledForAgent;
+                            var enabledToolsCount = tools.Count(t => enabledToolNames.Contains(t.Name));
+                            var isExpanded = _expandedAgentMcpServerIds.Contains(server.Id);
+                            var hasTools = tools.Count > 0;
 
-                            <div class="agent-mcp-server @(isServerEnabledForAgent ? "selected" : "")">
-                                <div class="agent-mcp-server-header">
-                                    <div class="agent-mcp-server-meta">
-                                        <div class="agent-mcp-server-title-row">
-                                            <span class="agent-mcp-server-name">@server.Name</span>
-                                            @if (!server.IsEnabled)
-                                            {
-                                                <span class="agent-mcp-server-state">Disabled in MCP Servers</span>
-                                            }
-                                        </div>
-                                        <span class="agent-mcp-server-url">@server.Url</span>
-                                        <span class="agent-mcp-server-note">@tools.Count available tool(s)</span>
-                                    </div>
-                                    <button type="button" role="switch" aria-checked="@isServerEnabledForAgent"
-                                            class="toggle-switch @(isServerEnabledForAgent ? "on" : "")"
-                                            disabled="@(!canToggleServer)"
-                                            @onclick="() => ToggleAgentMcpServer(server)">
-                                        <span class="toggle-knob"></span>
-                                    </button>
+                            <div class="mcp-server-card">
+                                <div class="mcp-avatar-wrapper">
+                                    <span class="mcp-avatar" style="background: @GetMcpAvatarBackground(server.Name)">
+                                        @GetMcpAvatarLetter(server.Name)
+                                    </span>
+                                    @if (isServerEnabledForAgent)
+                                    {
+                                        <span class="mcp-status-dot"></span>
+                                    }
                                 </div>
 
-                                @if (isServerEnabledForAgent)
-                                {
-                                    <div class="agent-mcp-tools">
-                                        @if (tools.Count == 0)
+                                <div class="mcp-card-body">
+                                    <div class="mcp-name-row">
+                                        <span class="mcp-server-name">@server.Name</span>
+                                        @if (!server.IsEnabled)
                                         {
-                                            <div class="agent-mcp-empty">No globally enabled tools are available on this MCP server yet.</div>
+                                            <span class="mcp-server-status-text">Disabled</span>
+                                        }
+                                    </div>
+
+                                    @if (isServerEnabledForAgent && hasTools)
+                                    {
+                                        @if (!isExpanded)
+                                        {
+                                            <button type="button" class="mcp-tools-toggle" @onclick="() => ToggleAgentMcpToolsExpanded(server.Id)">
+                                                @enabledToolsCount of @tools.Count tools enabled
+                                                <span class="mcp-chevron">@((MarkupString)SvgChevron)</span>
+                                            </button>
                                         }
                                         else
                                         {
-                                            @foreach (var tool in tools)
-                                            {
-                                                var isToolEnabledForAgent = enabledToolNames.Contains(tool.Name);
-
-                                                <div class="agent-mcp-tool @(isToolEnabledForAgent ? string.Empty : "off")">
-                                                    <div class="agent-mcp-tool-content">
-                                                        <span class="agent-mcp-tool-name">@tool.Name</span>
-                                                        <div class="agent-mcp-tool-badges">
-                                                            <span class="agent-mcp-tool-badge">Input: @(string.IsNullOrWhiteSpace(tool.InputSchemaJson) ? "No" : "Yes")</span>
-                                                            <span class="agent-mcp-tool-badge">Output: @(string.IsNullOrWhiteSpace(tool.OutputSchemaJson) ? "No" : "Yes")</span>
-                                                        </div>
-                                                        @if (!string.IsNullOrWhiteSpace(tool.Description))
+                                            <div class="mcp-tools-expanded">
+                                                @foreach (var tool in tools)
+                                                {
+                                                    var isToolEnabled = enabledToolNames.Contains(tool.Name);
+                                                    <div class="mcp-tool-chip-wrapper">
+                                                        <span class="mcp-tool-chip @(isToolEnabled ? "" : "disabled") @(canToggleTool ? "clickable" : "")"
+                                                              @onmouseenter="() => ShowMcpToolTooltip(server.Id, tool.Name)"
+                                                              @onmouseleave="HideMcpToolTooltip"
+                                                              @onclick="() => ToggleAgentMcpTool(server, tool)">@tool.Name</span>
+                                                        @if (_hoveredMcpToolKey == $"{server.Id}|{tool.Name}" && !string.IsNullOrWhiteSpace(tool.Description))
                                                         {
-                                                            <span class="agent-mcp-tool-description">@tool.Description</span>
+                                                            <div class="mcp-tool-tooltip">
+                                                                <div class="markdown-content">
+                                                                    @((MarkupString)MarkdownSvc.ConvertToHtml(tool.Description))
+                                                                </div>
+                                                            </div>
                                                         }
                                                     </div>
-                                                    <button type="button" class="agent-mcp-tool-action"
-                                                            disabled="@(!canToggleTool)"
-                                                            @onclick="() => ToggleAgentMcpTool(server, tool)">
-                                                        @(isToolEnabledForAgent ? "Deactivate" : "Activate")
-                                                    </button>
-                                                </div>
-                                            }
+                                                }
+                                            </div>
+                                            <button type="button" class="mcp-tools-toggle" @onclick="() => ToggleAgentMcpToolsExpanded(server.Id)">
+                                                Show less
+                                                <span class="mcp-chevron up">@((MarkupString)SvgChevron)</span>
+                                            </button>
                                         }
-                                    </div>
-                                }
+                                    }
+                                    else if (isServerEnabledForAgent && !hasTools)
+                                    {
+                                        <span class="mcp-tools-empty">No enabled tools available</span>
+                                    }
+                                </div>
+
+                                <button type="button" role="switch" aria-checked="@isServerEnabledForAgent"
+                                        class="toggle-switch @(isServerEnabledForAgent ? "on" : "")"
+                                        disabled="@(!canToggleServer)"
+                                        @onclick="() => ToggleAgentMcpServer(server)">
+                                    <span class="toggle-knob"></span>
+                                </button>
                             </div>
                         }
                     </div>
@@ -257,6 +274,10 @@
     private string _savedAgentPrompt = "";
     private List<AgentMcpServerToolAvailabilityDto> _savedAgentMcpServerTools = [];
     private List<AgentMcpServerToolAvailabilityDto> _draftAgentMcpServerTools = [];
+    private readonly HashSet<string> _expandedAgentMcpServerIds = [];
+    private string? _hoveredMcpToolKey;
+    private CancellationTokenSource? _mcpTooltipCts;
+    private const int McpTooltipDelayMs = 400;
 
     private static readonly string[] AgentColors =
     [
@@ -449,6 +470,44 @@
         }
     }
 
+    private void ToggleAgentMcpToolsExpanded(string serverId)
+    {
+        if (!_expandedAgentMcpServerIds.Remove(serverId))
+            _expandedAgentMcpServerIds.Add(serverId);
+    }
+
+    private async Task ShowMcpToolTooltip(string serverId, string toolName)
+    {
+        _mcpTooltipCts?.Cancel();
+        _mcpTooltipCts = new CancellationTokenSource();
+        var key = $"{serverId}|{toolName}";
+        try
+        {
+            await Task.Delay(McpTooltipDelayMs, _mcpTooltipCts.Token);
+            _hoveredMcpToolKey = key;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void HideMcpToolTooltip()
+    {
+        _mcpTooltipCts?.Cancel();
+        _mcpTooltipCts = null;
+        _hoveredMcpToolKey = null;
+        StateHasChanged();
+    }
+
+    private static char GetMcpAvatarLetter(string name) =>
+        string.IsNullOrWhiteSpace(name) ? '?' : char.ToUpperInvariant(name[0]);
+
+    private static string GetMcpAvatarBackground(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "hsl(214, 20%, 28%)";
+        var hue = (name[0] * 37) % 360;
+        return $"hsl({hue}, 20%, 28%)";
+    }
+
     private void ToggleAgentMcpServer(McpServerConfigurationItem server)
     {
         if (!TryGetMcpServerConfigurationId(server, out var configId))
@@ -620,6 +679,8 @@
         """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>""";
     private const string SvgTrash2 =
         """<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>""";
+    private const string SvgChevron =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>""";
     private const string SvgChevronLeft =
         """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>""";
     private const string SvgSave =
