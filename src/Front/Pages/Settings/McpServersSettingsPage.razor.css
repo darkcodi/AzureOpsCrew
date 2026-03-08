@@ -259,7 +259,6 @@
     color: hsl(0, 78%, 68%);
 }
 
-/* Auth section in MCP edit form */
 .mcp-auth-field {
     margin-top: 4px;
 }
@@ -277,7 +276,6 @@
     width: 100%;
 }
 
-/* Headers list in MCP edit form */
 .mcp-headers-field {
     margin-top: 4px;
 }

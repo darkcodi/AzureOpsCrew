@@ -1,261 +1,278 @@
+@page "/settings/agents"
 @inject AgentService AgentService
+@inject SettingsService SettingsService
+@inject AppState AppState
 @inject MarkdownService MarkdownSvc
 
-<div class="agents-section">
-    <div class="section-header">
-        <h2 class="section-title">Agents</h2>
-        <p class="section-description">Configure default agent behaviors, model assignments, system prompts, and MCP tools.</p>
-    </div>
-    @if (_agentsSubView == "list")
-    {
-        <div class="agents-list">
-            @foreach (var agent in Agents ?? [])
+<SettingsPageShell Section="SettingsSection.Agents">
+    <MainContent>
+        <div class="agents-section">
+            <div class="section-header">
+                <h2 class="section-title">Agents</h2>
+                <p class="section-description">Configure default agent behaviors, model assignments, system prompts, and MCP tools.</p>
+            </div>
+            @if (_agentsSubView == "list")
             {
-                <div class="agent-row">
-                    <div class="agent-row-avatar" style="background-color: @agent.Color;">
-                        @GetAgentAvatar(agent)
-                    </div>
-                    <div class="agent-row-info">
-                        <span class="agent-row-name">@agent.Username</span>
-                        <span class="agent-row-model">@agent.Model</span>
-                    </div>
-                    <div class="agent-row-actions">
-                        <button type="button" class="agent-row-btn agent-row-btn-edit" title="Edit @agent.Username" @onclick="() => OpenEditAgent(agent)">
-                            @((MarkupString)SvgPencil)
-                        </button>
-                        <button type="button" class="agent-row-btn agent-row-btn-delete" title="Delete @agent.Username" @onclick="() => _deleteAgentPending = agent">
-                            @((MarkupString)SvgTrash2)
-                        </button>
-                    </div>
-                </div>
-            }
-        </div>
-        <div class="agents-create-footer">
-            <button type="button" class="agents-create-btn" @onclick="OpenCreateAgent">
-                <span class="agents-create-icon">@((MarkupString)SvgPlus)</span>
-                <span>Create New Agent</span>
-            </button>
-        </div>
-    }
-    else
-    {
-        var statusBadge = GetAgentStatusBadge();
-
-        <div class="agents-back-bar">
-            <button type="button" class="agents-back-btn" @onclick="BackToAgentList" aria-label="Back to list">
-                <span class="agents-back-icon">@((MarkupString)SvgChevronLeft)</span>
-                <span>Back to list</span>
-            </button>
-        </div>
-        <div class="agent-form">
-            <div class="agent-form-status">
-                <span class="provider-card-status" style="color: @statusBadge.Color">
-                    <span class="status-icon">@((MarkupString)statusBadge.Icon)</span>
-                    @statusBadge.Label
-                </span>
-            </div>
-            <div class="agent-form-field">
-                <label for="agent-name" class="agent-form-label">Agent Name</label>
-                <input id="agent-name" type="text" class="agent-form-input" placeholder="e.g. researchassistant"
-                       @bind="_agentName" @bind:event="oninput" />
-                <span class="agent-form-helper">Lowercase letters and numbers only, 2-30 characters</span>
-            </div>
-            <div class="agent-form-field">
-                <span class="agent-form-label">Color</span>
-                <div class="agent-color-swatches">
-                    @foreach (var c in AgentColors)
+                <div class="agents-list">
+                    @foreach (var agent in _agents)
                     {
-                        var isSelected = _agentColor == c;
-                        <button type="button" class="agent-color-swatch @(isSelected ? "selected" : "")"
-                                style="background-color: @c;" @onclick="() => _agentColor = c"
-                                aria-label="Select color @c"></button>
+                        <div class="agent-row">
+                            <div class="agent-row-avatar" style="background-color: @agent.Color;">
+                                @GetAgentAvatar(agent)
+                            </div>
+                            <div class="agent-row-info">
+                                <span class="agent-row-name">@agent.Username</span>
+                                <span class="agent-row-model">@agent.Model</span>
+                            </div>
+                            <div class="agent-row-actions">
+                                <button type="button" class="agent-row-btn agent-row-btn-edit" title="Edit @agent.Username" @onclick="() => OpenEditAgent(agent)">
+                                    @((MarkupString)SvgPencil)
+                                </button>
+                                <button type="button" class="agent-row-btn agent-row-btn-delete" title="Delete @agent.Username" @onclick="() => _deleteAgentPending = agent">
+                                    @((MarkupString)SvgTrash2)
+                                </button>
+                            </div>
+                        </div>
                     }
                 </div>
-            </div>
-            <div class="agent-form-field">
-                <label for="agent-provider" class="agent-form-label">Provider</label>
-                @if (EnabledProviders.Count == 0)
-                {
-                    <div class="agent-form-message agent-form-message-error">No enabled providers found. Please enable a provider in Settings.</div>
-                }
-                else
-                {
-                    <select id="agent-provider" class="agent-form-select" value="@_agentProviderId" @onchange="OnAgentProviderChanged">
-                        @foreach (var p in EnabledProviders)
-                        {
-                            <option value="@p.BackendId">@p.Name (@(p.ProviderType ?? p.Name))</option>
-                        }
-                    </select>
-                }
-            </div>
-            <div class="agent-form-field">
-                <label for="agent-model" class="agent-form-label">LLM Model</label>
-                @if (AgentFormProviderModels.Count == 0)
-                {
-                    <div class="agent-form-message">@(string.IsNullOrEmpty(_agentProviderId) ? "Select a provider first." : "No selected models for this provider.")</div>
-                }
-                else
-                {
-                    <select id="agent-model" class="agent-form-select" @bind="_agentModel">
-                        @foreach (var m in AgentFormProviderModels)
-                        {
-                            <option value="@m">@m</option>
-                        }
-                    </select>
-                }
-            </div>
-            <div class="agent-form-field">
-                <label for="agent-prompt" class="agent-form-label">System Prompt</label>
-                <textarea id="agent-prompt" class="agent-form-textarea" rows="4" placeholder="Describe the agent's role and behavior..."
-                          @bind="_agentPrompt" @bind:event="oninput"></textarea>
-            </div>
-            <div class="agent-form-field agent-mcp-field">
-                <div class="agent-mcp-header">
-                    <div>
-                        <label class="agent-form-label">MCP Servers</label>
-                        <p class="agent-mcp-subtitle">Attach globally enabled MCP servers to this agent and choose which synced tools it can use.</p>
-                    </div>
+                <div class="agents-create-footer">
+                    <button type="button" class="agents-create-btn" @onclick="OpenCreateAgent">
+                        <span class="agents-create-icon">@((MarkupString)SvgPlus)</span>
+                        <span>Create New Agent</span>
+                    </button>
                 </div>
+            }
+            else
+            {
+                var statusBadge = GetAgentStatusBadge();
 
-                @if (AgentAssignableMcpServers.Count == 0)
-                {
-                    <div class="agent-form-message">No saved and enabled MCP servers are available yet. Configure them in the MCP Servers section first.</div>
-                }
-                else
-                {
-                    <div class="mcp-server-list">
-                        @foreach (var server in AgentAssignableMcpServers)
+                <div class="agents-back-bar">
+                    <button type="button" class="agents-back-btn" @onclick="BackToAgentList" aria-label="Back to list">
+                        <span class="agents-back-icon">@((MarkupString)SvgChevronLeft)</span>
+                        <span>Back to list</span>
+                    </button>
+                </div>
+                <div class="agent-form">
+                    <div class="agent-form-status">
+                        <span class="provider-card-status" style="color: @statusBadge.Color">
+                            <span class="status-icon">@((MarkupString)statusBadge.Icon)</span>
+                            @statusBadge.Label
+                        </span>
+                    </div>
+                    <div class="agent-form-field">
+                        <label for="agent-name" class="agent-form-label">Agent Name</label>
+                        <input id="agent-name" type="text" class="agent-form-input" placeholder="e.g. researchassistant"
+                               @bind="_agentName" @bind:event="oninput" />
+                        <span class="agent-form-helper">Lowercase letters and numbers only, 2-30 characters</span>
+                    </div>
+                    <div class="agent-form-field">
+                        <span class="agent-form-label">Color</span>
+                        <div class="agent-color-swatches">
+                            @foreach (var c in AgentColors)
+                            {
+                                var isSelected = _agentColor == c;
+                                <button type="button" class="agent-color-swatch @(isSelected ? "selected" : "")"
+                                        style="background-color: @c;" @onclick="() => _agentColor = c"
+                                        aria-label="Select color @c"></button>
+                            }
+                        </div>
+                    </div>
+                    <div class="agent-form-field">
+                        <label for="agent-provider" class="agent-form-label">Provider</label>
+                        @if (EnabledProviders.Count == 0)
                         {
-                            var isServerEnabledForAgent = IsAgentMcpServerEnabled(server);
-                            var enabledToolNames = GetAgentEnabledToolNames(server);
-                            var tools = GetAgentVisibleTools(server);
-                            var canToggleServer = !_isSavingAgent && (server.IsEnabled || isServerEnabledForAgent);
-                            var canToggleTool = !_isSavingAgent && isServerEnabledForAgent;
-                            var enabledToolsCount = tools.Count(t => enabledToolNames.Contains(t.Name));
-                            var isExpanded = _expandedAgentMcpServerIds.Contains(server.Id);
-                            var hasTools = tools.Count > 0;
+                            <div class="agent-form-message agent-form-message-error">No enabled providers found. Please enable a provider in Settings.</div>
+                        }
+                        else
+                        {
+                            <select id="agent-provider" class="agent-form-select" value="@_agentProviderId" @onchange="OnAgentProviderChanged">
+                                @foreach (var p in EnabledProviders)
+                                {
+                                    <option value="@p.BackendId">@p.Name (@(p.ProviderType ?? p.Name))</option>
+                                }
+                            </select>
+                        }
+                    </div>
+                    <div class="agent-form-field">
+                        <label for="agent-model" class="agent-form-label">LLM Model</label>
+                        @if (AgentFormProviderModels.Count == 0)
+                        {
+                            <div class="agent-form-message">@(string.IsNullOrEmpty(_agentProviderId) ? "Select a provider first." : "No selected models for this provider.")</div>
+                        }
+                        else
+                        {
+                            <select id="agent-model" class="agent-form-select" @bind="_agentModel">
+                                @foreach (var m in AgentFormProviderModels)
+                                {
+                                    <option value="@m">@m</option>
+                                }
+                            </select>
+                        }
+                    </div>
+                    <div class="agent-form-field">
+                        <label for="agent-prompt" class="agent-form-label">System Prompt</label>
+                        <textarea id="agent-prompt" class="agent-form-textarea" rows="4" placeholder="Describe the agent's role and behavior..."
+                                  @bind="_agentPrompt" @bind:event="oninput"></textarea>
+                    </div>
+                    <div class="agent-form-field agent-mcp-field">
+                        <div class="agent-mcp-header">
+                            <div>
+                                <label class="agent-form-label">MCP Servers</label>
+                                <p class="agent-mcp-subtitle">Attach globally enabled MCP servers to this agent and choose which synced tools it can use.</p>
+                            </div>
+                        </div>
 
-                            <div class="mcp-server-card">
-                                <div class="mcp-avatar-wrapper">
-                                    <span class="mcp-avatar" style="background: @GetMcpAvatarBackground(server.Name)">
-                                        @GetMcpAvatarLetter(server.Name)
-                                    </span>
-                                    @if (isServerEnabledForAgent)
-                                    {
-                                        <span class="mcp-status-dot"></span>
-                                    }
-                                </div>
+                        @if (AgentAssignableMcpServers.Count == 0)
+                        {
+                            <div class="agent-form-message">No saved and enabled MCP servers are available yet. Configure them in the MCP Servers section first.</div>
+                        }
+                        else
+                        {
+                            <div class="mcp-server-list">
+                                @foreach (var server in AgentAssignableMcpServers)
+                                {
+                                    var isServerEnabledForAgent = IsAgentMcpServerEnabled(server);
+                                    var enabledToolNames = GetAgentEnabledToolNames(server);
+                                    var tools = GetAgentVisibleTools(server);
+                                    var canToggleServer = !_isSavingAgent && (server.IsEnabled || isServerEnabledForAgent);
+                                    var canToggleTool = !_isSavingAgent && isServerEnabledForAgent;
+                                    var enabledToolsCount = tools.Count(t => enabledToolNames.Contains(t.Name));
+                                    var isExpanded = _expandedAgentMcpServerIds.Contains(server.Id);
+                                    var hasTools = tools.Count > 0;
 
-                                <div class="mcp-card-body">
-                                    <div class="mcp-name-row">
-                                        <span class="mcp-server-name">@server.Name</span>
-                                        @if (!server.IsEnabled)
-                                        {
-                                            <span class="mcp-server-status-text">Disabled</span>
-                                        }
-                                    </div>
+                                    <div class="mcp-server-card">
+                                        <div class="mcp-avatar-wrapper">
+                                            <span class="mcp-avatar" style="background: @GetMcpAvatarBackground(server.Name)">
+                                                @GetMcpAvatarLetter(server.Name)
+                                            </span>
+                                            @if (isServerEnabledForAgent)
+                                            {
+                                                <span class="mcp-status-dot"></span>
+                                            }
+                                        </div>
 
-                                    @if (isServerEnabledForAgent && hasTools)
-                                    {
-                                        @if (!isExpanded)
-                                        {
-                                            <button type="button" class="mcp-tools-toggle" @onclick="() => ToggleAgentMcpToolsExpanded(server.Id)">
-                                                @enabledToolsCount of @tools.Count tools enabled
-                                                <span class="mcp-chevron">@((MarkupString)SvgChevron)</span>
-                                            </button>
-                                        }
-                                        else
-                                        {
-                                            <div class="mcp-tools-expanded">
-                                                @foreach (var tool in tools)
+                                        <div class="mcp-card-body">
+                                            <div class="mcp-name-row">
+                                                <span class="mcp-server-name">@server.Name</span>
+                                                @if (!server.IsEnabled)
                                                 {
-                                                    var isToolEnabled = enabledToolNames.Contains(tool.Name);
-                                                    <div class="mcp-tool-chip-wrapper">
-                                                        <span class="mcp-tool-chip @(isToolEnabled ? "" : "disabled") @(canToggleTool ? "clickable" : "")"
-                                                              @onmouseenter="() => ShowMcpToolTooltip(server.Id, tool.Name)"
-                                                              @onmouseleave="HideMcpToolTooltip"
-                                                              @onclick="() => ToggleAgentMcpTool(server, tool)">@tool.Name</span>
-                                                        @if (_hoveredMcpToolKey == $"{server.Id}|{tool.Name}" && !string.IsNullOrWhiteSpace(tool.Description))
+                                                    <span class="mcp-server-status-text">Disabled</span>
+                                                }
+                                            </div>
+
+                                            @if (isServerEnabledForAgent && hasTools)
+                                            {
+                                                @if (!isExpanded)
+                                                {
+                                                    <button type="button" class="mcp-tools-toggle" @onclick="() => ToggleAgentMcpToolsExpanded(server.Id)">
+                                                        @enabledToolsCount of @tools.Count tools enabled
+                                                        <span class="mcp-chevron">@((MarkupString)SvgChevron)</span>
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <div class="mcp-tools-expanded">
+                                                        @foreach (var tool in tools)
                                                         {
-                                                            <div class="mcp-tool-tooltip">
-                                                                <div class="markdown-content">
-                                                                    @((MarkupString)MarkdownSvc.ConvertToHtml(tool.Description))
-                                                                </div>
+                                                            var isToolEnabled = enabledToolNames.Contains(tool.Name);
+                                                            <div class="mcp-tool-chip-wrapper">
+                                                                <span class="mcp-tool-chip @(isToolEnabled ? "" : "disabled") @(canToggleTool ? "clickable" : "")"
+                                                                      @onmouseenter="() => ShowMcpToolTooltip(server.Id, tool.Name)"
+                                                                      @onmouseleave="HideMcpToolTooltip"
+                                                                      @onclick="() => ToggleAgentMcpTool(server, tool)">@tool.Name</span>
+                                                                @if (_hoveredMcpToolKey == $"{server.Id}|{tool.Name}" && !string.IsNullOrWhiteSpace(tool.Description))
+                                                                {
+                                                                    <div class="mcp-tool-tooltip">
+                                                                        <div class="markdown-content">
+                                                                            @((MarkupString)MarkdownSvc.ConvertToHtml(tool.Description))
+                                                                        </div>
+                                                                    </div>
+                                                                }
                                                             </div>
                                                         }
                                                     </div>
+                                                    <button type="button" class="mcp-tools-toggle" @onclick="() => ToggleAgentMcpToolsExpanded(server.Id)">
+                                                        Show less
+                                                        <span class="mcp-chevron up">@((MarkupString)SvgChevron)</span>
+                                                    </button>
                                                 }
-                                            </div>
-                                            <button type="button" class="mcp-tools-toggle" @onclick="() => ToggleAgentMcpToolsExpanded(server.Id)">
-                                                Show less
-                                                <span class="mcp-chevron up">@((MarkupString)SvgChevron)</span>
-                                            </button>
-                                        }
-                                    }
-                                    else if (isServerEnabledForAgent && !hasTools)
-                                    {
-                                        <span class="mcp-tools-empty">No enabled tools available</span>
-                                    }
-                                </div>
+                                            }
+                                            else if (isServerEnabledForAgent && !hasTools)
+                                            {
+                                                <span class="mcp-tools-empty">No enabled tools available</span>
+                                            }
+                                        </div>
 
-                                <button type="button" role="switch" aria-checked="@isServerEnabledForAgent"
-                                        class="toggle-switch @(isServerEnabledForAgent ? "on" : "")"
-                                        disabled="@(!canToggleServer)"
-                                        @onclick="() => ToggleAgentMcpServer(server)">
-                                    <span class="toggle-knob"></span>
-                                </button>
+                                        <button type="button" role="switch" aria-checked="@isServerEnabledForAgent"
+                                                class="toggle-switch @(isServerEnabledForAgent ? "on" : "")"
+                                                disabled="@(!canToggleServer)"
+                                                @onclick="() => ToggleAgentMcpServer(server)">
+                                            <span class="toggle-knob"></span>
+                                        </button>
+                                    </div>
+                                }
                             </div>
                         }
                     </div>
-                }
-            </div>
-            <button type="button" class="btn btn-primary agent-form-save"
-                    disabled="@(!CanSaveAgent)"
-                    @onclick="SaveAgent">
-                <span class="agent-form-save-icon">@((MarkupString)SvgSave)</span>
-                <span>@(_isSavingAgent ? "Saving..." : IsDraftAgent ? "Create Agent" : "Save Changes")</span>
-            </button>
-            @if (!string.IsNullOrEmpty(_agentSaveError))
-            {
-                <div class="agent-form-error">@_agentSaveError</div>
+                    <button type="button" class="btn btn-primary agent-form-save"
+                            disabled="@(!CanSaveAgent)"
+                            @onclick="SaveAgent">
+                        <span class="agent-form-save-icon">@((MarkupString)SvgSave)</span>
+                        <span>@(_isSavingAgent ? "Saving..." : IsDraftAgent ? "Create Agent" : "Save Changes")</span>
+                    </button>
+                    @if (!string.IsNullOrEmpty(_agentSaveError))
+                    {
+                        <div class="agent-form-error">@_agentSaveError</div>
+                    }
+                </div>
             }
         </div>
-    }
-</div>
 
-@* ---- Delete Agent Dialog ---- *@
-@if (_deleteAgentPending != null)
-{
-    <div class="dialog-overlay" @onclick="() => _deleteAgentPending = null">
-        <div class="dialog-box" @onclick:stopPropagation="true" role="dialog" aria-labelledby="delete-agent-title" aria-describedby="delete-agent-desc">
-            <div class="dialog-header">
-                <h3 id="delete-agent-title" class="dialog-title">Delete Agent</h3>
-                <div id="delete-agent-desc" class="dialog-description">
-                    <p>Are you sure you want to delete <strong class="text-white">@_deleteAgentPending.Username</strong>?</p>
-                    <p>This cannot be undone.</p>
+        @* ---- Delete Agent Dialog ---- *@
+        @if (_deleteAgentPending != null)
+        {
+            <div class="dialog-overlay" @onclick="() => _deleteAgentPending = null">
+                <div class="dialog-box" @onclick:stopPropagation="true" role="dialog" aria-labelledby="delete-agent-title" aria-describedby="delete-agent-desc">
+                    <div class="dialog-header">
+                        <h3 id="delete-agent-title" class="dialog-title">Delete Agent</h3>
+                        <div id="delete-agent-desc" class="dialog-description">
+                            <p>Are you sure you want to delete <strong class="text-white">@_deleteAgentPending.Username</strong>?</p>
+                            <p>This cannot be undone.</p>
+                        </div>
+                    </div>
+                    <div class="dialog-footer">
+                        <button type="button" class="btn btn-secondary" disabled="@_isDeletingAgent"
+                                @onclick="() => _deleteAgentPending = null">
+                            Cancel
+                        </button>
+                        <button type="button" class="btn btn-danger" disabled="@_isDeletingAgent"
+                                @onclick="ConfirmDeleteAgent">
+                            @(_isDeletingAgent ? "Deleting...." : "Delete Agent")
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div class="dialog-footer">
-                <button type="button" class="btn btn-secondary" disabled="@_isDeletingAgent"
-                        @onclick="() => _deleteAgentPending = null">
-                    Cancel
-                </button>
-                <button type="button" class="btn btn-danger" disabled="@_isDeletingAgent"
-                        @onclick="ConfirmDeleteAgent">
-                    @(_isDeletingAgent ? "Deleting...." : "Delete Agent")
-                </button>
-            </div>
+        }
+    </MainContent>
+    <InfoPanelContent>
+        <div class="info-section">
+            <h4 class="info-section-title">Agents</h4>
+            <ul class="note-list">
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Each agent can have its own provider and model.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>System prompts define the agent's personality and capabilities.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>MCP connections enable external tool integration.</span></li>
+            </ul>
         </div>
-    </div>
-}
+    </InfoPanelContent>
+</SettingsPageShell>
 
 @code {
-    [Parameter] public SettingsState Settings { get; set; } = new();
-    [Parameter] public IReadOnlyList<AgentDto>? Agents { get; set; }
-    [Parameter] public List<McpServerConfigurationItem> McpServers { get; set; } = [];
-    [Parameter] public EventCallback<Guid> OnDeleteAgent { get; set; }
-    [Parameter] public EventCallback OnAgentsChanged { get; set; }
+    // ---- Page data ----
+    private IReadOnlyList<AgentDto> _agents = [];
+    private SettingsState _settings = new() { Providers = [] };
+    private List<McpServerConfigurationItem> _mcpServers = [];
 
+    // ---- Agent form state ----
     private AgentDto? _deleteAgentPending;
     private bool _isDeletingAgent;
     private string _agentsSubView = "list";
@@ -286,8 +303,9 @@
         "#1abc9c", "#2ecc71", "#e74c3c", "#8e44ad",
     ];
 
+    // ---- Computed ----
     private List<Provider> EnabledProviders =>
-        Settings.Providers
+        _settings.Providers
             .Where(p => p.Status == "enabled" && !string.IsNullOrEmpty(p.BackendId))
             .ToList();
 
@@ -307,7 +325,7 @@
                 .Select(item => item.McpServerConfigurationId)
                 .ToHashSet();
 
-            return McpServers
+            return _mcpServers
                 .Where(server => TryGetMcpServerConfigurationId(server, out var configId) && (server.IsEnabled || selectedIds.Contains(configId)))
                 .OrderBy(server => server.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
@@ -331,6 +349,56 @@
             || _agentPrompt != _savedAgentPrompt
             || SerializeAgentMcpServerTools(_draftAgentMcpServerTools) != SerializeAgentMcpServerTools(_savedAgentMcpServerTools);
 
+    // ---- Lifecycle ----
+    protected override async Task OnInitializedAsync()
+    {
+        // Load providers for the provider/model dropdowns
+        var persisted = await SettingsService.LoadFromLocalStorageAsync();
+        try
+        {
+            var apiProviders = await SettingsService.GetProvidersAsync();
+            if (apiProviders.Count > 0)
+                persisted.Providers = apiProviders;
+        }
+        catch { }
+        _settings = persisted;
+
+        // Load MCP servers for the tool attachment UI
+        try
+        {
+            _mcpServers = await SettingsService.GetMcpServersAsync();
+        }
+        catch
+        {
+            _mcpServers = [];
+        }
+
+        // Load agents
+        await AppState.LoadAgents(AgentService);
+        _agents = AppState.Agents.ToList();
+    }
+
+    // ---- Agent CRUD ----
+    private async Task HandleDeleteAgent(Guid agentId)
+    {
+        try
+        {
+            await AgentService.DeleteAgentAsync(agentId);
+            await AppState.LoadAgents(AgentService, forceReload: true);
+            _agents = AppState.Agents.ToList();
+            StateHasChanged();
+        }
+        catch { }
+    }
+
+    private async Task HandleAgentsChanged()
+    {
+        await AppState.LoadAgents(AgentService, forceReload: true);
+        _agents = AppState.Agents.ToList();
+        StateHasChanged();
+    }
+
+    // ---- MCP server helpers ----
     private AgentMcpServerToolAvailabilityDto? GetDraftMcpServerAvailability(McpServerConfigurationItem server)
     {
         if (!TryGetMcpServerConfigurationId(server, out var configId))
@@ -402,7 +470,7 @@
         IsDraftAgent
             ? (SvgFileEdit, "hsl(214, 60%, 55%)", "Draft")
             : HasAgentChanges
-                ? (SvgPencil, "hsl(40, 85%, 55%)", "Modified")
+                ? (SvgPencilSmall, "hsl(40, 85%, 55%)", "Modified")
                 : (SvgCircle, "hsl(145, 65%, 45%)", "Saved");
 
     private void OpenCreateAgent()
@@ -426,7 +494,7 @@
             _agentProviderId = "";
             _agentModel = "";
         }
-        _agentColor = AgentColors[(Agents?.Count ?? 0) % AgentColors.Length];
+        _agentColor = AgentColors[(_agents.Count) % AgentColors.Length];
         _draftAgentMcpServerTools = [];
         SetSavedAgentSnapshot(null, string.Empty);
     }
@@ -588,7 +656,7 @@
             SetSavedAgentSnapshot(savedAgent, _agentProviderId);
 
             var mcpSaved = await SaveAgentMcpServersAsync(savedAgent.Id);
-            await OnAgentsChanged.InvokeAsync();
+            await HandleAgentsChanged();
 
             if (!mcpSaved)
                 return;
@@ -657,7 +725,7 @@
         _isDeletingAgent = true;
         try
         {
-            await OnDeleteAgent.InvokeAsync(_deleteAgentPending.Id);
+            await HandleDeleteAgent(_deleteAgentPending.Id);
             _deleteAgentPending = null;
         }
         finally
@@ -673,9 +741,12 @@
         return u.Trim().ToUpperInvariant()[..1];
     }
 
+    // ---- SVG Icons ----
     private const string SvgPlus =
         """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>""";
     private const string SvgPencil =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>""";
+    private const string SvgPencilSmall =
         """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>""";
     private const string SvgTrash2 =
         """<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>""";

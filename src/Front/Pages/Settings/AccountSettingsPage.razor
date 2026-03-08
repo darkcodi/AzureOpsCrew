@@ -1,0 +1,52 @@
+@page "/settings/account"
+@inject SettingsService SettingsService
+
+<SettingsPageShell Section="SettingsSection.Account">
+    <MainContent>
+        @{
+            var initial = string.IsNullOrWhiteSpace(_settings.Account.Username)
+                ? "U"
+                : _settings.Account.Username.Trim().ToUpper()[..1];
+        }
+
+        <div class="section-header">
+            <h2 class="section-title">Account</h2>
+            <p class="section-description">Manage your account settings and preferences.</p>
+        </div>
+
+        <div class="account-card">
+            <div class="account-avatar">@initial</div>
+            <div>
+                <div class="account-name">@(string.IsNullOrWhiteSpace(_settings.Account.Username) ? "User" : _settings.Account.Username)</div>
+                <div class="account-subtitle">Local account</div>
+            </div>
+        </div>
+
+        <div class="form-field" style="margin-top: 24px;">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-input" value="@_settings.Account.Username" placeholder="Your username"
+                   @oninput="HandleUsernameChange" />
+        </div>
+    </MainContent>
+    <InfoPanelContent>
+        <div class="info-section">
+            <h4 class="info-section-title">Account</h4>
+            <p class="info-muted-body">Your account is stored locally. All settings and data persist in the local database.</p>
+        </div>
+    </InfoPanelContent>
+</SettingsPageShell>
+
+@code {
+    private SettingsState _settings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await SettingsService.LoadFromLocalStorageAsync();
+    }
+
+    private async Task HandleUsernameChange(ChangeEventArgs e)
+    {
+        _settings.Account.Username = e.Value?.ToString() ?? string.Empty;
+        await SettingsService.SaveToLocalStorageAsync(_settings);
+    }
+}
