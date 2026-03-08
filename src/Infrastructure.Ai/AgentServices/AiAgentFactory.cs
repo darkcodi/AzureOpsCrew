@@ -37,7 +37,7 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices
             return client.AsAIAgent(options);
         }
 
-        private string PreparePrompt(AgentRunData data)
+        public string PreparePrompt(AgentRunData data)
         {
             var chatName = data.Channel?.Name ?? data.DmChannel?.GetDmChannelName();
 
