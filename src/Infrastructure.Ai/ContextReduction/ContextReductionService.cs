@@ -59,21 +59,20 @@ public sealed class ContextReductionService : IContextReductionService
                 MaxInputBudget: maxInputBudget);
         }
 
-        // 6. Stage 1: Remove older tool-call groups (atomic: assistant + tool results)
+        // 6. Stage 1: Remove older tool messages
         Log.Information(
             "[CONTEXT] Stage 1 triggered — estimated {EstimatedTokens} tokens, budget {Budget}, threshold {Threshold} ({ThresholdPercent:P0}), model {Model}",
             totalEstimated, maxInputBudget, softThreshold, _settings.SoftThresholdPercent, modelId);
 
-        var classified = ChatMessageClassifier.ClassifyAndGroupMessages(allMessages);
+        var (conversation, toolRelated) = ChatMessageClassifier.ClassifyMessages(allMessages);
 
-        // 7. Walk newest→oldest tool-call groups, keep within RecentToolBudgetTokens
-        var keptGroups = SelectRecentToolGroups(classified.ToolCallGroups, charsPerToken, safetyMargin);
+        // 7. Walk newest→oldest tool messages, keep within RecentToolBudgetTokens
+        var keptToolMessages = SelectRecentToolMessages(toolRelated, charsPerToken, safetyMargin);
 
-        // 8. Merge conversation + kept tool-call groups and re-sort
-        var reducedMessages = new List<ChatMessage>(classified.Conversation.Count + keptGroups.Count * 2);
-        reducedMessages.AddRange(classified.Conversation);
-        foreach (var group in keptGroups)
-            reducedMessages.AddRange(group.AllMessages);
+        // 8. Merge and re-sort
+        var reducedMessages = new List<ChatMessage>(conversation.Count + keptToolMessages.Count);
+        reducedMessages.AddRange(conversation);
+        reducedMessages.AddRange(keptToolMessages);
         reducedMessages.Sort((a, b) => Nullable.Compare(a.CreatedAt, b.CreatedAt));
 
         var removedCount = allMessages.Count - reducedMessages.Count;
@@ -101,36 +100,30 @@ public sealed class ContextReductionService : IContextReductionService
             MaxInputBudget: maxInputBudget);
     }
 
-    /// <summary>
-    /// Selects the newest tool-call groups that fit within the RecentToolBudgetTokens budget.
-    /// Groups are kept or removed atomically — an assistant message with tool_calls is never
-    /// separated from its matching tool-result messages.
-    /// At least one group is always kept if any groups exist.
-    /// </summary>
-    private List<ToolCallGroup> SelectRecentToolGroups(
-        List<ToolCallGroup> toolCallGroups,
+    private List<ChatMessage> SelectRecentToolMessages(
+        List<ChatMessage> toolMessages,
         double charsPerToken,
         double safetyMargin)
     {
-        if (toolCallGroups.Count == 0)
+        if (toolMessages.Count == 0)
             return [];
 
         var budget = _settings.RecentToolBudgetTokens;
         var accumulated = 0;
-        var selected = new List<ToolCallGroup>();
+        var selected = new List<ChatMessage>();
 
-        // Walk from newest to oldest (groups are ordered chronologically, so reverse)
-        for (var i = toolCallGroups.Count - 1; i >= 0; i--)
+        // Walk from newest to oldest
+        for (var i = toolMessages.Count - 1; i >= 0; i--)
         {
-            var group = toolCallGroups[i];
-            var groupTokens = group.EstimateTokens(charsPerToken, safetyMargin);
+            var msg = toolMessages[i];
+            var msgTokens = TokenEstimator.EstimateMessageTokens(msg, charsPerToken, safetyMargin);
 
-            if (accumulated + groupTokens > budget && selected.Count > 0)
+            if (accumulated + msgTokens > budget && selected.Count > 0)
                 break;
 
-            // Always keep at least one group
-            selected.Add(group);
-            accumulated += groupTokens;
+            // Always keep at least one tool message
+            selected.Add(msg);
+            accumulated += msgTokens;
         }
 
         return selected;
