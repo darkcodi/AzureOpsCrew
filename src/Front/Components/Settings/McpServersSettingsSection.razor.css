@@ -259,6 +259,24 @@
     color: hsl(0, 78%, 68%);
 }
 
+/* Auth section in MCP edit form */
+.mcp-auth-field {
+    margin-top: 4px;
+}
+
+.mcp-auth-select {
+    display: block;
+    width: 100%;
+}
+
+.mcp-auth-token-row {
+    margin-top: 10px;
+}
+
+.mcp-auth-token-row .agent-form-input {
+    width: 100%;
+}
+
 /* Headers list in MCP edit form */
 .mcp-headers-field {
     margin-top: 4px;

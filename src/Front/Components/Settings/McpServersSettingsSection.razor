@@ -151,28 +151,48 @@ else
                 <textarea id="mcp-server-description" class="agent-form-textarea" rows="4" placeholder="Optional description of this MCP server..."
                           @bind="selectedServer.Description" @bind:event="oninput"></textarea>
             </div>
-            <div class="agent-form-field mcp-headers-field">
-                <label class="agent-form-label">Headers (optional)</label>
-                <p class="mcp-headers-hint">Sent with each request. Values are not re-displayed after save.</p>
-                <div class="mcp-headers-list">
-                    @foreach (var header in selectedServer.Headers)
-                    {
-                        <div class="mcp-header-row">
-                            <input type="text" class="agent-form-input mcp-header-name" placeholder="Name (e.g. X-Api-Key)"
-                                   @bind="header.Name" @bind:event="oninput" />
-                            <input type="text" class="agent-form-input mcp-header-value" placeholder="Value"
-                                   @bind="header.Value" @bind:event="oninput" />
-                            <button type="button" class="agent-row-btn agent-row-btn-delete mcp-header-remove" aria-label="Remove header"
-                                    @onclick="() => RemoveHeader(selectedServer, header)">
-                                @((MarkupString)SvgTrash2)
-                            </button>
-                        </div>
-                    }
-                </div>
-                <button type="button" class="btn btn-secondary mcp-add-header-btn" @onclick="() => AddHeader(selectedServer)">
-                    Add header
-                </button>
+            <div class="agent-form-field mcp-auth-field">
+                <label for="mcp-server-auth-type" class="agent-form-label">Auth</label>
+                <select id="mcp-server-auth-type" class="agent-form-input mcp-auth-select"
+                        @bind="selectedServer.Auth.Type" @bind:event="onchange">
+                    <option value="None">None</option>
+                    <option value="BearerToken">Bearer Token</option>
+                    <option value="CustomHeaders">Custom headers</option>
+                </select>
+                @if (selectedServer.Auth.Type == "BearerToken")
+                {
+                    <div class="mcp-auth-token-row">
+                        <label for="mcp-server-bearer-token" class="agent-form-label visually-hidden">Bearer token</label>
+                        <input id="mcp-server-bearer-token" type="password" class="agent-form-input" placeholder="Bearer token"
+                               @bind="selectedServer.BearerToken" @bind:event="oninput" />
+                    </div>
+                }
             </div>
+            @if (selectedServer.Auth.Type == "CustomHeaders")
+            {
+                <div class="agent-form-field mcp-headers-field">
+                    <label class="agent-form-label">Headers</label>
+                    <p class="mcp-headers-hint">Sent with each request. Values are not re-displayed after save.</p>
+                    <div class="mcp-headers-list">
+                        @foreach (var header in selectedServer.Headers)
+                        {
+                            <div class="mcp-header-row">
+                                <input type="text" class="agent-form-input mcp-header-name" placeholder="Name (e.g. X-Api-Key)"
+                                       @bind="header.Name" @bind:event="oninput" />
+                                <input type="text" class="agent-form-input mcp-header-value" placeholder="Value"
+                                       @bind="header.Value" @bind:event="oninput" />
+                                <button type="button" class="agent-row-btn agent-row-btn-delete mcp-header-remove" aria-label="Remove header"
+                                        @onclick="() => RemoveHeader(selectedServer, header)">
+                                    @((MarkupString)SvgTrash2)
+                                </button>
+                            </div>
+                        }
+                    </div>
+                    <button type="button" class="btn btn-secondary mcp-add-header-btn" @onclick="() => AddHeader(selectedServer)">
+                        Add header
+                    </button>
+                </div>
+            }
             <button type="button" class="btn btn-primary agent-form-save"
                     disabled="@(string.IsNullOrWhiteSpace(selectedServer.Name) || IsSavingMcpServer)"
                     @onclick="SaveCurrentMcpServer">
@@ -272,32 +292,28 @@ else
     private async Task SaveCurrentMcpServer()
     {
         var selectedServer = McpServers?.FirstOrDefault(s => s.Id == SelectedMcpServerId);
-        McpServerAuthEditorState? authState = null;
-        if (selectedServer != null)
+        if (selectedServer == null)
         {
-            var filledHeaders = selectedServer.Headers
-                .Where(h => !string.IsNullOrWhiteSpace(h.Name) && !string.IsNullOrWhiteSpace(h.Value))
-                .Select(h => new McpServerAuthHeaderEditorItem { Name = h.Name!.Trim(), Value = h.Value!.Trim() })
-                .ToList();
-            if (filledHeaders.Count > 0)
-            {
-                authState = new McpServerAuthEditorState
-                {
-                    Type = "CustomHeaders",
-                    BearerToken = "",
-                    Headers = filledHeaders,
-                };
-            }
-            else if (selectedServer.Auth?.HasCustomHeaders == true)
-            {
-                authState = new McpServerAuthEditorState
-                {
-                    Type = "None",
-                    BearerToken = "",
-                    Headers = [],
-                };
-            }
+            await OnSaveCurrentMcpServer.InvokeAsync(null);
+            return;
         }
+
+        var authType = selectedServer.Auth?.Type ?? "None";
+        if (authType != "None" && authType != "BearerToken" && authType != "CustomHeaders")
+            authType = "None";
+
+        var filledHeaders = selectedServer.Headers
+            .Where(h => !string.IsNullOrWhiteSpace(h.Name) && !string.IsNullOrWhiteSpace(h.Value))
+            .Select(h => new McpServerAuthHeaderEditorItem { Name = h.Name!.Trim(), Value = h.Value!.Trim() })
+            .ToList();
+
+        var authState = new McpServerAuthEditorState
+        {
+            Type = authType,
+            BearerToken = authType == "BearerToken" ? (selectedServer.BearerToken ?? "") : "",
+            Headers = authType == "CustomHeaders" ? filledHeaders : [],
+        };
+
         await OnSaveCurrentMcpServer.InvokeAsync(authState);
     }
 
