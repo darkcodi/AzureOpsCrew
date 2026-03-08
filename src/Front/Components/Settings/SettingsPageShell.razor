@@ -1,0 +1,60 @@
+<PageTitle>@GetPageTitle()</PageTitle>
+<MainLayout>
+    <LeftSidebar>
+        <SettingsSidebar ActiveSection="Section" />
+    </LeftSidebar>
+    <MainArea>
+        <div class="settings-main-area">
+            <div class="settings-content">
+                <div class="settings-content-scroll">
+                    <div class="settings-content-inner">
+                        @MainContent
+                        @if (ShowWipBanner)
+                        {
+                            <div class="wip-banner">
+                                This settings page is still in development (WIP).
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            @if (FooterContent != null)
+            {
+                @FooterContent
+            }
+        </div>
+    </MainArea>
+    <RightSidebar>
+        @if (InfoPanelContent != null)
+        {
+            <div class="info-panel">
+                <div class="info-panel-scroll">
+                    <div class="info-panel-inner">
+                        @InfoPanelContent
+                    </div>
+                </div>
+            </div>
+        }
+    </RightSidebar>
+</MainLayout>
+
+@code {
+    [Parameter] public SettingsSection Section { get; set; }
+    [Parameter] public RenderFragment? MainContent { get; set; }
+    [Parameter] public RenderFragment? InfoPanelContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+    [Parameter] public bool ShowWipBanner { get; set; }
+
+    private string GetPageTitle() => Section switch
+    {
+        SettingsSection.Account => "Settings - Account",
+        SettingsSection.Appearance => "Settings - Appearance",
+        SettingsSection.Notifications => "Settings - Notifications",
+        SettingsSection.Providers => "Settings - Providers",
+        SettingsSection.McpServers => "Settings - MCP Servers",
+        SettingsSection.Agents => "Settings - Agents",
+        SettingsSection.Routing => "Settings - Routing",
+        SettingsSection.Advanced => "Settings - Advanced",
+        _ => "Settings"
+    };
+}

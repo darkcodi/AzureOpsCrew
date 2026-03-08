@@ -41,7 +41,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                         "gpt-5-2-chat")
                         {
                             Description = "Helps with planning, priorities, resource allocation, team coordination, and delivery",
-                            AvailableMcpServerTools = []
+                            AvailableMcpServerTools = Array.Empty<AgentMcpServerToolAvailability>()
                         },
                     provider.Id, "manager", "#43b581"
                 ),
@@ -54,7 +54,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                         "gpt-5-2-chat")
                         {
                             Description = "Expert in Azure DevOps pipelines, CI/CD, repos, boards, artifacts, and release management",
-                            AvailableMcpServerTools = []
+                            AvailableMcpServerTools = Array.Empty<AgentMcpServerToolAvailability>()
                         },
                     provider.Id, "azure-devops", "#0078d4"),
 
@@ -65,7 +65,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                         "gpt-5-2-chat")
                         {
                             Description = "Expert in building and deploying apps on Azure: App Service, Functions, Container Apps, AKS, and more",
-                            AvailableMcpServerTools = []
+                            AvailableMcpServerTools = Array.Empty<AgentMcpServerToolAvailability>()
                         },
                     provider.Id, "azure-dev", "#00bcf2"
                 )

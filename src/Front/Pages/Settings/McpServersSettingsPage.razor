@@ -1,0 +1,746 @@
+@page "/settings/mcp-servers"
+@inject SettingsService SettingsService
+@inject MarkdownService MarkdownSvc
+
+<SettingsPageShell Section="SettingsSection.McpServers">
+    <MainContent>
+        @if (_mcpSubView == "list")
+        {
+            <h3 class="mcp-installed-title">Installed MCP Servers</h3>
+
+            <div class="mcp-server-list">
+                @foreach (var server in FilteredMcpServers)
+                {
+                    var isDraft = string.IsNullOrWhiteSpace(server.BackendId);
+                    var enabledToolsCount = server.Tools.Count(t => t.IsEnabled);
+                    var isExpanded = _expandedServerIds.Contains(server.Id);
+                    var hasTools = server.Tools.Count > 0;
+                    var canToggle = !_isSavingMcpServer && !_isSyncingMcpServer && !isDraft && !_modifiedMcpServerIds.Contains(server.Id);
+
+                    <div class="mcp-server-card">
+                        <div class="mcp-avatar-wrapper">
+                            <span class="mcp-avatar" style="background: @GetAvatarBackground(server.Name)">
+                                @GetAvatarLetter(server.Name)
+                            </span>
+                            @if (server.IsEnabled && !isDraft)
+                            {
+                                <span class="mcp-status-dot"></span>
+                            }
+                        </div>
+
+                        <div class="mcp-card-body">
+                            <div class="mcp-name-row">
+                                <span class="mcp-server-name">@server.Name</span>
+                                @if (!server.IsEnabled && !isDraft)
+                                {
+                                    <span class="mcp-server-status-text">Disabled</span>
+                                }
+                                else if (isDraft)
+                                {
+                                    <span class="mcp-server-status-text">Draft</span>
+                                }
+                            </div>
+
+                            @if (hasTools)
+                            {
+                                @if (!isExpanded)
+                                {
+                                    <button type="button" class="mcp-tools-toggle" @onclick="() => ToggleToolsExpanded(server.Id)">
+                                        @enabledToolsCount tools enabled
+                                        <span class="mcp-chevron">@((MarkupString)SvgChevron)</span>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <div class="mcp-tools-expanded">
+                                        @foreach (var tool in server.Tools.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
+                                        {
+                                            var canToggleTool = canToggle && !_isUpdatingMcpServerTool;
+                                            <div class="mcp-tool-chip-wrapper">
+                                                <span class="mcp-tool-chip @(tool.IsEnabled ? "" : "disabled") @(canToggleTool ? "clickable" : "")"
+                                                      @onmouseenter="() => ShowToolTooltip(server.Id, tool.Name)"
+                                                      @onmouseleave="HideToolTooltip"
+                                                      @onclick="() => ToggleToolAsync(server.Id, tool.Name)">@tool.Name</span>
+                                                @if (_hoveredToolKey == $"{server.Id}|{tool.Name}" && !string.IsNullOrWhiteSpace(tool.Description))
+                                                {
+                                                    <div class="mcp-tool-tooltip">
+                                                        <div class="markdown-content">
+                                                            @((MarkupString)MarkdownSvc.ConvertToHtml(tool.Description))
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                    <button type="button" class="mcp-tools-toggle" @onclick="() => ToggleToolsExpanded(server.Id)">
+                                        Show less
+                                        <span class="mcp-chevron up">@((MarkupString)SvgChevron)</span>
+                                    </button>
+                                }
+                            }
+                            else if (!isDraft)
+                            {
+                                <span class="mcp-tools-empty">No tools synced</span>
+                            }
+                        </div>
+
+                        <div class="agent-row-actions">
+                            <button type="button" class="agent-row-btn agent-row-btn-edit" title="Edit @(string.IsNullOrWhiteSpace(server.Name) ? "server" : server.Name)" @onclick="() => OpenEditMcpServer(server.Id)">
+                                @((MarkupString)SvgPencil)
+                            </button>
+                        </div>
+
+                        <button type="button" role="switch" aria-checked="@server.IsEnabled"
+                                class="toggle-switch @(server.IsEnabled ? "on" : "")"
+                                disabled="@(!canToggle)"
+                                @onclick="() => ToggleServerEnabledAsync(server.Id)">
+                            <span class="toggle-knob"></span>
+                        </button>
+                    </div>
+                }
+
+                <button type="button" class="mcp-server-card mcp-add-card" @onclick="AddMcpServerDraftAndOpenFormAsync">
+                    <div class="mcp-avatar-wrapper">
+                        <span class="mcp-avatar mcp-avatar-add">@((MarkupString)SvgPlus)</span>
+                    </div>
+                    <div class="mcp-card-body">
+                        <span class="mcp-server-name">New MCP Server</span>
+                        <span class="mcp-add-subtitle">Add a Custom MCP Server</span>
+                    </div>
+                </button>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_mcpServerError))
+            {
+                <p class="mcp-error">@_mcpServerError</p>
+            }
+        }
+        else
+        {
+            var selectedServer = _mcpServers.FirstOrDefault(s => s.Id == _selectedMcpServerId);
+            @if (selectedServer == null)
+            {
+                <div class="agents-back-bar">
+                    <button type="button" class="agents-back-btn" @onclick="BackToMcpList" aria-label="Back to list">
+                        <span class="agents-back-icon">@((MarkupString)SvgChevronLeft)</span>
+                        <span>Back to list</span>
+                    </button>
+                </div>
+                <p class="mcp-error">No server selected. Go back to list and select a server to edit.</p>
+            }
+            else
+            {
+                <div class="agents-back-bar agents-back-bar-with-actions">
+                    <button type="button" class="agents-back-btn" @onclick="BackToMcpList" aria-label="Back to list">
+                        <span class="agents-back-icon">@((MarkupString)SvgChevronLeft)</span>
+                        <span>Back to list</span>
+                    </button>
+                    @{
+                        var syncDisabled = _isSyncingMcpServer || _isSavingMcpServer || string.IsNullOrWhiteSpace(selectedServer.BackendId) || _modifiedMcpServerIds.Contains(selectedServer.Id);
+                    }
+                    <div class="agents-back-bar-actions">
+                        <span class="agents-back-bar-sync-date">Sync date: @FormatToolsSyncedAt(selectedServer.ToolsSyncedAt)</span>
+                        <button type="button" class="agent-row-btn agent-row-btn-sync" aria-label="Sync tools" disabled="@syncDisabled" @onclick="HandleSyncMcpServer">
+                            @((MarkupString)SvgRefresh)
+                        </button>
+                        <button type="button" class="agent-row-btn agent-row-btn-delete" aria-label="Remove MCP server" @onclick="() => _removeMcpServerPending = _mcpServers.FirstOrDefault(s => s.Id == _selectedMcpServerId)">
+                            @((MarkupString)SvgTrash2)
+                        </button>
+                    </div>
+                </div>
+                <div class="agent-form">
+                    <div class="agent-form-field">
+                        <label for="mcp-server-name" class="agent-form-label">Server Name</label>
+                        <input id="mcp-server-name" type="text" class="agent-form-input" placeholder="e.g. Azure MCP"
+                               @bind="selectedServer.Name" @bind:event="oninput" />
+                    </div>
+                    <div class="agent-form-field">
+                        <label for="mcp-server-url" class="agent-form-label">URL</label>
+                        <input id="mcp-server-url" type="text" class="agent-form-input" placeholder="e.g. https://example.com/mcp"
+                               @bind="selectedServer.Url" @bind:event="oninput" />
+                    </div>
+                    <div class="agent-form-field">
+                        <label for="mcp-server-description" class="agent-form-label">Description</label>
+                        <textarea id="mcp-server-description" class="agent-form-textarea" rows="4" placeholder="Optional description of this MCP server..."
+                                  @bind="selectedServer.Description" @bind:event="oninput"></textarea>
+                    </div>
+                    <div class="agent-form-field mcp-auth-field">
+                        <label for="mcp-server-auth-type" class="agent-form-label">Auth</label>
+                        <select id="mcp-server-auth-type" class="agent-form-input mcp-auth-select"
+                                @bind="selectedServer.Auth.Type" @bind:event="onchange">
+                            <option value="None">None</option>
+                            <option value="BearerToken">Bearer Token</option>
+                            <option value="CustomHeaders">Custom headers</option>
+                        </select>
+                        @if (selectedServer.Auth.Type == "BearerToken")
+                        {
+                            <div class="mcp-auth-token-row">
+                                <label for="mcp-server-bearer-token" class="agent-form-label visually-hidden">Bearer token</label>
+                                <input id="mcp-server-bearer-token" type="password" class="agent-form-input" placeholder="Bearer token"
+                                       @bind="selectedServer.BearerToken" @bind:event="oninput" />
+                            </div>
+                        }
+                    </div>
+                    @if (selectedServer.Auth.Type == "CustomHeaders")
+                    {
+                        <div class="agent-form-field mcp-headers-field">
+                            <label class="agent-form-label">Headers</label>
+                            <p class="mcp-headers-hint">Sent with each request. Values are not re-displayed after save.</p>
+                            <div class="mcp-headers-list">
+                                @foreach (var header in selectedServer.Headers)
+                                {
+                                    <div class="mcp-header-row">
+                                        <input type="text" class="agent-form-input mcp-header-name" placeholder="Name (e.g. X-Api-Key)"
+                                               @bind="header.Name" @bind:event="oninput" />
+                                        <input type="text" class="agent-form-input mcp-header-value" placeholder="Value"
+                                               @bind="header.Value" @bind:event="oninput" />
+                                        <button type="button" class="agent-row-btn agent-row-btn-delete mcp-header-remove" aria-label="Remove header"
+                                                @onclick="() => RemoveHeader(selectedServer, header)">
+                                            @((MarkupString)SvgTrash2)
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                            <button type="button" class="btn btn-secondary mcp-add-header-btn" @onclick="() => AddHeader(selectedServer)">
+                                Add header
+                            </button>
+                        </div>
+                    }
+                    <button type="button" class="btn btn-primary agent-form-save"
+                            disabled="@(string.IsNullOrWhiteSpace(selectedServer.Name) || _isSavingMcpServer)"
+                            @onclick="SaveCurrentMcpServer">
+                        <span class="agent-form-save-icon">@((MarkupString)SvgSave)</span>
+                        <span>@(_isSavingMcpServer ? "Saving..." : "Save")</span>
+                    </button>
+                    @if (!string.IsNullOrEmpty(_mcpServerError))
+                    {
+                        <div class="agent-form-error">@_mcpServerError</div>
+                    }
+                </div>
+            }
+        }
+
+        @* ---- Remove MCP Server Dialog ---- *@
+        @if (_removeMcpServerPending != null)
+        {
+            <div class="dialog-overlay" @onclick="() => _removeMcpServerPending = null">
+                <div class="dialog-box" @onclick:stopPropagation="true" role="dialog" aria-labelledby="remove-mcp-server-title" aria-describedby="remove-mcp-server-desc">
+                    <div class="dialog-header">
+                        <h3 id="remove-mcp-server-title" class="dialog-title">Remove MCP Server</h3>
+                        <div id="remove-mcp-server-desc" class="dialog-description">
+                            <p>Are you sure you want to remove <strong class="text-white">@(string.IsNullOrWhiteSpace(_removeMcpServerPending.Name) ? "this server" : _removeMcpServerPending.Name)</strong>?</p>
+                            <p>This cannot be undone.</p>
+                        </div>
+                    </div>
+                    <div class="dialog-footer">
+                        <button type="button" class="btn btn-secondary" disabled="@_isRemovingMcpServer"
+                                @onclick="() => _removeMcpServerPending = null">
+                            Cancel
+                        </button>
+                        <button type="button" class="btn btn-danger" disabled="@_isRemovingMcpServer"
+                                @onclick="ConfirmRemoveMcpServer">
+                            @(_isRemovingMcpServer ? "Removing..." : "Remove MCP Server")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </MainContent>
+    <InfoPanelContent>
+        <div class="info-section">
+            <h4 class="info-section-title">MCP Servers</h4>
+            <p class="info-muted-body">
+                @if (SelectedMcpServer == null)
+                {
+                    <span>Select an MCP server from the list to edit its configuration in the center panel.</span>
+                }
+                else
+                {
+                    <span><strong>@SelectedMcpServer.Name</strong> is selected. Use the center panel to edit its URL, description, and tool snapshot.</span>
+                }
+            </p>
+        </div>
+        <div class="info-section">
+            <h4 class="info-section-title">Quick tips</h4>
+            <ul class="note-list">
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>New MCP servers start as drafts until you save them.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Save name and URL changes before syncing tools.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Per-tool activation is stored on the server configuration after the first save.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Stored authorization values stay hidden; re-enter them to replace the current secret.</span></li>
+            </ul>
+        </div>
+    </InfoPanelContent>
+</SettingsPageShell>
+
+@code {
+    // ---- MCP state (from SettingsPage) ----
+    private List<McpServerConfigurationItem> _mcpServers = [];
+    private List<McpServerConfigurationItem> _savedMcpServers = [];
+    private string? _selectedMcpServerId;
+    private HashSet<string> _modifiedMcpServerIds = [];
+    private string? _mcpServerError;
+    private bool _isSavingMcpServer;
+    private bool _isSyncingMcpServer;
+    private bool _isUpdatingMcpServerTool;
+    private int _mcpServerAuthResetKey;
+    private string? _updatingMcpServerToolName;
+
+    // ---- Local UI state (from McpServersSettingsSection) ----
+    private readonly HashSet<string> _expandedServerIds = [];
+    private string? _hoveredToolKey;
+    private CancellationTokenSource? _tooltipCts;
+    private string _mcpSubView = "list";
+    private McpServerConfigurationItem? _removeMcpServerPending;
+    private bool _isRemovingMcpServer;
+
+    private const int TooltipDelayMs = 400;
+
+    // ---- Computed ----
+    private McpServerConfigurationItem? SelectedMcpServer =>
+        _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
+
+    private List<McpServerConfigurationItem> FilteredMcpServers =>
+        _mcpServers
+            .OrderBy(server => GetSortKeyByDateCreated(server.DateCreated))
+            .ToList();
+
+    // ---- Lifecycle ----
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var apiMcpServers = await SettingsService.GetMcpServersAsync();
+            _mcpServers = apiMcpServers
+                .OrderBy(server => GetSortKeyByDateCreated(server.DateCreated))
+                .Select(server => server.Clone())
+                .ToList();
+        }
+        catch
+        {
+            _mcpServers = [];
+        }
+
+        _savedMcpServers = _mcpServers.Select(server => server.Clone()).ToList();
+        _selectedMcpServerId = _mcpServers.FirstOrDefault()?.Id;
+        ComputeModifiedMcpServerIds();
+    }
+
+    // ---- MCP handlers (from SettingsPage) ----
+    private void HandleSelectMcpServer(string id)
+    {
+        _selectedMcpServerId = id;
+        StateHasChanged();
+    }
+
+    private void HandleMcpServersChange(List<McpServerConfigurationItem> updated)
+    {
+        var previousSelection = _selectedMcpServerId;
+        _mcpServers = updated;
+
+        if (string.IsNullOrWhiteSpace(previousSelection))
+            _selectedMcpServerId = _mcpServers.LastOrDefault()?.Id;
+        else if (_mcpServers.All(server => server.Id != previousSelection))
+            _selectedMcpServerId = _mcpServers.LastOrDefault()?.Id;
+
+        ComputeModifiedMcpServerIds();
+        StateHasChanged();
+    }
+
+    private async Task HandleSaveCurrentMcpServer(McpServerAuthEditorState? auth)
+    {
+        if (_selectedMcpServerId == null) return;
+        var current = _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
+        if (current == null) return;
+
+        _mcpServerError = null;
+        _isSavingMcpServer = true;
+        try
+        {
+            current.Auth = new McpServerAuthSummary { Type = auth?.Type ?? "None" };
+            current.BearerToken = auth?.BearerToken ?? "";
+            current.Headers = auth?.Headers?.Select(h => new McpServerAuthHeaderEditorItem { Name = h.Name, Value = h.Value }).ToList() ?? [];
+
+            // Find saved server for auth comparison
+            var savedServer = _savedMcpServers.FirstOrDefault(s => s.Id == current.Id);
+
+            var savedSnapshot = string.IsNullOrWhiteSpace(current.BackendId)
+                ? await SettingsService.CreateMcpServerAsync(current)
+                : await SettingsService.UpdateMcpServerAsync(current, savedServer);
+
+            ApplyMcpServerSnapshot(current.Id, savedSnapshot);
+            _mcpServerAuthResetKey++;
+        }
+        catch (Exception ex)
+        {
+            _mcpServerError = ex.Message;
+        }
+        finally
+        {
+            _isSavingMcpServer = false;
+        }
+
+        if (_mcpServerError == null)
+            _mcpSubView = "list";
+    }
+
+    private void HandleResetCurrentMcpServer()
+    {
+        if (_selectedMcpServerId == null) return;
+
+        var current = _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
+        if (current == null || string.IsNullOrWhiteSpace(current.BackendId))
+            return;
+
+        var saved = _savedMcpServers.FirstOrDefault(server => server.Id == current.Id);
+        if (saved == null)
+            return;
+
+        ApplyMcpServerSnapshot(current.Id, saved.Clone());
+        _mcpServerAuthResetKey++;
+        _mcpServerError = null;
+    }
+
+    private async Task HandleRemoveCurrentMcpServer()
+    {
+        if (_selectedMcpServerId == null) return;
+
+        var currentIndex = _mcpServers.FindIndex(server => server.Id == _selectedMcpServerId);
+        if (currentIndex < 0) return;
+
+        var current = _mcpServers[currentIndex];
+        if (string.IsNullOrWhiteSpace(current.BackendId))
+        {
+            _mcpServers.RemoveAt(currentIndex);
+        }
+        else
+        {
+            _mcpServerError = null;
+            _isSavingMcpServer = true;
+            try
+            {
+                await SettingsService.RemoveMcpServerAsync(current.BackendId);
+            }
+            catch (Exception ex)
+            {
+                _mcpServerError = ex.Message;
+                return;
+            }
+            finally
+            {
+                _isSavingMcpServer = false;
+            }
+
+            _mcpServers.RemoveAt(currentIndex);
+            _savedMcpServers.RemoveAll(server => server.Id == current.Id);
+        }
+
+        _selectedMcpServerId = _mcpServers.Count == 0
+            ? null
+            : _mcpServers[Math.Min(currentIndex, _mcpServers.Count - 1)].Id;
+
+        _mcpServerError = null;
+        _mcpSubView = "list";
+        ComputeModifiedMcpServerIds();
+        StateHasChanged();
+    }
+
+    private async Task HandleSyncMcpServer()
+    {
+        if (_selectedMcpServerId == null) return;
+        var current = _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
+        if (current == null || string.IsNullOrWhiteSpace(current.BackendId)) return;
+        if (_modifiedMcpServerIds.Contains(current.Id))
+        {
+            _mcpServerError = "Save name or URL changes before syncing tools.";
+            return;
+        }
+
+        _mcpServerError = null;
+        _isSyncingMcpServer = true;
+        try
+        {
+            var syncedSnapshot = await SettingsService.SyncMcpToolsAsync(current.BackendId);
+            ApplyMcpServerSnapshot(current.Id, syncedSnapshot);
+        }
+        catch (Exception ex)
+        {
+            _mcpServerError = ex.Message;
+        }
+        finally
+        {
+            _isSyncingMcpServer = false;
+        }
+    }
+
+    private async Task HandleToggleSelectedMcpServerEnabled()
+    {
+        if (_selectedMcpServerId == null) return;
+        var current = _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
+        if (current == null || string.IsNullOrWhiteSpace(current.BackendId)) return;
+        if (_modifiedMcpServerIds.Contains(current.Id))
+        {
+            _mcpServerError = "Save name or URL changes before toggling availability.";
+            return;
+        }
+
+        _mcpServerError = null;
+        _isSavingMcpServer = true;
+        try
+        {
+            var updatedSnapshot = await SettingsService.SetMcpServerEnabledAsync(current.BackendId, !current.IsEnabled);
+            ApplyMcpServerSnapshot(current.Id, updatedSnapshot);
+        }
+        catch (Exception ex)
+        {
+            _mcpServerError = ex.Message;
+        }
+        finally
+        {
+            _isSavingMcpServer = false;
+        }
+    }
+
+    private async Task HandleToggleSelectedMcpServerTool(string toolName)
+    {
+        if (_selectedMcpServerId == null) return;
+        var current = _mcpServers.FirstOrDefault(server => server.Id == _selectedMcpServerId);
+        if (current == null || string.IsNullOrWhiteSpace(current.BackendId)) return;
+        if (_modifiedMcpServerIds.Contains(current.Id))
+        {
+            _mcpServerError = "Save name or URL changes before changing tool availability.";
+            return;
+        }
+
+        var currentTool = current.Tools.FirstOrDefault(tool => string.Equals(tool.Name, toolName, StringComparison.Ordinal));
+        if (currentTool == null)
+            return;
+
+        _mcpServerError = null;
+        _isUpdatingMcpServerTool = true;
+        _updatingMcpServerToolName = toolName;
+
+        try
+        {
+            var updatedSnapshot = await SettingsService.SetMcpServerToolEnabledAsync(current.BackendId, toolName, !currentTool.IsEnabled);
+            ApplyMcpServerSnapshot(current.Id, updatedSnapshot);
+        }
+        catch (Exception ex)
+        {
+            _mcpServerError = ex.Message;
+        }
+        finally
+        {
+            _isUpdatingMcpServerTool = false;
+            _updatingMcpServerToolName = null;
+        }
+    }
+
+    private void ApplyMcpServerSnapshot(string localId, McpServerConfigurationItem snapshot)
+    {
+        var current = _mcpServers.FirstOrDefault(server => server.Id == localId);
+        if (current == null) return;
+
+        current.BackendId = string.IsNullOrWhiteSpace(snapshot.BackendId) ? snapshot.Id : snapshot.BackendId;
+        current.Name = snapshot.Name;
+        current.Description = snapshot.Description;
+        current.Url = snapshot.Url;
+        current.IsEnabled = snapshot.IsEnabled;
+        current.ToolsSyncedAt = snapshot.ToolsSyncedAt;
+        current.DateCreated = string.IsNullOrWhiteSpace(snapshot.DateCreated) ? current.DateCreated : snapshot.DateCreated;
+        current.Auth = snapshot.Auth.Clone();
+        current.Tools = snapshot.Tools.Select(tool => tool.Clone()).ToList();
+
+        var savedClone = current.Clone();
+        var savedIndex = _savedMcpServers.FindIndex(server => server.Id == localId);
+        if (savedIndex >= 0)
+            _savedMcpServers[savedIndex] = savedClone;
+        else
+            _savedMcpServers.Add(savedClone);
+
+        ComputeModifiedMcpServerIds();
+        StateHasChanged();
+    }
+
+    private void ComputeModifiedMcpServerIds()
+    {
+        var savedById = _savedMcpServers.ToDictionary(server => server.Id);
+        _modifiedMcpServerIds = _mcpServers
+            .Where(server =>
+            {
+                if (!savedById.TryGetValue(server.Id, out var saved) || string.IsNullOrEmpty(server.BackendId)) return false;
+                return server.Name != saved.Name ||
+                       NormalizeOptionalMcpText(server.Description) != NormalizeOptionalMcpText(saved.Description) ||
+                       server.Url != saved.Url;
+            })
+            .Select(server => server.Id)
+            .ToHashSet();
+    }
+
+    private static string? NormalizeOptionalMcpText(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static long GetSortKeyByDateCreated(string? dateCreated)
+    {
+        if (string.IsNullOrWhiteSpace(dateCreated)) return long.MaxValue;
+        return DateTime.TryParse(dateCreated, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var dt) ? dt.Ticks : long.MaxValue;
+    }
+
+    // ---- Section UI helpers (from McpServersSettingsSection) ----
+    private void OpenEditMcpServer(string serverId)
+    {
+        _selectedMcpServerId = serverId;
+        _mcpSubView = "form";
+    }
+
+    private void BackToMcpList()
+    {
+        _mcpSubView = "list";
+    }
+
+    private void AddMcpServerDraftAndOpenFormAsync()
+    {
+        var newServer = new McpServerConfigurationItem
+        {
+            Id = $"mcp-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}",
+            Name = "New MCP Server",
+            Url = "",
+            IsEnabled = true,
+            Auth = new McpServerAuthSummary(),
+            Tools = [],
+        };
+
+        _mcpServers.Add(newServer);
+        _selectedMcpServerId = newServer.Id;
+        HandleMcpServersChange(_mcpServers.ToList());
+        _mcpSubView = "form";
+    }
+
+    private async Task SaveCurrentMcpServer()
+    {
+        var selectedServer = _mcpServers.FirstOrDefault(s => s.Id == _selectedMcpServerId);
+        if (selectedServer == null)
+        {
+            await HandleSaveCurrentMcpServer(null);
+            return;
+        }
+
+        var authType = selectedServer.Auth?.Type ?? "None";
+        if (authType != "None" && authType != "BearerToken" && authType != "CustomHeaders")
+            authType = "None";
+
+        var filledHeaders = selectedServer.Headers
+            .Where(h => !string.IsNullOrWhiteSpace(h.Name) && !string.IsNullOrWhiteSpace(h.Value))
+            .Select(h => new McpServerAuthHeaderEditorItem { Name = h.Name!.Trim(), Value = h.Value!.Trim() })
+            .ToList();
+
+        var authState = new McpServerAuthEditorState
+        {
+            Type = authType,
+            BearerToken = authType == "BearerToken" ? (selectedServer.BearerToken ?? "") : "",
+            Headers = authType == "CustomHeaders" ? filledHeaders : [],
+        };
+
+        await HandleSaveCurrentMcpServer(authState);
+    }
+
+    private void AddHeader(McpServerConfigurationItem server)
+    {
+        server.Headers.Add(new McpServerAuthHeaderEditorItem { Name = "", Value = "" });
+        HandleMcpServersChange(_mcpServers.ToList());
+    }
+
+    private void RemoveHeader(McpServerConfigurationItem server, McpServerAuthHeaderEditorItem header)
+    {
+        server.Headers.Remove(header);
+        HandleMcpServersChange(_mcpServers.ToList());
+    }
+
+    private async Task ConfirmRemoveMcpServer()
+    {
+        if (_removeMcpServerPending == null) return;
+        _isRemovingMcpServer = true;
+        try
+        {
+            await HandleRemoveCurrentMcpServer();
+            _removeMcpServerPending = null;
+        }
+        finally
+        {
+            _isRemovingMcpServer = false;
+        }
+    }
+
+    private async Task ToggleServerEnabledAsync(string serverId)
+    {
+        _selectedMcpServerId = serverId;
+        await HandleToggleSelectedMcpServerEnabled();
+    }
+
+    private async Task ToggleToolAsync(string serverId, string toolName)
+    {
+        _selectedMcpServerId = serverId;
+        await HandleToggleSelectedMcpServerTool(toolName);
+    }
+
+    private async Task ShowToolTooltip(string serverId, string toolName)
+    {
+        _tooltipCts?.Cancel();
+        _tooltipCts = new CancellationTokenSource();
+        var key = $"{serverId}|{toolName}";
+        try
+        {
+            await Task.Delay(TooltipDelayMs, _tooltipCts.Token);
+            _hoveredToolKey = key;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void HideToolTooltip()
+    {
+        _tooltipCts?.Cancel();
+        _tooltipCts = null;
+        _hoveredToolKey = null;
+        StateHasChanged();
+    }
+
+    private void ToggleToolsExpanded(string serverId)
+    {
+        if (!_expandedServerIds.Remove(serverId))
+            _expandedServerIds.Add(serverId);
+    }
+
+    private static string FormatToolsSyncedAt(string? toolsSyncedAt)
+    {
+        if (string.IsNullOrWhiteSpace(toolsSyncedAt)) return "Never";
+        return DateTime.TryParse(toolsSyncedAt, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var dt)
+            ? dt.ToLocalTime().ToString("MMM d, yyyy HH:mm", System.Globalization.CultureInfo.CurrentUICulture)
+            : "Never";
+    }
+
+    private static char GetAvatarLetter(string name) =>
+        string.IsNullOrWhiteSpace(name) ? '?' : char.ToUpperInvariant(name[0]);
+
+    private static string GetAvatarBackground(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "hsl(214, 20%, 28%)";
+        var hue = (name[0] * 37) % 360;
+        return $"hsl({hue}, 20%, 28%)";
+    }
+
+    // ---- SVG Icons ----
+    private const string SvgPlus =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>""";
+    private const string SvgChevron =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>""";
+    private const string SvgPencil =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>""";
+    private const string SvgChevronLeft =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>""";
+    private const string SvgSave =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>""";
+    private const string SvgTrash2 =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>""";
+    private const string SvgRefresh =
+        """<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>""";
+}

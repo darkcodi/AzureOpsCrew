@@ -39,6 +39,7 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
             infoBuilder.Property(i => i.Description);
 
             infoBuilder.Property(i => i.AvailableMcpServerTools)
+                       .HasColumnType("nvarchar(max)")
                        .HasConversion(
                            v => JsonSerializer.Serialize(v ?? Array.Empty<AgentMcpServerToolAvailability>(), JsonOptions),
                            s => string.IsNullOrEmpty(s)

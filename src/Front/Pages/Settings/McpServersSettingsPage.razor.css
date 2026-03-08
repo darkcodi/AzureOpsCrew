@@ -1,0 +1,319 @@
+.mcp-installed-title {
+    margin: 0 0 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: hsl(214, 5%, 60%);
+}
+
+.mcp-server-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mcp-server-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px 20px;
+    background: hsl(228, 6%, 17%);
+    border: 1px solid hsl(228, 6%, 26%);
+    border-radius: 14px;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.mcp-server-card:not(.mcp-add-card):hover {
+    border-color: hsl(228, 6%, 32%);
+}
+
+.mcp-server-card .agent-row-actions {
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 8px;
+}
+
+.mcp-avatar-wrapper {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.mcp-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: hsl(210, 3%, 80%);
+    user-select: none;
+}
+
+.mcp-avatar-add {
+    background: hsl(228, 6%, 22%);
+    color: hsl(214, 5%, 55%);
+}
+
+.mcp-status-dot {
+    position: absolute;
+    bottom: -1px;
+    left: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: hsl(145, 65%, 45%);
+    border: 2px solid hsl(228, 6%, 17%);
+}
+
+.mcp-card-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 2px;
+}
+
+.mcp-name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.mcp-server-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: hsl(210, 3%, 94%);
+}
+
+.mcp-server-status-text {
+    font-size: 13px;
+    color: hsl(214, 5%, 50%);
+}
+
+.mcp-tools-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: none;
+    color: hsl(214, 5%, 58%);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: color 0.15s ease;
+    user-select: none;
+}
+
+.mcp-tools-toggle:hover {
+    color: hsl(214, 5%, 75%);
+}
+
+.mcp-chevron {
+    display: inline-flex;
+    align-items: center;
+    transition: transform 0.2s ease;
+}
+
+.mcp-chevron.up {
+    transform: rotate(180deg);
+}
+
+.mcp-tools-expanded {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 0 2px;
+}
+
+.mcp-tool-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid hsl(228, 6%, 30%);
+    background: hsl(228, 6%, 22%);
+    font-size: 12px;
+    font-family: "SF Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+    color: hsl(210, 3%, 82%);
+    cursor: default;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.mcp-tool-chip.clickable {
+    cursor: pointer;
+}
+
+.mcp-tool-chip:hover {
+    background: hsl(228, 6%, 26%);
+    border-color: hsl(228, 6%, 36%);
+}
+
+.mcp-tool-chip.disabled {
+    background: hsl(228, 6%, 14%);
+    border-color: hsl(228, 6%, 24%);
+    color: hsl(210, 3%, 58%);
+}
+
+.mcp-tool-chip.disabled:hover {
+    background: hsl(228, 6%, 16%);
+    border-color: hsl(228, 6%, 26%);
+}
+
+.mcp-tool-chip-wrapper {
+    position: relative;
+    display: inline-flex;
+}
+
+.mcp-tool-tooltip {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 100;
+    margin-top: 6px;
+    padding: 12px 16px;
+    background: hsl(228, 6%, 12%);
+    border: 1px solid hsl(228, 6%, 26%);
+    border-radius: 10px;
+    min-width: 280px;
+    max-width: 480px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    font-size: 13px;
+    line-height: 1.55;
+    color: hsl(210, 3%, 85%);
+    pointer-events: none;
+}
+
+.mcp-tools-empty {
+    font-size: 12px;
+    color: hsl(214, 5%, 45%);
+}
+
+.mcp-add-card {
+    cursor: pointer;
+    border-style: dashed;
+    border-color: hsl(228, 6%, 26%);
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    color: inherit;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.mcp-add-card:hover {
+    border-color: hsl(228, 6%, 36%);
+    background: hsl(228, 6%, 15%);
+}
+
+.mcp-add-subtitle {
+    font-size: 12px;
+    color: hsl(214, 5%, 50%);
+}
+
+.toggle-switch {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    border: none;
+    border-radius: 999px;
+    background: hsl(214, 5%, 35%);
+    padding: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 8px;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.toggle-switch.on {
+    background: hsl(145, 65%, 45%);
+}
+
+.toggle-switch:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.toggle-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    transition: transform 0.15s ease;
+}
+
+.toggle-switch.on .toggle-knob {
+    transform: translateX(18px);
+}
+
+.mcp-error {
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: hsl(0, 78%, 68%);
+}
+
+.mcp-auth-field {
+    margin-top: 4px;
+}
+
+.mcp-auth-select {
+    display: block;
+    width: 100%;
+}
+
+.mcp-auth-token-row {
+    margin-top: 10px;
+}
+
+.mcp-auth-token-row .agent-form-input {
+    width: 100%;
+}
+
+.mcp-headers-field {
+    margin-top: 4px;
+}
+
+.mcp-headers-hint {
+    margin: 0 0 10px;
+    font-size: 12px;
+    color: hsl(214, 5%, 55%);
+    line-height: 1.4;
+}
+
+.mcp-headers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.mcp-header-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mcp-header-row .mcp-header-name {
+    flex: 0 0 160px;
+    min-width: 0;
+}
+
+.mcp-header-row .mcp-header-value {
+    flex: 1;
+    min-width: 0;
+}
+
+.mcp-header-remove {
+    flex-shrink: 0;
+}
+
+.mcp-add-header-btn {
+    font-size: 13px;
+}

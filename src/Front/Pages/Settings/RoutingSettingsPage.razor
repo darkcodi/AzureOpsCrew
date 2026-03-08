@@ -1,0 +1,65 @@
+@page "/settings/routing"
+@inject SettingsService SettingsService
+
+<SettingsPageShell Section="SettingsSection.Routing" ShowWipBanner="true">
+    <MainContent>
+        <div class="disabled-section">
+            <div class="section-header">
+                <h2 class="section-title">Routing</h2>
+                <p class="section-description">Control how requests are routed between providers and models.</p>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Strategy</label>
+                <select class="form-select" value="@_settings.Routing.Strategy" disabled>
+                    <option value="round-robin">Round Robin</option>
+                    <option value="priority">Priority (default provider first)</option>
+                    <option value="cost-optimized">Cost Optimized</option>
+                    <option value="latency-optimized">Latency Optimized</option>
+                </select>
+                <p class="form-description">How requests are distributed across available providers.</p>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Fallback enabled</label>
+                <button type="button" role="switch" class="toggle-switch @(_settings.Routing.FallbackEnabled ? "on" : "")" disabled>
+                    <span class="toggle-knob"></span>
+                </button>
+                <p class="form-description">Automatically try another provider if the primary fails.</p>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Max retries</label>
+                <input type="number" class="form-input" value="@_settings.Routing.MaxRetries" min="0" max="10" disabled />
+                <p class="form-description">Maximum number of retry attempts before failing.</p>
+            </div>
+        </div>
+    </MainContent>
+    <InfoPanelContent>
+        <div class="info-section">
+            <h4 class="info-section-title">Routing strategies</h4>
+            <ul class="note-list">
+                <li class="note-bullet"><span class="bullet">&bull;</span><span><strong>Priority:</strong> Always tries the default provider first.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span><strong>Round Robin:</strong> Distributes load evenly across providers.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span><strong>Cost Optimized:</strong> Prefers cheaper models when possible.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span><strong>Latency Optimized:</strong> Routes to the fastest responding provider.</span></li>
+            </ul>
+        </div>
+        <div class="info-section">
+            <h4 class="info-section-title">Notes</h4>
+            <ul class="note-list">
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Fallback kicks in when the primary provider fails or times out.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Per-agent routing overrides take precedence over global settings.</span></li>
+            </ul>
+        </div>
+    </InfoPanelContent>
+</SettingsPageShell>
+
+@code {
+    private SettingsState _settings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await SettingsService.LoadFromLocalStorageAsync();
+    }
+}

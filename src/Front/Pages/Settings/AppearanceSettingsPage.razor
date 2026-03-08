@@ -1,0 +1,61 @@
+@page "/settings/appearance"
+@inject SettingsService SettingsService
+
+<SettingsPageShell Section="SettingsSection.Appearance" ShowWipBanner="true">
+    <MainContent>
+        <div class="disabled-section">
+            <div class="section-header">
+                <h2 class="section-title">Appearance</h2>
+                <p class="section-description">Customize the look and feel of the application.</p>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Theme</label>
+                <select class="form-select" value="@_settings.Appearance.Theme" disabled>
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="system">System</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Font size</label>
+                <select class="form-select" value="@_settings.Appearance.FontSize" disabled>
+                    <option value="small">Small (13px)</option>
+                    <option value="medium">Medium (15px)</option>
+                    <option value="large">Large (18px)</option>
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Compact mode</label>
+                <button type="button" role="switch" class="toggle-switch @(_settings.Appearance.CompactMode ? "on" : "")" disabled>
+                    <span class="toggle-knob"></span>
+                </button>
+                <p class="form-description">Reduce spacing between messages and UI elements.</p>
+            </div>
+        </div>
+    </MainContent>
+    <InfoPanelContent>
+        <div class="info-section">
+            <h4 class="info-section-title">Theme</h4>
+            <p class="info-muted-body">The dark theme is optimized for extended use. Light and system themes are available for accessibility.</p>
+        </div>
+        <div class="info-section">
+            <h4 class="info-section-title">Notes</h4>
+            <ul class="note-list">
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Theme changes apply instantly.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Compact mode reduces vertical spacing for denser layouts.</span></li>
+            </ul>
+        </div>
+    </InfoPanelContent>
+</SettingsPageShell>
+
+@code {
+    private SettingsState _settings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await SettingsService.LoadFromLocalStorageAsync();
+    }
+}
