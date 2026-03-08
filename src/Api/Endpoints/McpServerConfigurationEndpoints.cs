@@ -146,7 +146,21 @@ public static class McpServerConfigurationEndpoints
 
             found.Update(body.Name, body.Url);
             found.Description = body.Description?.Trim();
-            found.SetAuth(body.ToDomainAuth());
+
+            // Preserve existing BearerToken and Headers if not provided (null/empty)
+            var updateBearerToken = !string.IsNullOrWhiteSpace(body.BearerToken);
+            var updateHeaders = body.Headers is { Length: > 0 };
+
+            var auth = new McpServerConfigurationAuth(
+                body.AuthType,
+                body.AuthType == McpServerConfigurationAuthType.BearerToken
+                    ? (updateBearerToken ? body.BearerToken!.Trim() : found.Auth.BearerToken)
+                    : null,
+                body.AuthType == McpServerConfigurationAuthType.CustomHeaders
+                    ? (updateHeaders ? body.Headers.Select(x => x.ToDomainAuthHeader()).ToList() : found.Auth.Headers ?? [])
+                    : []);
+
+            found.SetAuth(auth);
 
             // Re-sync tools from the MCP server
             var existingToolsByName = found.Tools

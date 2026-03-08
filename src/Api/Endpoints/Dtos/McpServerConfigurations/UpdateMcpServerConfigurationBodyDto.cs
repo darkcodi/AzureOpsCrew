@@ -49,18 +49,12 @@ public record UpdateMcpServerConfigurationBodyDto : IValidatableObject
 
     public IEnumerable<ValidationResult> ValidateWithPrefix(string? prefix)
     {
-        var headers = Headers ?? [];
-        if (AuthType == McpServerConfigurationAuthType.BearerToken && string.IsNullOrWhiteSpace(BearerToken))
-        {
-            yield return CreateValidationResult(prefix, nameof(BearerToken), "BearerToken is required when auth type is BearerToken.");
-        }
+        // On update, null/empty values preserve existing auth (no validation required)
         if (AuthType != McpServerConfigurationAuthType.CustomHeaders)
             yield break;
+        var headers = Headers ?? [];
         if (headers.Length == 0)
-        {
-            yield return CreateValidationResult(prefix, nameof(Headers), "At least one header is required when auth type is CustomHeaders.");
             yield break;
-        }
         var seenHeaderNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < headers.Length; i++)
         {
