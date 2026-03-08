@@ -66,21 +66,10 @@ public sealed class ContextReductionService : IContextReductionService
 
         var classified = ChatMessageClassifier.ClassifyAndGroupMessages(allMessages);
 
-        // 7. Calculate effective tool budget: the smaller of the configured budget or
-        //    the remaining room after conversation + fixed overhead.
-        //    This ensures tool groups are actually removed when conversation fills the context.
-        var conversationTokens = TokenEstimator.EstimateMessagesTokens(classified.Conversation, charsPerToken, safetyMargin);
-        var remainingRoom = Math.Max(0, maxInputBudget - fixedOverhead - conversationTokens);
-        var effectiveToolBudget = Math.Min(_settings.RecentToolBudgetTokens, remainingRoom);
+        // 7. Walk newest→oldest tool-call groups, keep within RecentToolBudgetTokens
+        var keptGroups = SelectRecentToolGroups(classified.ToolCallGroups, charsPerToken, safetyMargin);
 
-        Log.Debug(
-            "[CONTEXT] Tool budget: configured {Configured}, remaining room {Remaining}, effective {Effective}, conversation tokens {ConversationTokens}",
-            _settings.RecentToolBudgetTokens, remainingRoom, effectiveToolBudget, conversationTokens);
-
-        // 8. Walk newest→oldest tool-call groups, keep within effective budget
-        var keptGroups = SelectRecentToolGroups(classified.ToolCallGroups, effectiveToolBudget, charsPerToken, safetyMargin);
-
-        // 9. Merge conversation + kept tool-call groups and re-sort
+        // 8. Merge conversation + kept tool-call groups and re-sort
         var reducedMessages = new List<ChatMessage>(classified.Conversation.Count + keptGroups.Count * 2);
         reducedMessages.AddRange(classified.Conversation);
         foreach (var group in keptGroups)
@@ -113,20 +102,20 @@ public sealed class ContextReductionService : IContextReductionService
     }
 
     /// <summary>
-    /// Selects the newest tool-call groups that fit within the given token budget.
+    /// Selects the newest tool-call groups that fit within the RecentToolBudgetTokens budget.
     /// Groups are kept or removed atomically — an assistant message with tool_calls is never
     /// separated from its matching tool-result messages.
     /// At least one group is always kept if any groups exist.
     /// </summary>
-    private static List<ToolCallGroup> SelectRecentToolGroups(
+    private List<ToolCallGroup> SelectRecentToolGroups(
         List<ToolCallGroup> toolCallGroups,
-        int budget,
         double charsPerToken,
         double safetyMargin)
     {
         if (toolCallGroups.Count == 0)
             return [];
 
+        var budget = _settings.RecentToolBudgetTokens;
         var accumulated = 0;
         var selected = new List<ToolCallGroup>();
 
