@@ -1,12 +1,66 @@
 using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.Utils;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace AzureOpsCrew.Infrastructure.Ai.AgentServices;
 
 public class ContextService
 {
+    public const int MaxTokensForToolResponses = 50_000;
+    public const string TruncatedToolResponsePlaceholder = "[Truncated]";
+
     public IList<ChatMessage> PrepareContext(AgentRunData data)
+    {
+        var allMessages = GroupMessages(data);
+
+        TruncateToolResults(allMessages, MaxTokensForToolResponses);
+
+        return allMessages;
+    }
+
+    private void TruncateToolResults(List<ChatMessage> allMessages, int maxTokens)
+    {
+        var currentTokens = 0;
+        var trimmedTokens = 0;
+        var trim = false;
+        var placeholderTokens = TokenUtils.EstimateTokensCount(TruncatedToolResponsePlaceholder);
+
+        for (int i = allMessages.Count - 1; i >= 0; i--)
+        {
+            var message = allMessages[i];
+            var messageContentList = message.Contents;
+
+            foreach (var content in messageContentList)
+            {
+                if (content is FunctionResultContent toolResult)
+                {
+                    var toolResultString = toolResult.Result?.ToString() ?? string.Empty;
+                    var toolResultTokens = TokenUtils.EstimateTokensCount(toolResultString);
+                    if (trim)
+                    {
+                        toolResult.Result = TruncatedToolResponsePlaceholder;
+                        trimmedTokens += (toolResultTokens - placeholderTokens);
+                        continue;
+                    }
+
+                    if (currentTokens + toolResultTokens > maxTokens)
+                    {
+                        trim = true;
+                    }
+                    else
+                    {
+                        currentTokens += toolResultTokens;
+                    }
+                }
+            }
+        }
+
+        Log.Information("Truncated {TrimmedTokens} tokens from tool results to fit within the context window.", trimmedTokens);
+    }
+
+    private static List<ChatMessage> GroupMessages(AgentRunData data)
     {
         // Group thoughts by ChatMessageId to reconstruct proper multi-content messages
         // Thoughts with the same ChatMessageId belong to the same original message
@@ -41,7 +95,6 @@ public class ContextService
         var llmThoughtIds = data.LlmThoughts.Select(t => t.Id).ToHashSet();
         var chatMessages = data.ChatMessages.Where(x => !llmThoughtIds.Contains(x.AgentThoughtId ?? Guid.Empty)).Select(m => m.ToChatMessage()).ToList();
         var allMessages = chatMessages.Concat(chatMessagesFromThoughts).OrderBy(x => x.CreatedAt).ToList();
-
         return allMessages;
     }
 }
