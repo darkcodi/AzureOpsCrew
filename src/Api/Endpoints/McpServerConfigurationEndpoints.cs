@@ -134,6 +134,7 @@ public static class McpServerConfigurationEndpoints
             Guid id,
             UpdateMcpServerConfigurationBodyDto body,
             AzureOpsCrewContext context,
+            McpServerFacade mcpServerFacade,
             CancellationToken cancellationToken) =>
         {
             var found = await context.McpServerConfigurations
@@ -146,6 +147,21 @@ public static class McpServerConfigurationEndpoints
             found.Update(body.Name, body.Url);
             found.Description = body.Description?.Trim();
             found.SetAuth(body.ToDomainAuth());
+
+            // Re-sync tools from the MCP server
+            var existingToolsByName = found.Tools
+                .GroupBy(x => x.Name, StringComparer.Ordinal)
+                .ToDictionary(x => x.Key, x => x.First(), StringComparer.Ordinal);
+
+            var discoveredTools = await mcpServerFacade.GetAvailableToolsAsync(found.Url, found.Auth, cancellationToken);
+
+            foreach (var tool in discoveredTools)
+            {
+                if (existingToolsByName.TryGetValue(tool.Name, out var existingTool))
+                    tool.IsEnabled = existingTool.IsEnabled;
+            }
+
+            found.ReplaceTools(discoveredTools, DateTime.UtcNow);
 
             await context.SaveChangesAsync(cancellationToken);
 
