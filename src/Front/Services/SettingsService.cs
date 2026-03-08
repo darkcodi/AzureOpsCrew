@@ -128,6 +128,12 @@ public class SettingsService(HttpClient http, IJSRuntime js)
             name = server.Name.Trim(),
             description = string.IsNullOrWhiteSpace(server.Description) ? (string?)null : server.Description.Trim(),
             url = server.Url.Trim(),
+            authType = server.Auth?.Type ?? "None",
+            bearerToken = string.IsNullOrWhiteSpace(server.BearerToken) ? (string?)null : server.BearerToken.Trim(),
+            headers = server.Headers?
+                .Where(h => !string.IsNullOrWhiteSpace(h.Name))
+                .Select(h => new { name = h.Name.Trim(), value = h.Value?.Trim() ?? "" })
+                .ToArray() ?? []
         };
 
         var response = await http.PostAsJsonAsync("/api/mcp-server-configurations/create", body);
@@ -146,6 +152,12 @@ public class SettingsService(HttpClient http, IJSRuntime js)
             name = server.Name.Trim(),
             description = string.IsNullOrWhiteSpace(server.Description) ? (string?)null : server.Description.Trim(),
             url = server.Url.Trim(),
+            authType = server.Auth?.Type ?? "None",
+            bearerToken = string.IsNullOrWhiteSpace(server.BearerToken) ? (string?)null : server.BearerToken.Trim(),
+            headers = server.Headers?
+                .Where(h => !string.IsNullOrWhiteSpace(h.Name))
+                .Select(h => new { name = h.Name.Trim(), value = h.Value?.Trim() ?? "" })
+                .ToArray() ?? []
         };
 
         var response = await http.PutAsJsonAsync($"/api/mcp-server-configurations/{server.BackendId}", body);
@@ -175,29 +187,6 @@ public class SettingsService(HttpClient http, IJSRuntime js)
             });
 
         return await ReadMcpServerResponse(response, "Failed to update MCP tool availability.");
-    }
-
-    public async Task<McpServerConfigurationItem> SetMcpServerAuthorizationAsync(string backendId, McpServerAuthEditorState auth)
-    {
-        var headers = auth.Headers
-            .Where(header => !string.IsNullOrWhiteSpace(header.Name) || !string.IsNullOrWhiteSpace(header.Value))
-            .Select(header => new
-            {
-                name = header.Name.Trim(),
-                value = header.Value.Trim(),
-            })
-            .ToArray();
-
-        var response = await http.PostAsJsonAsync(
-            $"/api/mcp-server-configurations/{backendId}/set-authorization",
-            new
-            {
-                type = auth.Type,
-                bearerToken = string.IsNullOrWhiteSpace(auth.BearerToken) ? (string?)null : auth.BearerToken.Trim(),
-                headers,
-            });
-
-        return await ReadMcpServerResponse(response, "Failed to update MCP authorization.");
     }
 
     public async Task RemoveMcpServerAsync(string backendId)

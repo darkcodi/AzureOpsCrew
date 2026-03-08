@@ -343,22 +343,17 @@
         _isSavingMcpServer = true;
         try
         {
+            // Set auth on current before saving (so Create/Update can read it)
+            current.Auth = new McpServerAuthSummary { Type = auth?.Type ?? "None" };
+            current.BearerToken = auth?.BearerToken ?? "";
+            current.Headers = auth?.Headers?.Select(h => new McpServerAuthHeaderEditorItem { Name = h.Name, Value = h.Value }).ToList() ?? [];
+
             var savedSnapshot = string.IsNullOrWhiteSpace(current.BackendId)
                 ? await SettingsService.CreateMcpServerAsync(current)
                 : await SettingsService.UpdateMcpServerAsync(current);
 
             ApplyMcpServerSnapshot(current.Id, savedSnapshot);
-
-            if (auth != null)
-            {
-                var savedCurrent = _mcpServers.FirstOrDefault(server => server.Id == current.Id);
-                if (!string.IsNullOrWhiteSpace(savedCurrent?.BackendId))
-                {
-                    var authSnapshot = await SettingsService.SetMcpServerAuthorizationAsync(savedCurrent.BackendId, auth);
-                    ApplyMcpServerSnapshot(current.Id, authSnapshot);
-                    _mcpServerAuthResetKey++;
-                }
-            }
+            _mcpServerAuthResetKey++;
         }
         catch (Exception ex)
         {
