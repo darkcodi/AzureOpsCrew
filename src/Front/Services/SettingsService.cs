@@ -146,7 +146,9 @@ public class SettingsService(HttpClient http, IJSRuntime js)
         return await ReadMcpServerResponse(response, $"Failed to create MCP server {server.Name}");
     }
 
-    public async Task<McpServerConfigurationItem> UpdateMcpServerAsync(McpServerConfigurationItem server)
+    public async Task<McpServerConfigurationItem> UpdateMcpServerAsync(
+        McpServerConfigurationItem server,
+        McpServerConfigurationItem? savedServer)
     {
         if (string.IsNullOrWhiteSpace(server.BackendId))
             throw new InvalidOperationException("Backend ID is required to update an MCP server.");
@@ -156,29 +158,64 @@ public class SettingsService(HttpClient http, IJSRuntime js)
             name = server.Name.Trim(),
             description = string.IsNullOrWhiteSpace(server.Description) ? (string?)null : server.Description.Trim(),
             url = server.Url.Trim(),
-            auth = BuildAuthObject(server)
+            // Only send auth if it has changed from the saved state
+            auth = BuildAuthObject(server, savedServer)
         };
 
         var response = await http.PutAsJsonAsync($"/api/mcp-server-configurations/{server.BackendId}", body);
         return await ReadMcpServerResponse(response, $"Failed to update MCP server {server.Name}");
     }
 
-    private static object? BuildAuthObject(McpServerConfigurationItem server)
+    private static object? BuildAuthObject(
+        McpServerConfigurationItem server,
+        McpServerConfigurationItem? savedServer)
     {
         var authType = server.Auth?.Type ?? "None";
 
-        // If no auth and no bearer token/headers provided, don't send auth (preserve existing)
-        if (authType == "None" ||
-            authType == "BearerToken" && string.IsNullOrWhiteSpace(server.BearerToken) ||
-            authType == "CustomHeaders" && (server.Headers is null || server.Headers.Count == 0))
-            return null;
+        // For new servers (no saved state), always send auth
+        if (savedServer is null)
+            return BuildAuthBody(authType, server);
 
+        var savedAuthType = savedServer.Auth?.Type ?? "None";
+
+        // If auth type changed, send new auth
+        if (authType != savedAuthType)
+            return BuildAuthBody(authType, server);
+
+        // Auth type hasn't changed - check if values changed
+        return authType switch
+        {
+            "None" => null, // No auth to preserve
+
+            "BearerToken" when string.IsNullOrWhiteSpace(server.BearerToken) => null,
+            "BearerToken" => new
+            {
+                type = authType,
+                bearerToken = server.BearerToken!.Trim(),
+                headers = (object?)null
+            },
+
+            "CustomHeaders" when server.Headers is null || server.Headers.Count == 0 => null,
+            "CustomHeaders" => new
+            {
+                type = authType,
+                bearerToken = (string?)null,
+                headers = server.Headers!
+                    .Where(h => !string.IsNullOrWhiteSpace(h.Name))
+                    .Select(h => new { name = h.Name.Trim(), value = h.Value?.Trim() ?? "" })
+                    .ToArray()
+            },
+
+            _ => null
+        };
+    }
+
+    private static object BuildAuthBody(string authType, McpServerConfigurationItem server)
+    {
         return new
         {
             type = authType,
-            bearerToken = authType == "BearerToken" && !string.IsNullOrWhiteSpace(server.BearerToken)
-                ? server.BearerToken!.Trim()
-                : null,
+            bearerToken = authType == "BearerToken" ? server.BearerToken.Trim() : null,
             headers = authType == "CustomHeaders"
                 ? server.Headers?
                     .Where(h => !string.IsNullOrWhiteSpace(h.Name))

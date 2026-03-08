@@ -348,9 +348,12 @@
             current.BearerToken = auth?.BearerToken ?? "";
             current.Headers = auth?.Headers?.Select(h => new McpServerAuthHeaderEditorItem { Name = h.Name, Value = h.Value }).ToList() ?? [];
 
+            // Find saved server for auth comparison
+            var savedServer = _savedMcpServers.FirstOrDefault(s => s.Id == current.Id);
+
             var savedSnapshot = string.IsNullOrWhiteSpace(current.BackendId)
                 ? await SettingsService.CreateMcpServerAsync(current)
-                : await SettingsService.UpdateMcpServerAsync(current);
+                : await SettingsService.UpdateMcpServerAsync(current, savedServer);
 
             ApplyMcpServerSnapshot(current.Id, savedSnapshot);
             _mcpServerAuthResetKey++;
