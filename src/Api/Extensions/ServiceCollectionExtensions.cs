@@ -212,6 +212,7 @@ public static class ServiceCollectionExtensions
 
         // Add other agent-related services
         services.AddScoped<PromptService>();
+        services.AddScoped<ContextService>();
 
         // Add LongTermMemory
         var memoryType = configuration["LongTermMemory:Type"] ?? "InMemory";

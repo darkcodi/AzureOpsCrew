@@ -16,6 +16,7 @@ using Serilog;
 using AzureOpsCrew.Domain.Tools.FrontEnd;
 using AzureOpsCrew.Domain.Tools.Mcp;
 using AzureOpsCrew.Api.Background.ToolExecutors;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 
 namespace AzureOpsCrew.Api.Background;
 
@@ -26,6 +27,7 @@ public class AgentRunService
     private readonly IProviderFacadeResolver _providerFactory;
     private readonly ToolCallRouter _toolCallRouter;
     private readonly IAiAgentFactory _aiAgentFactory;
+    private readonly ContextService _contextService;
     private readonly IChannelEventBroadcaster? _channelEventBroadcaster;
 
     public AgentRunService(IServiceProvider serviceProvider)
@@ -34,6 +36,7 @@ public class AgentRunService
         _providerFactory = serviceProvider.GetRequiredService<IProviderFacadeResolver>();
         _toolCallRouter = serviceProvider.GetRequiredService<ToolCallRouter>();
         _aiAgentFactory = serviceProvider.GetRequiredService<IAiAgentFactory>();
+        _contextService = serviceProvider.GetRequiredService<ContextService>();
         // Event broadcaster is optional - used for both channels and DMs
         _channelEventBroadcaster = serviceProvider.GetService<IChannelEventBroadcaster>();
     }
@@ -259,42 +262,10 @@ public class AgentRunService
         var fClient = new FunctionInvokingChatClient(chatClient);
 
         var aiAgent = _aiAgentFactory.Create(fClient, data);
+        var allMessages = _contextService.PrepareContext(data);
+
         var agentSession = await aiAgent.CreateSessionAsync(ct);
         var runOptions = new AgentRunOptions { AllowBackgroundResponses = false };
-
-        // Group thoughts by ChatMessageId to reconstruct proper multi-content messages
-        // Thoughts with the same ChatMessageId belong to the same original message
-        var thoughtGroups = new List<List<AocAgentThought>>();
-
-        var thoughtsByChatMessageId = data.LlmThoughts
-            .GroupBy(t => t.ChatMessageId)
-            .Select(g => g.OrderBy(t => t.CreatedAt).Select(AocAgentThought.FromDomain).ToList())
-            .ToList();
-
-        // Add groups with proper ChatMessageId
-        thoughtGroups.AddRange(thoughtsByChatMessageId);
-
-        var chatMessagesFromThoughts = new List<ChatMessage>();
-        foreach (var group in thoughtGroups)
-        {
-            var firstThought = group.First();
-            var allContents = group
-                .Select(t => t.ContentDto.ToAocAiContent()?.ToAiContent())
-                .Where(c => c != null)
-                .Cast<AIContent>()
-                .ToList();
-
-            chatMessagesFromThoughts.Add(new ChatMessage(firstThought.Role, allContents)
-            {
-                Role = firstThought.Role,
-                AuthorName = firstThought.AuthorName,
-                CreatedAt = new DateTimeOffset(firstThought.CreatedAt, TimeSpan.Zero),
-            });
-        }
-
-        var llmThoughtIds = data.LlmThoughts.Select(t => t.Id).ToHashSet();
-        var chatMessages = data.ChatMessages.Where(x => !llmThoughtIds.Contains(x.AgentThoughtId ?? Guid.Empty)).Select(m => m.ToChatMessage()).ToList();
-        var allMessages = chatMessages.Concat(chatMessagesFromThoughts).OrderBy(x => x.CreatedAt).ToList();
 
         await foreach (AgentResponseUpdate update in aiAgent.RunStreamingAsync(allMessages, agentSession, runOptions, ct))
         {
