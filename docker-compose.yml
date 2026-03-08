@@ -67,10 +67,10 @@ services:
       - |
         /opt/mssql/bin/sqlservr &
         sleep 30
-        /opt/mssql-tools18/bin/sqlcmd -U sa -P YourStrong@Password -C -Q "CREATE DATABASE AzureOpsCrew;"
+        /opt/mssql-tools18/bin/sqlcmd -U sa -P YourStrong@Password -C -Q "IF DB_ID('AzureOpsCrew') IS NULL CREATE DATABASE AzureOpsCrew;"
         wait
     healthcheck:
-      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-U", "sa", "-P", "YourStrong@Password", "-C", "-Q", "SELECT 1"]
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-U", "sa", "-P", "YourStrong@Password", "-d", "AzureOpsCrew", "-C", "-Q", "SELECT 1"]
       interval: 10s
       timeout: 5s
       retries: 10

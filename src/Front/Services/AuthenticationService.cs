@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Front.Models;
 using Serilog;
+using System.Net;
 
 namespace Front.Services;
 
@@ -42,13 +43,29 @@ public class AuthenticationService
             var response = await _httpClient.PostAsJsonAsync("/api/auth/login", loginRequest);
 
             var content = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<LoginResponse>(content, _jsonOptions);
-            Log.Information($"Login response: {content}");
+            LoginResponse? result = null;
+
+            if (!string.IsNullOrWhiteSpace(content))
+            {
+                try
+                {
+                    result = JsonSerializer.Deserialize<LoginResponse>(content, _jsonOptions);
+                }
+                catch (JsonException ex)
+                {
+                    Log.Warning(ex, "Failed to parse login response JSON. StatusCode: {StatusCode}", response.StatusCode);
+                }
+            }
+
+            Log.Information("Login status: {StatusCode}, response body length: {Length}", response.StatusCode, content.Length);
 
             if (response.IsSuccessStatusCode && result != null)
             {
                 return result;
             }
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+                return new LoginResponse { Error = "Invalid email or password" };
 
             return result ?? new LoginResponse { Error = "Login failed" };
         }
