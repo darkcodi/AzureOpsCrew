@@ -294,12 +294,7 @@ public class AgentRunService
 
         var llmThoughtIds = data.LlmThoughts.Select(t => t.Id).ToHashSet();
         var chatMessages = data.ChatMessages.Where(x => !llmThoughtIds.Contains(x.AgentThoughtId ?? Guid.Empty)).Select(m => m.ToChatMessage()).ToList();
-        // var allMessages = chatMessages.Concat(chatMessagesFromThoughts).OrderBy(x => x.CreatedAt).ToList();
-
-        // filter out old LLM thoughts
-        var lastButOneMessageTime = chatMessages.Count > 1 ? chatMessages.OrderByDescending(m => m.CreatedAt).Skip(1).First().CreatedAt ?? DateTimeOffset.MinValue : DateTimeOffset.MinValue;
-        var lastLlmThoughts = chatMessagesFromThoughts.Where(t => t.CreatedAt > lastButOneMessageTime).ToList();
-        var allMessages = chatMessages.Concat(lastLlmThoughts).OrderBy(x => x.CreatedAt).ToList();
+        var allMessages = chatMessages.Concat(chatMessagesFromThoughts).OrderBy(x => x.CreatedAt).ToList();
 
         await foreach (AgentResponseUpdate update in aiAgent.RunStreamingAsync(allMessages, agentSession, runOptions, ct))
         {
