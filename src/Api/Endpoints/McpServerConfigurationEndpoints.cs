@@ -18,6 +18,7 @@ public static class McpServerConfigurationEndpoints
         group.MapPost("/create", async (
             CreateMcpServerConfigurationBodyDto body,
             AzureOpsCrewContext context,
+            McpServerFacade mcpServerFacade,
             CancellationToken cancellationToken) =>
         {
             var configuration = new McpServerConfiguration(
@@ -27,6 +28,14 @@ public static class McpServerConfigurationEndpoints
             {
                 Description = body.Description?.Trim(),
             };
+
+            // Sync tools from the MCP server
+            var discoveredTools = await mcpServerFacade.GetAvailableToolsAsync(
+                configuration.Url,
+                configuration.Auth,
+                cancellationToken);
+
+            configuration.ReplaceTools(discoveredTools, DateTime.UtcNow);
 
             await context.AddAsync(configuration, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
