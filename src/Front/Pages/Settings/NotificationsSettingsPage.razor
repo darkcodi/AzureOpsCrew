@@ -1,0 +1,56 @@
+@page "/settings/notifications"
+@inject SettingsService SettingsService
+
+<SettingsPageShell Section="SettingsSection.Notifications" ShowWipBanner="true">
+    <MainContent>
+        <div class="disabled-section">
+            <div class="section-header">
+                <h2 class="section-title">Notifications</h2>
+                <p class="section-description">Configure how and when you receive notifications.</p>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Desktop notifications</label>
+                <button type="button" role="switch" class="toggle-switch @(_settings.Notifications.DesktopNotifications ? "on" : "")" disabled>
+                    <span class="toggle-knob"></span>
+                </button>
+                <p class="form-description">Show system notifications for new messages.</p>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Sound</label>
+                <button type="button" role="switch" class="toggle-switch @(_settings.Notifications.SoundEnabled ? "on" : "")" disabled>
+                    <span class="toggle-knob"></span>
+                </button>
+                <p class="form-description">Play a sound when notifications arrive.</p>
+            </div>
+
+            <div class="form-field">
+                <label class="form-label">Mention notifications</label>
+                <button type="button" role="switch" class="toggle-switch @(_settings.Notifications.MentionNotifications ? "on" : "")" disabled>
+                    <span class="toggle-knob"></span>
+                </button>
+                <p class="form-description">Notify when you are mentioned by an agent or in a channel.</p>
+            </div>
+        </div>
+    </MainContent>
+    <InfoPanelContent>
+        <div class="info-section">
+            <h4 class="info-section-title">Notifications</h4>
+            <ul class="note-list">
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Desktop notifications require browser permission.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Sounds play only when the tab is in the background.</span></li>
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Mention notifications are triggered by &#64;-mentions in channels.</span></li>
+            </ul>
+        </div>
+    </InfoPanelContent>
+</SettingsPageShell>
+
+@code {
+    private SettingsState _settings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await SettingsService.LoadFromLocalStorageAsync();
+    }
+}

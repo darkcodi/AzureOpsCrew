@@ -1,0 +1,48 @@
+@page "/settings/advanced"
+@inject SettingsService SettingsService
+
+<SettingsPageShell Section="SettingsSection.Advanced">
+    <MainContent>
+        <div class="section-header">
+            <h2 class="section-title">Advanced</h2>
+            <p class="section-description">Low-level configuration options. Change these only if you know what you're doing.</p>
+        </div>
+
+        <div class="form-field">
+            <label class="form-label">Developer mode</label>
+            <button type="button" role="switch"
+                    class="toggle-switch @(_settings.Advanced.DebugMode ? "on" : "")"
+                    @onclick="ToggleDebugMode">
+                <span class="toggle-knob"></span>
+            </button>
+            <p class="form-description">Enable developer overlays and non-released features.</p>
+        </div>
+    </MainContent>
+    <InfoPanelContent>
+        <div class="info-section">
+            <h4 class="info-section-title">Caution</h4>
+            <p class="info-warning">Changing advanced settings may affect application stability. Only modify these if you understand the implications.</p>
+        </div>
+        <div class="info-section">
+            <h4 class="info-section-title">Notes</h4>
+            <ul class="note-list">
+                <li class="note-bullet"><span class="bullet">&bull;</span><span>Developer mode enables overlays and non-released features.</span></li>
+            </ul>
+        </div>
+    </InfoPanelContent>
+</SettingsPageShell>
+
+@code {
+    private SettingsState _settings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await SettingsService.LoadFromLocalStorageAsync();
+    }
+
+    private async Task ToggleDebugMode()
+    {
+        _settings.Advanced.DebugMode = !_settings.Advanced.DebugMode;
+        await SettingsService.SaveToLocalStorageAsync(_settings);
+    }
+}
