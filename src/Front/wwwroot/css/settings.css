@@ -812,6 +812,21 @@
     justify-content: space-between;
 }
 
+.agents-back-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.agents-back-bar-sync-date {
+    font-size: 12px;
+    color: hsl(214, 5%, 55%);
+}
+
+.agent-row-btn-sync {
+    color: hsl(210, 3%, 80%);
+}
+
 .agents-back-btn {
     display: flex;
     align-items: center;
