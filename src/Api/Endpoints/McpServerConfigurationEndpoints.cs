@@ -29,7 +29,7 @@ public static class McpServerConfigurationEndpoints
                 Description = body.Description?.Trim(),
             };
 
-            configuration.SetAuth(body.ToDomainAuth());
+            configuration.SetAuth(body.Auth.ToDomainAuth());
 
             // Sync tools from the MCP server
             var discoveredTools = await mcpServerFacade.GetAvailableToolsAsync(
@@ -147,20 +147,11 @@ public static class McpServerConfigurationEndpoints
             found.Update(body.Name, body.Url);
             found.Description = body.Description?.Trim();
 
-            // Preserve existing BearerToken and Headers if not provided (null/empty)
-            var updateBearerToken = !string.IsNullOrWhiteSpace(body.BearerToken);
-            var updateHeaders = body.Headers is { Length: > 0 };
-
-            var auth = new McpServerConfigurationAuth(
-                body.AuthType,
-                body.AuthType == McpServerConfigurationAuthType.BearerToken
-                    ? (updateBearerToken ? body.BearerToken!.Trim() : found.Auth.BearerToken)
-                    : null,
-                body.AuthType == McpServerConfigurationAuthType.CustomHeaders
-                    ? (updateHeaders ? body.Headers.Select(x => x.ToDomainAuthHeader()).ToList() : found.Auth.Headers ?? [])
-                    : []);
-
-            found.SetAuth(auth);
+            // Only update auth if explicitly provided
+            if (body.Auth is not null)
+            {
+                found.SetAuth(body.Auth.ToDomainAuth());
+            }
 
             // Re-sync tools from the MCP server
             var existingToolsByName = found.Tools

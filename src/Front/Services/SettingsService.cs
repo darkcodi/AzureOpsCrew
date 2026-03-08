@@ -123,24 +123,28 @@ public class SettingsService(HttpClient http, IJSRuntime js)
 
     public async Task<McpServerConfigurationItem> CreateMcpServerAsync(McpServerConfigurationItem server)
     {
+        var authType = server.Auth?.Type ?? "None";
         var body = new
         {
             name = server.Name.Trim(),
             description = string.IsNullOrWhiteSpace(server.Description) ? (string?)null : server.Description.Trim(),
             url = server.Url.Trim(),
-            authType = server.Auth?.Type ?? "None",
-            bearerToken = string.IsNullOrWhiteSpace(server.BearerToken) ? (string?)null : server.BearerToken.Trim(),
-            headers = server.Headers?
-                .Where(h => !string.IsNullOrWhiteSpace(h.Name))
-                .Select(h => new { name = h.Name.Trim(), value = h.Value?.Trim() ?? "" })
-                .ToArray() ?? []
+            auth = new
+            {
+                type = authType,
+                bearerToken = authType == "BearerToken" ? server.BearerToken.Trim() : null,
+                headers = authType == "CustomHeaders"
+                    ? server.Headers?
+                        .Where(h => !string.IsNullOrWhiteSpace(h.Name))
+                        .Select(h => new { name = h.Name.Trim(), value = h.Value?.Trim() ?? "" })
+                        .ToArray()
+                    : null
+            }
         };
 
         var response = await http.PostAsJsonAsync("/api/mcp-server-configurations/create", body);
         return await ReadMcpServerResponse(response, $"Failed to create MCP server {server.Name}");
     }
-
-
 
     public async Task<McpServerConfigurationItem> UpdateMcpServerAsync(McpServerConfigurationItem server)
     {
@@ -152,16 +156,36 @@ public class SettingsService(HttpClient http, IJSRuntime js)
             name = server.Name.Trim(),
             description = string.IsNullOrWhiteSpace(server.Description) ? (string?)null : server.Description.Trim(),
             url = server.Url.Trim(),
-            authType = server.Auth?.Type ?? "None",
-            bearerToken = string.IsNullOrWhiteSpace(server.BearerToken) ? (string?)null : server.BearerToken.Trim(),
-            headers = server.Headers?
-                .Where(h => !string.IsNullOrWhiteSpace(h.Name))
-                .Select(h => new { name = h.Name.Trim(), value = h.Value?.Trim() ?? "" })
-                .ToArray() ?? []
+            auth = BuildAuthObject(server)
         };
 
         var response = await http.PutAsJsonAsync($"/api/mcp-server-configurations/{server.BackendId}", body);
         return await ReadMcpServerResponse(response, $"Failed to update MCP server {server.Name}");
+    }
+
+    private static object? BuildAuthObject(McpServerConfigurationItem server)
+    {
+        var authType = server.Auth?.Type ?? "None";
+
+        // If no auth and no bearer token/headers provided, don't send auth (preserve existing)
+        if (authType == "None" ||
+            authType == "BearerToken" && string.IsNullOrWhiteSpace(server.BearerToken) ||
+            authType == "CustomHeaders" && (server.Headers is null || server.Headers.Count == 0))
+            return null;
+
+        return new
+        {
+            type = authType,
+            bearerToken = authType == "BearerToken" && !string.IsNullOrWhiteSpace(server.BearerToken)
+                ? server.BearerToken!.Trim()
+                : null,
+            headers = authType == "CustomHeaders"
+                ? server.Headers?
+                    .Where(h => !string.IsNullOrWhiteSpace(h.Name))
+                    .Select(h => new { name = h.Name.Trim(), value = h.Value?.Trim() ?? "" })
+                    .ToArray()
+                : null
+        };
     }
 
     public async Task<McpServerConfigurationItem> SetMcpServerEnabledAsync(string backendId, bool isEnabled)
