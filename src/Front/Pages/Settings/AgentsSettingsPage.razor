@@ -682,7 +682,7 @@
 
         foreach (var removedServerId in savedByServerId.Keys.Except(draftByServerId.Keys).OrderBy(id => id))
         {
-            latestAgent = await AgentService.SetAvailableMcpServerAsync(agentId, removedServerId, []);
+            latestAgent = await AgentService.RemoveAvailableMcpServerAsync(agentId, removedServerId);
             if (latestAgent == null)
             {
                 _agentSaveError = "Agent was saved, but removing an MCP server failed.";
