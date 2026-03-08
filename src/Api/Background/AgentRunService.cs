@@ -233,38 +233,6 @@ public class AgentRunService
             : new List<Guid?> { dm!.Agent1Id, dm!.Agent2Id }.Where(id => id != null).Select(x => x!.Value).ToArray();
         var participantAgents = await _dbContext.Agents.Where(a => agentIds.Contains(a.Id)).ToListAsync(ct);
 
-        var chatMessagesMapped = chatMessages.Select(m => m.ToChatMessage()).ToList();
-
-        // Group thoughts by ChatMessageId to reconstruct proper multi-content messages
-        // Thoughts with the same ChatMessageId belong to the same original message
-        var thoughtGroups = new List<List<AocAgentThought>>();
-
-        var thoughtsByChatMessageId = llmThoughts
-            .GroupBy(t => t.ChatMessageId)
-            .Select(g => g.OrderBy(t => t.CreatedAt).Select(AocAgentThought.FromDomain).ToList())
-            .ToList();
-
-        // Add groups with proper ChatMessageId
-        thoughtGroups.AddRange(thoughtsByChatMessageId);
-
-        var llmThoughtsMapped = new List<ChatMessage>();
-        foreach (var group in thoughtGroups)
-        {
-            var firstThought = group.First();
-            var allContents = group
-                .Select(t => t.ContentDto.ToAocAiContent()?.ToAiContent())
-                .Where(c => c != null)
-                .Cast<AIContent>()
-                .ToList();
-
-            llmThoughtsMapped.Add(new ChatMessage(firstThought.Role, allContents)
-            {
-                Role = firstThought.Role,
-                AuthorName = firstThought.AuthorName,
-                CreatedAt = new DateTimeOffset(firstThought.CreatedAt, TimeSpan.Zero),
-            });
-        }
-
         Log.Debug("[BACKGROUND] Loaded data for agent {AgentId}: {MessageCount} messages, {ThoughtCount} thoughts, {ToolCount} tools",
             agentId, chatMessages.Count, llmThoughts.Count, tools.Count);
 
@@ -275,9 +243,7 @@ public class AgentRunService
             Channel = channel,
             DmChannel = dm,
             ChatMessages = chatMessages,
-            ChatMessagesMapped = chatMessagesMapped,
             LlmThoughts = llmThoughts,
-            LlmThoughtsMapped = llmThoughtsMapped,
             Tools = tools,
             McpServers = mcpServers,
             ParticipantAgents = participantAgents,
@@ -296,13 +262,43 @@ public class AgentRunService
         var agentSession = await aiAgent.CreateSessionAsync(ct);
         var runOptions = new AgentRunOptions { AllowBackgroundResponses = false };
 
+        // Group thoughts by ChatMessageId to reconstruct proper multi-content messages
+        // Thoughts with the same ChatMessageId belong to the same original message
+        var thoughtGroups = new List<List<AocAgentThought>>();
+
+        var thoughtsByChatMessageId = data.LlmThoughts
+            .GroupBy(t => t.ChatMessageId)
+            .Select(g => g.OrderBy(t => t.CreatedAt).Select(AocAgentThought.FromDomain).ToList())
+            .ToList();
+
+        // Add groups with proper ChatMessageId
+        thoughtGroups.AddRange(thoughtsByChatMessageId);
+
+        var chatMessagesFromThoughts = new List<ChatMessage>();
+        foreach (var group in thoughtGroups)
+        {
+            var firstThought = group.First();
+            var allContents = group
+                .Select(t => t.ContentDto.ToAocAiContent()?.ToAiContent())
+                .Where(c => c != null)
+                .Cast<AIContent>()
+                .ToList();
+
+            chatMessagesFromThoughts.Add(new ChatMessage(firstThought.Role, allContents)
+            {
+                Role = firstThought.Role,
+                AuthorName = firstThought.AuthorName,
+                CreatedAt = new DateTimeOffset(firstThought.CreatedAt, TimeSpan.Zero),
+            });
+        }
+
         var llmThoughtIds = data.LlmThoughts.Select(t => t.Id).ToHashSet();
         var chatMessages = data.ChatMessages.Where(x => !llmThoughtIds.Contains(x.AgentThoughtId ?? Guid.Empty)).Select(m => m.ToChatMessage()).ToList();
         // var allMessages = chatMessages.Concat(chatMessagesFromThoughts).OrderBy(x => x.CreatedAt).ToList();
 
         // filter out old LLM thoughts
         var lastButOneMessageTime = chatMessages.Count > 1 ? chatMessages.OrderByDescending(m => m.CreatedAt).Skip(1).First().CreatedAt ?? DateTimeOffset.MinValue : DateTimeOffset.MinValue;
-        var lastLlmThoughts = data.LlmThoughtsMapped.Where(t => t.CreatedAt > lastButOneMessageTime).ToList();
+        var lastLlmThoughts = chatMessagesFromThoughts.Where(t => t.CreatedAt > lastButOneMessageTime).ToList();
         var allMessages = chatMessages.Concat(lastLlmThoughts).OrderBy(x => x.CreatedAt).ToList();
 
         await foreach (AgentResponseUpdate update in aiAgent.RunStreamingAsync(allMessages, agentSession, runOptions, ct))

@@ -3,7 +3,6 @@ using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.McpServerConfigurations;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.Tools;
-using Microsoft.Extensions.AI;
 
 namespace AzureOpsCrew.Domain.Agents;
 
@@ -17,9 +16,7 @@ public class AgentRunData
     public DirectMessageChannel? DmChannel { get; set; }
 
     public List<Message> ChatMessages { get; set; } = null!;
-    public List<ChatMessage> ChatMessagesMapped { get; set; } = null!;
     public List<AgentThought> LlmThoughts { get; set; } = null!;
-    public List<ChatMessage> LlmThoughtsMapped { get; set; } = null!;
     public List<ToolDeclaration> Tools { get; set; } = null!;
 
     // MCP server configurations whose tools are available to the agent.
