@@ -11,7 +11,6 @@ using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory;
-using AzureOpsCrew.Infrastructure.Ai.ContextReduction;
 using AzureOpsCrew.Infrastructure.Ai.Mcp;
 using AzureOpsCrew.Infrastructure.Ai.ProviderFacades;
 using AzureOpsCrew.Infrastructure.Db;
@@ -234,12 +233,6 @@ public static class ServiceCollectionExtensions
         {
             throw new InvalidOperationException($"Unknown LongTermMemory type '{memoryType}'. Supported providers: InMemory, Cypher");
         }
-    }
-
-    public static void AddContextReduction(this IServiceCollection services, IConfiguration configuration)
-    {
-        services.Configure<ContextReductionSettings>(configuration.GetSection("ContextReduction"));
-        services.AddScoped<IContextReductionService, ContextReductionService>();
     }
 
     public static void AddAgentSchedulerBackgroundService(this IServiceCollection services)

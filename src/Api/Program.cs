@@ -48,7 +48,6 @@ try
     builder.Services.AddJwtAuthentication(builder.Configuration, builder.Environment);
     builder.Services.AddEmailVerification(builder.Configuration);
     builder.Services.AddAgentFactory(builder.Configuration);
-    builder.Services.AddContextReduction(builder.Configuration);
     builder.Services.AddAgentSchedulerBackgroundService();
     builder.Services.AddHttpClient();
 

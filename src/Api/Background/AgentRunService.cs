@@ -7,7 +7,6 @@ using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Domain.Tools.BackEnd;
-using AzureOpsCrew.Infrastructure.Ai.ContextReduction;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.Agents.AI;
@@ -27,7 +26,6 @@ public class AgentRunService
     private readonly IProviderFacadeResolver _providerFactory;
     private readonly ToolCallRouter _toolCallRouter;
     private readonly IAiAgentFactory _aiAgentFactory;
-    private readonly IContextReductionService _contextReductionService;
     private readonly IChannelEventBroadcaster? _channelEventBroadcaster;
 
     public AgentRunService(IServiceProvider serviceProvider)
@@ -36,7 +34,6 @@ public class AgentRunService
         _providerFactory = serviceProvider.GetRequiredService<IProviderFacadeResolver>();
         _toolCallRouter = serviceProvider.GetRequiredService<ToolCallRouter>();
         _aiAgentFactory = serviceProvider.GetRequiredService<IAiAgentFactory>();
-        _contextReductionService = serviceProvider.GetRequiredService<IContextReductionService>();
         // Event broadcaster is optional - used for both channels and DMs
         _channelEventBroadcaster = serviceProvider.GetService<IChannelEventBroadcaster>();
     }
@@ -298,12 +295,6 @@ public class AgentRunService
         var llmThoughtIds = data.LlmThoughts.Select(t => t.Id).ToHashSet();
         var chatMessages = data.ChatMessages.Where(x => !llmThoughtIds.Contains(x.AgentThoughtId ?? Guid.Empty)).Select(m => m.ToChatMessage()).ToList();
         var allMessages = chatMessages.Concat(chatMessagesFromThoughts).OrderBy(x => x.CreatedAt).ToList();
-
-        // Context reduction
-        var systemPrompt = _aiAgentFactory.PreparePrompt(data);
-        var reductionResult = _contextReductionService.ReduceIfNeeded(
-            allMessages, systemPrompt, data.Tools, data.Agent.Info.Model);
-        allMessages = reductionResult.Messages.ToList();
 
         await foreach (AgentResponseUpdate update in aiAgent.RunStreamingAsync(allMessages, agentSession, runOptions, ct))
         {
