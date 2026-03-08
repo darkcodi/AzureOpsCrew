@@ -210,6 +210,9 @@ public static class ServiceCollectionExtensions
         // Add AiAgentFactory
         services.AddScoped<IAiAgentFactory, AiAgentFactory>();
 
+        // Add other agent-related services
+        services.AddScoped<PromptService>();
+
         // Add LongTermMemory
         var memoryType = configuration["LongTermMemory:Type"] ?? "InMemory";
         services.AddSingleton(p => new AgentAiContextProviderFactory(p, memoryType));
