@@ -8,16 +8,31 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices;
 
 public class ContextService
 {
-    public const int MaxTokensForToolResponses = 50_000;
+    public const int TokenThresholdLow = 40_000;
+    public const int TokenThresholdHigh = 80_000;
     public const string TruncatedToolResponsePlaceholder = "[Truncated]";
 
     public IList<ChatMessage> PrepareContext(AgentRunData data)
     {
         var allMessages = GroupMessages(data);
 
-        TruncateToolResults(allMessages, MaxTokensForToolResponses);
+        if (ShouldTruncateToolResults(allMessages, TokenThresholdHigh))
+        {
+            TruncateToolResults(allMessages, TokenThresholdLow);
+        }
 
         return allMessages;
+    }
+
+    private bool ShouldTruncateToolResults(List<ChatMessage> allMessages, int maxTokens)
+    {
+        var toolResultTokens = allMessages
+            .SelectMany(m => m.Contents)
+            .OfType<FunctionResultContent>()
+            .Sum(c => TokenUtils.EstimateTokensCount(c.Result?.ToString() ?? string.Empty));
+
+        Log.Information("Total tokens in tool results: {ToolResultTokens}. Max allowed tokens: {MaxTokens}.", toolResultTokens, maxTokens);
+        return toolResultTokens > maxTokens;
     }
 
     private void TruncateToolResults(List<ChatMessage> allMessages, int maxTokens)
