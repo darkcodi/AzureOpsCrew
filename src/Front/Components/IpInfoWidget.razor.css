@@ -1,5 +1,7 @@
 /* ── Container ── */
 .ip-widget {
+    max-width: 420px;
+    width: fit-content;
     display: flex;
     flex-direction: column;
     border-radius: 10px;
