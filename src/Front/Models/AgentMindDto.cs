@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Front.Models;
 
 public record AgentMindResponseDto
@@ -17,8 +19,15 @@ public record AgentMindEventDto
 
 public record UiWidgetDto
 {
+    [JsonPropertyName("toolName")]
     public required string ToolName { get; init; }
+
+    [JsonPropertyName("callId")]
     public required string CallId { get; init; }
+
+    [JsonPropertyName("args")]
     public required object? Args { get; init; }
+
+    [JsonPropertyName("result")]
     public required object? Result { get; init; }
 }

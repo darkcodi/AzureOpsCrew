@@ -9,5 +9,6 @@ public class ToolCallDto
     public JsonElement? Args { get; set; }
     public JsonElement? Result { get; set; }
     public bool IsError { get; set; }
+    public bool IsFinished { get; set; }
     public DateTimeOffset Timestamp { get; set; }
 }

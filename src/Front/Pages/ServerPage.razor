@@ -3,10 +3,12 @@
 
 <PageTitle>@(AppState.SelectedChannel != null ? $"AOC - #{AppState.SelectedChannel.Name}" : "AzureOpsCrew")</PageTitle>
 
+@using System.Text.Json
 @inject AppState AppState
 @implements IAsyncDisposable
 @inject ChannelService ChannelService
 @inject AgentService AgentService
+@inject AgentState AgentState
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
 @inject ILogger<ServerPage> Logger
@@ -21,12 +23,17 @@
     </LeftSidebar>
     <MainArea>
         <ChatArea Messages="_messages"
+                  ToolCalls="_toolCalls"
+                  Reasonings="_reasonings"
                   CurrentUserId="AppState.CurrentUser?.Id"
                   ShowInput="AppState.SelectedChannel != null"
                   Placeholder="@(AppState.SelectedChannel != null ? $"Message #{AppState.SelectedChannel.Name}" : "")"
                   EmptyIcon="@(AppState.SelectedChannel != null ? "#" : "👋")"
                   EmptyTitle="@(AppState.SelectedChannel != null ? $"Welcome to #{AppState.SelectedChannel.Name}!" : "Select a channel")"
                   EmptySubtitle="@(AppState.SelectedChannel != null ? $"This is the start of the #{AppState.SelectedChannel.Name} channel." : "Pick a channel from the sidebar to start chatting.")"
+                  TypingUsernames="_typingUsernames"
+                  IsAgentRunning="_isAgentRunning"
+                  OnStopAgent="StopAgent"
                   OnSendMessage="SendChannelMessage" />
     </MainArea>
     <RightSidebar>
@@ -44,9 +51,13 @@
     public string? ChannelId { get; set; }
 
     private List<ChatMessageDto> _messages = [];
+    private List<ToolCallDto> _toolCalls = [];
+    private List<ReasoningDto> _reasonings = [];
+    private List<string> _typingUsernames = [];
     private Guid? _loadedChannelId;
     private IDisposable? _appStateSubscription;
     private ChatHubClient? _hubClient;
+    private bool _isAgentRunning;
 
     private void OnStateChanged() => InvokeAsync(async () =>
     {
@@ -67,18 +78,23 @@
         if (_hubClient != null)
         {
             _hubClient.MessageReceived -= OnMessageReceived;
+            _hubClient.ToolCallReceived -= OnToolCallReceived;
+            _hubClient.ReasoningReceived -= OnReasoningReceived;
+            _hubClient.AgentStatusReceived -= OnAgentStatusReceived;
             await _hubClient.DisposeAsync();
         }
     }
 
     protected override async Task OnInitializedAsync()
     {
+        await AgentState.InitializeAsync();
         SerServerIdAndChannelIdFromRoute();
         await AppState.LoadChannels(ChannelService);
         await AppState.LoadAgents(AgentService);
         _appStateSubscription = AppState.SubscribeCurrentUser(OnStateChanged)
             .Combine(AppState.SubscribeSelectedChannel(OnStateChanged))
-            .Combine(AppState.SubscribeChannels(OnStateChanged));
+            .Combine(AppState.SubscribeChannels(OnStateChanged))
+            .Combine(AppState.SubscribeCurrentAgentMind(OnMindChanged));
     }
 
     protected override async Task OnParametersSetAsync()
@@ -93,7 +109,50 @@
         if (channelId.HasValue && channelId != _loadedChannelId)
         {
             _loadedChannelId = channelId;
+            _typingUsernames = [];
+            _isAgentRunning = false;
+            _toolCalls = [];
+            _reasonings = [];
             _messages = await ChannelService.GetChannelMessagesAsync(channelId.Value);
+
+            // Load agent mind for channels with agents
+            var agentIdStr = AppState.SelectedChannel?.AgentIds.FirstOrDefault();
+            if (!string.IsNullOrEmpty(agentIdStr) && Guid.TryParse(agentIdStr, out var agentId))
+            {
+                await AppState.LoadAgentMindForChannelAsync(AgentService, channelId.Value, agentId);
+                _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
+                var agentName = AppState.Agents.FirstOrDefault(a => a.Id == agentId)?.Username;
+                _reasonings = ExtractReasonings(AppState.CurrentAgentMind, agentName);
+
+                // Restore agent running state from persisted storage
+                _isAgentRunning = AgentState.IsAgentRunning(channelId.Value, ConversationType.Channel);
+                var typingUsername = AgentState.GetTypingUsername(
+                    channelId.Value,
+                    ConversationType.Channel,
+                    id => AppState.Agents.FirstOrDefault(a => a.Id == id)?.Username);
+                if (typingUsername != null && _isAgentRunning)
+                {
+                    _typingUsernames.Add(typingUsername);
+                }
+
+                // Update the agent's status in AppState.Agents to restore the agent card status
+                var agentState = AgentState.GetState(channelId.Value, ConversationType.Channel);
+                if (agentState != null)
+                {
+                    var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentState.AgentId);
+                    if (agent != null)
+                    {
+                        agent.Status = agentState.Status;
+                        agent.ErrorMessage = agentState.ErrorMessage;
+                        AppState.Agents.NotifyChanged();
+                    }
+                }
+            }
+            else
+            {
+                AppState.CurrentAgentMind = null;
+            }
+
             await ConnectToChannelHub(channelId.Value);
         }
     }
@@ -103,11 +162,17 @@
         if (_hubClient != null)
         {
             _hubClient.MessageReceived -= OnMessageReceived;
+            _hubClient.ToolCallReceived -= OnToolCallReceived;
+            _hubClient.ReasoningReceived -= OnReasoningReceived;
+            _hubClient.AgentStatusReceived -= OnAgentStatusReceived;
             await _hubClient.DisposeAsync();
         }
 
         _hubClient = ChatHubClient.ForChannel(LoggerFactory);
         _hubClient.MessageReceived += OnMessageReceived;
+        _hubClient.ToolCallReceived += OnToolCallReceived;
+        _hubClient.ReasoningReceived += OnReasoningReceived;
+        _hubClient.AgentStatusReceived += OnAgentStatusReceived;
 
         var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/');
         var hubUrl = $"{baseUrl}/channels/{channelId}/events";
@@ -133,6 +198,89 @@
             newMessage.IsOwnMessage = true;
             _messages.Add(newMessage);
         }
+    }
+
+    private async Task StopAgent()
+    {
+        var channelId = AppState.SelectedChannel?.Id;
+        if (channelId.HasValue)
+        {
+            await ChannelService.StopAgentChannelAsync(channelId.Value);
+        }
+    }
+
+    private void OnMindChanged() => InvokeAsync(() =>
+    {
+        _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
+        var agentIdStr = AppState.SelectedChannel?.AgentIds.FirstOrDefault();
+        string? agentName = null;
+        if (!string.IsNullOrEmpty(agentIdStr) && Guid.TryParse(agentIdStr, out var mindAgentId))
+            agentName = AppState.Agents.FirstOrDefault(a => a.Id == mindAgentId)?.Username;
+        _reasonings = ExtractReasonings(AppState.CurrentAgentMind, agentName);
+        StateHasChanged();
+    });
+
+    private async void OnToolCallReceived(ToolCallDto toolCall)
+    {
+        var existing = _toolCalls.FirstOrDefault(t => t.CallId == toolCall.CallId);
+        if (existing != null)
+        {
+            // Update in-place: a completed event arrived for an already-started tool call
+            existing.Result = toolCall.Result;
+            existing.IsError = toolCall.IsError;
+            existing.IsFinished = toolCall.IsFinished;
+        }
+        else
+        {
+            _toolCalls.Add(toolCall);
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnReasoningReceived(ReasoningDto reasoning)
+    {
+        _reasonings.Add(reasoning);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnAgentStatusReceived(Guid agentId, string status, string? errorMessage)
+    {
+        var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentId);
+        if (agent != null)
+        {
+            agent.Status = status;
+            agent.ErrorMessage = string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase) ? errorMessage : null;
+            AppState.Agents.NotifyChanged();
+
+            // Update typing indicator and running state
+            var isRunning = string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase);
+            _isAgentRunning = isRunning;
+
+            if (isRunning)
+            {
+                if (!_typingUsernames.Contains(agent.Username))
+                    _typingUsernames.Add(agent.Username);
+            }
+            else
+            {
+                _typingUsernames.Remove(agent.Username);
+            }
+
+            // Persist the status change to localStorage
+            var channelId = AppState.SelectedChannel?.Id;
+            if (channelId.HasValue)
+            {
+                if (isRunning)
+                {
+                    await AgentState.SetAgentStatusAsync(channelId.Value, ConversationType.Channel, agentId, status, errorMessage);
+                }
+                else
+                {
+                    await AgentState.ClearStateAsync(channelId.Value, ConversationType.Channel);
+                }
+            }
+        }
+        await InvokeAsync(StateHasChanged);
     }
 
     private void SerServerIdAndChannelIdFromRoute()
@@ -167,5 +315,48 @@
                 Navigation.NavigateTo($"/servers/{AppState.SelectedServer?.Id}/channels/{AppState.LastUsedChannelId.Value}");
             }
         }
+    }
+
+    private static List<ToolCallDto> ExtractToolCalls(AgentMindResponseDto? mind)
+    {
+        if (mind?.Events is not { Count: > 0 })
+            return [];
+
+        return mind.Events
+            .Where(e => e.Widget != null)
+            .Select(e =>
+            {
+                var resultEl = e.Widget!.Result is JsonElement re ? re : (JsonElement?)null;
+                var isError = false;
+                if (resultEl is { } r && r.ValueKind == JsonValueKind.Object && r.TryGetProperty("IsError", out var isErrorProp))
+                    isError = isErrorProp.ValueKind == JsonValueKind.True;
+                return new ToolCallDto
+                {
+                    ToolName = e.Widget!.ToolName,
+                    CallId = e.Widget.CallId,
+                    Args = e.Widget.Args is JsonElement argsEl ? argsEl : null,
+                    Result = resultEl,
+                    IsError = isError,
+                    IsFinished = true,
+                    Timestamp = e.Timestamp,
+                };
+            })
+            .ToList();
+    }
+
+    private static List<ReasoningDto> ExtractReasonings(AgentMindResponseDto? mind, string? agentName = null)
+    {
+        if (mind?.Events is not { Count: > 0 })
+            return [];
+
+        return mind.Events
+            .Where(e => !string.IsNullOrEmpty(e.Reasoning))
+            .Select(e => new ReasoningDto
+            {
+                Text = e.Reasoning!,
+                AgentName = agentName,
+                Timestamp = e.Timestamp,
+            })
+            .ToList();
     }
 }

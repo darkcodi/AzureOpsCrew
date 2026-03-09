@@ -1,0 +1,263 @@
+/* ── Container ── */
+.ip-widget {
+    max-width: 420px;
+    width: fit-content;
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    background: linear-gradient(135deg, hsl(228, 10%, 13%) 0%, hsl(230, 12%, 16%) 100%);
+    border: 1px solid hsl(228, 8%, 22%);
+    overflow: hidden;
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 8px 48px 8px 72px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Header ── */
+.ip-widget-header {
+    display: flex;
+    width: 100%;
+    border: none;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: linear-gradient(90deg, hsla(235, 80%, 62%, 0.12) 0%, transparent 100%);
+    border-bottom: 1px solid hsl(228, 8%, 20%);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+.ip-widget-header:hover {
+    background: linear-gradient(90deg, hsla(235, 80%, 62%, 0.18) 0%, transparent 100%);
+}
+
+.ip-widget-header:not(.expanded) {
+    border-bottom-color: transparent;
+}
+
+.ip-widget-chevron {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: hsl(214, 5%, 52%);
+    transition: transform 0.2s ease;
+}
+
+.ip-widget-header.expanded .ip-widget-chevron {
+    transform: rotate(180deg);
+}
+
+.ip-widget-icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, hsl(235, 86%, 60%) 0%, hsl(260, 70%, 58%) 100%);
+    color: #fff;
+    box-shadow: 0 2px 8px hsla(235, 86%, 60%, 0.35);
+}
+
+.ip-widget-header-text {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.ip-widget-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: hsl(210, 5%, 96%);
+    font-family: "Consolas", "Courier New", monospace;
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ip-widget-subtitle {
+    font-size: 0.75rem;
+    color: hsl(214, 5%, 52%);
+    margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ip-widget-subtitle-skeleton {
+    height: 12px;
+    width: 120px;
+    border-radius: 4px;
+    background: hsl(228, 7%, 20%);
+    margin-top: 4px;
+    animation: ip-widget-pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Badges ── */
+.ip-widget-badge {
+    flex-shrink: 0;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ip-widget-badge.direct {
+    background-color: hsla(139, 47%, 44%, 0.18);
+    color: hsl(139, 50%, 55%);
+}
+
+.ip-widget-badge.proxy {
+    background-color: hsla(38, 96%, 54%, 0.18);
+    color: hsl(38, 96%, 64%);
+}
+
+.ip-widget-badge.loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background-color: hsla(235, 86%, 65%, 0.18);
+    color: hsl(235, 80%, 72%);
+}
+
+.ip-widget-spinner {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 2px solid hsla(235, 80%, 72%, 0.3);
+    border-top-color: hsl(235, 80%, 72%);
+    border-radius: 50%;
+    animation: ip-widget-spin 0.8s linear infinite;
+}
+
+@keyframes ip-widget-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Body ── */
+.ip-widget-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 4px 0;
+}
+
+/* ── Sections ── */
+.ip-widget-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 16px 10px;
+}
+
+.ip-widget-section + .ip-widget-section {
+    border-top: 1px solid hsl(228, 7%, 19%);
+}
+
+.ip-widget-section-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: hsl(235, 50%, 68%);
+    margin-bottom: 6px;
+}
+
+/* ── Location hero row ── */
+.ip-widget-location {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.ip-widget-flag {
+    width: 24px;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 2px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+/* Fallback for globe emoji when country code is invalid */
+.ip-widget-flag-fallback {
+    font-size: 1.35rem;
+    width: auto;
+    height: auto;
+    aspect-ratio: auto;
+    object-fit: unset;
+}
+
+.ip-widget-location-text {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: hsl(210, 5%, 92%);
+}
+
+/* ── Detail rows ── */
+.ip-widget-detail-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 3px 0;
+}
+
+.ip-widget-detail-label {
+    font-size: 0.75rem;
+    color: hsl(214, 5%, 48%);
+    flex-shrink: 0;
+}
+
+.ip-widget-detail-value {
+    font-size: 0.8rem;
+    color: hsl(210, 3%, 82%);
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 65%;
+}
+
+/* ── Skeleton loading ── */
+.ip-widget-skeleton-row {
+    height: 14px;
+    border-radius: 4px;
+    background: hsl(228, 7%, 20%);
+    margin: 6px 16px;
+    animation: ip-widget-pulse 1.5s ease-in-out infinite;
+}
+
+.ip-widget-skeleton-row.short {
+    width: 60%;
+}
+
+@keyframes ip-widget-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .ip-widget {
+        margin: 8px 16px 8px 56px;
+    }
+}
+

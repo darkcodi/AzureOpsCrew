@@ -2,7 +2,7 @@
 
 <div class="reasoning-card">
     <button type="button" class="reasoning-card-header" @onclick="ToggleExpanded">
-        <span class="reasoning-card-label">Thought</span>
+        <span class="reasoning-card-label">@(string.IsNullOrEmpty(Reasoning.AgentName) ? "Thought" : $"{Reasoning.AgentName} thought")</span>
         <span class="reasoning-card-chevron @(_expanded ? "expanded" : "")" aria-hidden="true">
             <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

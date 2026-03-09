@@ -41,6 +41,7 @@ try
     // Register application services
     builder.Services.AddSingleton<AppState>();
     builder.Services.AddSingleton<AuthState>();
+    builder.Services.AddSingleton<AgentState>();
     builder.Services.AddScoped<ChannelService>();
     builder.Services.AddScoped<DmService>();
     builder.Services.AddScoped<UserService>();

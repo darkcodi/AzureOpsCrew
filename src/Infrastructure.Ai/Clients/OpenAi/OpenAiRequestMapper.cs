@@ -61,14 +61,14 @@ public static class OpenAiRequestMapper
             var mappedRole = MapChatRole(message.Role);
             var messageContents = message.Contents.ToList();
 
+            // Check if this message has both reasoning and function calls
+            var hasReasoning = messageContents.OfType<TextReasoningContent>().Any();
+            var hasFunctionCalls = messageContents.OfType<FunctionCallContent>().Any();
+            var hasFunctionResults = messageContents.OfType<FunctionResultContent>().Any();
+
             // Handle assistant messages that need to be split for DeepSeek format
             if (mappedRole == "assistant" && messageContents.Count > 1)
             {
-                // Check if this message has both reasoning and function calls
-                var hasReasoning = messageContents.OfType<TextReasoningContent>().Any();
-                var hasFunctionCalls = messageContents.OfType<FunctionCallContent>().Any();
-                var hasFunctionResults = messageContents.OfType<FunctionResultContent>().Any();
-
                 if (hasReasoning && hasFunctionCalls)
                 {
                     // Create assistant message with reasoning + tool_calls (DeepSeek format)
@@ -184,6 +184,13 @@ public static class OpenAiRequestMapper
             {
                 // Multiple contents - convert to array format
                 openAiMessage.Content = ConvertMultipleContents(messageContents, out var toolCalls);
+
+                if (hasReasoning)
+                {
+                    var reasoningContent = messageContents.OfType<TextReasoningContent>().First();
+                    openAiMessage.ReasoningContent = reasoningContent.Text;
+                }
+
                 if (toolCalls != null && toolCalls.Count > 0)
                 {
                     openAiMessage.ToolCalls = toolCalls;

@@ -8,6 +8,7 @@
 @implements IAsyncDisposable
 @inject DmService DmService
 @inject AgentService AgentService
+@inject AgentState AgentState
 @inject HttpClient Http
 @inject ILoggerFactory LoggerFactory
 @inject ILogger<DmPage> Logger
@@ -57,6 +58,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await AgentState.InitializeAsync();
         SetDmIdFromRoute();
         await AppState.LoadAgents(AgentService);
         await AppState.LoadDms(DmService);
@@ -88,7 +90,11 @@
     private void OnMindChanged() => InvokeAsync(() =>
     {
         _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
-        _reasonings = ExtractReasonings(AppState.CurrentAgentMind);
+        var agentId = AppState.SelectedDm?.Agent1Id ?? AppState.SelectedDm?.Agent2Id;
+        var agentName = agentId.HasValue
+            ? AppState.Agents.FirstOrDefault(a => a.Id == agentId.Value)?.Username
+            : null;
+        _reasonings = ExtractReasonings(AppState.CurrentAgentMind, agentName);
         StateHasChanged();
     });
 
@@ -114,12 +120,40 @@
             _typingUsernames = [];
             _isAgentRunning = false;
             var agentId = AppState.SelectedDm?.Agent1Id ?? AppState.SelectedDm?.Agent2Id;
+
+            // Restore agent running state from persisted storage
+            if (dmId.HasValue && agentId.HasValue)
+            {
+                _isAgentRunning = AgentState.IsAgentRunning(dmId.Value, ConversationType.Dm);
+                var typingUsername = AgentState.GetTypingUsername(
+                    dmId.Value,
+                    ConversationType.Dm,
+                    id => AppState.Agents.FirstOrDefault(a => a.Id == id)?.Username);
+                if (typingUsername != null && _isAgentRunning)
+                {
+                    _typingUsernames.Add(typingUsername);
+                }
+
+                // Update the agent's status in AppState.Agents to restore the agent card status
+                var agentState = AgentState.GetState(dmId.Value, ConversationType.Dm);
+                if (agentState != null)
+                {
+                    var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentState.AgentId);
+                    if (agent != null)
+                    {
+                        agent.Status = agentState.Status;
+                        agent.ErrorMessage = agentState.ErrorMessage;
+                        AppState.Agents.NotifyChanged();
+                    }
+                }
+            }
             if (agentId.HasValue)
             {
                 _messages = await DmService.GetAgentDmMessagesAsync(agentId.Value);
                 await AppState.LoadAgentMindForDmAsync(AgentService, dmId.Value, agentId.Value);
                 _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
-                _reasonings = ExtractReasonings(AppState.CurrentAgentMind);
+                var dmAgentName = AppState.Agents.FirstOrDefault(a => a.Id == agentId.Value)?.Username;
+                _reasonings = ExtractReasonings(AppState.CurrentAgentMind, dmAgentName);
             }
             else
             {
@@ -179,6 +213,7 @@
             // Update in-place: a completed event arrived for an already-started tool call
             existing.Result = toolCall.Result;
             existing.IsError = toolCall.IsError;
+            existing.IsFinished = toolCall.IsFinished;
         }
         else
         {
@@ -214,6 +249,20 @@
             else
             {
                 _typingUsernames.Remove(agent.Username);
+            }
+
+            // Persist the status change to localStorage
+            var dmId = AppState.SelectedDm?.Id;
+            if (dmId.HasValue)
+            {
+                if (isRunning)
+                {
+                    await AgentState.SetAgentStatusAsync(dmId.Value, ConversationType.Dm, agentId, status, errorMessage);
+                }
+                else
+                {
+                    await AgentState.ClearStateAsync(dmId.Value, ConversationType.Dm);
+                }
             }
         }
         await InvokeAsync(StateHasChanged);
@@ -326,13 +375,14 @@
                     Args = e.Widget.Args is JsonElement argsEl ? argsEl : null,
                     Result = resultEl,
                     IsError = isError,
+                    IsFinished = true,
                     Timestamp = e.Timestamp,
                 };
             })
             .ToList();
     }
 
-    private static List<ReasoningDto> ExtractReasonings(AgentMindResponseDto? mind)
+    private static List<ReasoningDto> ExtractReasonings(AgentMindResponseDto? mind, string? agentName = null)
     {
         if (mind?.Events is not { Count: > 0 })
             return [];
@@ -342,6 +392,7 @@
             .Select(e => new ReasoningDto
             {
                 Text = e.Reasoning!,
+                AgentName = agentName,
                 Timestamp = e.Timestamp,
             })
             .ToList();

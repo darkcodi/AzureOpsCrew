@@ -134,4 +134,18 @@ public class ChannelService
             return false;
         }
     }
+
+    public async Task<bool> StopAgentChannelAsync(Guid channelId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"/api/channels/{channelId}/stop", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error stopping agent in channel {channelId}: {ex.Message}");
+            return false;
+        }
+    }
 }
