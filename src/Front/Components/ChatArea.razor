@@ -16,7 +16,14 @@
             {
                 if (entry.ToolCall is { } toolCall)
                 {
-                    <ToolCallCard ToolCall="toolCall" />
+                    if (string.Equals(toolCall.ToolName, "getMyIp", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <IpInfoWidget ToolCall="toolCall" />
+                    }
+                    else
+                    {
+                        <ToolCallCard ToolCall="toolCall" />
+                    }
                 }
                 else if (entry.Reasoning is { } reasoning)
                 {
