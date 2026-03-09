@@ -100,136 +100,80 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory
         }
 
         private const string MemoryHint = """
-# Long-term memory: Facts (scoped per Agent.Id)
-IMPORTANT: This memory is **agent-scoped**.
-- Each agent (Agent.Id) has its **own isolated memory bucket**.
-- Facts stored by this agent are available to this same agent across all its sessions,
-  but are **not shared** with other agents.
+# Long-term memory (agent-scoped)
+Each agent has its own isolated fact store. Facts persist across sessions but are NOT shared between agents.
 
-You have long-term memory tools:
-- memory_add_fact(text, category?) -> saves a fact and returns it with an id
-- memory_update_fact(factId, text, category?) -> updates a fact by id
-- memory_delete_fact(factId) -> deletes a fact by id
-- memory_search_facts(query, limit?) -> searches facts and returns matches
-- memory_list_facts(limit?) -> lists recent facts (debug, optional)
+## Available tools
+- memory_add_fact(text, category?) — save a new fact
+- memory_update_fact(factId, text, category?) — update existing fact by id
+- memory_delete_fact(factId) — delete fact by id
+- memory_search_facts(query, limit?) — search facts by relevance
+- memory_list_facts(limit?) — list recent facts (debug)
 
-## Use memory proactively (default behavior)
+## When to RETRIEVE
+IMPORTANT: Do not claim you remember something unless you searched first.
 
-### When to RETRIEVE (search first)
-Run memory_search_facts proactively when:
-- user asks to recall/remember, references the past ("як я казав", "ти пам'ятаєш", "минулого разу")
-- a preference/setting/constraint could change the best answer (language, tone, format, project conventions)
-- you are about to assume something about the user/project that might have been stated before
+Search proactively when:
+- User references past context ("as I said", "do you remember", "last time")
+- A preference, setting, or constraint could change your answer
+- You are about to assume something that might have been stated before
 
-Rule: **Do not claim you remember something unless you searched.**
+## Search query syntax
+memory_search_facts supports these operators (combine freely):
 
-### Query language (powerful search syntax)
-memory_search_facts supports smart queries. Use these operators when helpful:
+| Operator | Syntax | Example |
+|---|---|---|
+| Exact phrase (MUST match) | `"phrase"` | `"error budget"`, `"pipeline yaml"` |
+| Category filter (MUST match) | `cat:value` or `#value` | `cat:preference`, `#project` |
+| Exclusion (MUST NOT match) | `-term` | `-legacy`, `-deprecated` |
+| ID lookup (strongest signal) | paste fact id | `a1b2c3d4` |
 
-1) **Exact phrases** (MUST match)
-- Put an exact phrase in quotes:
-  - memory_search_facts("\"error budget\"")
-  - memory_search_facts("\"pipeline yaml\" \"azure devops\"")
-Quoted phrases are treated as required: if a fact doesn't contain the phrase (in text or category), it is filtered out.
+Combined: memory_search_facts("cat:preference -deprecated", 8)
 
-2) **Category filter** (MUST match)
-- Filter by category using:
-  - cat:<value>   or category:<value>
-  - #<value>      (shorthand)
-Examples:
-- memory_search_facts("cat:preference language")
-- memory_search_facts("#project net10")
-If category filter is present and the fact has no category, it will not match.
+## Retrieval strategy
+1. Search with user’s original phrasing: `memory_search_facts("<user phrase>", 8)`
+2. If weak — add filters: `cat:preference`, `"exact phrase"`, `-exclusion`
+3. If still weak — compact keywords (2-6 words), synonyms, alternative phrasings, domain entities
+Keep to 2-4 searches max per turn.
 
-3) **Exclusions** (MUST NOT match)
-- Exclude token(s) with a leading minus:
-  - memory_search_facts("deployment -legacy")
-  - memory_search_facts("cat:constraint -temporary")
-Exclusions remove facts that contain the excluded token in text or category.
-
-4) **IDs**
-- If you paste a fact id (or partial), matching is extremely strong:
-  - memory_search_facts("a1b2c3d4")
-
-### Retrieval strategy (multiple phrasings)
-When you need memory:
-1) Search using the user’s original phrasing (including quotes if user used them):
-   - memory_search_facts("<user phrase>", 8)
-2) If results are weak, try a structured query:
-   - add category filter: cat:preference / #project / cat:constraint
-   - add an exact phrase: "<key phrase>"
-   - add exclusions: -old -deprecated
-3) If still weak, search again using a compact keyword query (2–6 keywords):
-   - memory_search_facts("keywords only", 8)
-4) If still weak:
-   - synonyms / alternative language (UA/EN),
-   - likely tags (see below),
-   - key entities (project name, feature name, tool names).
-Keep searches to 2–4 calls max per turn.
-
-### Ranking behavior (how results are ordered)
-Search is relevance-ranked, not just substring:
-- Strong boosts for:
-  - id match
-  - exact / contains matches on the main query text
-  - quoted phrases
-  - word-order signal (bigrams)
-- Token relevance uses BM25-like weighting across:
-  - fact text (primary)
-  - category (lower weight)
-- Light typo tolerance:
-  - prefix matches and small edit-distance fuzzy matches may help,
-    especially for single-word queries or when there is already a strong signal.
-If your query is only filters (cat:/-term/"phrase") and has no tokens,
-results are still returned (ranked mostly by recency, with phrase/id boosts).
-
-### Concurrency / consistency note
-Search works on a snapshot of facts taken under lock, then ranks without holding the lock.
-This improves responsiveness under concurrent writes.
-
-## When to STORE (call memory_add_fact)
+## When to STORE
 Store durable, future-useful facts:
-- user preferences (language, tone, formatting, verbosity)
-- stable profile facts explicitly meant to be remembered (role, timezone, name)
-- long-lived goals, constraints, requirements, "always/never" rules
-- stable project decisions / conventions / environment settings
+- User preferences (language, tone, formatting, verbosity)
+- Stable profile facts meant to be remembered (role, timezone, name)
+- Long-lived goals, constraints, requirements, "always/never" rules
+- Stable project decisions, conventions, environment settings
 
-If unsure whether it’s durable: ask the user OR don’t store.
+If unsure whether it’s durable — ask the user or don’t store.
 
-## How to STORE (format for better search)
-Store each fact in a **search-friendly** format:
-- One durable idea per fact (atomic).
-- Include **2–3 compact rephrasings / aliases** separated by `;` (improves matching).
-- Prefer stable keywords that will match token search (avoid only “fluffy” prose).
-- ALWAYS end the text with:
-  `tags: tag1, tag2, tag3`
-  Tags should be:
-  - short, stable keywords
-  - preferably lowercase
-  - may include both UA and EN variants (helps bilingual search)
-  - include domain keywords (project/tool/feature names) when relevant
-- If you set a category, also reflect it in tags (e.g., category=preference => tag "preference").
+## How to STORE
+IMPORTANT: Format facts for optimal search recall.
+- One atomic idea per fact
+- Include 2-3 compact rephrasings/aliases separated by `;`
+- Use stable keywords, not fluffy prose
+- ALWAYS end with: `tags: tag1, tag2, tag3`
+  - Short, lowercase, stable keywords
+  - Multilingual variants when relevant
+  - Domain keywords (project/tool/feature names)
+  - Reflect the category in tags (e.g., category=preference => tag "preference")
 
-Example fact text:
-`User prefers concise answers in Ukrainian; respond in Ukrainian; мова: українська. tags: preference, language, ukrainian, ua, concise`
+<example>
+User prefers concise answers; short responses; minimal verbosity. tags: preference, style, concise, verbosity
+</example>
 
-Another example:
-`Project uses .NET 10; target framework net10.0; dotnet 10. tags: project, dotnet, net10, framework`
+<example>
+Project uses .NET 10; target framework net10.0; dotnet 10. tags: project, dotnet, net10, framework
+</example>
 
 ## Update vs Add
-If new information conflicts with existing memory:
-1) Search first (memory_search_facts), optionally with cat:/#/quotes
-2) Update the existing fact (memory_update_fact) instead of creating duplicates.
+If new info conflicts with existing memory — search first, then use memory_update_fact instead of creating duplicates.
 
-## When NOT to store
-Do NOT store:
-- secrets (passwords, API keys, auth tokens, private keys)
-- highly sensitive personal data (full address, payment cards, etc.)
-- one-off ephemeral details (unless user explicitly asks to remember)
+## Do NOT store
+- Secrets (passwords, API keys, tokens, private keys)
+- Sensitive personal data (full address, payment cards)
+- Ephemeral one-off details (unless user explicitly asks to remember)
 
-## Output usage
-Use retrieved facts naturally in your response.
-You may briefly mention you checked stored memory, but do not expose internal tool JSON.
+## Output
+Use retrieved facts naturally in your response. Do not expose internal tool JSON.
 """;
     }
 }

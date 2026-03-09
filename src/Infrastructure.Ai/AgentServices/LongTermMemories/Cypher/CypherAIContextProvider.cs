@@ -97,94 +97,78 @@ public sealed class CypherFactsContextProvider : AIContextProvider
     }
 
     private const string MemoryHint = """
-# Long-term memory: Facts (scoped per Agent.Id, stored in Neo4j)
-IMPORTANT: This memory is **agent-scoped**.
-- Each agent (Agent.Id) has its **own isolated memory bucket** in the graph database.
-- Facts stored by this agent are available across all its sessions,
-  but are **not shared** with other agents.
+# Long-term memory (agent-scoped, Neo4j)
+Each agent has its own isolated fact store in the graph database. Facts persist across sessions but are NOT shared between agents.
 
-You have long-term memory tools:
-- memory_add_fact(text, category?) -> saves a fact and returns it with an id
-- memory_update_fact(factId, text, category?) -> updates a fact by id
-- memory_delete_fact(factId) -> deletes a fact by id
-- memory_search_facts(query, limit?) -> full-text keyword search, returns matches by relevance
-- memory_list_facts(limit?) -> lists most recent facts (debug, optional)
+## Available tools
+- memory_add_fact(text, category?) — save a new fact
+- memory_update_fact(factId, text, category?) — update existing fact by id
+- memory_delete_fact(factId) — delete fact by id
+- memory_search_facts(query, limit?) — full-text keyword search (Lucene)
+- memory_list_facts(limit?) — list recent facts (debug)
 
-## Use memory proactively (default behavior)
+## When to RETRIEVE
+IMPORTANT: Do not claim you remember something unless you searched first.
 
-### When to RETRIEVE (search first)
-Run memory_search_facts proactively when:
-- user asks to recall/remember, references the past ("як я казав", "ти пам'ятаєш", "минулого разу")
-- a preference/setting/constraint could change the best answer (language, tone, format, project conventions)
-- you are about to assume something about the user/project that might have been stated before
+Search proactively when:
+- User references past context ("as I said", "do you remember", "last time")
+- A preference, setting, or constraint could change your answer
+- You are about to assume something that might have been stated before
 
-Rule: **Do not claim you remember something unless you searched.**
+## Search query syntax
+IMPORTANT: memory_search_facts uses Lucene full-text search. Pass plain keywords only.
 
-### Search query language
-memory_search_facts uses **Lucene full-text search** via Neo4j.
-Pass **plain keywords** — the engine handles relevance ranking automatically.
-
-**Do:**
+Do:
 - memory_search_facts("language preference ukrainian")
 - memory_search_facts("dotnet framework version")
 - memory_search_facts("deployment pipeline azure")
 
-**Avoid:**
-- Special operators like `cat:`, `#`, `-term` (they are not supported here)
-- Quoted phrases (quotes are stripped before indexing)
-- Punctuation or symbols
+Do NOT use special operators (`cat:`, `#`, `-term`, `"quoted phrases"`, punctuation) — they are stripped and ignored.
 
-Results are ordered by Lucene relevance score (term frequency, inverse document frequency).
-If no results, try rephrasing with fewer or different keywords.
+Results are ranked by Lucene relevance (TF-IDF). If no results — rephrase with fewer or different keywords.
 
-### Retrieval strategy
-When you need memory:
-1) Search with the user's main keywords (3–6 words):
-   - memory_search_facts("preference language response style", 8)
-2) If results are weak, try shorter / synonym queries:
-   - memory_search_facts("мова відповідь", 8)       ← Ukrainian variant
-   - memory_search_facts("language response", 8)    ← English variant
-3) If still weak, search by a single strong keyword:
-   - memory_search_facts("ukrainian", 8)
-Keep searches to 2–4 calls max per turn.
+## Retrieval strategy
+1. Search with main keywords (3-6 words): `memory_search_facts("preference language style", 8)`
+2. If weak — try shorter/synonym queries or alternative phrasings: memory_search_facts("response language", 8)
+3. If still weak — single strong keyword: `memory_search_facts("ukrainian", 8)`
+Keep to 2-4 searches max per turn.
 
-## When to STORE (call memory_add_fact)
+## When to STORE
 Store durable, future-useful facts:
-- user preferences (language, tone, formatting, verbosity)
-- stable profile facts explicitly meant to be remembered (role, timezone, name)
-- long-lived goals, constraints, requirements, "always/never" rules
-- stable project decisions / conventions / environment settings
+- User preferences (language, tone, formatting, verbosity)
+- Stable profile facts meant to be remembered (role, timezone, name)
+- Long-lived goals, constraints, requirements, "always/never" rules
+- Stable project decisions, conventions, environment settings
 
-If unsure whether it's durable: ask the user OR don't store.
+If unsure whether it's durable — ask the user or don't store.
 
-## How to STORE (format for better search)
-Store each fact in a **keyword-rich** format to maximise Lucene recall:
-- One durable idea per fact (atomic).
-- Include **2–3 compact rephrasings / aliases** separated by `;` — both UA and EN variants.
-- End the text with: `tags: tag1, tag2, tag3`
-  - Short, stable lowercase keywords
-  - Include both UA and EN terms when relevant
-  - Include domain keywords (project/tool/feature names)
+## How to STORE
+IMPORTANT: Format facts to maximize Lucene keyword recall.
+- One atomic idea per fact
+- Include 2-3 compact rephrasings/aliases separated by `;`
+- Use stable keywords, not fluffy prose
+- ALWAYS end with: `tags: tag1, tag2, tag3`
+  - Short, lowercase, stable keywords
+  - Multilingual variants when relevant
+  - Domain keywords (project/tool/feature names)
 
-Example fact text:
-`User prefers concise answers in Ukrainian; respond in Ukrainian; мова: українська. tags: preference, language, ukrainian, ua, concise`
+<example>
+User prefers concise answers; short responses; minimal verbosity. tags: preference, style, concise, verbosity
+</example>
 
-Another example:
-`Project uses .NET 10; target framework net10.0; dotnet 10. tags: project, dotnet, net10, framework`
+<example>
+Project uses .NET 10; target framework net10.0; dotnet 10. tags: project, dotnet, net10, framework
+</example>
 
 ## Update vs Add
-If new information conflicts with existing memory:
-1) Search first (memory_search_facts with relevant keywords)
-2) Update the existing fact (memory_update_fact) instead of creating duplicates.
+If new info conflicts with existing memory — search first, then use memory_update_fact instead of creating duplicates.
 
-## When NOT to store
-Do NOT store:
-- secrets (passwords, API keys, auth tokens, private keys)
-- highly sensitive personal data (full address, payment cards, etc.)
-- one-off ephemeral details (unless user explicitly asks to remember)
+## Do NOT store
+- Secrets (passwords, API keys, tokens, private keys)
+- Sensitive personal data (full address, payment cards)
+- Ephemeral one-off details (unless user explicitly asks to remember)
 
-## Output usage
-Use retrieved facts naturally in your response.
-You may briefly mention you checked stored memory, but do not expose internal tool JSON.
+## Output
+Use retrieved facts naturally in your response. Do not expose internal tool JSON.
 """;
 }
