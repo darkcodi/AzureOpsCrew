@@ -31,7 +31,9 @@
 .dm-right-pane-content {
     display: flex;
     flex-direction: column;
-    padding: 16px 12px 0 12px;
+    flex: 1;
     min-height: 0;
+    overflow: hidden;
+    padding: 16px 12px 0 12px;
 }
 
