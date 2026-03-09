@@ -43,6 +43,7 @@ Thumbs.db
 azureopscrew.db
 azureopscrew.db-shm
 azureopscrew.db-wal
+.local/
 
 ####################################
 # ===== Docker =====================
@@ -73,4 +74,3 @@ docker-compose.override.yml
 ####################################
 
 .claude/
-tasks/
