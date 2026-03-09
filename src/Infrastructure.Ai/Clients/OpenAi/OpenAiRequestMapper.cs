@@ -371,7 +371,7 @@ public static class OpenAiRequestMapper
         }
     }
 
-    private static List<OpenAiContentPart> ConvertMultipleContents(
+    private static List<OpenAiContentPart>? ConvertMultipleContents(
         IList<AIContent> contents,
         out List<OpenAiToolCall>? toolCalls)
     {
@@ -426,6 +426,10 @@ public static class OpenAiRequestMapper
             }
         }
 
+        if (parts.Count == 0)
+        {
+            return null;
+        }
         return parts;
     }
 
