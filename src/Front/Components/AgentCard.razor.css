@@ -120,3 +120,29 @@
     background-color: hsl(228, 6%, 22%);
     color: hsl(214, 5%, 55%);
 }
+
+.agent-card-error {
+    margin-top: 12px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background-color: hsla(0, 70%, 50%, 0.12);
+    border: 1px solid hsla(0, 70%, 50%, 0.25);
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.agent-card-error-icon {
+    flex-shrink: 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: hsl(0, 75%, 60%);
+}
+
+.agent-card-error-text {
+    font-size: 12px;
+    line-height: 1.4;
+    color: hsl(0, 60%, 70%);
+    word-break: break-word;
+}
+

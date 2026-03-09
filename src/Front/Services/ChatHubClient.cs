@@ -19,7 +19,7 @@ public sealed class ChatHubClient : IAsyncDisposable
     public event Action<ChatMessageDto>? MessageReceived;
     public event Action<ToolCallDto>? ToolCallReceived;
     public event Action<ReasoningDto>? ReasoningReceived;
-    public event Action<Guid, string>? AgentStatusReceived;
+    public event Action<Guid, string, string?>? AgentStatusReceived;
 
     private ChatHubClient(string joinMethod, string leaveMethod, ILogger logger)
     {
@@ -144,7 +144,7 @@ public sealed class ChatHubClient : IAsyncDisposable
         else if (evt is AgentStatusEvent statusEvt)
         {
             _logger.LogDebug("Received AGENT_STATUS: {AgentId} -> {Status}", statusEvt.AgentId, statusEvt.Status);
-            AgentStatusReceived?.Invoke(statusEvt.AgentId, statusEvt.Status);
+            AgentStatusReceived?.Invoke(statusEvt.AgentId, statusEvt.Status, statusEvt.ErrorMessage);
         }
     }
 

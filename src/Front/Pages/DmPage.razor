@@ -186,12 +186,13 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private async void OnAgentStatusReceived(Guid agentId, string status)
+    private async void OnAgentStatusReceived(Guid agentId, string status, string? errorMessage)
     {
         var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentId);
         if (agent != null)
         {
             agent.Status = status;
+            agent.ErrorMessage = string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase) ? errorMessage : null;
             AppState.Agents.NotifyChanged();
 
             // Update typing indicator and running state

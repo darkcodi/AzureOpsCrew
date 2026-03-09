@@ -93,6 +93,9 @@ public class AgentStatusEvent : ChannelEvent
     [JsonPropertyName("status")]
     public string Status { get; set; } = string.Empty;
 
+    [JsonPropertyName("errorMessage")]
+    public string? ErrorMessage { get; set; }
+
     [JsonPropertyName("timestamp")]
     public new DateTimeOffset Timestamp { get; set; }
 }

@@ -157,7 +157,8 @@ public class AgentRunService
         catch (Exception ex)
         {
             Log.Error(ex, "[BACKGROUND] Agent run failed: {AgentId}, chat: {ChatId}", agentId, chatId);
-            await BroadcastAgentStatus(initialData, "Error");
+            var errorMsg = ex.Message.Length > 300 ? ex.Message[..300] + "…" : ex.Message;
+            await BroadcastAgentStatus(initialData, "Error", errorMsg);
             throw;
         }
 
@@ -178,7 +179,7 @@ public class AgentRunService
         }
     }
 
-    private async Task BroadcastAgentStatus(AgentRunData data, string status)
+    private async Task BroadcastAgentStatus(AgentRunData data, string status, string? errorMessage = null)
     {
         if (data.DmChannel != null && _channelEventBroadcaster != null)
         {
@@ -186,6 +187,7 @@ public class AgentRunService
             {
                 AgentId = data.Agent.Id,
                 Status = status,
+                ErrorMessage = errorMessage,
                 Timestamp = DateTimeOffset.UtcNow,
             };
             await _channelEventBroadcaster.BroadcastDmAgentStatusAsync(data.DmChannel.Id, evt);
