@@ -37,9 +37,9 @@
         }
     </div>
 
-    @if (TypingUsernames.Count > 0)
-    {
-        <div class="typing-bar">
+    <div class="typing-bar">
+        @if (TypingUsernames.Count > 0)
+        {
             <TypingIndicator Usernames="TypingUsernames" />
             @if (IsAgentRunning)
             {
@@ -47,8 +47,8 @@
                     ⏹ Stop
                 </button>
             }
-        </div>
-    }
+        }
+    </div>
 
     @if (ShowInput)
     {
