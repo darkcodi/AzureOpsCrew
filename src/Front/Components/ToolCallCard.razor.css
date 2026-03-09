@@ -70,8 +70,27 @@
 }
 
 .tool-call-card-status.pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     background-color: hsla(38, 96%, 54%, 0.2);
     color: hsl(38, 96%, 64%);
+}
+
+.tool-call-card-spinner {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 2px solid hsla(38, 96%, 64%, 0.3);
+    border-top-color: hsl(38, 96%, 64%);
+    border-radius: 50%;
+    animation: tool-call-spin 0.8s linear infinite;
+}
+
+@keyframes tool-call-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .tool-call-card-status.failed {

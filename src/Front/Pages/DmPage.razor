@@ -30,6 +30,9 @@
                   EmptyIcon="@(AppState.SelectedDm != null ? "💬" : "👋")"
                   EmptyTitle="@(AppState.SelectedDm != null ? "Welcome to this conversation!" : "Select a conversation")"
                   EmptySubtitle="@(AppState.SelectedDm != null ? "This is the start of your conversation." : "Pick a DM from the sidebar to start chatting.")"
+                  TypingUsernames="_typingUsernames"
+                  IsAgentRunning="_isAgentRunning"
+                  OnStopAgent="StopAgent"
                   OnSendMessage="SendDmMessage" />
     </MainArea>
     <RightSidebar>
@@ -46,9 +49,11 @@
     private List<ChatMessageDto> _messages = [];
     private List<ToolCallDto> _toolCalls = [];
     private List<ReasoningDto> _reasonings = [];
+    private List<string> _typingUsernames = [];
     private Guid? _loadedDmId;
     private IDisposable? _appStateSubscription;
     private ChatHubClient? _hubClient;
+    private bool _isAgentRunning;
 
     protected override async Task OnInitializedAsync()
     {
@@ -95,6 +100,7 @@
             _hubClient.MessageReceived -= OnMessageReceived;
             _hubClient.ToolCallReceived -= OnToolCallReceived;
             _hubClient.ReasoningReceived -= OnReasoningReceived;
+            _hubClient.AgentStatusReceived -= OnAgentStatusReceived;
             await _hubClient.DisposeAsync();
         }
     }
@@ -105,6 +111,8 @@
         if (dmId.HasValue && dmId != _loadedDmId)
         {
             _loadedDmId = dmId;
+            _typingUsernames = [];
+            _isAgentRunning = false;
             var agentId = AppState.SelectedDm?.Agent1Id ?? AppState.SelectedDm?.Agent2Id;
             if (agentId.HasValue)
             {
@@ -139,6 +147,7 @@
             _hubClient.MessageReceived -= OnMessageReceived;
             _hubClient.ToolCallReceived -= OnToolCallReceived;
             _hubClient.ReasoningReceived -= OnReasoningReceived;
+            _hubClient.AgentStatusReceived -= OnAgentStatusReceived;
             await _hubClient.DisposeAsync();
         }
 
@@ -146,6 +155,7 @@
         _hubClient.MessageReceived += OnMessageReceived;
         _hubClient.ToolCallReceived += OnToolCallReceived;
         _hubClient.ReasoningReceived += OnReasoningReceived;
+        _hubClient.AgentStatusReceived += OnAgentStatusReceived;
 
         var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/');
         var hubUrl = $"{baseUrl}/dms/{dmId}/events";
@@ -163,16 +173,49 @@
 
     private async void OnToolCallReceived(ToolCallDto toolCall)
     {
-        if (_toolCalls.Any(t => t.CallId == toolCall.CallId))
-            return;
-
-        _toolCalls.Add(toolCall);
+        var existing = _toolCalls.FirstOrDefault(t => t.CallId == toolCall.CallId);
+        if (existing != null)
+        {
+            // Update in-place: a completed event arrived for an already-started tool call
+            existing.Result = toolCall.Result;
+            existing.IsError = toolCall.IsError;
+        }
+        else
+        {
+            _toolCalls.Add(toolCall);
+        }
         await InvokeAsync(StateHasChanged);
     }
 
     private async void OnReasoningReceived(ReasoningDto reasoning)
     {
         _reasonings.Add(reasoning);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnAgentStatusReceived(Guid agentId, string status, string? errorMessage)
+    {
+        var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentId);
+        if (agent != null)
+        {
+            agent.Status = status;
+            agent.ErrorMessage = string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase) ? errorMessage : null;
+            AppState.Agents.NotifyChanged();
+
+            // Update typing indicator and running state
+            var isRunning = string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase);
+            _isAgentRunning = isRunning;
+
+            if (isRunning)
+            {
+                if (!_typingUsernames.Contains(agent.Username))
+                    _typingUsernames.Add(agent.Username);
+            }
+            else
+            {
+                _typingUsernames.Remove(agent.Username);
+            }
+        }
         await InvokeAsync(StateHasChanged);
     }
 
@@ -208,6 +251,18 @@
         {
             newMessage.IsOwnMessage = true;
             _messages.Add(newMessage);
+        }
+    }
+
+    private async Task StopAgent()
+    {
+        var dm = AppState.SelectedDm;
+        if (dm == null) return;
+
+        var agentId = dm.Agent1Id ?? dm.Agent2Id;
+        if (agentId.HasValue)
+        {
+            await DmService.StopAgentDmAsync(agentId.Value);
         }
     }
 

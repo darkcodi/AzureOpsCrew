@@ -96,4 +96,18 @@ public class DmService
             return null;
         }
     }
+
+    public async Task<bool> StopAgentDmAsync(Guid agentId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"/api/dms/agents/{agentId}/stop", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error stopping agent {agentId}: {ex.Message}");
+            return false;
+        }
+    }
 }

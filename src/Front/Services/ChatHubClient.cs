@@ -19,6 +19,7 @@ public sealed class ChatHubClient : IAsyncDisposable
     public event Action<ChatMessageDto>? MessageReceived;
     public event Action<ToolCallDto>? ToolCallReceived;
     public event Action<ReasoningDto>? ReasoningReceived;
+    public event Action<Guid, string, string?>? AgentStatusReceived;
 
     private ChatHubClient(string joinMethod, string leaveMethod, ILogger logger)
     {
@@ -116,6 +117,20 @@ public sealed class ChatHubClient : IAsyncDisposable
             _logger.LogDebug("Received MESSAGE_ADDED for message {Id}", msg.Message.Id);
             MessageReceived?.Invoke(msg.Message);
         }
+        else if (evt is ToolCallStartEvent toolStartEvt)
+        {
+            _logger.LogDebug("Received TOOL_CALL_START for {ToolName} {CallId}", toolStartEvt.ToolName, toolStartEvt.CallId);
+            var dto = new ToolCallDto
+            {
+                ToolName = toolStartEvt.ToolName,
+                CallId = toolStartEvt.CallId,
+                Args = toolStartEvt.Args,
+                Result = null,
+                IsError = false,
+                Timestamp = toolStartEvt.Timestamp,
+            };
+            ToolCallReceived?.Invoke(dto);
+        }
         else if (evt is ToolCallCompletedEvent toolEvt)
         {
             _logger.LogDebug("Received TOOL_CALL_COMPLETED for {ToolName} {CallId}", toolEvt.ToolName, toolEvt.CallId);
@@ -139,6 +154,11 @@ public sealed class ChatHubClient : IAsyncDisposable
                 Timestamp = reasoningEvt.Timestamp,
             };
             ReasoningReceived?.Invoke(dto);
+        }
+        else if (evt is AgentStatusEvent statusEvt)
+        {
+            _logger.LogDebug("Received AGENT_STATUS: {AgentId} -> {Status}", statusEvt.AgentId, statusEvt.Status);
+            AgentStatusReceived?.Invoke(statusEvt.AgentId, statusEvt.Status, statusEvt.ErrorMessage);
         }
     }
 

@@ -17,6 +17,7 @@ public class AgentDto
 
     public string Color { get; set; } = "#43b581";
     public string Status { get; set; } = "Idle";
+    public string? ErrorMessage { get; set; }
     public bool IsTyping { get; set; }
 }
 

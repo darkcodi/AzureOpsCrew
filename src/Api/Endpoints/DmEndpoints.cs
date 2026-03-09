@@ -342,5 +342,33 @@ public static class DmEndpoints
             return Results.Created($"/api/users/{userId}/dms/agents/{agentId}/messages/{message.Id}", message);
         })
         .Produces<Message>(StatusCodes.Status201Created);
+
+        // POST: /api/dms/agents/{agentId}/stop - Stops a running agent in a DM
+        group.MapPost("/agents/{agentId}/stop", (
+            HttpContext httpContext,
+            Guid agentId,
+            AzureOpsCrewContext context,
+            AgentScheduler agentScheduler,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = httpContext.User.GetRequiredUserId();
+
+            // Find the DM channel between the user and the agent
+            var dm = context.Dms
+                .FirstOrDefault(dm =>
+                    (dm.User1Id == userId && dm.Agent1Id == agentId) ||
+                    (dm.User2Id == userId && dm.Agent1Id == agentId) ||
+                    (dm.User1Id == userId && dm.Agent2Id == agentId) ||
+                    (dm.User2Id == userId && dm.Agent2Id == agentId));
+
+            if (dm is null)
+                return Results.NotFound("DM channel not found.");
+
+            var stopped = agentScheduler.StopAgent(agentId, dm.Id);
+            return stopped
+                ? Results.Ok(new { stopped = true })
+                : Results.Ok(new { stopped = false, message = "Agent was not running." });
+        })
+        .Produces(StatusCodes.Status200OK);
     }
 }

@@ -23,6 +23,13 @@
             </span>
             <span class="agent-card-pill agent-card-pill-model">@GetModelDisplay()</span>
         </div>
+        @if (!string.IsNullOrEmpty(Agent.ErrorMessage))
+        {
+            <div class="agent-card-error">
+                <span class="agent-card-error-icon">⚠</span>
+                <span class="agent-card-error-text">@Agent.ErrorMessage</span>
+            </div>
+        }
     </div>
 </div>
 
