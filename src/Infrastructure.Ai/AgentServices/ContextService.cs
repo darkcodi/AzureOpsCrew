@@ -1,4 +1,5 @@
 using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.Orchestration;
 using AzureOpsCrew.Domain.Utils;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using Microsoft.Extensions.AI;
@@ -15,6 +16,19 @@ public class ContextService
     public IList<ChatMessage> PrepareContext(AgentRunData data)
     {
         var allMessages = GroupMessages(data);
+
+        // For orchestrated channels, workers on a task get limited context
+        if (data.Channel != null && data.Channel.IsOrchestrated
+            && data.Trigger?.Kind == AgentTriggerKind.TaskAssigned
+            && data.Channel.ManagerAgentId != data.Agent.Id)
+        {
+            // Worker gets only the last N channel messages as context (enough for awareness)
+            const int workerContextMessageLimit = 10;
+            if (allMessages.Count > workerContextMessageLimit)
+            {
+                allMessages = allMessages.Skip(allMessages.Count - workerContextMessageLimit).ToList();
+            }
+        }
 
         if (ShouldTruncateToolResults(allMessages, TokenThresholdHigh))
         {

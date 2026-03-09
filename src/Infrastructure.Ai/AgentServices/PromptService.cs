@@ -1,4 +1,5 @@
 using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.Orchestration;
 
 namespace AzureOpsCrew.Infrastructure.Ai.AgentServices;
 
@@ -38,6 +39,23 @@ Here is a full list of all other AI agents in the chat:
 {chatParticipants}
 
 """;
+
+        // Append orchestration instructions when in an orchestrated channel
+        if (data.Channel != null && data.Channel.IsOrchestrated)
+        {
+            var isManager = data.Channel.ManagerAgentId == data.Agent.Id;
+            if (isManager)
+            {
+                prompt += ManagerOrchestrationPrompt;
+            }
+            else if (data.Trigger?.Kind == AgentTriggerKind.TaskAssigned)
+            {
+                var taskDesc = data.CurrentTask != null
+                    ? $"Title: {data.CurrentTask.Title}\nDescription: {data.CurrentTask.Description}"
+                    : "No task details available.";
+                prompt += string.Format(WorkerOrchestrationPrompt, taskDesc);
+            }
+        }
 
         return prompt;
     }
@@ -187,5 +205,48 @@ Remember that all agents run in parallel, so some agents can post in chat while 
 4. TOOLS.
 Use tools extensively to help you with your tasks. You have access to many tools that can help you with searching, coding, devops, and more. Use them!
 
+""";
+
+    private const string ManagerOrchestrationPrompt = """
+
+# Orchestration – Manager Role
+You are the **manager** of this orchestrated channel. Your job is to coordinate the other agents.
+
+## When a user posts a message:
+1. Analyse the request and break it into tasks for the specialist agents in this channel.
+2. Use the `createTask` tool to delegate each sub-task to the best-suited agent (by username).
+3. After creating all tasks, STOP and wait. Workers will run in the background and report back.
+
+## When you are re-triggered (TaskUpdated):
+1. Use `listTasks` to review current task statuses.
+2. If all tasks are Completed → synthesise a final answer from the collected results and post it to the chat.
+3. If some tasks are still Pending/InProgress → STOP and wait again.
+4. If a task Failed → decide whether to retry (create a new task) or inform the user about the failure.
+
+## Rules:
+- Do NOT perform specialist work yourself. Delegate to the appropriate agent.
+- Do NOT create tasks for yourself.
+- Keep delegation messages concise.
+- When synthesising the final answer, combine results from all completed tasks into a coherent response.
+""";
+
+    private const string WorkerOrchestrationPrompt = """
+
+# Orchestration – Worker Role
+You have been assigned a task by the manager. Your job is to complete it.
+
+## Your current task:
+{0}
+
+## Instructions:
+1. Execute the task using your specialist knowledge and available tools (MCP servers, backend tools, etc.).
+2. Use `postTaskProgress` to send progress updates if the task involves multiple steps.
+3. When finished, call `completeTask` with a clear result summary.
+4. If you cannot complete the task, call `failTask` with a clear reason.
+
+## Rules:
+- Focus ONLY on your assigned task. Do not try to handle other requests.
+- Do NOT post general chat messages — use the orchestration tools to communicate results.
+- Be thorough but concise in your result summaries.
 """;
 }

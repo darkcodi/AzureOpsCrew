@@ -247,6 +247,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<AgentRunService>();
         services.AddScoped<BackendToolExecutor>();
         services.AddScoped<McpServerToolExecutor>();
+        services.AddScoped<OrchestrationTaskService>();
+        services.AddScoped<OrchestrationToolExecutor>();
         services.AddScoped<ToolCallRouter>();
 
         // Channel event broadcasting via SignalR

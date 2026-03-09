@@ -7,6 +7,7 @@ using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.Orchestration;
 using AzureOpsCrew.Infrastructure.Ai.Models;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
@@ -316,10 +317,19 @@ public static class ChannelEndpoints
             // Broadcast the new message via SignalR
             await channelEventBroadcaster.BroadcastMessageAddedAsync(channel.Id, message);
 
-            // Trigger all agents in the channel
-            foreach (var agentId in channel.AgentIds)
+            // Trigger agents in the channel
+            if (channel.IsOrchestrated)
             {
-                agentTriggerQueue.Enqueue(agentId, channel.Id);
+                // Orchestrated: only the manager agent is triggered by user messages
+                agentTriggerQueue.Enqueue(AgentTrigger.UserMessage(channel.ManagerAgentId!.Value, channel.Id));
+            }
+            else
+            {
+                // Legacy: trigger all agents in the channel
+                foreach (var agentId in channel.AgentIds)
+                {
+                    agentTriggerQueue.Enqueue(agentId, channel.Id);
+                }
             }
 
             return Results.Created($"/api/channels/{id}/messages/{message.Id}", message);

@@ -80,7 +80,8 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 Description = "General discussion and collaboration",
                 ConversationId = null,
                 AgentIds = agents.Select(a => a.Id).ToArray(),
-                DateCreated = DateTime.UtcNow
+                DateCreated = DateTime.UtcNow,
+                ManagerAgentId = managerId, // Orchestrated: manager is the coordinator
             };
             await AddChannelWithChatIfNotExists(generalChannel, agents.Select(a => a.Id).ToArray());
 

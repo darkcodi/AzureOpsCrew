@@ -7,6 +7,8 @@ using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Domain.Tools.BackEnd;
+using AzureOpsCrew.Domain.Tools.BackEnd.Orchestration;
+using AzureOpsCrew.Domain.Orchestration;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.Agents.AI;
@@ -41,12 +43,22 @@ public class AgentRunService
         _channelEventBroadcaster = serviceProvider.GetService<IChannelEventBroadcaster>();
     }
 
-    public async Task Run(Guid agentId, Guid chatId, CancellationToken ct)
+    /// <summary>
+    /// Orchestration-aware entry point. Accepts a trigger with kind/taskId context.
+    /// </summary>
+    public Task Run(AgentTrigger trigger, CancellationToken ct)
+        => Run(trigger.AgentId, trigger.ChatId, ct, trigger);
+
+    public Task Run(Guid agentId, Guid chatId, CancellationToken ct)
+        => Run(agentId, chatId, ct, trigger: null);
+
+    private async Task Run(Guid agentId, Guid chatId, CancellationToken ct, AgentTrigger? trigger)
     {
-        Log.Information("[BACKGROUND] Starting agent run: {AgentId}, chat: {ChatId}", agentId, chatId);
+        Log.Information("[BACKGROUND] Starting agent run: {AgentId}, chat: {ChatId}, trigger: {TriggerKind}",
+            agentId, chatId, trigger?.Kind.ToString() ?? "legacy");
 
         // Pre-load data to determine chat type for status broadcasts
-        var initialData = await LoadAgentRunData(agentId, chatId, ct);
+        var initialData = await LoadAgentRunData(agentId, chatId, ct, trigger);
 
         try
         {
@@ -63,7 +75,7 @@ public class AgentRunService
                 Log.Debug("[BACKGROUND] Generated new ChatMessageId {ChatMessageId} for agent {AgentId} iteration {Iteration}", chatMessageId, agentId, iteration);
 
                 // load new DB state for each iteration to get the latest messages and thoughts
-                var data = await LoadAgentRunData(agentId, chatId, ct);
+                var data = await LoadAgentRunData(agentId, chatId, ct, trigger);
 
                 // Make one LLM call
                 var newAgentThoughts = new List<AocAgentThought>();
@@ -117,7 +129,7 @@ public class AgentRunService
                         await _channelEventBroadcaster.BroadcastDmToolCallStartAsync(data.DmChannel.Id, startEvt);
                     }
 
-                    var toolCallResult = await _toolCallRouter.ExecuteToolCall(toolCall, data);
+                    var toolCallResult = await _toolCallRouter.ExecuteToolCall(toolCall, data, ct);
                     var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow, Guid.NewGuid());
                     newToolCallResults.Add(toolResultMessage);
 
@@ -207,7 +219,7 @@ public class AgentRunService
         }
     }
 
-    private async Task<AgentRunData> LoadAgentRunData(Guid agentId, Guid chatId, CancellationToken ct)
+    private async Task<AgentRunData> LoadAgentRunData(Guid agentId, Guid chatId, CancellationToken ct, AgentTrigger? trigger = null)
     {
         Log.Debug("[BACKGROUND] Loading data for agent {AgentId}, chat {ChatId}", agentId, chatId);
 
@@ -267,6 +279,30 @@ public class AgentRunService
         var mcpToolDeclarations = McpToolDeclarationBuilder.Build(mcpServers, agentMcpBindings);
         tools.AddRange(mcpToolDeclarations);
 
+        // ── Orchestration tool injection ──
+        OrchestrationTask? currentTask = null;
+        if (channel != null && channel.IsOrchestrated)
+        {
+            var isManager = channel.ManagerAgentId == agentId;
+            if (isManager)
+            {
+                // Manager gets createTask + listTasks
+                tools.AddRange(OrchestrationTools.GetManagerTools());
+            }
+            else if (trigger?.Kind == AgentTriggerKind.TaskAssigned || trigger?.Kind == AgentTriggerKind.TaskUpdated)
+            {
+                // Worker on task assignment gets postTaskProgress + completeTask + failTask
+                tools.AddRange(OrchestrationTools.GetWorkerTools());
+            }
+
+            // Load current task if trigger references one
+            if (trigger?.TaskId != null)
+            {
+                currentTask = await _dbContext.OrchestrationTasks
+                    .FirstOrDefaultAsync(t => t.Id == trigger.TaskId, ct);
+            }
+        }
+
         // load participant agents in the chat for context
         var agentIds = isChannel
             ? channel?.AgentIds ?? [] // todo: concat user ids when we have users in channels
@@ -287,6 +323,8 @@ public class AgentRunService
             Tools = tools,
             McpServers = mcpServers,
             ParticipantAgents = participantAgents,
+            Trigger = trigger,
+            CurrentTask = currentTask,
         };
     }
 

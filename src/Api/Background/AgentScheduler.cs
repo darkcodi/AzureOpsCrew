@@ -1,3 +1,4 @@
+using AzureOpsCrew.Domain.Orchestration;
 using Serilog;
 using System.Collections.Concurrent;
 
@@ -13,17 +14,20 @@ public class AgentScheduler : BackgroundService
         _serviceProvider = serviceProvider;
     }
 
-    public bool StartAgent(Guid agentId, Guid chatId)
+    public bool StartAgent(AgentTrigger trigger)
     {
         var cts = new CancellationTokenSource();
+        var key = (trigger.AgentId, trigger.ChatId);
 
-        if (!_jobs.TryAdd((agentId, chatId), cts))
+        if (!_jobs.TryAdd(key, cts))
         {
-            Log.Warning("[BACKGROUND] Agent {AgentId} for chat {ChatId} is already running", agentId, chatId);
+            Log.Warning("[BACKGROUND] Agent {AgentId} for chat {ChatId} is already running (trigger: {TriggerKind})",
+                trigger.AgentId, trigger.ChatId, trigger.Kind);
             return false;
         }
 
-        Log.Information("[BACKGROUND] Starting agent {AgentId} for chat {ChatId}", agentId, chatId);
+        Log.Information("[BACKGROUND] Starting agent {AgentId} for chat {ChatId} (trigger: {TriggerKind}, taskId: {TaskId})",
+            trigger.AgentId, trigger.ChatId, trigger.Kind, trigger.TaskId);
 
         _ = Task.Run(async () =>
         {
@@ -31,17 +35,17 @@ public class AgentScheduler : BackgroundService
             {
                 using var scope = _serviceProvider.CreateScope();
                 var agentRunService = scope.ServiceProvider.GetRequiredService<AgentRunService>();
-                await agentRunService.Run(agentId, chatId, cts.Token);
+                await agentRunService.Run(trigger, cts.Token);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[BACKGROUND] Error running agent {AgentId} for chat {ChatId}", agentId, chatId);
+                Log.Error(ex, "[BACKGROUND] Error running agent {AgentId} for chat {ChatId}", trigger.AgentId, trigger.ChatId);
             }
             finally
             {
-                _jobs.TryRemove((agentId, chatId), out _);
+                _jobs.TryRemove(key, out _);
                 cts.Dispose();
-                Log.Information("[BACKGROUND] Agent {AgentId} for chat {ChatId} stopped", agentId, chatId);
+                Log.Information("[BACKGROUND] Agent {AgentId} for chat {ChatId} stopped", trigger.AgentId, trigger.ChatId);
             }
         });
 
@@ -75,9 +79,9 @@ public class AgentScheduler : BackgroundService
                 Log.Debug("[BACKGROUND] Dequeued {TriggerCount} agent triggers", triggers.Count);
             }
 
-            foreach (var (agentId, chatId) in triggers)
+            foreach (var trigger in triggers)
             {
-                StartAgent(agentId, chatId);
+                StartAgent(trigger);
             }
 
             await Task.Delay(1000, stoppingToken);

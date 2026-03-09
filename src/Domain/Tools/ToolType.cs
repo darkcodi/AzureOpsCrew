@@ -5,4 +5,5 @@ public enum ToolType
     BackEnd,
     FrontEnd,
     McpServer,
+    Orchestration,
 }

@@ -1,6 +1,7 @@
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.McpServerConfigurations;
+using AzureOpsCrew.Domain.Orchestration;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.Tools;
 
@@ -25,4 +26,8 @@ public class AgentRunData
 
     // List of all other agents in the channel or DM, including the current agent
     public List<Agent> ParticipantAgents { get; set; } = null!;
+
+    // Orchestration support
+    public AgentTrigger? Trigger { get; set; }
+    public OrchestrationTask? CurrentTask { get; set; }
 }

@@ -9,14 +9,19 @@ public class ToolCallRouter
 {
     private readonly BackendToolExecutor _backendToolExecutor;
     private readonly McpServerToolExecutor _mcpServerToolExecutor;
+    private readonly OrchestrationToolExecutor _orchestrationToolExecutor;
 
-    public ToolCallRouter(BackendToolExecutor backendToolExecutor, McpServerToolExecutor mcpServerToolExecutor)
+    public ToolCallRouter(
+        BackendToolExecutor backendToolExecutor,
+        McpServerToolExecutor mcpServerToolExecutor,
+        OrchestrationToolExecutor orchestrationToolExecutor)
     {
         _backendToolExecutor = backendToolExecutor;
         _mcpServerToolExecutor = mcpServerToolExecutor;
+        _orchestrationToolExecutor = orchestrationToolExecutor;
     }
 
-    public async Task<AocFunctionResultContent> ExecuteToolCall(AocFunctionCallContent toolCall, AgentRunData data)
+    public async Task<AocFunctionResultContent> ExecuteToolCall(AocFunctionCallContent toolCall, AgentRunData data, CancellationToken ct = default)
     {
         var toolName = toolCall.Name;
         var toolDeclaration = data.Tools.FirstOrDefault(t => string.Equals(t.Name, toolName, StringComparison.OrdinalIgnoreCase));
@@ -49,6 +54,12 @@ public class ToolCallRouter
                 Log.Debug("[BACKGROUND] Executing tool {ToolName} (type: {ToolType})", toolName, toolDeclaration.ToolType);
 
                 return await _mcpServerToolExecutor.ExecuteTool(data, toolDeclaration, toolCall);
+            }
+            if (toolDeclaration.ToolType == ToolType.Orchestration)
+            {
+                Log.Debug("[BACKGROUND] Executing orchestration tool {ToolName}", toolName);
+
+                return await _orchestrationToolExecutor.ExecuteTool(data, toolDeclaration, toolCall, ct);
             }
 
             return AocFunctionResultContent.ToolDoesNotExist(toolCall.CallId);

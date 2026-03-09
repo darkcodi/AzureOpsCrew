@@ -25,7 +25,11 @@ namespace AzureOpsCrew.Domain.Channels
 
         public Guid[] AgentIds { get; set; } = [];
 
+        public Guid? ManagerAgentId { get; set; }
+
         public DateTime DateCreated { get; set; } = DateTime.UtcNow;
+
+        public bool IsOrchestrated => ManagerAgentId.HasValue;
 
         public void AddAgent(Guid agentId)
         {

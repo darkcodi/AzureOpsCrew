@@ -26,6 +26,8 @@ public sealed class ChannelEntityTypeConfiguration : IEntityTypeConfiguration<Ch
                    v => v == null ? null : string.Join(',', v),
                    s => string.IsNullOrEmpty(s) ? System.Array.Empty<Guid>() : s.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(Guid.Parse).ToArray());
 
+        builder.Property(c => c.ManagerAgentId);
+
         builder.Property(c => c.DateCreated)
                .IsRequired();
     }
