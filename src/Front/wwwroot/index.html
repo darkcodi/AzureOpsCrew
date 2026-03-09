@@ -156,8 +156,12 @@
     </script>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
     <script>
-        window.scrollToBottom = (element) => {
-            if (element) {
+        window.scrollToBottom = (element, forceScroll) => {
+            if (!element) return;
+            // On initial load, always scroll. Otherwise only scroll if user is at the bottom.
+            const threshold = 80;
+            const atBottom = element.scrollTop + element.clientHeight >= element.scrollHeight - threshold;
+            if (forceScroll || atBottom) {
                 element.scrollTop = element.scrollHeight;
             }
         };

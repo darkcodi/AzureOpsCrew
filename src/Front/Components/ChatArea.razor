@@ -93,10 +93,13 @@
     {
         if (firstRender || Messages.Count != _lastMessageCount || ToolCalls.Count != _lastToolCallCount || Reasonings.Count != _lastReasoningCount)
         {
+            var hadNoContent = _lastMessageCount == 0 && _lastToolCallCount == 0 && _lastReasoningCount == 0;
+            var hasContent = Messages.Count > 0 || ToolCalls.Count > 0 || Reasonings.Count > 0;
             _lastMessageCount = Messages.Count;
             _lastToolCallCount = ToolCalls.Count;
             _lastReasoningCount = Reasonings.Count;
-            await ScrollToBottomAsync();
+            var forceScroll = firstRender || (hadNoContent && hasContent);
+            await ScrollToBottomAsync(forceScroll: forceScroll);
         }
     }
 
@@ -158,8 +161,8 @@
         await OnSendMessage.InvokeAsync(text);
     }
 
-    private async Task ScrollToBottomAsync()
+    private async Task ScrollToBottomAsync(bool forceScroll = false)
     {
-        await JS.InvokeVoidAsync("scrollToBottom", _messagesContainer);
+        await JS.InvokeVoidAsync("scrollToBottom", _messagesContainer, forceScroll);
     }
 }
