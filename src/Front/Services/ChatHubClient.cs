@@ -117,6 +117,20 @@ public sealed class ChatHubClient : IAsyncDisposable
             _logger.LogDebug("Received MESSAGE_ADDED for message {Id}", msg.Message.Id);
             MessageReceived?.Invoke(msg.Message);
         }
+        else if (evt is ToolCallStartEvent toolStartEvt)
+        {
+            _logger.LogDebug("Received TOOL_CALL_START for {ToolName} {CallId}", toolStartEvt.ToolName, toolStartEvt.CallId);
+            var dto = new ToolCallDto
+            {
+                ToolName = toolStartEvt.ToolName,
+                CallId = toolStartEvt.CallId,
+                Args = toolStartEvt.Args,
+                Result = null,
+                IsError = false,
+                Timestamp = toolStartEvt.Timestamp,
+            };
+            ToolCallReceived?.Invoke(dto);
+        }
         else if (evt is ToolCallCompletedEvent toolEvt)
         {
             _logger.LogDebug("Received TOOL_CALL_COMPLETED for {ToolName} {CallId}", toolEvt.ToolName, toolEvt.CallId);

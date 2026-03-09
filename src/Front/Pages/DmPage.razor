@@ -173,10 +173,17 @@
 
     private async void OnToolCallReceived(ToolCallDto toolCall)
     {
-        if (_toolCalls.Any(t => t.CallId == toolCall.CallId))
-            return;
-
-        _toolCalls.Add(toolCall);
+        var existing = _toolCalls.FirstOrDefault(t => t.CallId == toolCall.CallId);
+        if (existing != null)
+        {
+            // Update in-place: a completed event arrived for an already-started tool call
+            existing.Result = toolCall.Result;
+            existing.IsError = toolCall.IsError;
+        }
+        else
+        {
+            _toolCalls.Add(toolCall);
+        }
         await InvokeAsync(StateHasChanged);
     }
 

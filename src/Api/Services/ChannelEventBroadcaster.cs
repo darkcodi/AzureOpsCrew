@@ -12,6 +12,7 @@ public interface IChannelEventBroadcaster
 {
     Task BroadcastMessageAddedAsync(Guid channelId, Message message);
     Task BroadcastDmMessageAddedAsync(Guid dmId, Message message);
+    Task BroadcastDmToolCallStartAsync(Guid dmId, ToolCallStartEvent evt);
     Task BroadcastDmToolCallCompletedAsync(Guid dmId, ToolCallCompletedEvent evt);
     Task BroadcastDmReasoningContentAsync(Guid dmId, ReasoningContentEvent evt);
     Task BroadcastDmAgentStatusAsync(Guid dmId, AgentStatusEvent evt);
@@ -54,6 +55,13 @@ public class ChannelEventBroadcaster : IChannelEventBroadcaster
         _logger.LogDebug("Broadcasting MESSAGE_ADDED to DM {DmId}", dmId);
 
         return _dmHubContext.Clients.Group(groupName).SendAsync("event", eventMessage);
+    }
+
+    public Task BroadcastDmToolCallStartAsync(Guid dmId, ToolCallStartEvent evt)
+    {
+        var groupName = GetDmGroupName(dmId);
+        _logger.LogDebug("Broadcasting TOOL_CALL_START to DM {DmId}", dmId);
+        return _dmHubContext.Clients.Group(groupName).SendAsync("event", evt);
     }
 
     public Task BroadcastDmToolCallCompletedAsync(Guid dmId, ToolCallCompletedEvent evt)
