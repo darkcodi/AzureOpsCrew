@@ -198,28 +198,22 @@ else
 
         try
         {
-            // The result may be wrapped: { "callId"/"CallId": "...", "result"/"Result": "<json string>", "isError"/"IsError": false }
-            // Note: History uses PascalCase (Result, CallId, IsError), SignalR streaming uses camelCase (result, callId, isError)
+            // The result may be wrapped: { "callId": "...", "result": "<json string>", "isError": false }
             var jsonToParse = result;
 
-            if (result.ValueKind == JsonValueKind.Object)
+            if (result.ValueKind == JsonValueKind.Object && result.TryGetProperty("result", out var innerResult))
             {
-                // Try both camelCase (streaming) and PascalCase (history)
-                if (result.TryGetProperty("result", out var innerResult) ||
-                    result.TryGetProperty("Result", out innerResult))
+                if (innerResult.ValueKind == JsonValueKind.String)
                 {
-                    if (innerResult.ValueKind == JsonValueKind.String)
+                    var innerStr = innerResult.GetString();
+                    if (!string.IsNullOrEmpty(innerStr))
                     {
-                        var innerStr = innerResult.GetString();
-                        if (!string.IsNullOrEmpty(innerStr))
-                        {
-                            using var doc = JsonDocument.Parse(innerStr);
-                            _ipData = ParseIpData(doc.RootElement);
-                            return;
-                        }
+                        using var doc = JsonDocument.Parse(innerStr);
+                        _ipData = ParseIpData(doc.RootElement);
+                        return;
                     }
-                    jsonToParse = innerResult;
                 }
+                jsonToParse = innerResult;
             }
 
             if (jsonToParse.ValueKind == JsonValueKind.String)
