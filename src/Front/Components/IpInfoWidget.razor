@@ -38,7 +38,7 @@ else if (_ipData is null)
 else
 {
     <div class="ip-widget">
-        <div class="ip-widget-header">
+        <button type="button" class="ip-widget-header @(_isExpanded ? "expanded" : "")" @onclick="ToggleExpanded">
             <div class="ip-widget-icon-wrap">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -59,8 +59,16 @@ else
             {
                 <span class="ip-widget-badge direct">direct</span>
             }
-        </div>
+            <span class="ip-widget-chevron" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            </span>
+        </button>
 
+        @if (_isExpanded)
+        {
         <div class="ip-widget-body">
             <!-- Location Section -->
             <div class="ip-widget-section">
@@ -188,6 +196,7 @@ else
                 </div>
             }
         </div>
+        }
     </div>
 }
 
@@ -196,6 +205,9 @@ else
     public ToolCallDto ToolCall { get; set; } = null!;
 
     private IpData? _ipData;
+    private bool _isExpanded;
+
+    private void ToggleExpanded() => _isExpanded = !_isExpanded;
 
     protected override void OnParametersSet()
     {

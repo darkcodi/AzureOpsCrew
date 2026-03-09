@@ -18,11 +18,41 @@
 /* ── Header ── */
 .ip-widget-header {
     display: flex;
+    width: 100%;
+    border: none;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
     align-items: center;
     gap: 12px;
     padding: 14px 16px;
     background: linear-gradient(90deg, hsla(235, 80%, 62%, 0.12) 0%, transparent 100%);
     border-bottom: 1px solid hsl(228, 8%, 20%);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+.ip-widget-header:hover {
+    background: linear-gradient(90deg, hsla(235, 80%, 62%, 0.18) 0%, transparent 100%);
+}
+
+.ip-widget-header:not(.expanded) {
+    border-bottom-color: transparent;
+}
+
+.ip-widget-chevron {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: hsl(214, 5%, 52%);
+    transition: transform 0.2s ease;
+}
+
+.ip-widget-header.expanded .ip-widget-chevron {
+    transform: rotate(180deg);
 }
 
 .ip-widget-icon-wrap {
