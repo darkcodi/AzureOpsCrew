@@ -79,11 +79,32 @@ public class ReasoningContentEvent : ChannelEvent
     public DateTimeOffset Timestamp { get; set; }
 }
 
+/// <summary>
+/// Event fired when an agent's status changes (e.g. Running, Idle, Error).
+/// </summary>
+public class AgentStatusEvent : ChannelEvent
+{
+    public AgentStatusEvent()
+    {
+        Type = ChannelEventTypes.AgentStatus;
+    }
+
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("timestamp")]
+    public new DateTimeOffset Timestamp { get; set; }
+}
+
 public static class ChannelEventTypes
 {
     public const string MessageAdded = "MESSAGE_ADDED";
     public const string ToolCallCompleted = "TOOL_CALL_COMPLETED";
     public const string ReasoningContent = "REASONING_CONTENT";
+    public const string AgentStatus = "AGENT_STATUS";
 }
 
 /// <summary>
@@ -115,6 +136,7 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
             ChannelEventTypes.MessageAdded => jsonElement.Deserialize<MessageAddedEvent>(options),
             ChannelEventTypes.ToolCallCompleted => jsonElement.Deserialize<ToolCallCompletedEvent>(options),
             ChannelEventTypes.ReasoningContent => jsonElement.Deserialize<ReasoningContentEvent>(options),
+            ChannelEventTypes.AgentStatus => jsonElement.Deserialize<AgentStatusEvent>(options),
             _ => null
         };
     }

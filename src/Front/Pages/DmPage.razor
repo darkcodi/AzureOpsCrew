@@ -95,6 +95,7 @@
             _hubClient.MessageReceived -= OnMessageReceived;
             _hubClient.ToolCallReceived -= OnToolCallReceived;
             _hubClient.ReasoningReceived -= OnReasoningReceived;
+            _hubClient.AgentStatusReceived -= OnAgentStatusReceived;
             await _hubClient.DisposeAsync();
         }
     }
@@ -139,6 +140,7 @@
             _hubClient.MessageReceived -= OnMessageReceived;
             _hubClient.ToolCallReceived -= OnToolCallReceived;
             _hubClient.ReasoningReceived -= OnReasoningReceived;
+            _hubClient.AgentStatusReceived -= OnAgentStatusReceived;
             await _hubClient.DisposeAsync();
         }
 
@@ -146,6 +148,7 @@
         _hubClient.MessageReceived += OnMessageReceived;
         _hubClient.ToolCallReceived += OnToolCallReceived;
         _hubClient.ReasoningReceived += OnReasoningReceived;
+        _hubClient.AgentStatusReceived += OnAgentStatusReceived;
 
         var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/');
         var hubUrl = $"{baseUrl}/dms/{dmId}/events";
@@ -173,6 +176,17 @@
     private async void OnReasoningReceived(ReasoningDto reasoning)
     {
         _reasonings.Add(reasoning);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnAgentStatusReceived(Guid agentId, string status)
+    {
+        var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentId);
+        if (agent != null)
+        {
+            agent.Status = status;
+            AppState.Agents.NotifyChanged();
+        }
         await InvokeAsync(StateHasChanged);
     }
 

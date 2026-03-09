@@ -130,5 +130,11 @@ public class ReactiveList<T> : IList<T>
 
     public IDisposable Subscribe(Action handler) => _inner.Subscribe(handler);
 
+    /// <summary>
+    /// Manually notify subscribers that the list contents have changed.
+    /// Use this after mutating an item's properties in-place.
+    /// </summary>
+    public void NotifyChanged() => _inner.ForceNotify();
+
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

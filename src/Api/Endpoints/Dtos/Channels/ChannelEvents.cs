@@ -78,6 +78,26 @@ public class ReasoningContentEvent : ChannelEvent
 }
 
 /// <summary>
+/// Event fired when an agent's status changes (e.g. Running, Idle, Error).
+/// </summary>
+public class AgentStatusEvent : ChannelEvent
+{
+    public AgentStatusEvent()
+    {
+        Type = ChannelEventTypes.AgentStatus;
+    }
+
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("timestamp")]
+    public new DateTimeOffset Timestamp { get; set; }
+}
+
+/// <summary>
 /// JSON converter for channel event polymorphic deserialization.
 /// </summary>
 public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
@@ -107,6 +127,7 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
             ChannelEventTypes.MessageAdded => jsonElement.Deserialize(options.GetTypeInfo(typeof(MessageAddedEvent))) as MessageAddedEvent,
             ChannelEventTypes.ToolCallCompleted => jsonElement.Deserialize(options.GetTypeInfo(typeof(ToolCallCompletedEvent))) as ToolCallCompletedEvent,
             ChannelEventTypes.ReasoningContent => jsonElement.Deserialize(options.GetTypeInfo(typeof(ReasoningContentEvent))) as ReasoningContentEvent,
+            ChannelEventTypes.AgentStatus => jsonElement.Deserialize(options.GetTypeInfo(typeof(AgentStatusEvent))) as AgentStatusEvent,
             _ => throw new JsonException($"Unknown ChannelEvent type discriminator: '{discriminator}'")
         };
 
@@ -133,6 +154,9 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
                 break;
             case ReasoningContentEvent reasoningContent:
                 JsonSerializer.Serialize(writer, reasoningContent, options.GetTypeInfo(typeof(ReasoningContentEvent)));
+                break;
+            case AgentStatusEvent agentStatus:
+                JsonSerializer.Serialize(writer, agentStatus, options.GetTypeInfo(typeof(AgentStatusEvent)));
                 break;
             default:
                 throw new InvalidOperationException($"Unknown channel event type: {value.GetType().Name}");
