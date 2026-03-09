@@ -1,5 +1,6 @@
 @namespace Front.Components
 @using System.Text.Json
+@using Serilog
 
 @if (ToolCall.IsError)
 {
@@ -197,22 +198,28 @@ else
 
         try
         {
-            // The result may be wrapped: { "CallId": "...", "Result": "<json string>", "IsError": false }
+            // The result may be wrapped: { "callId"/"CallId": "...", "result"/"Result": "<json string>", "isError"/"IsError": false }
+            // Note: History uses PascalCase (Result, CallId, IsError), SignalR streaming uses camelCase (result, callId, isError)
             var jsonToParse = result;
 
-            if (result.ValueKind == JsonValueKind.Object && result.TryGetProperty("Result", out var innerResult))
+            if (result.ValueKind == JsonValueKind.Object)
             {
-                if (innerResult.ValueKind == JsonValueKind.String)
+                // Try both camelCase (streaming) and PascalCase (history)
+                if (result.TryGetProperty("result", out var innerResult) ||
+                    result.TryGetProperty("Result", out innerResult))
                 {
-                    var innerStr = innerResult.GetString();
-                    if (!string.IsNullOrEmpty(innerStr))
+                    if (innerResult.ValueKind == JsonValueKind.String)
                     {
-                        using var doc = JsonDocument.Parse(innerStr);
-                        _ipData = ParseIpData(doc.RootElement);
-                        return;
+                        var innerStr = innerResult.GetString();
+                        if (!string.IsNullOrEmpty(innerStr))
+                        {
+                            using var doc = JsonDocument.Parse(innerStr);
+                            _ipData = ParseIpData(doc.RootElement);
+                            return;
+                        }
                     }
+                    jsonToParse = innerResult;
                 }
-                jsonToParse = innerResult;
             }
 
             if (jsonToParse.ValueKind == JsonValueKind.String)
