@@ -45,8 +45,14 @@ public class AgentRunService
     {
         Log.Information("[BACKGROUND] Starting agent run: {AgentId}, chat: {ChatId}", agentId, chatId);
 
+        // Pre-load data to determine chat type for status broadcasts
+        var initialData = await LoadAgentRunData(agentId, chatId, ct);
+
         try
         {
+            // Broadcast "Running" status at the start
+            await BroadcastAgentStatus(initialData, "Running");
+
             var iteration = 0;
             const int maxIterations = 50;
             // multiple iterations for one run, stops when outputted a final text content
@@ -98,6 +104,19 @@ public class AgentRunService
                 // ToDo: Add support for parallel tool calls if needed. For now we execute them sequentially for simplicity.
                 foreach (var toolCall in newToolCalls)
                 {
+                    // Broadcast tool call start event before execution
+                    if (data.DmChannel != null && _channelEventBroadcaster != null)
+                    {
+                        var startEvt = new ToolCallStartEvent
+                        {
+                            ToolName = toolCall.Name,
+                            CallId = toolCall.CallId,
+                            Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
+                            Timestamp = DateTimeOffset.UtcNow,
+                        };
+                        await _channelEventBroadcaster.BroadcastDmToolCallStartAsync(data.DmChannel.Id, startEvt);
+                    }
+
                     var toolCallResult = await _toolCallRouter.ExecuteToolCall(toolCall, data);
                     var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow, Guid.NewGuid());
                     newToolCallResults.Add(toolResultMessage);
@@ -151,9 +170,12 @@ public class AgentRunService
         catch (Exception ex)
         {
             Log.Error(ex, "[BACKGROUND] Agent run failed: {AgentId}, chat: {ChatId}", agentId, chatId);
+            var errorMsg = ex.Message.Length > 300 ? ex.Message[..300] + "…" : ex.Message;
+            await BroadcastAgentStatus(initialData, "Error", errorMsg);
             throw;
         }
 
+        await BroadcastAgentStatus(initialData, "Idle");
         Log.Information("[BACKGROUND] Agent run completed: {AgentId}, chat: {ChatId}", agentId, chatId);
     }
 
@@ -167,6 +189,21 @@ public class AgentRunService
         else if (data.DmChannel != null && _channelEventBroadcaster != null)
         {
             await _channelEventBroadcaster.BroadcastDmMessageAddedAsync(data.DmChannel.Id, message);
+        }
+    }
+
+    private async Task BroadcastAgentStatus(AgentRunData data, string status, string? errorMessage = null)
+    {
+        if (data.DmChannel != null && _channelEventBroadcaster != null)
+        {
+            var evt = new AgentStatusEvent
+            {
+                AgentId = data.Agent.Id,
+                Status = status,
+                ErrorMessage = errorMessage,
+                Timestamp = DateTimeOffset.UtcNow,
+            };
+            await _channelEventBroadcaster.BroadcastDmAgentStatusAsync(data.DmChannel.Id, evt);
         }
     }
 

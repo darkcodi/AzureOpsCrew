@@ -10,7 +10,13 @@
             </svg>
         </span>
         <span class="tool-call-card-name">@ToolCall.ToolName</span>
-        <span class="tool-call-card-status @GetStatusClass()">@GetStatusLabel()</span>
+        <span class="tool-call-card-status @GetStatusClass()">
+            @if (ToolCall.Result is null)
+            {
+                <span class="tool-call-card-spinner" aria-hidden="true"></span>
+            }
+            @GetStatusLabel()
+        </span>
         <span class="tool-call-card-chevron @(_expanded ? "expanded" : "")" aria-hidden="true">
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -66,7 +72,7 @@
     private string GetStatusLabel()
     {
         if (ToolCall.Result is null)
-            return "pending";
+            return "running";
         return ToolCall.IsError ? "failed" : "completed";
     }
 

@@ -32,6 +32,29 @@ public class MessageAddedEvent : ChannelEvent
 }
 
 /// <summary>
+/// Event fired when an agent starts executing a tool call (before the result is available).
+/// </summary>
+public class ToolCallStartEvent : ChannelEvent
+{
+    public ToolCallStartEvent()
+    {
+        Type = ChannelEventTypes.ToolCallStart;
+    }
+
+    [JsonPropertyName("toolName")]
+    public string ToolName { get; set; } = string.Empty;
+
+    [JsonPropertyName("callId")]
+    public string CallId { get; set; } = string.Empty;
+
+    [JsonPropertyName("args")]
+    public object? Args { get; set; }
+
+    [JsonPropertyName("timestamp")]
+    public new DateTimeOffset Timestamp { get; set; }
+}
+
+/// <summary>
 /// Event fired when an agent completes a tool call (with result or error).
 /// </summary>
 public class ToolCallCompletedEvent : ChannelEvent
@@ -78,6 +101,29 @@ public class ReasoningContentEvent : ChannelEvent
 }
 
 /// <summary>
+/// Event fired when an agent's status changes (e.g. Running, Idle, Error).
+/// </summary>
+public class AgentStatusEvent : ChannelEvent
+{
+    public AgentStatusEvent()
+    {
+        Type = ChannelEventTypes.AgentStatus;
+    }
+
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("errorMessage")]
+    public string? ErrorMessage { get; set; }
+
+    [JsonPropertyName("timestamp")]
+    public new DateTimeOffset Timestamp { get; set; }
+}
+
+/// <summary>
 /// JSON converter for channel event polymorphic deserialization.
 /// </summary>
 public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
@@ -105,8 +151,10 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
         ChannelEvent? result = discriminator switch
         {
             ChannelEventTypes.MessageAdded => jsonElement.Deserialize(options.GetTypeInfo(typeof(MessageAddedEvent))) as MessageAddedEvent,
+            ChannelEventTypes.ToolCallStart => jsonElement.Deserialize(options.GetTypeInfo(typeof(ToolCallStartEvent))) as ToolCallStartEvent,
             ChannelEventTypes.ToolCallCompleted => jsonElement.Deserialize(options.GetTypeInfo(typeof(ToolCallCompletedEvent))) as ToolCallCompletedEvent,
             ChannelEventTypes.ReasoningContent => jsonElement.Deserialize(options.GetTypeInfo(typeof(ReasoningContentEvent))) as ReasoningContentEvent,
+            ChannelEventTypes.AgentStatus => jsonElement.Deserialize(options.GetTypeInfo(typeof(AgentStatusEvent))) as AgentStatusEvent,
             _ => throw new JsonException($"Unknown ChannelEvent type discriminator: '{discriminator}'")
         };
 
@@ -128,11 +176,17 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
             case MessageAddedEvent messageAdded:
                 JsonSerializer.Serialize(writer, messageAdded, options.GetTypeInfo(typeof(MessageAddedEvent)));
                 break;
+            case ToolCallStartEvent toolCallStart:
+                JsonSerializer.Serialize(writer, toolCallStart, options.GetTypeInfo(typeof(ToolCallStartEvent)));
+                break;
             case ToolCallCompletedEvent toolCallCompleted:
                 JsonSerializer.Serialize(writer, toolCallCompleted, options.GetTypeInfo(typeof(ToolCallCompletedEvent)));
                 break;
             case ReasoningContentEvent reasoningContent:
                 JsonSerializer.Serialize(writer, reasoningContent, options.GetTypeInfo(typeof(ReasoningContentEvent)));
+                break;
+            case AgentStatusEvent agentStatus:
+                JsonSerializer.Serialize(writer, agentStatus, options.GetTypeInfo(typeof(AgentStatusEvent)));
                 break;
             default:
                 throw new InvalidOperationException($"Unknown channel event type: {value.GetType().Name}");

@@ -12,8 +12,10 @@ public interface IChannelEventBroadcaster
 {
     Task BroadcastMessageAddedAsync(Guid channelId, Message message);
     Task BroadcastDmMessageAddedAsync(Guid dmId, Message message);
+    Task BroadcastDmToolCallStartAsync(Guid dmId, ToolCallStartEvent evt);
     Task BroadcastDmToolCallCompletedAsync(Guid dmId, ToolCallCompletedEvent evt);
     Task BroadcastDmReasoningContentAsync(Guid dmId, ReasoningContentEvent evt);
+    Task BroadcastDmAgentStatusAsync(Guid dmId, AgentStatusEvent evt);
 }
 
 /// <summary>
@@ -55,6 +57,13 @@ public class ChannelEventBroadcaster : IChannelEventBroadcaster
         return _dmHubContext.Clients.Group(groupName).SendAsync("event", eventMessage);
     }
 
+    public Task BroadcastDmToolCallStartAsync(Guid dmId, ToolCallStartEvent evt)
+    {
+        var groupName = GetDmGroupName(dmId);
+        _logger.LogDebug("Broadcasting TOOL_CALL_START to DM {DmId}", dmId);
+        return _dmHubContext.Clients.Group(groupName).SendAsync("event", evt);
+    }
+
     public Task BroadcastDmToolCallCompletedAsync(Guid dmId, ToolCallCompletedEvent evt)
     {
         var groupName = GetDmGroupName(dmId);
@@ -66,6 +75,13 @@ public class ChannelEventBroadcaster : IChannelEventBroadcaster
     {
         var groupName = GetDmGroupName(dmId);
         _logger.LogDebug("Broadcasting REASONING_CONTENT to DM {DmId}", dmId);
+        return _dmHubContext.Clients.Group(groupName).SendAsync("event", evt);
+    }
+
+    public Task BroadcastDmAgentStatusAsync(Guid dmId, AgentStatusEvent evt)
+    {
+        var groupName = GetDmGroupName(dmId);
+        _logger.LogDebug("Broadcasting AGENT_STATUS ({Status}) to DM {DmId}", evt.Status, dmId);
         return _dmHubContext.Clients.Group(groupName).SendAsync("event", evt);
     }
 

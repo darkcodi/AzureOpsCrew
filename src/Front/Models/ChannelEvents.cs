@@ -31,6 +31,29 @@ public class MessageAddedEvent : ChannelEvent
 }
 
 /// <summary>
+/// Event fired when an agent starts executing a tool call (before the result is available).
+/// </summary>
+public class ToolCallStartEvent : ChannelEvent
+{
+    public ToolCallStartEvent()
+    {
+        Type = ChannelEventTypes.ToolCallStart;
+    }
+
+    [JsonPropertyName("toolName")]
+    public string ToolName { get; set; } = string.Empty;
+
+    [JsonPropertyName("callId")]
+    public string CallId { get; set; } = string.Empty;
+
+    [JsonPropertyName("args")]
+    public JsonElement? Args { get; set; }
+
+    [JsonPropertyName("timestamp")]
+    public DateTimeOffset Timestamp { get; set; }
+}
+
+/// <summary>
 /// Event fired when an agent completes a tool call.
 /// </summary>
 public class ToolCallCompletedEvent : ChannelEvent
@@ -79,11 +102,36 @@ public class ReasoningContentEvent : ChannelEvent
     public DateTimeOffset Timestamp { get; set; }
 }
 
+/// <summary>
+/// Event fired when an agent's status changes (e.g. Running, Idle, Error).
+/// </summary>
+public class AgentStatusEvent : ChannelEvent
+{
+    public AgentStatusEvent()
+    {
+        Type = ChannelEventTypes.AgentStatus;
+    }
+
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("errorMessage")]
+    public string? ErrorMessage { get; set; }
+
+    [JsonPropertyName("timestamp")]
+    public new DateTimeOffset Timestamp { get; set; }
+}
+
 public static class ChannelEventTypes
 {
     public const string MessageAdded = "MESSAGE_ADDED";
+    public const string ToolCallStart = "TOOL_CALL_START";
     public const string ToolCallCompleted = "TOOL_CALL_COMPLETED";
     public const string ReasoningContent = "REASONING_CONTENT";
+    public const string AgentStatus = "AGENT_STATUS";
 }
 
 /// <summary>
@@ -113,8 +161,10 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
         return discriminator switch
         {
             ChannelEventTypes.MessageAdded => jsonElement.Deserialize<MessageAddedEvent>(options),
+            ChannelEventTypes.ToolCallStart => jsonElement.Deserialize<ToolCallStartEvent>(options),
             ChannelEventTypes.ToolCallCompleted => jsonElement.Deserialize<ToolCallCompletedEvent>(options),
             ChannelEventTypes.ReasoningContent => jsonElement.Deserialize<ReasoningContentEvent>(options),
+            ChannelEventTypes.AgentStatus => jsonElement.Deserialize<AgentStatusEvent>(options),
             _ => null
         };
     }
