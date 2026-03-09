@@ -146,3 +146,52 @@
     word-break: break-word;
 }
 
+.agent-card-mcp-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid hsl(228, 6%, 26%);
+}
+
+.agent-card-mcp-title {
+    margin: 0 0 12px 0;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: hsl(214, 5%, 66%);
+}
+
+.agent-card-mcp-server {
+    margin-bottom: 12px;
+}
+
+.agent-card-mcp-server:last-child {
+    margin-bottom: 0;
+}
+
+.agent-card-mcp-server-name {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: hsl(210, 3%, 85%);
+    margin-bottom: 6px;
+}
+
+.agent-card-mcp-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.agent-card-mcp-tool {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid hsl(228, 6%, 30%);
+    background: hsl(228, 6%, 22%);
+    font-size: 11px;
+    font-family: "SF Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+    color: hsl(210, 3%, 75%);
+}
+
