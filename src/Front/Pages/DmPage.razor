@@ -30,6 +30,7 @@
                   EmptyIcon="@(AppState.SelectedDm != null ? "💬" : "👋")"
                   EmptyTitle="@(AppState.SelectedDm != null ? "Welcome to this conversation!" : "Select a conversation")"
                   EmptySubtitle="@(AppState.SelectedDm != null ? "This is the start of your conversation." : "Pick a DM from the sidebar to start chatting.")"
+                  TypingUsernames="_typingUsernames"
                   OnSendMessage="SendDmMessage" />
     </MainArea>
     <RightSidebar>
@@ -46,6 +47,7 @@
     private List<ChatMessageDto> _messages = [];
     private List<ToolCallDto> _toolCalls = [];
     private List<ReasoningDto> _reasonings = [];
+    private List<string> _typingUsernames = [];
     private Guid? _loadedDmId;
     private IDisposable? _appStateSubscription;
     private ChatHubClient? _hubClient;
@@ -106,6 +108,7 @@
         if (dmId.HasValue && dmId != _loadedDmId)
         {
             _loadedDmId = dmId;
+            _typingUsernames = [];
             var agentId = AppState.SelectedDm?.Agent1Id ?? AppState.SelectedDm?.Agent2Id;
             if (agentId.HasValue)
             {
@@ -186,6 +189,17 @@
         {
             agent.Status = status;
             AppState.Agents.NotifyChanged();
+
+            // Update typing indicator
+            if (string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!_typingUsernames.Contains(agent.Username))
+                    _typingUsernames.Add(agent.Username);
+            }
+            else
+            {
+                _typingUsernames.Remove(agent.Username);
+            }
         }
         await InvokeAsync(StateHasChanged);
     }
