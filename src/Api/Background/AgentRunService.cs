@@ -78,7 +78,7 @@ public class AgentRunService
                 await SaveAgentThoughts(agentId, chatId, newAgentThoughts, ct);
 
                 // Broadcast reasoning content via SignalR
-                if (data.DmChannel != null && _channelEventBroadcaster != null)
+                if (_channelEventBroadcaster != null)
                 {
                     foreach (var thought in newAgentThoughts)
                     {
@@ -89,7 +89,14 @@ public class AgentRunService
                                 Text = reasoning.Text,
                                 Timestamp = DateTimeOffset.UtcNow,
                             };
-                            await _channelEventBroadcaster.BroadcastDmReasoningContentAsync(data.DmChannel.Id, evt);
+                            if (data.Channel != null)
+                            {
+                                await _channelEventBroadcaster.BroadcastChannelReasoningContentAsync(data.Channel.Id, evt);
+                            }
+                            else if (data.DmChannel != null)
+                            {
+                                await _channelEventBroadcaster.BroadcastDmReasoningContentAsync(data.DmChannel.Id, evt);
+                            }
                         }
                     }
                 }
@@ -105,7 +112,7 @@ public class AgentRunService
                 foreach (var toolCall in newToolCalls)
                 {
                     // Broadcast tool call start event before execution
-                    if (data.DmChannel != null && _channelEventBroadcaster != null)
+                    if (_channelEventBroadcaster != null && (data.Channel != null || data.DmChannel != null))
                     {
                         var startEvt = new ToolCallStartEvent
                         {
@@ -114,14 +121,21 @@ public class AgentRunService
                             Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
                             Timestamp = DateTimeOffset.UtcNow,
                         };
-                        await _channelEventBroadcaster.BroadcastDmToolCallStartAsync(data.DmChannel.Id, startEvt);
+                        if (data.Channel != null)
+                        {
+                            await _channelEventBroadcaster.BroadcastChannelToolCallStartAsync(data.Channel.Id, startEvt);
+                        }
+                        else if (data.DmChannel != null)
+                        {
+                            await _channelEventBroadcaster.BroadcastDmToolCallStartAsync(data.DmChannel.Id, startEvt);
+                        }
                     }
 
                     var toolCallResult = await _toolCallRouter.ExecuteToolCall(toolCall, data);
                     var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow, Guid.NewGuid());
                     newToolCallResults.Add(toolResultMessage);
 
-                    if (data.DmChannel != null && _channelEventBroadcaster != null)
+                    if (_channelEventBroadcaster != null && (data.Channel != null || data.DmChannel != null))
                     {
                         var toolCallResultObj = toolCallResult.Result as ToolCallResult;
                         var isError = toolCallResultObj?.IsError ?? false;
@@ -134,7 +148,14 @@ public class AgentRunService
                             IsError = isError,
                             Timestamp = DateTimeOffset.UtcNow,
                         };
-                        await _channelEventBroadcaster.BroadcastDmToolCallCompletedAsync(data.DmChannel.Id, evt);
+                        if (data.Channel != null)
+                        {
+                            await _channelEventBroadcaster.BroadcastChannelToolCallCompletedAsync(data.Channel.Id, evt);
+                        }
+                        else if (data.DmChannel != null)
+                        {
+                            await _channelEventBroadcaster.BroadcastDmToolCallCompletedAsync(data.DmChannel.Id, evt);
+                        }
                     }
                 }
                 await SaveAgentThoughts(agentId, chatId, newToolCallResults, ct);
@@ -195,7 +216,7 @@ public class AgentRunService
 
     private async Task BroadcastAgentStatus(AgentRunData data, string status, string? errorMessage = null)
     {
-        if (data.DmChannel != null && _channelEventBroadcaster != null)
+        if (_channelEventBroadcaster != null && (data.Channel != null || data.DmChannel != null))
         {
             var evt = new AgentStatusEvent
             {
@@ -204,7 +225,14 @@ public class AgentRunService
                 ErrorMessage = errorMessage,
                 Timestamp = DateTimeOffset.UtcNow,
             };
-            await _channelEventBroadcaster.BroadcastDmAgentStatusAsync(data.DmChannel.Id, evt);
+            if (data.Channel != null)
+            {
+                await _channelEventBroadcaster.BroadcastChannelAgentStatusAsync(data.Channel.Id, evt);
+            }
+            else if (data.DmChannel != null)
+            {
+                await _channelEventBroadcaster.BroadcastDmAgentStatusAsync(data.DmChannel.Id, evt);
+            }
         }
     }
 
