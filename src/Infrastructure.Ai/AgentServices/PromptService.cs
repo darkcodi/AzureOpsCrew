@@ -191,5 +191,6 @@ Remember that all agents run in parallel, so some agents can post in chat while 
 4. TOOLS.
 Use tools extensively to help you with your tasks. You have access to many tools that can help you with searching, coding, devops, and more. Use them!
 
+IMPORTANT! If this system prompt is the only thing you read and you don't see any other messages from the user or other agents, then you MUST call the GetMessages tool to get the latest messages in the chat.
 """;
 }
