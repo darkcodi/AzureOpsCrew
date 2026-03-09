@@ -73,7 +73,15 @@ else
                     Location
                 </div>
                 <div class="ip-widget-location">
-                    <span class="ip-widget-flag">@GetFlagEmoji(_ipData.CountryCode)</span>
+                    @if (!string.IsNullOrEmpty(_ipData.CountryCode) && _ipData.CountryCode.Length == 2)
+                    {
+                        <img class="ip-widget-flag" src="https://flagcdn.com/w40/@(_ipData.CountryCode.ToLowerInvariant()).png"
+                             alt="" role="presentation" />
+                    }
+                    else
+                    {
+                        <span class="ip-widget-flag ip-widget-flag-fallback">@GetFlagEmoji(_ipData.CountryCode)</span>
+                    }
                     <span class="ip-widget-location-text">
                         @_ipData.CityName@(string.IsNullOrEmpty(_ipData.RegionName) ? "" : $", {_ipData.RegionName}") · @_ipData.CountryName
                     </span>
