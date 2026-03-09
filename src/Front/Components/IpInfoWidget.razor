@@ -198,27 +198,12 @@ else
 
         try
         {
-            // The result may be wrapped: { "callId": "...", "result": "<json string>", "isError": false }
             var jsonToParse = result;
 
-            if (result.ValueKind == JsonValueKind.Object && result.TryGetProperty("result", out var innerResult))
+            // Result may be a JSON string that needs parsing
+            if (result.ValueKind == JsonValueKind.String)
             {
-                if (innerResult.ValueKind == JsonValueKind.String)
-                {
-                    var innerStr = innerResult.GetString();
-                    if (!string.IsNullOrEmpty(innerStr))
-                    {
-                        using var doc = JsonDocument.Parse(innerStr);
-                        _ipData = ParseIpData(doc.RootElement);
-                        return;
-                    }
-                }
-                jsonToParse = innerResult;
-            }
-
-            if (jsonToParse.ValueKind == JsonValueKind.String)
-            {
-                var str = jsonToParse.GetString();
+                var str = result.GetString();
                 if (!string.IsNullOrEmpty(str))
                 {
                     using var doc = JsonDocument.Parse(str);

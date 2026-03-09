@@ -123,13 +123,14 @@ public class AgentRunService
 
                     if (data.DmChannel != null && _channelEventBroadcaster != null)
                     {
-                        var isError = (toolCallResult.Result as ToolCallResult)?.IsError ?? false;
+                        var toolCallResultObj = toolCallResult.Result as ToolCallResult;
+                        var isError = toolCallResultObj?.IsError ?? false;
                         var evt = new ToolCallCompletedEvent
                         {
                             ToolName = toolCall.Name,
                             CallId = toolCall.CallId,
                             Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
-                            Result = toolCallResult.Result,
+                            Result = toolCallResultObj?.Result,
                             IsError = isError,
                             Timestamp = DateTimeOffset.UtcNow,
                         };
