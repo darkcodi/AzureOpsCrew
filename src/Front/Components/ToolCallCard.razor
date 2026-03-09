@@ -11,7 +11,7 @@
         </span>
         <span class="tool-call-card-name">@ToolCall.ToolName</span>
         <span class="tool-call-card-status @GetStatusClass()">
-            @if (ToolCall.Result is null)
+            @if (!ToolCall.IsFinished)
             {
                 <span class="tool-call-card-spinner" aria-hidden="true"></span>
             }
@@ -43,7 +43,7 @@
                     <pre class="tool-call-card-json">@FormatResult(result)</pre>
                 </div>
             }
-            else if (ToolCall.Result is null)
+            else if (!ToolCall.IsFinished)
             {
                 <div class="tool-call-card-section">
                     <div class="tool-call-card-section-label">Result</div>
@@ -64,14 +64,14 @@
 
     private string GetStatusClass()
     {
-        if (ToolCall.Result is null)
+        if (!ToolCall.IsFinished)
             return "pending";
         return ToolCall.IsError ? "failed" : "completed";
     }
 
     private string GetStatusLabel()
     {
-        if (ToolCall.Result is null)
+        if (!ToolCall.IsFinished)
             return "running";
         return ToolCall.IsError ? "failed" : "completed";
     }
