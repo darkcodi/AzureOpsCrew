@@ -176,7 +176,42 @@ public static class DmEndpoints
                     object? resultObj;
                     try
                     {
-                        resultObj = JsonSerializer.Deserialize<JsonElement>(resultStr);
+                        var deserialized = JsonSerializer.Deserialize<JsonElement>(resultStr);
+
+                        // The result may be wrapped in a ToolCallResult object: { "CallId": "...", "Result": "...", "IsError": false }
+                        // Extract the actual Result value if this wrapper is present
+                        if (deserialized.ValueKind == JsonValueKind.Object &&
+                            deserialized.TryGetProperty("Result", out var actualResult))
+                        {
+                            // Check if actualResult is a JSON string that needs to be parsed
+                            if (actualResult.ValueKind == JsonValueKind.String)
+                            {
+                                var innerStr = actualResult.GetString();
+                                if (!string.IsNullOrEmpty(innerStr))
+                                {
+                                    try
+                                    {
+                                        resultObj = JsonSerializer.Deserialize<JsonElement>(innerStr);
+                                    }
+                                    catch
+                                    {
+                                        resultObj = actualResult;
+                                    }
+                                }
+                                else
+                                {
+                                    resultObj = actualResult;
+                                }
+                            }
+                            else
+                            {
+                                resultObj = actualResult;
+                            }
+                        }
+                        else
+                        {
+                            resultObj = deserialized;
+                        }
                     }
                     catch
                     {

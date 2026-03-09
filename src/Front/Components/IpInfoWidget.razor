@@ -1,0 +1,365 @@
+@namespace Front.Components
+@using System.Text.Json
+@using Serilog
+
+@if (ToolCall.IsError)
+{
+    <ToolCallCard ToolCall="ToolCall" />
+}
+else if (_ipData is null)
+{
+    <!-- Loading skeleton -->
+    <div class="ip-widget">
+        <div class="ip-widget-header">
+            <div class="ip-widget-icon-wrap">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+            </div>
+            <div class="ip-widget-header-text">
+                <span class="ip-widget-title">Fetching IP info…</span>
+                <span class="ip-widget-subtitle-skeleton"></span>
+            </div>
+            <span class="ip-widget-badge loading">
+                <span class="ip-widget-spinner"></span>
+                loading
+            </span>
+        </div>
+        <div class="ip-widget-body">
+            <div class="ip-widget-skeleton-row"></div>
+            <div class="ip-widget-skeleton-row short"></div>
+            <div class="ip-widget-skeleton-row"></div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="ip-widget">
+        <button type="button" class="ip-widget-header @(_isExpanded ? "expanded" : "")" @onclick="ToggleExpanded">
+            <div class="ip-widget-icon-wrap">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+            </div>
+            <div class="ip-widget-header-text">
+                <span class="ip-widget-title">@_ipData.IpAddress</span>
+                <span class="ip-widget-subtitle">IPv@(_ipData.IpVersion) · @_ipData.AsnOrganization</span>
+            </div>
+            @if (_ipData.IsProxy)
+            {
+                <span class="ip-widget-badge proxy">proxy</span>
+            }
+            else
+            {
+                <span class="ip-widget-badge direct">direct</span>
+            }
+            <span class="ip-widget-chevron" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            </span>
+        </button>
+
+        @if (_isExpanded)
+        {
+        <div class="ip-widget-body">
+            <!-- Location Section -->
+            <div class="ip-widget-section">
+                <div class="ip-widget-section-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    Location
+                </div>
+                <div class="ip-widget-location">
+                    @if (!string.IsNullOrEmpty(_ipData.CountryCode) && _ipData.CountryCode.Length == 2)
+                    {
+                        <img class="ip-widget-flag" src="https://flagcdn.com/w40/@(_ipData.CountryCode.ToLowerInvariant()).png"
+                             alt="" role="presentation" />
+                    }
+                    else
+                    {
+                        <span class="ip-widget-flag ip-widget-flag-fallback">@GetFlagEmoji(_ipData.CountryCode)</span>
+                    }
+                    <span class="ip-widget-location-text">
+                        @_ipData.CityName@(string.IsNullOrEmpty(_ipData.RegionName) ? "" : $", {_ipData.RegionName}") · @_ipData.CountryName
+                    </span>
+                </div>
+                @if (!string.IsNullOrEmpty(_ipData.Continent))
+                {
+                    <div class="ip-widget-detail-row">
+                        <span class="ip-widget-detail-label">Continent</span>
+                        <span class="ip-widget-detail-value">@_ipData.Continent</span>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(_ipData.Capital))
+                {
+                    <div class="ip-widget-detail-row">
+                        <span class="ip-widget-detail-label">Capital</span>
+                        <span class="ip-widget-detail-value">@_ipData.Capital</span>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(_ipData.ZipCode))
+                {
+                    <div class="ip-widget-detail-row">
+                        <span class="ip-widget-detail-label">ZIP Code</span>
+                        <span class="ip-widget-detail-value">@_ipData.ZipCode</span>
+                    </div>
+                }
+                <div class="ip-widget-detail-row">
+                    <span class="ip-widget-detail-label">Coordinates</span>
+                    <span class="ip-widget-detail-value">@_ipData.Latitude.ToString("F4"), @_ipData.Longitude.ToString("F4")</span>
+                </div>
+            </div>
+
+            <!-- Network Section -->
+            <div class="ip-widget-section">
+                <div class="ip-widget-section-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+                        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+                        <line x1="6" y1="6" x2="6.01" y2="6"/>
+                        <line x1="6" y1="18" x2="6.01" y2="18"/>
+                    </svg>
+                    Network
+                </div>
+                @if (!string.IsNullOrEmpty(_ipData.Asn))
+                {
+                    <div class="ip-widget-detail-row">
+                        <span class="ip-widget-detail-label">ASN</span>
+                        <span class="ip-widget-detail-value">@_ipData.Asn</span>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(_ipData.AsnOrganization))
+                {
+                    <div class="ip-widget-detail-row">
+                        <span class="ip-widget-detail-label">Organization</span>
+                        <span class="ip-widget-detail-value">@_ipData.AsnOrganization</span>
+                    </div>
+                }
+                <div class="ip-widget-detail-row">
+                    <span class="ip-widget-detail-label">Proxy</span>
+                    <span class="ip-widget-detail-value">@(_ipData.IsProxy ? "Yes" : "No")</span>
+                </div>
+            </div>
+
+            <!-- Locale Section -->
+            @if (_ipData.TimeZones.Count > 0 || _ipData.Currencies.Count > 0 || _ipData.Languages.Count > 0)
+            {
+                <div class="ip-widget-section">
+                    <div class="ip-widget-section-label">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        Locale
+                    </div>
+                    @if (_ipData.TimeZones.Count > 0)
+                    {
+                        <div class="ip-widget-detail-row">
+                            <span class="ip-widget-detail-label">Timezone</span>
+                            <span class="ip-widget-detail-value">@string.Join(", ", _ipData.TimeZones)</span>
+                        </div>
+                    }
+                    @if (_ipData.Currencies.Count > 0)
+                    {
+                        <div class="ip-widget-detail-row">
+                            <span class="ip-widget-detail-label">Currency</span>
+                            <span class="ip-widget-detail-value">@string.Join(", ", _ipData.Currencies)</span>
+                        </div>
+                    }
+                    @if (_ipData.Languages.Count > 0)
+                    {
+                        <div class="ip-widget-detail-row">
+                            <span class="ip-widget-detail-label">Languages</span>
+                            <span class="ip-widget-detail-value">@string.Join(", ", _ipData.Languages)</span>
+                        </div>
+                    }
+                    @if (_ipData.PhoneCodes.Count > 0)
+                    {
+                        <div class="ip-widget-detail-row">
+                            <span class="ip-widget-detail-label">Phone Code</span>
+                            <span class="ip-widget-detail-value">@string.Join(", ", _ipData.PhoneCodes.Select(c => $"+{c}"))</span>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public ToolCallDto ToolCall { get; set; } = null!;
+
+    private IpData? _ipData;
+    private bool _isExpanded;
+
+    private void ToggleExpanded() => _isExpanded = !_isExpanded;
+
+    protected override void OnParametersSet()
+    {
+        _ipData = null;
+
+        if (ToolCall.Result is not { } result || result.ValueKind == JsonValueKind.Undefined)
+            return;
+
+        try
+        {
+            var jsonToParse = result;
+
+            // Result may be a JSON string that needs parsing
+            if (result.ValueKind == JsonValueKind.String)
+            {
+                var str = result.GetString();
+                if (!string.IsNullOrEmpty(str))
+                {
+                    using var doc = JsonDocument.Parse(str);
+                    _ipData = ParseIpData(doc.RootElement);
+                    return;
+                }
+            }
+
+            if (jsonToParse.ValueKind == JsonValueKind.Object)
+            {
+                _ipData = ParseIpData(jsonToParse);
+            }
+        }
+        catch
+        {
+            // If parsing fails, _ipData stays null → loading skeleton shown.
+            // Could also fall back to ToolCallCard via IsError flag but we keep it simple.
+        }
+    }
+
+    private static IpData ParseIpData(JsonElement el)
+    {
+        return new IpData
+        {
+            IpVersion = GetInt(el, "ipVersion"),
+            IpAddress = GetString(el, "ipAddress") ?? "Unknown",
+            Latitude = GetDouble(el, "latitude"),
+            Longitude = GetDouble(el, "longitude"),
+            CountryName = GetString(el, "countryName") ?? "Unknown",
+            CountryCode = GetString(el, "countryCode") ?? "",
+            Capital = GetString(el, "capital") ?? "",
+            ZipCode = GetString(el, "zipCode") ?? "",
+            CityName = GetString(el, "cityName") ?? "Unknown",
+            RegionName = GetString(el, "regionName") ?? "",
+            Continent = GetString(el, "continent") ?? "",
+            Asn = GetString(el, "asn") ?? "",
+            AsnOrganization = GetString(el, "asnOrganization") ?? "",
+            IsProxy = GetBool(el, "isProxy"),
+            TimeZones = GetStringList(el, "timeZones"),
+            Currencies = GetStringList(el, "currencies"),
+            Languages = GetStringList(el, "languages"),
+            PhoneCodes = GetIntList(el, "phoneCodes"),
+        };
+    }
+
+    private static string? GetString(JsonElement el, string prop)
+    {
+        if (el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String)
+            return v.GetString();
+        return null;
+    }
+
+    private static int GetInt(JsonElement el, string prop)
+    {
+        if (el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Number)
+            return v.GetInt32();
+        return 0;
+    }
+
+    private static double GetDouble(JsonElement el, string prop)
+    {
+        if (el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Number)
+            return v.GetDouble();
+        return 0;
+    }
+
+    private static bool GetBool(JsonElement el, string prop)
+    {
+        if (el.TryGetProperty(prop, out var v) && (v.ValueKind == JsonValueKind.True || v.ValueKind == JsonValueKind.False))
+            return v.GetBoolean();
+        return false;
+    }
+
+    private static List<string> GetStringList(JsonElement el, string prop)
+    {
+        var list = new List<string>();
+        if (el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in v.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.String)
+                    list.Add(item.GetString()!);
+            }
+        }
+        return list;
+    }
+
+    private static List<int> GetIntList(JsonElement el, string prop)
+    {
+        var list = new List<int>();
+        if (el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in v.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.Number)
+                    list.Add(item.GetInt32());
+            }
+        }
+        return list;
+    }
+
+    /// <summary>
+    /// Converts a 2-letter country code (e.g. "US") to a flag emoji using regional indicator symbols.
+    /// </summary>
+    private static string GetFlagEmoji(string countryCode)
+    {
+        if (string.IsNullOrEmpty(countryCode) || countryCode.Length != 2)
+            return "🌐";
+
+        countryCode = countryCode.ToUpperInvariant();
+        // Regional indicator symbols: U+1F1E6 (A) through U+1F1FF (Z)
+        var first = char.ConvertFromUtf32(0x1F1E6 + (countryCode[0] - 'A'));
+        var second = char.ConvertFromUtf32(0x1F1E6 + (countryCode[1] - 'A'));
+        return first + second;
+    }
+
+    private class IpData
+    {
+        public int IpVersion { get; set; }
+        public string IpAddress { get; set; } = "";
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public string CountryName { get; set; } = "";
+        public string CountryCode { get; set; } = "";
+        public string Capital { get; set; } = "";
+        public string ZipCode { get; set; } = "";
+        public string CityName { get; set; } = "";
+        public string RegionName { get; set; } = "";
+        public string Continent { get; set; } = "";
+        public string Asn { get; set; } = "";
+        public string AsnOrganization { get; set; } = "";
+        public bool IsProxy { get; set; }
+        public List<string> TimeZones { get; set; } = [];
+        public List<string> Currencies { get; set; } = [];
+        public List<string> Languages { get; set; } = [];
+        public List<int> PhoneCodes { get; set; } = [];
+    }
+}
+

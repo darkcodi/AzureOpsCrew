@@ -1,4 +1,5 @@
 @inject AppState AppState
+@inject SettingsService SettingsService
 @implements IDisposable
 
 <div class="dm-right-pane">
@@ -11,7 +12,9 @@
     else if (GetSelectedAgent() is { } agent)
     {
         <div class="dm-right-pane-content">
-            <AgentCard Agent="agent" />
+            <CascadingValue Value="@_mcpServers">
+                <AgentCard Agent="agent" />
+            </CascadingValue>
         </div>
     }
     else if (IsHumanDm(AppState.SelectedDm))
@@ -30,12 +33,27 @@
 
 @code {
     private IDisposable? _subscription;
+    private List<McpServerConfigurationItem> _mcpServers = [];
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        await LoadMcpServersAsync();
+
         _subscription = AppState.SubscribeSelectedDm(OnStateChanged)
             .Combine(AppState.SubscribeDms(OnStateChanged))
             .Combine(AppState.SubscribeAgents(OnStateChanged));
+    }
+
+    private async Task LoadMcpServersAsync()
+    {
+        try
+        {
+            _mcpServers = await SettingsService.GetMcpServersAsync();
+        }
+        catch
+        {
+            _mcpServers = [];
+        }
     }
 
     private void OnStateChanged() => InvokeAsync(() =>

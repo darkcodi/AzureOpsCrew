@@ -30,12 +30,33 @@
                 <span class="agent-card-error-text">@Agent.ErrorMessage</span>
             </div>
         }
+        @if (GetAgentMcpTools().Count > 0)
+        {
+            <div class="agent-card-mcp-section">
+                <h4 class="agent-card-mcp-title">MCP Tools</h4>
+                @foreach (var server in GetAgentMcpTools())
+                {
+                    <div class="agent-card-mcp-server">
+                        <span class="agent-card-mcp-server-name">@server.Name</span>
+                        <div class="agent-card-mcp-tools">
+                            @foreach (var tool in server.EnabledTools)
+                            {
+                                <span class="agent-card-mcp-tool">@tool</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
     </div>
 </div>
 
 @code {
     [Parameter, EditorRequired]
     public AgentDto Agent { get; set; } = null!;
+
+    [CascadingParameter]
+    public IEnumerable<McpServerConfigurationItem>? AllMcpServers { get; set; }
 
     private string GetAgentAvatar()
     {
@@ -64,5 +85,26 @@
         return lastSlash >= 0 && lastSlash < model.Length - 1
             ? model[(lastSlash + 1)..]
             : model;
+    }
+
+    private List<(string Name, List<string> EnabledTools)> GetAgentMcpTools()
+    {
+        if (AllMcpServers == null) return [];
+
+        var result = new List<(string Name, List<string> EnabledTools)>();
+
+        foreach (var availability in Agent.AvailableMcpServerTools)
+        {
+            var server = AllMcpServers.FirstOrDefault(s =>
+                Guid.TryParse(s.BackendId, out var serverId) &&
+                serverId == availability.McpServerConfigurationId);
+
+            if (server != null && availability.EnabledToolNames.Count > 0)
+            {
+                result.Add((server.Name, availability.EnabledToolNames));
+            }
+        }
+
+        return result;
     }
 }
