@@ -36,8 +36,9 @@ public class CreateTodoItemTool : IBackendTool
         };
     }
 
-    public Task<ToolCallResult> ExecuteAsync(Agent agent, string callId, IDictionary<string, object?>? arguments)
+    public Task<ToolCallResult> ExecuteAsync(AgentRunData data, string callId, IDictionary<string, object?>? arguments, IServiceProvider serviceProvider)
     {
+        var agent = data.Agent;
         if (!ToDoStorage.ToDoItems.TryGetValue(agent.Id, out var toDoItems))
         {
             toDoItems = new List<ToDoItem>();

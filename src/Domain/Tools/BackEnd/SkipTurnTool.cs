@@ -35,7 +35,7 @@ public class SkipTurnTool : IBackendTool
         };
     }
 
-    public Task<ToolCallResult> ExecuteAsync(Agent agent, string callId, IDictionary<string, object?>? arguments)
+    public Task<ToolCallResult> ExecuteAsync(AgentRunData data, string callId, IDictionary<string, object?>? arguments, IServiceProvider serviceProvider)
     {
         return Task.FromResult(new ToolCallResult(callId, null, false));
     }
