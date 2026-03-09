@@ -179,6 +179,7 @@
             // Update in-place: a completed event arrived for an already-started tool call
             existing.Result = toolCall.Result;
             existing.IsError = toolCall.IsError;
+            existing.IsFinished = toolCall.IsFinished;
         }
         else
         {
@@ -326,6 +327,7 @@
                     Args = e.Widget.Args is JsonElement argsEl ? argsEl : null,
                     Result = resultEl,
                     IsError = isError,
+                    IsFinished = true,
                     Timestamp = e.Timestamp,
                 };
             })

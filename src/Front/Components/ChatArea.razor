@@ -16,7 +16,7 @@
             {
                 if (entry.ToolCall is { } toolCall)
                 {
-                    if (string.Equals(toolCall.ToolName, "getMyIp", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(toolCall.ToolName, "getMyIp", StringComparison.OrdinalIgnoreCase) && toolCall.IsFinished)
                     {
                         <IpInfoWidget ToolCall="toolCall" />
                     }

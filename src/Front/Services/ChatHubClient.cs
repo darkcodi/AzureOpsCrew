@@ -127,6 +127,7 @@ public sealed class ChatHubClient : IAsyncDisposable
                 Args = toolStartEvt.Args,
                 Result = null,
                 IsError = false,
+                IsFinished = false,
                 Timestamp = toolStartEvt.Timestamp,
             };
             ToolCallReceived?.Invoke(dto);
@@ -141,6 +142,7 @@ public sealed class ChatHubClient : IAsyncDisposable
                 Args = toolEvt.Args,
                 Result = toolEvt.Result,
                 IsError = toolEvt.IsError,
+                IsFinished = true,
                 Timestamp = toolEvt.Timestamp,
             };
             ToolCallReceived?.Invoke(dto);
