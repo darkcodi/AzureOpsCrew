@@ -5,6 +5,7 @@ using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Domain.Tools.BackEnd;
 using AzureOpsCrew.Domain.Utils;
 using AzureOpsCrew.Infrastructure.Db;
+using Microsoft.EntityFrameworkCore;
 
 namespace AzureOpsCrew.Api.Background.Tools;
 
@@ -20,9 +21,10 @@ public class PostMessageTool : IBackendTool
                                           {
                                             "type": "object",
                                             "properties": {
-                                              "text": { "type": "string", "description": "The text content of the message to post" }
+                                              "text": { "type": "string", "description": "The text content of the message to post" },
+                                              "prevMsgId": { "type": "string", "description": "The unique identifier of the previous message in the conversation" }
                                             },
-                                            "required": ["text"],
+                                            "required": ["text", "prevMsgId"],
                                             "additionalProperties": false
                                           }
                                           """).ToString(),
@@ -47,22 +49,49 @@ public class PostMessageTool : IBackendTool
             return new ToolCallResult(callId, new { ErrorMessage = "text param is missing or empty" }, true);
         }
 
+        if (arguments == null || !arguments.ContainsKey("prevMsgId") || string.IsNullOrEmpty(arguments["prevMsgId"]?.ToString()))
+        {
+            return new ToolCallResult(callId, new { ErrorMessage = "prevMsgId param is missing or empty" }, true);
+        }
+
         var text = arguments["text"]!.ToString()!;
 
-        var message = new Message
+        Guid? prevMsgId = null;
+        if (!Guid.TryParse(arguments["prevMsgId"]?.ToString(), out var parsedPrevMsgId))
         {
-            Id = Guid.NewGuid(),
-            Text = text,
-            PostedAt = DateTime.UtcNow,
-            AuthorName = data.Agent.Info.Username,
-            AgentId = data.Agent.Id,
-            ChannelId = data.Channel?.Id,
-            DmId = data.DmChannel?.Id,
-        };
+            return new ToolCallResult(callId, new { ErrorMessage = "prevMsgId must be a valid GUID" }, true);
+        }
+        prevMsgId = parsedPrevMsgId;
 
         try
         {
             var dbContext = serviceProvider.GetRequiredService<AzureOpsCrewContext>();
+
+            // Validate prevMsgId matches the actual previous message
+            var actualPrevMessage = await dbContext.Messages
+                .Where(m => (data.Channel != null && m.ChannelId == data.Channel.Id) ||
+                            (data.DmChannel != null && m.DmId == data.DmChannel.Id))
+                .OrderByDescending(m => m.PostedAt)
+                .FirstOrDefaultAsync();
+
+            if (actualPrevMessage != null && actualPrevMessage.Id != prevMsgId)
+            {
+                return new ToolCallResult(callId,
+                    new { ErrorMessage = "prevMsgId does not match the actual previous message id, please use the tool getMessages to fetch missing messages" },
+                    true);
+            }
+
+            var message = new Message
+            {
+                Id = Guid.NewGuid(),
+                Text = text,
+                PostedAt = DateTime.UtcNow,
+                AuthorName = data.Agent.Info.Username,
+                AgentId = data.Agent.Id,
+                ChannelId = data.Channel?.Id,
+                DmId = data.DmChannel?.Id,
+            };
+
             dbContext.Messages.Add(message);
             await dbContext.SaveChangesAsync();
 
