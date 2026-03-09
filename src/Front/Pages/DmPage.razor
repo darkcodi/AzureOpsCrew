@@ -90,7 +90,11 @@
     private void OnMindChanged() => InvokeAsync(() =>
     {
         _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
-        _reasonings = ExtractReasonings(AppState.CurrentAgentMind);
+        var agentId = AppState.SelectedDm?.Agent1Id ?? AppState.SelectedDm?.Agent2Id;
+        var agentName = agentId.HasValue
+            ? AppState.Agents.FirstOrDefault(a => a.Id == agentId.Value)?.Username
+            : null;
+        _reasonings = ExtractReasonings(AppState.CurrentAgentMind, agentName);
         StateHasChanged();
     });
 
@@ -148,7 +152,8 @@
                 _messages = await DmService.GetAgentDmMessagesAsync(agentId.Value);
                 await AppState.LoadAgentMindForDmAsync(AgentService, dmId.Value, agentId.Value);
                 _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
-                _reasonings = ExtractReasonings(AppState.CurrentAgentMind);
+                var dmAgentName = AppState.Agents.FirstOrDefault(a => a.Id == agentId.Value)?.Username;
+                _reasonings = ExtractReasonings(AppState.CurrentAgentMind, dmAgentName);
             }
             else
             {
@@ -377,7 +382,7 @@
             .ToList();
     }
 
-    private static List<ReasoningDto> ExtractReasonings(AgentMindResponseDto? mind)
+    private static List<ReasoningDto> ExtractReasonings(AgentMindResponseDto? mind, string? agentName = null)
     {
         if (mind?.Events is not { Count: > 0 })
             return [];
@@ -387,6 +392,7 @@
             .Select(e => new ReasoningDto
             {
                 Text = e.Reasoning!,
+                AgentName = agentName,
                 Timestamp = e.Timestamp,
             })
             .ToList();

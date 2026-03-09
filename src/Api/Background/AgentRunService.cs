@@ -87,6 +87,7 @@ public class AgentRunService
                             var evt = new ReasoningContentEvent
                             {
                                 Text = reasoning.Text,
+                                AgentName = data.Agent.Info.Username,
                                 Timestamp = DateTimeOffset.UtcNow,
                             };
                             if (data.Channel != null)

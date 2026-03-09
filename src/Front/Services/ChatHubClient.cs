@@ -153,6 +153,7 @@ public sealed class ChatHubClient : IAsyncDisposable
             var dto = new ReasoningDto
             {
                 Text = reasoningEvt.Text,
+                AgentName = reasoningEvt.AgentName,
                 Timestamp = reasoningEvt.Timestamp,
             };
             ReasoningReceived?.Invoke(dto);

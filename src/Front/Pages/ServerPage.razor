@@ -121,7 +121,8 @@
             {
                 await AppState.LoadAgentMindForChannelAsync(AgentService, channelId.Value, agentId);
                 _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
-                _reasonings = ExtractReasonings(AppState.CurrentAgentMind);
+                var agentName = AppState.Agents.FirstOrDefault(a => a.Id == agentId)?.Username;
+                _reasonings = ExtractReasonings(AppState.CurrentAgentMind, agentName);
 
                 // Restore agent running state from persisted storage
                 _isAgentRunning = AgentState.IsAgentRunning(channelId.Value, ConversationType.Channel);
@@ -211,7 +212,11 @@
     private void OnMindChanged() => InvokeAsync(() =>
     {
         _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
-        _reasonings = ExtractReasonings(AppState.CurrentAgentMind);
+        var agentIdStr = AppState.SelectedChannel?.AgentIds.FirstOrDefault();
+        string? agentName = null;
+        if (!string.IsNullOrEmpty(agentIdStr) && Guid.TryParse(agentIdStr, out var mindAgentId))
+            agentName = AppState.Agents.FirstOrDefault(a => a.Id == mindAgentId)?.Username;
+        _reasonings = ExtractReasonings(AppState.CurrentAgentMind, agentName);
         StateHasChanged();
     });
 
@@ -339,7 +344,7 @@
             .ToList();
     }
 
-    private static List<ReasoningDto> ExtractReasonings(AgentMindResponseDto? mind)
+    private static List<ReasoningDto> ExtractReasonings(AgentMindResponseDto? mind, string? agentName = null)
     {
         if (mind?.Events is not { Count: > 0 })
             return [];
@@ -349,6 +354,7 @@
             .Select(e => new ReasoningDto
             {
                 Text = e.Reasoning!,
+                AgentName = agentName,
                 Timestamp = e.Timestamp,
             })
             .ToList();

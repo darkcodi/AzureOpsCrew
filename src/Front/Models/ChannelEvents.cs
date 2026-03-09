@@ -98,6 +98,9 @@ public class ReasoningContentEvent : ChannelEvent
     [JsonPropertyName("text")]
     public string Text { get; set; } = string.Empty;
 
+    [JsonPropertyName("agentName")]
+    public string? AgentName { get; set; }
+
     [JsonPropertyName("timestamp")]
     public DateTimeOffset Timestamp { get; set; }
 }
