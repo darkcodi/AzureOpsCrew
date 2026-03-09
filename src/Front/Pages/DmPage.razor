@@ -31,6 +31,8 @@
                   EmptyTitle="@(AppState.SelectedDm != null ? "Welcome to this conversation!" : "Select a conversation")"
                   EmptySubtitle="@(AppState.SelectedDm != null ? "This is the start of your conversation." : "Pick a DM from the sidebar to start chatting.")"
                   TypingUsernames="_typingUsernames"
+                  IsAgentRunning="_isAgentRunning"
+                  OnStopAgent="StopAgent"
                   OnSendMessage="SendDmMessage" />
     </MainArea>
     <RightSidebar>
@@ -51,6 +53,7 @@
     private Guid? _loadedDmId;
     private IDisposable? _appStateSubscription;
     private ChatHubClient? _hubClient;
+    private bool _isAgentRunning;
 
     protected override async Task OnInitializedAsync()
     {
@@ -109,6 +112,7 @@
         {
             _loadedDmId = dmId;
             _typingUsernames = [];
+            _isAgentRunning = false;
             var agentId = AppState.SelectedDm?.Agent1Id ?? AppState.SelectedDm?.Agent2Id;
             if (agentId.HasValue)
             {
@@ -190,8 +194,11 @@
             agent.Status = status;
             AppState.Agents.NotifyChanged();
 
-            // Update typing indicator
-            if (string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase))
+            // Update typing indicator and running state
+            var isRunning = string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase);
+            _isAgentRunning = isRunning;
+
+            if (isRunning)
             {
                 if (!_typingUsernames.Contains(agent.Username))
                     _typingUsernames.Add(agent.Username);
@@ -236,6 +243,18 @@
         {
             newMessage.IsOwnMessage = true;
             _messages.Add(newMessage);
+        }
+    }
+
+    private async Task StopAgent()
+    {
+        var dm = AppState.SelectedDm;
+        if (dm == null) return;
+
+        var agentId = dm.Agent1Id ?? dm.Agent2Id;
+        if (agentId.HasValue)
+        {
+            await DmService.StopAgentDmAsync(agentId.Value);
         }
     }
 

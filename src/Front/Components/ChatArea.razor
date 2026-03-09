@@ -32,7 +32,15 @@
 
     @if (TypingUsernames.Count > 0)
     {
-        <TypingIndicator Usernames="TypingUsernames" />
+        <div class="typing-bar">
+            <TypingIndicator Usernames="TypingUsernames" />
+            @if (IsAgentRunning)
+            {
+                <button class="stop-button" @onclick="OnStopAgent">
+                    ⏹ Stop
+                </button>
+            }
+        </div>
     }
 
     @if (ShowInput)
@@ -65,6 +73,8 @@
     [Parameter] public string EmptyTitle { get; set; } = "No messages yet";
     [Parameter] public string EmptySubtitle { get; set; } = "Be the first to send a message!";
     [Parameter] public List<string> TypingUsernames { get; set; } = [];
+    [Parameter] public bool IsAgentRunning { get; set; }
+    [Parameter] public EventCallback OnStopAgent { get; set; }
 
     private ElementReference _messagesContainer;
     private string _messageText = string.Empty;
