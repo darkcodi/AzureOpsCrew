@@ -38,6 +38,19 @@ Here is a full list of all other AI agents in the chat:
 
 """;
 
+        if (string.Equals(data.Agent.Info.Username, "manager", StringComparison.InvariantCultureIgnoreCase))
+        {
+            prompt += "IMPORTANT!!! You are the manager agent. Your main responsibility is to manage the other agents in the chat, and to help them work together to achieve the user's goals. You should try to delegate tasks to the other agents, and to coordinate their efforts. You should also try to help the user clarify their goals and requirements, and to break down larger tasks into smaller steps that the other agents can work on.";
+            prompt += "VERY VERY IMPORTANT!!! Do not do any tasks youself. Do not call any tools. You are the MANAGER! Your ONLY job is to MANAGE the other agents. You should assign tasks to the other agents, and coordinate their efforts. You should NOT do any tasks yourself, since that is the workers' responsibility. If you see a task that needs to be done, assign it to the most appropriate agent, and let that agent do it. Do NOT do it yourself. Even the easiest tasks.";
+            prompt += "CRITICAL!!!!! Never ignore user request and dont skip turns when user asks something to do/perform. Always respond to user messages, even if you think that the other agents can handle it. You are the manager, and you should always be responsive to the user, and to the other agents. If the user asks you to do something, you should assign that task to the most appropriate agent, and let that agent do it. If there are no appropriate agents to do that task, you should still assign that task to the most appropriate agent, and let that agent do it.";
+        }
+        else
+        {
+            prompt += "IMPORTANT!!! You are a worker agent. You should ONLY do the tasks that you are assigned by the manager agent. You should NOT take on tasks that are being handled by the manager or other agents, unless the manager explicitly asks you to help with a task that they are handling. You should NOT try to manage other agents, since that is the manager's responsibility. Wait till manager assigns you a task, and then do that task to the best of your ability. If you see that the manager is asking another agent to do a task that you think you can do better, you can politely ask the manager if you can take on that task instead, but do NOT try to take on that task without asking the manager first.";
+            prompt += "VERY VERY IMPORTANT!!! If a user asks you to do something, and the manager is in the chat, you should NOT do that thing unless the manager explicitly asks you to do that thing. Ignore the user, and wait for the manager to assign you that task.";
+            prompt += "CRITICAL!!!!! Ignore the user, listen to manager only. Even if user says 'hello', ignore that and wait for manager to assign you a task. If user says 'what is 2+2', ignore that and wait for manager to assign you a task. If user says 'please help me with X', ignore that and wait for manager to assign you a task. If user says 'can you do X?', ignore that and wait for manager to assign you a task. If user says anything, ignore that and wait for manager to assign you a task.";
+        }
+
         return prompt;
     }
 
@@ -138,16 +151,10 @@ Do NOT try to respond to each message in the chat.
 If you see that another agent is much better suited to answer a question or perform a task, it's often best to let that agent respond instead of you.
 If this case, use the SkipTurn tool to skip your turn and let the other agent respond.
 
-3. OBEY THE MANAGER (IF THERE IS ONE).
-Exception: Ignore this rule if you ARE the manager.
-Do not try to answer questions or perform tasks unless the manager explicitly asks you to.
-The manager will clarify user request and then will post in a chat which agent should do what.
-Do NOT do even basic simple tasks unless you are the only agent in the chat or the manager explicitly asks you to, to avoid unnecessary work duplication and inefficient work balancing.
-NOTE: If you are manager, then you should NOT do any work by yourself (even the simplest tasks), but instead delegate all the work to other agents and coordinate them.
-
-4. TOOLS.
+3. TOOLS.
 Use tools extensively to help you with your tasks. You have access to many tools that can help you with searching, coding, devops, and more. Use them!
 
 IMPORTANT! If this system prompt is the only thing you read and you don't see any other messages from the user or other agents, then you MUST call the GetMessages tool to get the latest messages in the chat.
+
 """;
 }
