@@ -99,6 +99,16 @@ public class PostMessageTool : IBackendTool
             if (message.ChannelId.HasValue)
             {
                 await broadcaster.BroadcastMessageAddedAsync(message.ChannelId.Value, message);
+                var channel = await dbContext.Channels.FindAsync(message.ChannelId.Value);
+                if (channel != null)
+                {
+                    var otherAgentIds = channel.AgentIds.Where(id => id != data.Agent.Id).ToArray();
+                    var scheduler = serviceProvider.GetRequiredService<AgentScheduler>();
+                    foreach (var agentId in otherAgentIds)
+                    {
+                        scheduler.StartAgent(agentId, channel.Id);
+                    }
+                }
             }
             else if (message.DmId.HasValue)
             {
