@@ -7,9 +7,10 @@ public class ChannelWorkerPromptChunk : IPromptChunk
     public bool ShouldBeAdded(AgentRunData data)
     {
         var agentUsername = data.Agent.Info.Username;
-        var isManagerAgent = string.Equals(agentUsername, "manager", StringComparison.InvariantCultureIgnoreCase);
+        var isWorkerAgent = !string.Equals(agentUsername, "manager", StringComparison.InvariantCultureIgnoreCase);
+        var hasManagerAgentInChat = data.ParticipantAgents.Any(a => string.Equals(a.Info.Username, "manager", StringComparison.InvariantCultureIgnoreCase));
         var isChannel = data.Channel != null;
-        return !isManagerAgent && isChannel;
+        return isWorkerAgent && hasManagerAgentInChat && isChannel;
     }
 
     public string GetContent(AgentRunData data)
