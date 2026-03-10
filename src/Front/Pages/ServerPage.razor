@@ -23,8 +23,8 @@
     </LeftSidebar>
     <MainArea>
         <ChatArea Messages="_messages"
-                  ToolCalls="_toolCalls"
-                  Reasonings="_reasonings"
+                  ToolCalls="_emptyToolCalls"
+                  Reasonings="_emptyReasonings"
                   CurrentUserId="AppState.CurrentUser?.Id"
                   ShowInput="AppState.SelectedChannel != null"
                   Placeholder="@(AppState.SelectedChannel != null ? $"Message #{AppState.SelectedChannel.Name}" : "")"
@@ -38,10 +38,19 @@
     </MainArea>
     <RightSidebar>
         <Front.Layout.Components.RightSidebar>
-            <MembersList />
+            <MembersList OnAgentClick="OpenAgentMindView" />
         </Front.Layout.Components.RightSidebar>
     </RightSidebar>
 </MainLayout>
+
+@if (_mindViewAgent != null)
+{
+    <AgentMindView Agent="_mindViewAgent"
+                   ToolCalls="_mindToolCalls"
+                   Reasonings="_mindReasonings"
+                   IsLoading="_isMindLoading"
+                   OnClose="CloseAgentMindView" />
+}
 
 @code {
     [Parameter]
@@ -51,13 +60,21 @@
     public string? ChannelId { get; set; }
 
     private List<ChatMessageDto> _messages = [];
-    private List<ToolCallDto> _toolCalls = [];
-    private List<ReasoningDto> _reasonings = [];
     private List<string> _typingUsernames = [];
     private Guid? _loadedChannelId;
     private IDisposable? _appStateSubscription;
     private ChatHubClient? _hubClient;
     private bool _isAgentRunning;
+
+    // Empty lists passed to ChatArea (mind no longer shown inline)
+    private static readonly List<ToolCallDto> _emptyToolCalls = [];
+    private static readonly List<ReasoningDto> _emptyReasonings = [];
+
+    // Agent mind popup state
+    private AgentDto? _mindViewAgent;
+    private List<ToolCallDto> _mindToolCalls = [];
+    private List<ReasoningDto> _mindReasonings = [];
+    private bool _isMindLoading;
 
     private void OnStateChanged() => InvokeAsync(async () =>
     {
@@ -93,8 +110,7 @@
         await AppState.LoadAgents(AgentService);
         _appStateSubscription = AppState.SubscribeCurrentUser(OnStateChanged)
             .Combine(AppState.SubscribeSelectedChannel(OnStateChanged))
-            .Combine(AppState.SubscribeChannels(OnStateChanged))
-            .Combine(AppState.SubscribeCurrentAgentMind(OnMindChanged));
+            .Combine(AppState.SubscribeChannels(OnStateChanged));
     }
 
     protected override async Task OnParametersSetAsync()
@@ -111,20 +127,17 @@
             _loadedChannelId = channelId;
             _typingUsernames = [];
             _isAgentRunning = false;
-            _toolCalls = [];
-            _reasonings = [];
             _messages = await ChannelService.GetChannelMessagesAsync(channelId.Value);
 
-            // Load agent mind for channels with agents
+            // Close agent mind popup on channel change
+            _mindViewAgent = null;
+            _mindToolCalls = [];
+            _mindReasonings = [];
+
+            // Restore agent running state from persisted storage
             var agentIdStr = AppState.SelectedChannel?.AgentIds.FirstOrDefault();
             if (!string.IsNullOrEmpty(agentIdStr) && Guid.TryParse(agentIdStr, out var agentId))
             {
-                await AppState.LoadAgentMindForChannelAsync(AgentService, channelId.Value, agentId);
-                _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
-                var agentName = AppState.Agents.FirstOrDefault(a => a.Id == agentId)?.Username;
-                _reasonings = ExtractReasonings(AppState.CurrentAgentMind, agentName);
-
-                // Restore agent running state from persisted storage
                 _isAgentRunning = AgentState.IsAgentRunning(channelId.Value, ConversationType.Channel);
                 var typingUsername = AgentState.GetTypingUsername(
                     channelId.Value,
@@ -147,10 +160,6 @@
                         AppState.Agents.NotifyChanged();
                     }
                 }
-            }
-            else
-            {
-                AppState.CurrentAgentMind = null;
             }
 
             await ConnectToChannelHub(channelId.Value);
@@ -209,37 +218,58 @@
         }
     }
 
-    private void OnMindChanged() => InvokeAsync(() =>
+    private async Task OpenAgentMindView(AgentDto agent)
     {
-        _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
-        var agentIdStr = AppState.SelectedChannel?.AgentIds.FirstOrDefault();
-        string? agentName = null;
-        if (!string.IsNullOrEmpty(agentIdStr) && Guid.TryParse(agentIdStr, out var mindAgentId))
-            agentName = AppState.Agents.FirstOrDefault(a => a.Id == mindAgentId)?.Username;
-        _reasonings = ExtractReasonings(AppState.CurrentAgentMind, agentName);
+        _mindViewAgent = agent;
+        _isMindLoading = true;
+        _mindToolCalls = [];
+        _mindReasonings = [];
         StateHasChanged();
-    });
+
+        var channelId = AppState.SelectedChannel?.Id;
+        if (channelId.HasValue)
+        {
+            var mind = await AgentService.GetAgentMindForChannelAsync(channelId.Value, agent.Id);
+            _mindToolCalls = ExtractToolCalls(mind);
+            _mindReasonings = ExtractReasonings(mind, agent.Username);
+        }
+
+        _isMindLoading = false;
+        StateHasChanged();
+    }
+
+    private void CloseAgentMindView()
+    {
+        _mindViewAgent = null;
+        _mindToolCalls = [];
+        _mindReasonings = [];
+    }
 
     private async void OnToolCallReceived(ToolCallDto toolCall)
     {
-        var existing = _toolCalls.FirstOrDefault(t => t.CallId == toolCall.CallId);
+        if (_mindViewAgent == null)
+            return;
+
+        var existing = _mindToolCalls.FirstOrDefault(t => t.CallId == toolCall.CallId);
         if (existing != null)
         {
-            // Update in-place: a completed event arrived for an already-started tool call
             existing.Result = toolCall.Result;
             existing.IsError = toolCall.IsError;
             existing.IsFinished = toolCall.IsFinished;
         }
         else
         {
-            _toolCalls.Add(toolCall);
+            _mindToolCalls.Add(toolCall);
         }
         await InvokeAsync(StateHasChanged);
     }
 
     private async void OnReasoningReceived(ReasoningDto reasoning)
     {
-        _reasonings.Add(reasoning);
+        if (_mindViewAgent == null)
+            return;
+
+        _mindReasonings.Add(reasoning);
         await InvokeAsync(StateHasChanged);
     }
 

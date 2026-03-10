@@ -45,7 +45,7 @@
                 {
                     @foreach (var agent in channelAgents)
                     {
-                        <div class="members-item" @onclick="() => MentionAgent(agent)">
+                        <div class="members-item" @onclick="() => OnAgentClick.InvokeAsync(agent)">
                             <div class="members-item-main">
                                 <div class="members-avatar members-avatar-agent" style="background-color: @agent.Color; color: #fff;">
                                     @GetAgentInitials(agent.Username)
@@ -190,6 +190,8 @@
 }
 
 @code {
+    [Parameter] public EventCallback<AgentDto> OnAgentClick { get; set; }
+
     private string _searchQuery = string.Empty;
     private bool _addAgentsOpen;
     private Guid? _addingAgentId;
@@ -309,7 +311,6 @@
         }
     }
 
-    private void MentionAgent(AgentDto agent) { /* TODO */ }
 
     private void MentionUser(UserDto user) { /* TODO */ }
 }
