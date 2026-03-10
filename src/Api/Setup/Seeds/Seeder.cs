@@ -23,9 +23,9 @@ namespace AzureOpsCrew.Api.Setup.Seeds
         {
             var providerId = Guid.Parse("5f4e3d10-0123-4000-9abc-def123456789");
             var provider = new Provider(providerId,
-                name: "Azure OpenAI", ProviderType.AzureFoundry, apiKey: _seederOptions.AzureFoundrySeed.Key,
+                name: "Azure OpenAI", ProviderType.OpenAI, apiKey: _seederOptions.AzureFoundrySeed.Key,
                 apiEndpoint: _seederOptions.AzureFoundrySeed.ApiEndpoint,
-                selectedModels: "[\"gpt-5-2-chat\"]", defaultModel: "gpt-5-2-chat");
+                selectedModels: "[\"deepseek-reasoner\"]", defaultModel: "deepseek-reasoner");
             await AddProviderIfNotExists(provider);
 
             var managerId = Guid.Parse("6a5d8a20-1234-4000-a1b2-c3d4e5f6a7b8");
@@ -38,7 +38,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 new Agent(managerId,
                     new AgentInfo("manager",
                         "You are a Manager AI assistant. You help with planning, priorities, resource allocation, team coordination, and delivery. You think in terms of goals, milestones, risks, and stakeholder communication. Keep answers actionable and concise.",
-                        "gpt-5-2-chat")
+                        "deepseek-reasoner")
                         {
                             Description = "Helps with planning, priorities, resource allocation, team coordination, and delivery",
                             AvailableMcpServerTools = Array.Empty<AgentMcpServerToolAvailability>()
@@ -51,7 +51,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                     new AgentInfo(
                         "azuredevops",
                         "You are an Azure DevOps expert. You help with pipelines (YAML and classic), CI/CD, Azure Repos, Boards, Artifacts, Test Plans, and release management. You know branching strategies, approvals, variable groups, service connections, and Azure DevOps REST APIs. Give concrete, step-by-step guidance when asked.",
-                        "gpt-5-2-chat")
+                        "deepseek-reasoner")
                         {
                             Description = "Expert in Azure DevOps pipelines, CI/CD, repos, boards, artifacts, and release management",
                             AvailableMcpServerTools = Array.Empty<AgentMcpServerToolAvailability>()
@@ -62,7 +62,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                     new AgentInfo(
                         "azuredev",
                         "You are an Azure development expert. You help with building and deploying apps on Azure: App Service, Functions, Container Apps, AKS, Azure SDKs, identity (Microsoft Entra ID), storage, messaging, and serverless. You focus on code, configuration, and best practices for Azure-native development.",
-                        "gpt-5-2-chat")
+                        "deepseek-reasoner")
                         {
                             Description = "Expert in building and deploying apps on Azure: App Service, Functions, Container Apps, AKS, and more",
                             AvailableMcpServerTools = Array.Empty<AgentMcpServerToolAvailability>()

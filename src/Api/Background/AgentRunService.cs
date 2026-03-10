@@ -49,6 +49,7 @@ public class AgentRunService
 
         // Pre-load data to determine chat type for status broadcasts
         var initialData = await LoadAgentRunData(agentId, chatId, ct);
+        var waitingForApproval = false;
 
         try
         {
@@ -66,6 +67,21 @@ public class AgentRunService
 
                 // load new DB state for each iteration to get the latest messages and thoughts
                 var data = await LoadAgentRunData(agentId, chatId, ct);
+
+                // Check for pending approval resolutions before calling LLM
+                var approvalResolution = await CheckAndResolveApprovals(agentId, chatId, data, ct);
+                if (approvalResolution == ApprovalResolution.StillPending)
+                {
+                    Log.Information("[BACKGROUND] Agent {AgentId} still waiting for approval in chat {ChatId}", agentId, chatId);
+                    waitingForApproval = true;
+                    break;
+                }
+                if (approvalResolution == ApprovalResolution.Resolved)
+                {
+                    // Approval was resolved (approved → executed, or rejected → error saved)
+                    // Continue to next iteration so LLM sees the result in context
+                    continue;
+                }
 
                 // Make one LLM call
                 var newAgentThoughts = new List<AocAgentThought>();
@@ -114,6 +130,34 @@ public class AgentRunService
                 // ToDo: Add support for parallel tool calls if needed. For now we execute them sequentially for simplicity.
                 foreach (var toolCall in newToolCalls)
                 {
+                    // Check if this MCP tool requires approval before execution
+                    var toolDeclaration = data.Tools.FirstOrDefault(t =>
+                        string.Equals(t.Name, toolCall.Name, StringComparison.OrdinalIgnoreCase));
+
+                    if (toolDeclaration?.ToolType == ToolType.McpServer)
+                    {
+                        // Save the approval request as an agent thought
+                        var approvalRequest = new AocFunctionApprovalRequestContent
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            FunctionCall = toolCall
+                        };
+                        var approvalThought = AocAgentThought.FromContent(
+                            approvalRequest, ChatRole.Assistant, data.Agent.Info.Username,
+                            DateTime.UtcNow, chatMessageId);
+                        await SaveAgentThoughts(agentId, chatId, [approvalThought], ct);
+
+                        // Broadcast approval request event
+                        await BroadcastApprovalRequest(data, approvalRequest, toolCall);
+                        await BroadcastAgentStatus(data, "WaitingForApproval");
+
+                        Log.Information("[BACKGROUND] Agent {AgentId} requested approval for MCP tool {ToolName} in chat {ChatId}",
+                            agentId, toolCall.Name, chatId);
+
+                        waitingForApproval = true;
+                        break; // break tool loop
+                    }
+
                     // Broadcast tool call start event before execution
                     if (_channelEventBroadcaster != null && (data.Channel != null || data.DmChannel != null))
                     {
@@ -161,6 +205,11 @@ public class AgentRunService
                         }
                     }
                 }
+
+                // If waiting for approval, break the iteration loop
+                if (waitingForApproval)
+                    break;
+
                 await SaveAgentThoughts(agentId, chatId, newToolCallResults, ct);
 
                 // If the agent called the skipTurn tool, we consider that it has finished its run and we stop the loop.
@@ -200,7 +249,8 @@ public class AgentRunService
             throw;
         }
 
-        await BroadcastAgentStatus(initialData, "Idle");
+        if (!waitingForApproval)
+            await BroadcastAgentStatus(initialData, "Idle");
         Log.Information("[BACKGROUND] Agent run completed: {AgentId}, chat: {ChatId}", agentId, chatId);
     }
 
@@ -416,6 +466,164 @@ public class AgentRunService
         Log.Debug("[BACKGROUND] Saved message for agent {AgentId} to {ChatType}", data.Agent.Id, data.Channel != null ? "channel" : "DM");
 
         return message;
+    }
+
+    private enum ApprovalResolution { None, StillPending, Resolved }
+
+    private async Task<ApprovalResolution> CheckAndResolveApprovals(Guid agentId, Guid chatId, AgentRunData data, CancellationToken ct)
+    {
+        // Scan thoughts for approval requests and responses
+        var thoughts = data.LlmThoughts
+            .Select(t => AocAgentThought.FromDomain(t))
+            .ToList();
+
+        // Find the last approval request
+        AocFunctionApprovalRequestContent? lastRequest = null;
+        AocAgentThought? lastRequestThought = null;
+        foreach (var thought in thoughts)
+        {
+            if (thought.ContentDto.ToAocAiContent() is AocFunctionApprovalRequestContent req)
+            {
+                lastRequest = req;
+                lastRequestThought = thought;
+            }
+        }
+
+        if (lastRequest?.FunctionCall == null)
+            return ApprovalResolution.None;
+
+        // Check if there's already a tool result for this call (already resolved)
+        var callId = lastRequest.FunctionCall.CallId;
+        var hasResult = thoughts.Any(t =>
+            t.ContentDto.ToAocAiContent() is AocFunctionResultContent result
+            && result.CallId == callId);
+
+        if (hasResult)
+            return ApprovalResolution.None; // Already resolved in a previous run
+
+        // Check for a matching response
+        AocFunctionApprovalResponseContent? response = null;
+        foreach (var thought in thoughts)
+        {
+            if (thought.ContentDto.ToAocAiContent() is AocFunctionApprovalResponseContent resp
+                && resp.Id == lastRequest.Id)
+            {
+                response = resp;
+            }
+        }
+
+        if (response == null)
+            return ApprovalResolution.StillPending;
+
+        // Resolve the approval
+        var toolCall = lastRequest.FunctionCall;
+        var chatMessageId = lastRequestThought!.ChatMessageId;
+
+        if (response.Approved)
+        {
+            Log.Information("[BACKGROUND] Approval granted for tool {ToolName} (CallId: {CallId}), executing",
+                toolCall.Name, toolCall.CallId);
+
+            // Broadcast tool call start
+            await BroadcastToolCallStart(data, toolCall);
+
+            // Execute the original tool call
+            var toolCallResult = await _toolCallRouter.ExecuteToolCall(toolCall, data);
+            var toolResultThought = AocAgentThought.FromContent(
+                toolCallResult, ChatRole.Tool, data.Agent.Info.Username,
+                DateTime.UtcNow, chatMessageId);
+            await SaveAgentThoughts(agentId, chatId, [toolResultThought], ct);
+
+            // Broadcast tool call completed
+            await BroadcastToolCallCompleted(data, toolCall, toolCallResult);
+        }
+        else
+        {
+            Log.Information("[BACKGROUND] Approval rejected for tool {ToolName} (CallId: {CallId})",
+                toolCall.Name, toolCall.CallId);
+
+            // Save synthetic error result
+            var rejectionResult = new AocFunctionResultContent
+            {
+                CallId = toolCall.CallId,
+                Result = new ToolCallResult(
+                    CallId: toolCall.CallId,
+                    Result: new { ErrorMessage = $"Tool execution rejected by user. Reason: {response.Reason ?? "No reason provided"}" },
+                    IsError: true),
+            };
+            var rejectionThought = AocAgentThought.FromContent(
+                rejectionResult, ChatRole.Tool, data.Agent.Info.Username,
+                DateTime.UtcNow, chatMessageId);
+            await SaveAgentThoughts(agentId, chatId, [rejectionThought], ct);
+
+            // Broadcast rejection as completed with error
+            await BroadcastToolCallCompleted(data, toolCall, rejectionResult);
+        }
+
+        return ApprovalResolution.Resolved;
+    }
+
+    private async Task BroadcastApprovalRequest(AgentRunData data, AocFunctionApprovalRequestContent approvalRequest, AocFunctionCallContent toolCall)
+    {
+        if (_channelEventBroadcaster == null || (data.Channel == null && data.DmChannel == null))
+            return;
+
+        var evt = new ApprovalRequestEvent
+        {
+            ApprovalId = approvalRequest.Id,
+            ToolName = toolCall.Name,
+            CallId = toolCall.CallId,
+            Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
+            AgentId = data.Agent.Id,
+            Timestamp = DateTimeOffset.UtcNow,
+        };
+
+        if (data.Channel != null)
+            await _channelEventBroadcaster.BroadcastChannelApprovalRequestAsync(data.Channel.Id, evt);
+        else if (data.DmChannel != null)
+            await _channelEventBroadcaster.BroadcastDmApprovalRequestAsync(data.DmChannel.Id, evt);
+    }
+
+    private async Task BroadcastToolCallStart(AgentRunData data, AocFunctionCallContent toolCall)
+    {
+        if (_channelEventBroadcaster == null || (data.Channel == null && data.DmChannel == null))
+            return;
+
+        var startEvt = new ToolCallStartEvent
+        {
+            ToolName = toolCall.Name,
+            CallId = toolCall.CallId,
+            Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
+            Timestamp = DateTimeOffset.UtcNow,
+        };
+
+        if (data.Channel != null)
+            await _channelEventBroadcaster.BroadcastChannelToolCallStartAsync(data.Channel.Id, startEvt);
+        else if (data.DmChannel != null)
+            await _channelEventBroadcaster.BroadcastDmToolCallStartAsync(data.DmChannel.Id, startEvt);
+    }
+
+    private async Task BroadcastToolCallCompleted(AgentRunData data, AocFunctionCallContent toolCall, AocFunctionResultContent result)
+    {
+        if (_channelEventBroadcaster == null || (data.Channel == null && data.DmChannel == null))
+            return;
+
+        var toolCallResultObj = result.Result as ToolCallResult;
+        var isError = toolCallResultObj?.IsError ?? false;
+        var evt = new ToolCallCompletedEvent
+        {
+            ToolName = toolCall.Name,
+            CallId = toolCall.CallId,
+            Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
+            Result = toolCallResultObj?.Result,
+            IsError = isError,
+            Timestamp = DateTimeOffset.UtcNow,
+        };
+
+        if (data.Channel != null)
+            await _channelEventBroadcaster.BroadcastChannelToolCallCompletedAsync(data.Channel.Id, evt);
+        else if (data.DmChannel != null)
+            await _channelEventBroadcaster.BroadcastDmToolCallCompletedAsync(data.DmChannel.Id, evt);
     }
 
 }

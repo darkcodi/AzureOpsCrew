@@ -11,6 +11,7 @@ using AzureOpsCrew.Infrastructure.Ai.Models;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 
@@ -167,6 +168,66 @@ public static class ChannelEndpoints
         })
         .Produces<List<Message>>(StatusCodes.Status200OK);
 
+        // GET: /api/channels/{channelId}/approvals - Returns all approval requests for a channel with their status
+        group.MapGet("/{channelId}/approvals", async (
+            Guid channelId,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == channelId, cancellationToken);
+
+            if (channel is null)
+                return Results.NotFound();
+
+            var approvalThoughts = await context.AgentThoughts
+                .Where(t => t.ThreadId == channelId
+                    && (t.ContentType == LlmMessageContentType.FunctionApprovalRequestContent
+                        || t.ContentType == LlmMessageContentType.FunctionApprovalResponseContent))
+                .OrderBy(t => t.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+            var responsesById = new Dictionary<string, AocFunctionApprovalResponseContent>();
+            foreach (var thought in approvalThoughts)
+            {
+                if (thought.ContentType == LlmMessageContentType.FunctionApprovalResponseContent)
+                {
+                    var resp = JsonSerializer.Deserialize<AocFunctionApprovalResponseContent>(thought.ContentJson);
+                    if (resp != null)
+                        responsesById[resp.Id] = resp;
+                }
+            }
+
+            var requests = new List<object>();
+            foreach (var thought in approvalThoughts)
+            {
+                if (thought.ContentType != LlmMessageContentType.FunctionApprovalRequestContent)
+                    continue;
+
+                var req = JsonSerializer.Deserialize<AocFunctionApprovalRequestContent>(thought.ContentJson);
+                if (req == null) continue;
+
+                var hasResponse = responsesById.TryGetValue(req.Id, out var response);
+                var status = hasResponse ? (response!.Approved ? "approved" : "rejected") : "pending";
+
+                requests.Add(new
+                {
+                    approvalId = req.Id,
+                    toolName = req.FunctionCall?.Name,
+                    callId = req.FunctionCall?.CallId,
+                    args = req.FunctionCall?.Arguments,
+                    agentId = thought.AgentId,
+                    timestamp = new DateTimeOffset(thought.CreatedAt, TimeSpan.Zero),
+                    status,
+                    reason = hasResponse ? response!.Reason : null,
+                });
+            }
+
+            return Results.Ok(requests);
+        })
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
         // GET: /api/channels/{channelId}/agents/{agentId}/mind - Returns agent thoughts scoped to a specific channel
         group.MapGet("/{channelId}/agents/{agentId}/mind", async (
             Guid channelId,
@@ -317,6 +378,61 @@ public static class ChannelEndpoints
             return Results.Ok(new AgentMindResponseDto { Events = historyMessages });
         })
         .Produces<AgentMindResponseDto>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
+        // POST: /api/channels/{channelId}/approvals/{approvalId} - Responds to an approval request in a channel
+        group.MapPost("/{channelId}/approvals/{approvalId}", async (
+            Guid channelId,
+            string approvalId,
+            ApprovalResponseDto body,
+            AzureOpsCrewContext context,
+            AgentTriggerQueue agentTriggerQueue,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == channelId, cancellationToken);
+
+            if (channel is null)
+                return Results.NotFound("Channel not found.");
+
+            // Find the approval request thought in this channel
+            var requestThoughts = await context.AgentThoughts
+                .Where(t => t.ThreadId == channelId
+                    && t.ContentType == LlmMessageContentType.FunctionApprovalRequestContent)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+            var matchingThought = requestThoughts.FirstOrDefault(t =>
+            {
+                var content = JsonSerializer.Deserialize<AocFunctionApprovalRequestContent>(t.ContentJson);
+                return content?.Id == approvalId;
+            });
+
+            if (matchingThought is null)
+                return Results.NotFound("Approval request not found.");
+
+            var requestContent = JsonSerializer.Deserialize<AocFunctionApprovalRequestContent>(matchingThought.ContentJson);
+
+            // Save the approval response as an agent thought
+            var responseContent = new AocFunctionApprovalResponseContent
+            {
+                Id = approvalId,
+                Approved = body.Approved,
+                Reason = body.Reason,
+                FunctionCall = requestContent?.FunctionCall
+            };
+            var responseThought = AocAgentThought.FromContent(
+                responseContent, ChatRole.User, null, DateTime.UtcNow, matchingThought.ChatMessageId);
+            var domainThought = responseThought.ToDomain(matchingThought.AgentId, channelId, matchingThought.RunId);
+            context.AgentThoughts.Add(domainThought);
+            await context.SaveChangesAsync(cancellationToken);
+
+            // Re-enqueue the agent to continue processing
+            agentTriggerQueue.Enqueue(matchingThought.AgentId, channelId);
+
+            return Results.Ok(new { approved = body.Approved });
+        })
+        .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
         group.MapPost("/{id}/messages", async (

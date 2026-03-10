@@ -25,6 +25,7 @@
         <ChatArea Messages="_messages"
                   ToolCalls="_emptyToolCalls"
                   Reasonings="_emptyReasonings"
+                  ApprovalRequests="_approvalRequests"
                   CurrentUserId="AppState.CurrentUser?.Id"
                   ShowInput="AppState.SelectedChannel != null"
                   Placeholder="@(AppState.SelectedChannel != null ? $"Message #{AppState.SelectedChannel.Name}" : "")"
@@ -35,7 +36,8 @@
                   IsAgentRunning="_isAgentRunning"
                   OnStopAgent="StopAgent"
                   OnSendMessage="SendChannelMessage"
-                  OnAgentClick="HandleAgentClickFromChat" />
+                  OnAgentClick="HandleAgentClickFromChat"
+                  OnApprovalRespond="RespondToApproval" />
     </MainArea>
     <RightSidebar>
         <Front.Layout.Components.RightSidebar>
@@ -61,6 +63,7 @@
     public string? ChannelId { get; set; }
 
     private List<ChatMessageDto> _messages = [];
+    private List<ApprovalRequestDto> _approvalRequests = [];
     private List<string> _typingUsernames = [];
     private Guid? _loadedChannelId;
     private IDisposable? _appStateSubscription;
@@ -99,6 +102,7 @@
             _hubClient.ToolCallReceived -= OnToolCallReceived;
             _hubClient.ReasoningReceived -= OnReasoningReceived;
             _hubClient.AgentStatusReceived -= OnAgentStatusReceived;
+            _hubClient.ApprovalRequestReceived -= OnApprovalRequestReceived;
             await _hubClient.DisposeAsync();
         }
     }
