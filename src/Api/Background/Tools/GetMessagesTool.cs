@@ -62,7 +62,7 @@ public class GetMessagesTool : IBackendTool
 
             if (fromDate == null)
             {
-                return Task.FromResult(new ToolCallResult(callId, new { ErrorMessage = "after param is not a valid date-time string. Supported formats: ISO 8601 (e.g., 2025-01-15T10:30:00Z), Unix timestamp (seconds or milliseconds since epoch), common date formats (e.g., 2025-01-15, 01/15/2025)." }, true));
+                return Task.FromResult(new ToolCallResult(callId, new { ErrorMessage = $"after param is not a valid date-time string. Failed to parse '{afterValue}'. Supported formats: ISO 8601 (e.g., 2025-01-15T10:30:00Z), Unix timestamp (seconds or milliseconds since epoch), common date formats (e.g., 2025-01-15, 01/15/2025)." }, true));
             }
 
             source = source.Where(m => m.PostedAt >= fromDate.Value.ToUniversalTime());
@@ -80,7 +80,7 @@ public class GetMessagesTool : IBackendTool
         return Task.FromResult(new ToolCallResult(callId, new { messages }, false));
     }
 
-    private static DateTime? TryParseDateTime(object? value)
+    public static DateTime? TryParseDateTime(object? value)
     {
         if (value is null)
             return null;
@@ -112,7 +112,8 @@ public class GetMessagesTool : IBackendTool
 
         // Try Unix timestamp in milliseconds
         // Valid millisecond timestamps are typically between 1970 and 2100
-        if (long.TryParse(valueStr, out var unixMillis) && unixMillis > 0 && unixMillis > 10_000_000_000 && unixMillis < 4_000_000_000_000)
+        // Use >= to handle the boundary case of 10_000_000_000
+        if (long.TryParse(valueStr, out var unixMillis) && unixMillis > 0 && unixMillis >= 10_000_000_000 && unixMillis < 4_000_000_000_000)
         {
             try
             {
@@ -125,10 +126,13 @@ public class GetMessagesTool : IBackendTool
         }
 
         // Try ISO 8601 with various styles
-        if (DateTime.TryParse(valueStr, null, DateTimeStyles.RoundtripKind | DateTimeStyles.AllowWhiteSpaces, out var isoResult))
+        // Only use the result if it has an explicit Kind (Utc or Local), not Unspecified
+        // This prevents formats without timezone info from being treated as local time
+        if (DateTime.TryParse(valueStr, null, DateTimeStyles.RoundtripKind | DateTimeStyles.AllowWhiteSpaces, out var isoResult) &&
+            (isoResult.Kind == DateTimeKind.Utc || isoResult.Kind == DateTimeKind.Local))
             return isoResult;
 
-        // Try common date formats
+        // Try common date formats (including .NET datetime format with fractional seconds but no timezone)
         string[] commonFormats =
         [
             "yyyy-MM-dd",
@@ -141,6 +145,13 @@ public class GetMessagesTool : IBackendTool
             "dd/MM/yyyy HH:mm:ss",
             "yyyy-MM-ddTHH:mm:ss",
             "yyyy-MM-dd HH:mm",
+            "yyyy-MM-ddTHH:mm:ss.fffffff",  // .NET datetime with 7-digit fractional seconds (no timezone)
+            "yyyy-MM-ddTHH:mm:ss.ffffff",   // 6-digit fractional seconds
+            "yyyy-MM-ddTHH:mm:ss.fffff",    // 5-digit fractional seconds
+            "yyyy-MM-ddTHH:mm:ss.ffff",     // 4-digit fractional seconds
+            "yyyy-MM-ddTHH:mm:ss.fff",      // 3-digit fractional seconds
+            "yyyy-MM-ddTHH:mm:ss.ff",       // 2-digit fractional seconds
+            "yyyy-MM-ddTHH:mm:ss.f",        // 1-digit fractional seconds
             "o", // Round-trip date/time pattern
             "s", // Sortable date/time pattern
             "u", // Universal sortable date/time pattern
@@ -148,8 +159,8 @@ public class GetMessagesTool : IBackendTool
 
         foreach (var format in commonFormats)
         {
-            if (DateTime.TryParseExact(valueStr, format, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AllowWhiteSpaces, out var result))
-                return result;
+            if (DateTime.TryParseExact(valueStr, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out var result))
+                return DateTime.SpecifyKind(result, DateTimeKind.Utc);
         }
 
         return null;
