@@ -24,6 +24,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
 using AzureOpsCrew.Api.Background.ToolExecutors;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.Prompt;
 
 namespace AzureOpsCrew.Api.Extensions;
 
