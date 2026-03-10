@@ -199,6 +199,14 @@ public static class OpenAiRequestMapper
 
             if (openAiMessage.Content != null || openAiMessage.ReasoningContent != null || openAiMessage.ToolCalls != null)
             {
+                // Edge case. Sometimes DeepSeek may produce messages with reasoning but no content or tool calls, which OpenAI API does not accept.
+                if (openAiMessage.ReasoningContent != null &&
+                    openAiMessage.Content == null &&
+                    openAiMessage.ToolCalls == null)
+                {
+                    openAiMessage.Content = "[MISSING]";
+                }
+
                 // Only add messages that have content or tool calls to avoid sending empty messages to OpenAI
                 result.Add(openAiMessage);
             }
