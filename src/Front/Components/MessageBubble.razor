@@ -3,9 +3,18 @@
 <div class="message-group @GetGroupClass() @GetOwnClass()">
     @if (!IsGrouped)
     {
-        <div class="message-avatar @GetAvatarClass()">
-            @GetInitials()
-        </div>
+        @if (Message.IsAgentMessage && OnAgentClick.HasDelegate && Message.AgentId.HasValue)
+        {
+            <div class="message-avatar @GetAvatarClass()" @onclick="() => OnAgentClick.InvokeAsync(Message.AgentId)" @onclick:preventDefault>
+                @GetInitials()
+            </div>
+        }
+        else
+        {
+            <div class="message-avatar @GetAvatarClass()">
+                @GetInitials()
+            </div>
+        }
     }
     else
     {
@@ -16,7 +25,14 @@
         @if (!IsGrouped)
         {
             <div class="message-header">
-                <span class="message-username @GetUsernameClass()">@Message.AuthorName</span>
+                @if (Message.IsAgentMessage && OnAgentClick.HasDelegate && Message.AgentId.HasValue)
+                {
+                    <span class="message-username @GetUsernameClass()" @onclick="() => OnAgentClick.InvokeAsync(Message.AgentId)" @onclick:preventDefault>@Message.AuthorName</span>
+                }
+                else
+                {
+                    <span class="message-username @GetUsernameClass()">@Message.AuthorName</span>
+                }
                 @if (Message.IsAgentMessage)
                 {
                     <span class="message-bot-badge">BOT</span>
@@ -34,6 +50,7 @@
     [Parameter] public ChatMessageDto Message { get; set; } = default!;
     [Parameter] public bool IsGrouped { get; set; }
     [Parameter] public bool IsOwn { get; set; }
+    [Parameter] public EventCallback<Guid?> OnAgentClick { get; set; }
 
     private string GetGroupClass() => IsGrouped ? "grouped" : "";
 

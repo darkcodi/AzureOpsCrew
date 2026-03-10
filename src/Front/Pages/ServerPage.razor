@@ -34,7 +34,8 @@
                   TypingUsernames="_typingUsernames"
                   IsAgentRunning="_isAgentRunning"
                   OnStopAgent="StopAgent"
-                  OnSendMessage="SendChannelMessage" />
+                  OnSendMessage="SendChannelMessage"
+                  OnAgentClick="HandleAgentClickFromChat" />
     </MainArea>
     <RightSidebar>
         <Front.Layout.Components.RightSidebar>
@@ -243,6 +244,14 @@
         _mindViewAgent = null;
         _mindToolCalls = [];
         _mindReasonings = [];
+    }
+
+    private async Task HandleAgentClickFromChat(Guid? agentId)
+    {
+        if (agentId is not { } id) return;
+        var agent = AppState.Agents.FirstOrDefault(a => a.Id == id);
+        if (agent != null)
+            await OpenAgentMindView(agent);
     }
 
     private async void OnToolCallReceived(ToolCallDto toolCall)
