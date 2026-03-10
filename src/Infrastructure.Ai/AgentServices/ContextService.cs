@@ -107,9 +107,12 @@ public class ContextService
             });
         }
 
-        var llmThoughtIds = data.LlmThoughts.Select(t => t.Id).ToHashSet();
-        var chatMessages = data.ChatMessages.Where(x => !llmThoughtIds.Contains(x.AgentThoughtId ?? Guid.Empty)).Select(m => m.ToChatMessage()).ToList();
-        var allMessages = chatMessages.Concat(chatMessagesFromThoughts).OrderBy(x => x.CreatedAt).ToList();
+        //var llmThoughtIds = data.LlmThoughts.Select(t => t.Id).ToHashSet();
+        //var chatMessages = data.ChatMessages.Where(x => !llmThoughtIds.Contains(x.AgentThoughtId ?? Guid.Empty)).Select(m => m.ToChatMessage()).ToList();
+        var allMessages = new List<ChatMessage>()
+            //.Concat(chatMessages)
+            .Concat(chatMessagesFromThoughts)
+            .OrderBy(x => x.CreatedAt).ToList();
         return allMessages;
     }
 }

@@ -1,11 +1,11 @@
 using Serilog;
-using System.Collections.Concurrent;
 
 namespace AzureOpsCrew.Api.Background;
 
 public class AgentScheduler : BackgroundService
 {
-    private readonly ConcurrentDictionary<(Guid agentId, Guid chatId), CancellationTokenSource> _jobs = new();
+    private readonly object _lock = new();
+    private readonly Dictionary<(Guid agentId, Guid chatId), CancellationTokenSource> _jobs = new();
     private readonly IServiceProvider _serviceProvider;
 
     public AgentScheduler(IServiceProvider serviceProvider)
@@ -17,10 +17,15 @@ public class AgentScheduler : BackgroundService
     {
         var cts = new CancellationTokenSource();
 
-        if (!_jobs.TryAdd((agentId, chatId), cts))
+        lock (_lock)
         {
-            Log.Warning("[BACKGROUND] Agent {AgentId} for chat {ChatId} is already running", agentId, chatId);
-            return false;
+            if (_jobs.ContainsKey((agentId, chatId)))
+            {
+                Log.Warning("[BACKGROUND] Agent {AgentId} for chat {ChatId} is already running", agentId, chatId);
+                return false;
+            }
+
+            _jobs[(agentId, chatId)] = cts;
         }
 
         Log.Information("[BACKGROUND] Starting agent {AgentId} for chat {ChatId}", agentId, chatId);
@@ -39,7 +44,10 @@ public class AgentScheduler : BackgroundService
             }
             finally
             {
-                _jobs.TryRemove((agentId, chatId), out _);
+                lock (_lock)
+                {
+                    _jobs.Remove((agentId, chatId));
+                }
                 cts.Dispose();
                 Log.Information("[BACKGROUND] Agent {AgentId} for chat {ChatId} stopped", agentId, chatId);
             }
@@ -50,7 +58,17 @@ public class AgentScheduler : BackgroundService
 
     public bool StopAgent(Guid agentId, Guid chatId)
     {
-        if (_jobs.TryRemove((agentId, chatId), out var cts))
+        CancellationTokenSource? cts = null;
+
+        lock (_lock)
+        {
+            if (_jobs.TryGetValue((agentId, chatId), out cts))
+            {
+                _jobs.Remove((agentId, chatId));
+            }
+        }
+
+        if (cts != null)
         {
             Log.Information("[BACKGROUND] Stopping agent {AgentId} for chat {ChatId}", agentId, chatId);
             cts.Cancel();
@@ -88,11 +106,18 @@ public class AgentScheduler : BackgroundService
 
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        Log.Information("[BACKGROUND] Stopping {JobCount} running agent jobs", _jobs.Count);
+        CancellationTokenSource[] jobsToStop;
 
-        foreach (var kv in _jobs)
+        lock (_lock)
         {
-            await kv.Value.CancelAsync();
+            jobsToStop = _jobs.Values.ToArray();
+        }
+
+        Log.Information("[BACKGROUND] Stopping {JobCount} running agent jobs", jobsToStop.Length);
+
+        foreach (var cts in jobsToStop)
+        {
+            await cts.CancelAsync();
         }
 
         await base.StopAsync(cancellationToken);

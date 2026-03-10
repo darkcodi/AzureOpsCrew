@@ -26,6 +26,7 @@ public class AgentRunService
     private readonly AzureOpsCrewContext _dbContext;
     private readonly IProviderFacadeResolver _providerFactory;
     private readonly ToolCallRouter _toolCallRouter;
+    private readonly BackendToolExecutor _backendToolExecutor;
     private readonly IAiAgentFactory _aiAgentFactory;
     private readonly ContextService _contextService;
     private readonly IChannelEventBroadcaster? _channelEventBroadcaster;
@@ -35,6 +36,7 @@ public class AgentRunService
         _dbContext = serviceProvider.GetRequiredService<AzureOpsCrewContext>();
         _providerFactory = serviceProvider.GetRequiredService<IProviderFacadeResolver>();
         _toolCallRouter = serviceProvider.GetRequiredService<ToolCallRouter>();
+        _backendToolExecutor = serviceProvider.GetRequiredService<BackendToolExecutor>();
         _aiAgentFactory = serviceProvider.GetRequiredService<IAiAgentFactory>();
         _contextService = serviceProvider.GetRequiredService<ContextService>();
         // Event broadcaster is optional - used for both channels and DMs
@@ -280,7 +282,7 @@ public class AgentRunService
             .ToListAsync(ct);
 
         // load tools
-        var backendTools = BackEndTools.All.Select(t => t.GetDeclaration()).ToList();
+        var backendTools = _backendToolExecutor.AllTools.Select(t => t.GetDeclaration()).ToList();
         var frontEndTools = FrontEndTools.GetDeclarations();
         var tools = backendTools
             .Concat(frontEndTools)
