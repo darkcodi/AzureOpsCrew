@@ -31,7 +31,7 @@
                 }
                 else if (entry.Message is { } msgGroup)
                 {
-                    <MessageBubble Message="@msgGroup.Message" IsGrouped="@msgGroup.IsGrouped" IsOwn="@msgGroup.IsOwn" />
+                    <MessageBubble Message="@msgGroup.Message" IsGrouped="@msgGroup.IsGrouped" IsOwn="@msgGroup.IsOwn" OnAgentClick="OnAgentClick" />
                 }
             }
         }
@@ -82,6 +82,7 @@
     [Parameter] public List<string> TypingUsernames { get; set; } = [];
     [Parameter] public bool IsAgentRunning { get; set; }
     [Parameter] public EventCallback OnStopAgent { get; set; }
+    [Parameter] public EventCallback<Guid?> OnAgentClick { get; set; }
 
     private ElementReference _messagesContainer;
     private string _messageText = string.Empty;

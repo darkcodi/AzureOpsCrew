@@ -56,7 +56,7 @@ public class AgentRunService
             await BroadcastAgentStatus(initialData, "Running");
 
             var iteration = 0;
-            const int maxIterations = 50;
+            const int maxIterations = 300;
             // multiple iterations for one run, stops when outputted a final text content
             while (!ct.IsCancellationRequested && iteration < maxIterations)
             {
