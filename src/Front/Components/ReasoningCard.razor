@@ -23,7 +23,12 @@
     [Parameter, EditorRequired]
     public ReasoningDto Reasoning { get; set; } = null!;
 
+    [Parameter]
+    public bool DefaultExpanded { get; set; }
+
     private bool _expanded;
+
+    protected override void OnInitialized() => _expanded = DefaultExpanded;
 
     private void ToggleExpanded() => _expanded = !_expanded;
 }
