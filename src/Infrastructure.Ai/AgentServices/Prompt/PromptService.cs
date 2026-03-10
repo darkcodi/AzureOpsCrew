@@ -8,11 +8,8 @@ public class PromptService
     private static readonly IReadOnlyList<IPromptChunk> PromptChunks = new List<IPromptChunk>
     {
         new GeneralPromptChunk(),
-        new ToneAndStylePromptChunk(),
-        new ProactivenessPromptChunk(),
         new DoingTasksPromptChunk(),
         new ToolUsagePolicyPromptChunk(),
-        new SystemUnderstandingPromptChunk(),
         new ChatRulesPromptChunk(),
         new AgentInfoPromptChunk(),
         new ChatParticipantsPromptChunk(),
