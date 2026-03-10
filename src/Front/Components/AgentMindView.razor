@@ -8,7 +8,14 @@
                 <div class="agent-mind-avatar" style="background-color: @Agent.Color; color: #fff;">
                     @GetAgentInitials(Agent.Username)
                 </div>
-                <h2 class="agent-mind-title">@Agent.Username's Mind</h2>
+                <div class="agent-mind-header-title-row">
+                    <h2 class="agent-mind-title">@Agent.Username's Mind</h2>
+                    <span class="agent-mind-status agent-mind-status-@(GetStatusClass())">@(Agent.Status ?? "Idle")</span>
+                    @if (string.Equals(Agent.Status, "Error", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(Agent.ErrorMessage))
+                    {
+                        <span class="agent-mind-status-errormessage" title="@Agent.ErrorMessage">@TruncateError(Agent.ErrorMessage)</span>
+                    }
+                </div>
             </div>
             <button type="button" class="agent-mind-close-btn" @onclick="OnClose" aria-label="Close">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -106,5 +113,21 @@
         if (parts.Length >= 2)
             return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}";
         return username.Length >= 2 ? username[..2].ToUpperInvariant() : username.ToUpperInvariant();
+    }
+
+    private string GetStatusClass()
+    {
+        var status = Agent.Status;
+        if (string.IsNullOrEmpty(status)) return "idle";
+        if (string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase)) return "running";
+        if (string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase)) return "error";
+        return "idle";
+    }
+
+    private static string TruncateError(string? message)
+    {
+        if (string.IsNullOrEmpty(message)) return string.Empty;
+        const int maxLen = 60;
+        return message.Length <= maxLen ? message : message[..maxLen] + "…";
     }
 }

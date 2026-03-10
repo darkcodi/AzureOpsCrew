@@ -35,6 +35,14 @@
     min-width: 0;
 }
 
+.agent-mind-header-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+}
+
 .agent-mind-avatar {
     width: 36px;
     height: 36px;
@@ -55,6 +63,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .agent-mind-close-btn {
@@ -76,6 +85,40 @@
 .agent-mind-close-btn:hover {
     color: hsl(210, 3%, 90%);
     background-color: hsl(228, 6%, 22%);
+}
+
+.agent-mind-status {
+    flex-shrink: 0;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.25;
+}
+
+.agent-mind-status-idle {
+    background-color: hsla(0, 0%, 0%, 0.35);
+    color: hsl(214, 5%, 65%);
+}
+
+.agent-mind-status-running {
+    background-color: hsl(235, 86%, 65%);
+    color: #fff;
+}
+
+.agent-mind-status-error {
+    background-color: hsla(0, 70%, 50%, 0.25);
+    color: hsl(0, 75%, 75%);
+}
+
+.agent-mind-status-errormessage {
+    flex-shrink: 1;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    color: hsl(0, 60%, 70%);
 }
 
 .agent-mind-body {
