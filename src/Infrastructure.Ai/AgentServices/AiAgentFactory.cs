@@ -2,6 +2,7 @@
 using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.Prompt;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
