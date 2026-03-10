@@ -66,6 +66,34 @@
     min-width: 0;
 }
 
+.agent-mind-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.agent-mind-settings-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: hsl(214, 5%, 55%);
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.agent-mind-settings-btn:hover {
+    color: hsl(210, 3%, 90%);
+    background-color: hsl(228, 6%, 22%);
+}
+
 .agent-mind-close-btn {
     flex-shrink: 0;
     display: flex;

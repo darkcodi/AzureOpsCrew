@@ -1,5 +1,6 @@
 @namespace Front.Components
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 <div class="agent-mind-overlay" @onclick="OnClose">
     <div class="agent-mind-content" @onclick:stopPropagation="true">
@@ -17,13 +18,22 @@
                     }
                 </div>
             </div>
-            <button type="button" class="agent-mind-close-btn" @onclick="OnClose" aria-label="Close">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
+            <div class="agent-mind-header-actions">
+                <button type="button" class="agent-mind-settings-btn" @onclick="OnSettingsClick" aria-label="Settings" title="Settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0a2.34 2.34 0 0 0 3.319 1.915a2.34 2.34 0 0 1 2.33 4.033a2.34 2.34 0 0 0 0 3.831a2.34 2.34 0 0 1-2.33 4.033a2.34 2.34 0 0 0-3.319 1.915a2.34 2.34 0 0 1-4.659 0a2.34 2.34 0 0 0-3.32-1.915a2.34 2.34 0 0 1-2.33-4.033a2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+                <button type="button" class="agent-mind-close-btn" @onclick="OnClose" aria-label="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <div class="agent-mind-body" @ref="_bodyContainer">
@@ -129,5 +139,11 @@
         if (string.IsNullOrEmpty(message)) return string.Empty;
         const int maxLen = 60;
         return message.Length <= maxLen ? message : message[..maxLen] + "…";
+    }
+
+    private void OnSettingsClick()
+    {
+        OnClose.InvokeAsync();
+        Navigation.NavigateTo("/settings/agent");
     }
 }
