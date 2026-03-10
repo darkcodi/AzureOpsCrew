@@ -255,11 +255,6 @@
                 if (!_typingUsernames.Contains(agent.Username))
                     _typingUsernames.Add(agent.Username);
             }
-            else if (isWaitingForApproval)
-            {
-                // Stop typing indicator but don't clear the agent status
-                _typingUsernames.Remove(agent.Username);
-            }
             else
             {
                 _typingUsernames.Remove(agent.Username);
@@ -269,7 +264,7 @@
             var dmId = AppState.SelectedDm?.Id;
             if (dmId.HasValue)
             {
-                if (isRunning)
+                if (isRunning || isWaitingForApproval)
                 {
                     await AgentState.SetAgentStatusAsync(dmId.Value, ConversationType.Dm, agentId, status, errorMessage);
                 }
@@ -284,10 +279,18 @@
 
     private async void OnApprovalRequestReceived(ApprovalRequestDto approval)
     {
-        if (_approvalRequests.Any(a => a.ApprovalId == approval.ApprovalId))
-            return;
+        var existing = _approvalRequests.FirstOrDefault(a => a.ApprovalId == approval.ApprovalId);
+        if (existing != null)
+        {
+            existing.Status = approval.Status;
+            existing.Reason = approval.Reason;
+            existing.UserResponse = approval.UserResponse;
+        }
+        else
+        {
+            _approvalRequests.Add(approval);
+        }
 
-        _approvalRequests.Add(approval);
         await InvokeAsync(StateHasChanged);
     }
 
@@ -305,7 +308,7 @@
             var approval = _approvalRequests.FirstOrDefault(a => a.ApprovalId == response.approvalId);
             if (approval != null)
             {
-                approval.UserResponse = response.approved;
+                approval.Status = response.approved ? "approved" : "rejected";
             }
             StateHasChanged();
         }
@@ -441,3 +444,4 @@
             .ToList();
     }
 }
+

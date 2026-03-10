@@ -134,6 +134,11 @@
     color: #fff;
 }
 
+.agent-mind-status-waiting {
+    background-color: hsla(42, 90%, 55%, 0.24);
+    color: hsl(42, 90%, 72%);
+}
+
 .agent-mind-status-error {
     background-color: hsla(0, 70%, 50%, 0.25);
     color: hsl(0, 75%, 75%);
@@ -202,3 +207,4 @@
 .agent-mind-body ::deep .reasoning-card {
     flex-shrink: 0;
 }
+

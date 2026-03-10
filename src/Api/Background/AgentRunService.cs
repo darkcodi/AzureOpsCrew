@@ -206,11 +206,15 @@ public class AgentRunService
                     }
                 }
 
+                // Persist any tool results that were produced before we hit an approval gate.
+                if (newToolCallResults.Count > 0)
+                {
+                    await SaveAgentThoughts(agentId, chatId, newToolCallResults, ct);
+                }
+
                 // If waiting for approval, break the iteration loop
                 if (waitingForApproval)
                     break;
-
-                await SaveAgentThoughts(agentId, chatId, newToolCallResults, ct);
 
                 // If the agent called the skipTurn tool, we consider that it has finished its run and we stop the loop.
                 // This allows agents to explicitly signal that they want to skip their turn and let other agents or the human take the lead.
@@ -531,7 +535,7 @@ public class AgentRunService
             var toolCallResult = await _toolCallRouter.ExecuteToolCall(toolCall, data);
             var toolResultThought = AocAgentThought.FromContent(
                 toolCallResult, ChatRole.Tool, data.Agent.Info.Username,
-                DateTime.UtcNow, chatMessageId);
+                DateTime.UtcNow, Guid.NewGuid());
             await SaveAgentThoughts(agentId, chatId, [toolResultThought], ct);
 
             // Broadcast tool call completed
@@ -553,7 +557,7 @@ public class AgentRunService
             };
             var rejectionThought = AocAgentThought.FromContent(
                 rejectionResult, ChatRole.Tool, data.Agent.Info.Username,
-                DateTime.UtcNow, chatMessageId);
+                DateTime.UtcNow, Guid.NewGuid());
             await SaveAgentThoughts(agentId, chatId, [rejectionThought], ct);
 
             // Broadcast rejection as completed with error

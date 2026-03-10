@@ -130,6 +130,7 @@
         var status = Agent.Status;
         if (string.IsNullOrEmpty(status)) return "idle";
         if (string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase)) return "running";
+        if (string.Equals(status, "WaitingForApproval", StringComparison.OrdinalIgnoreCase)) return "waiting";
         if (string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase)) return "error";
         return "idle";
     }
@@ -147,3 +148,4 @@
         Navigation.NavigateTo("/settings/agents/" + Agent.Id.ToString());
     }
 }
+

@@ -411,6 +411,18 @@ public static class ChannelEndpoints
             if (matchingThought is null)
                 return Results.NotFound("Approval request not found.");
 
+            var existingResponses = await context.AgentThoughts
+                .Where(t => t.AgentId == matchingThought.AgentId
+                    && t.ThreadId == channelId
+                    && t.ContentType == LlmMessageContentType.FunctionApprovalResponseContent)
+                .ToListAsync(cancellationToken);
+
+            var existingResponse = existingResponses.Any(t =>
+                JsonSerializer.Deserialize<AocFunctionApprovalResponseContent>(t.ContentJson)?.Id == approvalId);
+
+            if (existingResponse)
+                return Results.Conflict("Approval request already has a response.");
+
             var requestContent = JsonSerializer.Deserialize<AocFunctionApprovalRequestContent>(matchingThought.ContentJson);
 
             // Save the approval response as an agent thought
@@ -422,7 +434,7 @@ public static class ChannelEndpoints
                 FunctionCall = requestContent?.FunctionCall
             };
             var responseThought = AocAgentThought.FromContent(
-                responseContent, ChatRole.User, null, DateTime.UtcNow, matchingThought.ChatMessageId);
+                responseContent, ChatRole.User, null, DateTime.UtcNow, Guid.NewGuid());
             var domainThought = responseThought.ToDomain(matchingThought.AgentId, channelId, matchingThought.RunId);
             context.AgentThoughts.Add(domainThought);
             await context.SaveChangesAsync(cancellationToken);
@@ -479,3 +491,5 @@ public static class ChannelEndpoints
         .Produces(StatusCodes.Status404NotFound);
     }
 }
+
+

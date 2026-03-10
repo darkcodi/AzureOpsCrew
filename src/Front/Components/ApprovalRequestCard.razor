@@ -26,6 +26,14 @@
                     <pre class="approval-card-json">@FormatArgs()</pre>
                 </div>
             }
+
+            @if (!string.IsNullOrWhiteSpace(ApprovalRequest.Reason))
+            {
+                <div class="approval-card-section">
+                    <span class="approval-card-section-label">Reason</span>
+                    <div class="approval-card-reason">@ApprovalRequest.Reason</div>
+                </div>
+            }
         </div>
     }
 
@@ -84,12 +92,14 @@
     {
         _responding = true;
         await OnRespond.InvokeAsync((ApprovalRequest.ApprovalId, true));
+        _responding = false;
     }
 
     private async Task Reject()
     {
         _responding = true;
         await OnRespond.InvokeAsync((ApprovalRequest.ApprovalId, false));
+        _responding = false;
     }
 
     private string FormatArgs()

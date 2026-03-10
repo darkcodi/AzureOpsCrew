@@ -177,3 +177,10 @@
         margin: 8px 16px 8px 56px;
     }
 }
+
+.approval-card-reason {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: hsl(220, 15%, 82%);
+    white-space: pre-wrap;
+}

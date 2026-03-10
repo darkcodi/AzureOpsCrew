@@ -91,11 +91,13 @@ public static class DmEndpoints
 
         // GET: /api/dms/{dmId}/approvals - Returns all approval requests for a DM with their status
         group.MapGet("/{dmId}/approvals", async (
+            HttpContext httpContext,
             Guid dmId,
             AzureOpsCrewContext context,
             CancellationToken cancellationToken) =>
         {
-            var dmExists = await context.Dms.AnyAsync(dm => dm.Id == dmId, cancellationToken);
+            var userId = httpContext.User.GetRequiredUserId();
+            var dmExists = await context.Dms.AnyAsync(dm => dm.Id == dmId && (dm.User1Id == userId || dm.User2Id == userId), cancellationToken);
             if (!dmExists)
                 return Results.NotFound();
 
@@ -483,6 +485,18 @@ public static class DmEndpoints
             if (matchingThought is null)
                 return Results.NotFound("Approval request not found.");
 
+            var existingResponses = await context.AgentThoughts
+                .Where(t => t.AgentId == agentId
+                    && t.ThreadId == dm.Id
+                    && t.ContentType == LlmMessageContentType.FunctionApprovalResponseContent)
+                .ToListAsync(cancellationToken);
+
+            var existingResponse = existingResponses.Any(t =>
+                JsonSerializer.Deserialize<AocFunctionApprovalResponseContent>(t.ContentJson)?.Id == approvalId);
+
+            if (existingResponse)
+                return Results.Conflict("Approval request already has a response.");
+
             // Deserialize the original function call from the request
             var requestContent = JsonSerializer.Deserialize<AocFunctionApprovalRequestContent>(matchingThought.ContentJson);
 
@@ -495,7 +509,7 @@ public static class DmEndpoints
                 FunctionCall = requestContent?.FunctionCall
             };
             var responseThought = AocAgentThought.FromContent(
-                responseContent, ChatRole.User, null, DateTime.UtcNow, matchingThought.ChatMessageId);
+                responseContent, ChatRole.User, null, DateTime.UtcNow, Guid.NewGuid());
             var domainThought = responseThought.ToDomain(agentId, dm.Id, matchingThought.RunId);
             context.AgentThoughts.Add(domainThought);
             await context.SaveChangesAsync(cancellationToken);
@@ -537,3 +551,6 @@ public static class DmEndpoints
         .Produces(StatusCodes.Status200OK);
     }
 }
+
+
+
