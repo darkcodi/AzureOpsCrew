@@ -160,7 +160,7 @@ public class AgentRunService
 
                 var lastTextAgentThought = newAgentThoughts.LastOrDefault(t => t.ContentDto.ToAocAiContent() is AocTextContent);
                 var lastTextContent = lastTextAgentThought?.ContentDto.ToAocAiContent() as AocTextContent;
-                if (lastTextContent != null)
+                if (lastTextContent != null && !string.IsNullOrEmpty(lastTextContent.Text))
                 {
                     var message = await SaveLastMessage( data, lastTextContent.Text, lastTextAgentThought!.Id, ct);
                     await Broadcast(data, message);
