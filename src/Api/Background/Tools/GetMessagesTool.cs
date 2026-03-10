@@ -18,7 +18,7 @@ public class GetMessagesTool : IBackendTool
                                           {
                                             "type": "object",
                                             "properties": {
-                                              "after": { "type": "string", "description": "Optional ISO 8601 date-time. When provided, only messages posted after this timestamp are returned." }
+                                              "after": { "type": "string", "description": "Optional timestamp filter. Supports: ISO 8601 (e.g., 2025-01-15T10:30:00Z), Unix timestamp (seconds or milliseconds since epoch), common date formats (e.g., 2025-01-15, 01/15/2025)." }
                                             },
                                             "additionalProperties": false
                                           }
@@ -58,15 +58,14 @@ public class GetMessagesTool : IBackendTool
 
         if (arguments != null && arguments.TryGetValue("after", out var afterValue))
         {
-            if (afterValue is string afterStr &&
-                DateTime.TryParse(afterStr, null, DateTimeStyles.RoundtripKind, out var fromDate))
+            DateTime? fromDate = TryParseDateTime(afterValue);
+
+            if (fromDate == null)
             {
-                source = source.Where(m => m.PostedAt >= fromDate.ToUniversalTime());
+                return Task.FromResult(new ToolCallResult(callId, new { ErrorMessage = "after param is not a valid date-time string. Supported formats: ISO 8601 (e.g., 2025-01-15T10:30:00Z), Unix timestamp (seconds or milliseconds since epoch), common date formats (e.g., 2025-01-15, 01/15/2025)." }, true));
             }
-            else
-            {
-                return Task.FromResult(new ToolCallResult(callId, new { ErrorMessage = "after param is not a valid ISO 8601 date-time string" }, true));
-            }
+
+            source = source.Where(m => m.PostedAt >= fromDate.Value.ToUniversalTime());
         }
 
         var messages = source.Select(m => new
@@ -79,5 +78,80 @@ public class GetMessagesTool : IBackendTool
         }).ToList();
 
         return Task.FromResult(new ToolCallResult(callId, new { messages }, false));
+    }
+
+    private static DateTime? TryParseDateTime(object? value)
+    {
+        if (value is null)
+            return null;
+
+        // If already a DateTime, return it
+        if (value is DateTime dt)
+            return dt;
+
+        string? valueStr = value as string;
+        if (valueStr == null)
+            return null;
+
+        // Trim whitespace
+        valueStr = valueStr.Trim();
+
+        // Try Unix timestamp (seconds since epoch)
+        // Valid timestamps are typically between 1970 and 2100
+        if (long.TryParse(valueStr, out var unixSeconds) && unixSeconds > 0 && unixSeconds < 4_000_000_000)
+        {
+            try
+            {
+                return DateTimeOffset.FromUnixTimeSeconds(unixSeconds).UtcDateTime;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // Fall through to other parsing attempts
+            }
+        }
+
+        // Try Unix timestamp in milliseconds
+        // Valid millisecond timestamps are typically between 1970 and 2100
+        if (long.TryParse(valueStr, out var unixMillis) && unixMillis > 0 && unixMillis > 10_000_000_000 && unixMillis < 4_000_000_000_000)
+        {
+            try
+            {
+                return DateTimeOffset.FromUnixTimeMilliseconds(unixMillis).UtcDateTime;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // Fall through to other parsing attempts
+            }
+        }
+
+        // Try ISO 8601 with various styles
+        if (DateTime.TryParse(valueStr, null, DateTimeStyles.RoundtripKind | DateTimeStyles.AllowWhiteSpaces, out var isoResult))
+            return isoResult;
+
+        // Try common date formats
+        string[] commonFormats =
+        [
+            "yyyy-MM-dd",
+            "yyyy/MM/dd",
+            "MM/dd/yyyy",
+            "dd/MM/yyyy",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy/MM/dd HH:mm:ss",
+            "MM/dd/yyyy HH:mm:ss",
+            "dd/MM/yyyy HH:mm:ss",
+            "yyyy-MM-ddTHH:mm:ss",
+            "yyyy-MM-dd HH:mm",
+            "o", // Round-trip date/time pattern
+            "s", // Sortable date/time pattern
+            "u", // Universal sortable date/time pattern
+        ];
+
+        foreach (var format in commonFormats)
+        {
+            if (DateTime.TryParseExact(valueStr, format, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AllowWhiteSpaces, out var result))
+                return result;
+        }
+
+        return null;
     }
 }
