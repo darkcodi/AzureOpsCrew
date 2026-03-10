@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Domain.Tools.BackEnd;
@@ -89,6 +90,16 @@ public class GetMessagesTool : IBackendTool
         if (value is DateTime dt)
             return dt;
 
+        // Handle JsonElement from JSON deserialization
+        if (value is JsonElement jsonElement)
+        {
+            if (jsonElement.ValueKind == JsonValueKind.String)
+            {
+                return TryParseDateTime(jsonElement.GetString());
+            }
+            return null;
+        }
+
         string? valueStr = value as string;
         if (valueStr == null)
             return null;
@@ -152,6 +163,13 @@ public class GetMessagesTool : IBackendTool
             "yyyy-MM-ddTHH:mm:ss.fff",      // 3-digit fractional seconds
             "yyyy-MM-ddTHH:mm:ss.ff",       // 2-digit fractional seconds
             "yyyy-MM-ddTHH:mm:ss.f",        // 1-digit fractional seconds
+            "yyyy-MM-ddTHH:mm:ss.fffffffZ", // 7-digit fractional seconds with Z
+            "yyyy-MM-ddTHH:mm:ss.ffffffZ",  // 6-digit fractional seconds with Z
+            "yyyy-MM-ddTHH:mm:ss.fffffZ",   // 5-digit fractional seconds with Z
+            "yyyy-MM-ddTHH:mm:ss.ffffZ",    // 4-digit fractional seconds with Z
+            "yyyy-MM-ddTHH:mm:ss.fffZ",     // 3-digit fractional seconds with Z
+            "yyyy-MM-ddTHH:mm:ss.ffZ",      // 2-digit fractional seconds with Z
+            "yyyy-MM-ddTHH:mm:ss.fZ",       // 1-digit fractional seconds with Z
             "o", // Round-trip date/time pattern
             "s", // Sortable date/time pattern
             "u", // Universal sortable date/time pattern
