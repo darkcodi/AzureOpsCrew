@@ -261,6 +261,9 @@
         if (_mindViewAgent == null)
             return;
 
+        if (toolCall.AgentId != _mindViewAgent.Id)
+            return;
+
         var existing = _mindToolCalls.FirstOrDefault(t => t.CallId == toolCall.CallId);
         if (existing != null)
         {
@@ -279,6 +282,9 @@
     private async void OnReasoningReceived(ReasoningDto reasoning)
     {
         if (_mindViewAgent == null)
+            return;
+
+        if (reasoning.AgentId != _mindViewAgent.Id)
             return;
 
         _mindReasonings.Add(reasoning);

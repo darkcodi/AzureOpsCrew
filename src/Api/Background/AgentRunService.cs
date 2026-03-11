@@ -106,11 +106,12 @@ public class AgentRunService
                             {
                                 Text = reasoning.Text,
                                 AgentName = data.Agent.Info.Username,
+                                AgentId = data.Agent.Id,
                                 Timestamp = DateTimeOffset.UtcNow,
                             };
                             if (data.Channel != null)
                             {
-                                await _channelEventBroadcaster.BroadcastChannelReasoningContentAsync(data.Channel.Id, data.Agent.Id, evt);
+                                await _channelEventBroadcaster.BroadcastChannelReasoningContentAsync(data.Channel.Id, evt);
                             }
                             else if (data.DmChannel != null)
                             {
@@ -184,11 +185,12 @@ public class AgentRunService
                             ToolName = toolCall.Name,
                             CallId = toolCall.CallId,
                             Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
+                            AgentId = data.Agent.Id,
                             Timestamp = DateTimeOffset.UtcNow,
                         };
                         if (data.Channel != null)
                         {
-                            await _channelEventBroadcaster.BroadcastChannelToolCallStartAsync(data.Channel.Id, data.Agent.Id, startEvt);
+                            await _channelEventBroadcaster.BroadcastChannelToolCallStartAsync(data.Channel.Id, startEvt);
                         }
                         else if (data.DmChannel != null)
                         {
@@ -211,11 +213,12 @@ public class AgentRunService
                             Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
                             Result = toolCallResultObj?.Result,
                             IsError = isError,
+                            AgentId = data.Agent.Id,
                             Timestamp = DateTimeOffset.UtcNow,
                         };
                         if (data.Channel != null)
                         {
-                            await _channelEventBroadcaster.BroadcastChannelToolCallCompletedAsync(data.Channel.Id, data.Agent.Id, evt);
+                            await _channelEventBroadcaster.BroadcastChannelToolCallCompletedAsync(data.Channel.Id, evt);
                         }
                         else if (data.DmChannel != null)
                         {
@@ -637,11 +640,12 @@ public class AgentRunService
             ToolName = toolCall.Name,
             CallId = toolCall.CallId,
             Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
+            AgentId = data.Agent.Id,
             Timestamp = DateTimeOffset.UtcNow,
         };
 
         if (data.Channel != null)
-            await _channelEventBroadcaster.BroadcastChannelToolCallStartAsync(data.Channel.Id, data.Agent.Id, startEvt);
+            await _channelEventBroadcaster.BroadcastChannelToolCallStartAsync(data.Channel.Id, startEvt);
         else if (data.DmChannel != null)
             await _channelEventBroadcaster.BroadcastDmToolCallStartAsync(data.DmChannel.Id, startEvt);
     }
@@ -660,11 +664,12 @@ public class AgentRunService
             Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
             Result = toolCallResultObj?.Result,
             IsError = isError,
+            AgentId = data.Agent.Id,
             Timestamp = DateTimeOffset.UtcNow,
         };
 
         if (data.Channel != null)
-            await _channelEventBroadcaster.BroadcastChannelToolCallCompletedAsync(data.Channel.Id, data.Agent.Id, evt);
+            await _channelEventBroadcaster.BroadcastChannelToolCallCompletedAsync(data.Channel.Id, evt);
         else if (data.DmChannel != null)
             await _channelEventBroadcaster.BroadcastDmToolCallCompletedAsync(data.DmChannel.Id, evt);
     }

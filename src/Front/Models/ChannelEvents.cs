@@ -49,6 +49,9 @@ public class ToolCallStartEvent : ChannelEvent
     [JsonPropertyName("args")]
     public JsonElement? Args { get; set; }
 
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
+
     [JsonPropertyName("timestamp")]
     public DateTimeOffset Timestamp { get; set; }
 }
@@ -78,6 +81,9 @@ public class ToolCallCompletedEvent : ChannelEvent
     [JsonPropertyName("isError")]
     public bool IsError { get; set; }
 
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
+
     [JsonPropertyName("timestamp")]
     public DateTimeOffset Timestamp { get; set; }
 }
@@ -100,6 +106,9 @@ public class ReasoningContentEvent : ChannelEvent
 
     [JsonPropertyName("agentName")]
     public string? AgentName { get; set; }
+
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
 
     [JsonPropertyName("timestamp")]
     public DateTimeOffset Timestamp { get; set; }

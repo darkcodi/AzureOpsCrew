@@ -126,6 +126,7 @@ public sealed class ChatHubClient : IAsyncDisposable
                 ToolName = toolStartEvt.ToolName,
                 CallId = toolStartEvt.CallId,
                 Args = toolStartEvt.Args,
+                AgentId = toolStartEvt.AgentId,
                 Result = null,
                 IsError = false,
                 IsFinished = false,
@@ -141,6 +142,7 @@ public sealed class ChatHubClient : IAsyncDisposable
                 ToolName = toolEvt.ToolName,
                 CallId = toolEvt.CallId,
                 Args = toolEvt.Args,
+                AgentId = toolEvt.AgentId,
                 Result = toolEvt.Result,
                 IsError = toolEvt.IsError,
                 IsFinished = true,
@@ -155,6 +157,7 @@ public sealed class ChatHubClient : IAsyncDisposable
             {
                 Text = reasoningEvt.Text,
                 AgentName = reasoningEvt.AgentName,
+                AgentId = reasoningEvt.AgentId,
                 Timestamp = reasoningEvt.Timestamp,
             };
             ReasoningReceived?.Invoke(dto);

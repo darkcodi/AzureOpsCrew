@@ -12,9 +12,9 @@ public interface IChannelEventBroadcaster
 {
     Task BroadcastMessageAddedAsync(Guid channelId, Message message);
     Task BroadcastDmMessageAddedAsync(Guid dmId, Message message);
-    Task BroadcastChannelToolCallStartAsync(Guid channelId, Guid agentId, ToolCallStartEvent evt);
-    Task BroadcastChannelToolCallCompletedAsync(Guid channelId, Guid agentId, ToolCallCompletedEvent evt);
-    Task BroadcastChannelReasoningContentAsync(Guid channelId, Guid agentId, ReasoningContentEvent evt);
+    Task BroadcastChannelToolCallStartAsync(Guid channelId, ToolCallStartEvent evt);
+    Task BroadcastChannelToolCallCompletedAsync(Guid channelId, ToolCallCompletedEvent evt);
+    Task BroadcastChannelReasoningContentAsync(Guid channelId, ReasoningContentEvent evt);
     Task BroadcastChannelAgentStatusAsync(Guid channelId, AgentStatusEvent evt);
     Task BroadcastDmToolCallStartAsync(Guid dmId, ToolCallStartEvent evt);
     Task BroadcastDmToolCallCompletedAsync(Guid dmId, ToolCallCompletedEvent evt);
@@ -63,24 +63,24 @@ public class ChannelEventBroadcaster : IChannelEventBroadcaster
         return _dmHubContext.Clients.Group(groupName).SendAsync("event", eventMessage);
     }
 
-    public Task BroadcastChannelToolCallStartAsync(Guid channelId, Guid agentId, ToolCallStartEvent evt)
+    public Task BroadcastChannelToolCallStartAsync(Guid channelId, ToolCallStartEvent evt)
     {
         var groupName = GetChannelGroupName(channelId);
-        _logger.LogDebug("Broadcasting TOOL_CALL_START to channel {ChannelId} from agent {AgentId}", channelId, agentId);
+        _logger.LogDebug("Broadcasting TOOL_CALL_START to channel {ChannelId}", channelId);
         return _channelHubContext.Clients.Group(groupName).SendAsync("event", evt);
     }
 
-    public Task BroadcastChannelToolCallCompletedAsync(Guid channelId, Guid agentId, ToolCallCompletedEvent evt)
+    public Task BroadcastChannelToolCallCompletedAsync(Guid channelId, ToolCallCompletedEvent evt)
     {
         var groupName = GetChannelGroupName(channelId);
-        _logger.LogDebug("Broadcasting TOOL_CALL_COMPLETED to channel {ChannelId} from agent {AgentId}", channelId, agentId);
+        _logger.LogDebug("Broadcasting TOOL_CALL_COMPLETED to channel {ChannelId}", channelId);
         return _channelHubContext.Clients.Group(groupName).SendAsync("event", evt);
     }
 
-    public Task BroadcastChannelReasoningContentAsync(Guid channelId, Guid agentId, ReasoningContentEvent evt)
+    public Task BroadcastChannelReasoningContentAsync(Guid channelId, ReasoningContentEvent evt)
     {
         var groupName = GetChannelGroupName(channelId);
-        _logger.LogDebug("Broadcasting REASONING_CONTENT to channel {ChannelId} from agent {AgentId}", channelId, agentId);
+        _logger.LogDebug("Broadcasting REASONING_CONTENT to channel {ChannelId}", channelId);
         return _channelHubContext.Clients.Group(groupName).SendAsync("event", evt);
     }
 
