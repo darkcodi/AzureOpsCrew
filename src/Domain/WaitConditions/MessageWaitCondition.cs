@@ -1,3 +1,5 @@
+using AzureOpsCrew.Domain.Triggers;
+
 namespace AzureOpsCrew.Domain.WaitConditions;
 
 public class MessageWaitCondition : IWaitCondition
@@ -12,36 +14,14 @@ public class MessageWaitCondition : IWaitCondition
     public Guid? SatisfiedByTriggerId { get; set; }
 
     // specific to wait message trigger
-    public Guid AfterMessageId { get; set; }
+    public DateTime MessageAfterDateTime { get; set; }
 
-    public WaitCondition ToDto()
+    public bool CanBeSatisfiedByTrigger(ITrigger trigger)
     {
-        return new WaitCondition
-        {
-            Id = Id,
-            AgentId = AgentId,
-            ChatId = ChatId,
-            CreatedAt = CreatedAt,
-            CompletedAt = CompletedAt,
-            SatisfiedByTriggerId = SatisfiedByTriggerId,
-            AfterMessageId = AfterMessageId,
-        };
-    }
+        if (trigger.Type != TriggerType.Message)
+            return false;
 
-    public IWaitCondition FromDto(WaitCondition dto)
-    {
-        if (dto.Type != WaitConditionType.Message)
-            throw new ArgumentException($"Invalid wait condition type: {dto.Type}");
-
-        return new MessageWaitCondition
-        {
-            Id = dto.Id,
-            AgentId = dto.AgentId,
-            ChatId = dto.ChatId,
-            CreatedAt = dto.CreatedAt,
-            CompletedAt = dto.CompletedAt,
-            SatisfiedByTriggerId = dto.SatisfiedByTriggerId,
-            AfterMessageId = dto.AfterMessageId ?? Guid.Empty,
-        };
+        var messageTrigger = (MessageTrigger)trigger;
+        return messageTrigger.ChatId == ChatId && messageTrigger.CreatedAt >= MessageAfterDateTime;
     }
 }

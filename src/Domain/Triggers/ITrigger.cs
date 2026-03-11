@@ -9,7 +9,4 @@ public interface ITrigger
     DateTime CreatedAt { get; }
     DateTime? StartedAt { get; }
     DateTime? CompletedAt { get; }
-
-    Trigger ToDto();
-    ITrigger FromDto(Trigger dto);
 }

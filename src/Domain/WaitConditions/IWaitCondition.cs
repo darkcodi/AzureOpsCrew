@@ -1,3 +1,5 @@
+using AzureOpsCrew.Domain.Triggers;
+
 namespace AzureOpsCrew.Domain.WaitConditions;
 
 public interface IWaitCondition
@@ -10,6 +12,5 @@ public interface IWaitCondition
     DateTime? CompletedAt { get; }
     Guid? SatisfiedByTriggerId { get; }
 
-    WaitCondition ToDto();
-    IWaitCondition FromDto(WaitCondition dto);
+    bool CanBeSatisfiedByTrigger(ITrigger trigger);
 }

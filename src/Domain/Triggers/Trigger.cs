@@ -21,4 +21,70 @@ public class Trigger
     public string? CallId { get; set; }
     public string? ToolName { get; set; }
     public string? Parameters { get; set; }
+
+    public ITrigger ToSpecificTrigger()
+    {
+        return Type switch
+        {
+            TriggerType.Message => new MessageTrigger
+            {
+                Id = Id,
+                AgentId = AgentId,
+                ChatId = ChatId,
+                CreatedAt = CreatedAt,
+                StartedAt = StartedAt,
+                CompletedAt = CompletedAt,
+                MessageId = MessageId ?? Guid.Empty,
+                AuthorId = AuthorId ?? Guid.Empty,
+                AuthorName = AuthorName ?? string.Empty,
+                MessageContent = MessageContent ?? string.Empty,
+            },
+            TriggerType.ToolApproval => new ToolApprovalTrigger
+            {
+                Id = Id,
+                AgentId = AgentId,
+                ChatId = ChatId,
+                CreatedAt = CreatedAt,
+                StartedAt = StartedAt,
+                CompletedAt = CompletedAt,
+                CallId = CallId ?? string.Empty,
+                ToolName = ToolName ?? string.Empty,
+                Parameters = Parameters ?? string.Empty,
+            },
+        };
+    }
+
+    public static Trigger FromSpecificTrigger(ITrigger trigger)
+    {
+        return trigger.Type switch
+        {
+            TriggerType.Message => new Trigger
+            {
+                Id = trigger.Id,
+                Type = trigger.Type,
+                AgentId = trigger.AgentId,
+                ChatId = trigger.ChatId,
+                CreatedAt = trigger.CreatedAt,
+                StartedAt = trigger.StartedAt,
+                CompletedAt = trigger.CompletedAt,
+                MessageId = ((MessageTrigger)trigger).MessageId,
+                AuthorId = ((MessageTrigger)trigger).AuthorId,
+                AuthorName = ((MessageTrigger)trigger).AuthorName,
+                MessageContent = ((MessageTrigger)trigger).MessageContent,
+            },
+            TriggerType.ToolApproval => new Trigger
+            {
+                Id = trigger.Id,
+                Type = trigger.Type,
+                AgentId = trigger.AgentId,
+                ChatId = trigger.ChatId,
+                CreatedAt = trigger.CreatedAt,
+                StartedAt = trigger.StartedAt,
+                CompletedAt = trigger.CompletedAt,
+                CallId = ((ToolApprovalTrigger)trigger).CallId,
+                ToolName = ((ToolApprovalTrigger)trigger).ToolName,
+                Parameters = ((ToolApprovalTrigger)trigger).Parameters,
+            },
+        };
+    }
 }

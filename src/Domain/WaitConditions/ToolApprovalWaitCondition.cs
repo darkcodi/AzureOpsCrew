@@ -1,3 +1,5 @@
+using AzureOpsCrew.Domain.Triggers;
+
 namespace AzureOpsCrew.Domain.WaitConditions;
 
 public class ToolApprovalWaitCondition : IWaitCondition
@@ -14,35 +16,12 @@ public class ToolApprovalWaitCondition : IWaitCondition
     // specific to wait tool approval trigger
     public string ToolCallId { get; set; } = string.Empty;
 
-    public WaitCondition ToDto()
+    public bool CanBeSatisfiedByTrigger(ITrigger trigger)
     {
-        return new WaitCondition
-        {
-            Id = Id,
-            Type = Type,
-            AgentId = AgentId,
-            ChatId = ChatId,
-            CreatedAt = CreatedAt,
-            CompletedAt = CompletedAt,
-            SatisfiedByTriggerId = SatisfiedByTriggerId,
-            ToolCallId = ToolCallId,
-        };
-    }
+        if (trigger.Type != TriggerType.ToolApproval)
+            return false;
 
-    public IWaitCondition FromDto(WaitCondition dto)
-    {
-        if (dto.Type != WaitConditionType.ToolApproval)
-            throw new ArgumentException($"Invalid wait condition type: {dto.Type}");
-
-        return new ToolApprovalWaitCondition
-        {
-            Id = dto.Id,
-            AgentId = dto.AgentId,
-            ChatId = dto.ChatId,
-            CreatedAt = dto.CreatedAt,
-            CompletedAt = dto.CompletedAt,
-            SatisfiedByTriggerId = dto.SatisfiedByTriggerId,
-            ToolCallId = dto.ToolCallId ?? string.Empty,
-        };
+        var toolApprovalTrigger = (ToolApprovalTrigger)trigger;
+        return toolApprovalTrigger.ChatId == ChatId && string.Equals(toolApprovalTrigger.CallId, ToolCallId, StringComparison.InvariantCultureIgnoreCase);
     }
 }
