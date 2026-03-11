@@ -3,6 +3,8 @@ using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.McpServerConfigurations;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.Triggers;
+using AzureOpsCrew.Domain.WaitConditions;
 using Microsoft.EntityFrameworkCore;
 using AgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AgentEntityTypeConfiguration;
 using ChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.ChannelEntityTypeConfiguration;
@@ -35,6 +37,8 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<DirectMessageChannel> Dms => Set<DirectMessageChannel>();
     public DbSet<AgentThought> AgentThoughts => Set<AgentThought>();
     public DbSet<RawLlmHttpCall> RawLlmHttpCalls => Set<RawLlmHttpCall>();
+    public DbSet<Trigger> Triggers => Set<Trigger>();
+    public DbSet<WaitCondition> WaitConditions => Set<WaitCondition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -14,6 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
+using AzureOpsCrew.Domain.Triggers;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -396,7 +397,7 @@ public static class ChannelEndpoints
             string approvalId,
             ApprovalResponseDto body,
             AzureOpsCrewContext context,
-            AgentTriggerQueue agentTriggerQueue,
+            AgentScheduler agentScheduler,
             CancellationToken cancellationToken) =>
         {
             var channel = await context.Set<Channel>()
@@ -450,7 +451,18 @@ public static class ChannelEndpoints
             await context.SaveChangesAsync(cancellationToken);
 
             // Re-enqueue the agent to continue processing
-            agentTriggerQueue.Enqueue(matchingThought.AgentId, channelId);
+            await agentScheduler.QueueTrigger(Trigger.FromSpecificTrigger(new ToolApprovalTrigger
+            {
+                Id = Guid.NewGuid(),
+                AgentId = matchingThought.AgentId,
+                ChatId = channelId,
+                CreatedAt = DateTime.UtcNow,
+                CallId = requestContent?.FunctionCall?.CallId ?? "",
+                ToolName = requestContent?.FunctionCall?.Name ?? "",
+                Parameters = requestContent != null
+                    ? JsonSerializer.Serialize(requestContent.FunctionCall?.Arguments ?? new Dictionary<string, object?>())
+                    : ""
+            }));
 
             return Results.Ok(new { approved = body.Approved });
         })
@@ -462,7 +474,7 @@ public static class ChannelEndpoints
             CreateDirectMessageDto dto,
             HttpContext httpContext,
             AzureOpsCrewContext context,
-            AgentTriggerQueue agentTriggerQueue,
+            AgentScheduler agentScheduler,
             IChannelEventBroadcaster channelEventBroadcaster,
             CancellationToken cancellationToken) =>
         {
@@ -472,14 +484,14 @@ public static class ChannelEndpoints
             if (channel is null)
                 return Results.NotFound();
 
-            var senderId = httpContext.User.GetRequiredUserId();
-            var user = await context.Users.SingleOrDefaultAsync(u => u.Id == senderId, cancellationToken);
+            var userId = httpContext.User.GetRequiredUserId();
+            var user = await context.Users.SingleOrDefaultAsync(u => u.Id == userId, cancellationToken);
             var message = new Message
             {
                 Id = Guid.NewGuid(),
                 Text = dto.Content,
                 PostedAt = DateTime.UtcNow,
-                UserId = senderId,
+                UserId = userId,
                 ChannelId = channel.Id,
                 AuthorName = user?.Username,
             };
@@ -492,7 +504,18 @@ public static class ChannelEndpoints
             // Trigger all agents in the channel
             foreach (var agentId in channel.AgentIds)
             {
-                agentTriggerQueue.Enqueue(agentId, channel.Id);
+                var trigger = new MessageTrigger
+                {
+                    Id = Guid.NewGuid(),
+                    AgentId = agentId,
+                    ChatId = channel.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    MessageId = message.Id,
+                    AuthorId = userId,
+                    AuthorName = user?.Username ?? "Unknown",
+                    MessageContent = dto.Content,
+                };
+                await agentScheduler.QueueTrigger(Trigger.FromSpecificTrigger(trigger));
             }
 
             return Results.Created($"/api/channels/{id}/messages/{message.Id}", message);

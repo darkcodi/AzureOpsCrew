@@ -244,7 +244,6 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<AgentScheduler>();
         services.AddHostedService(sp => sp.GetRequiredService<AgentScheduler>());
-        services.AddSingleton<AgentTriggerQueue>();
         services.AddScoped<AgentRunService>();
         services.AddScoped<BackendToolExecutor>();
         services.AddScoped<McpServerToolExecutor>();

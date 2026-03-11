@@ -9,6 +9,7 @@ using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using System.Text.Json;
+using AzureOpsCrew.Domain.Triggers;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -402,7 +403,7 @@ public static class DmEndpoints
             Guid agentId,
             CreateDirectMessageDto dto,
             AzureOpsCrewContext context,
-            AgentTriggerQueue agentTriggerQueue,
+            AgentScheduler agentScheduler,
             IChannelEventBroadcaster channelEventBroadcaster,
             CancellationToken cancellationToken) =>
         {
@@ -445,7 +446,19 @@ public static class DmEndpoints
             // Broadcast the new message via SignalR
             await channelEventBroadcaster.BroadcastDmMessageAddedAsync(dm.Id, message);
 
-            agentTriggerQueue.Enqueue(agentId, dm.Id);
+            // Enqueue the agent to process the new message
+            var trigger = new MessageTrigger
+            {
+                Id = Guid.NewGuid(),
+                AgentId = agentId,
+                ChatId = dm.Id,
+                CreatedAt = DateTime.UtcNow,
+                MessageId = message.Id,
+                AuthorId = userId,
+                AuthorName = user?.Username ?? "Unknown",
+                MessageContent = dto.Content,
+            };
+            await agentScheduler.QueueTrigger(Trigger.FromSpecificTrigger(trigger));
 
             return Results.Created($"/api/users/{userId}/dms/agents/{agentId}/messages/{message.Id}", message);
         })
@@ -458,7 +471,7 @@ public static class DmEndpoints
             string approvalId,
             ApprovalResponseDto body,
             AzureOpsCrewContext context,
-            AgentTriggerQueue agentTriggerQueue,
+            AgentScheduler agentScheduler,
             CancellationToken cancellationToken) =>
         {
             var userId = httpContext.User.GetRequiredUserId();
@@ -522,7 +535,18 @@ public static class DmEndpoints
             await context.SaveChangesAsync(cancellationToken);
 
             // Re-enqueue the agent to continue processing
-            agentTriggerQueue.Enqueue(agentId, dm.Id);
+            await agentScheduler.QueueTrigger(Trigger.FromSpecificTrigger(new ToolApprovalTrigger
+            {
+                Id = Guid.NewGuid(),
+                AgentId = matchingThought.AgentId,
+                ChatId = dm.Id,
+                CreatedAt = DateTime.UtcNow,
+                CallId = requestContent?.FunctionCall?.CallId ?? "",
+                ToolName = requestContent?.FunctionCall?.Name ?? "",
+                Parameters = requestContent != null
+                    ? JsonSerializer.Serialize(requestContent.FunctionCall?.Arguments ?? new Dictionary<string, object?>())
+                    : ""
+            }));
 
             return Results.Ok(new { approved = body.Approved });
         })
