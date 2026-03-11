@@ -535,6 +535,28 @@ public static class ChannelEndpoints
         })
         .Produces<Message>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status404NotFound);
+
+        // POST: /api/channels/{channelId}/agents/{agentId}/stop - Stops a specific agent in a channel
+        group.MapPost("/{channelId}/agents/{agentId}/stop", async (
+            Guid channelId,
+            Guid agentId,
+            AzureOpsCrewContext context,
+            AgentScheduler agentScheduler,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == channelId, cancellationToken);
+
+            if (channel is null)
+                return Results.NotFound();
+
+            var stopped = agentScheduler.StopAgent(agentId, channelId);
+            return stopped
+                ? Results.Ok(new { stopped = true })
+                : Results.Ok(new { stopped = false, message = "Agent was not running." });
+        })
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
     }
 }
 

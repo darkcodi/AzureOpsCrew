@@ -54,7 +54,8 @@
                    ToolCalls="_mindToolCalls"
                    Reasonings="_mindReasonings"
                    IsLoading="_isMindLoading"
-                   OnClose="CloseAgentMindView" />
+                   OnClose="CloseAgentMindView"
+                   OnStop="StopAgent" />
 }
 
 @code {
@@ -217,9 +218,9 @@
     private async Task StopAgent()
     {
         var channelId = AppState.SelectedChannel?.Id;
-        if (channelId.HasValue)
+        if (channelId.HasValue && _mindViewAgent != null)
         {
-            await ChannelService.StopAgentChannelAsync(channelId.Value);
+            await ChannelService.StopAgentChannelAsync(channelId.Value, _mindViewAgent.Id);
         }
     }
 

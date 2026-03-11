@@ -18,6 +18,15 @@
                 </div>
             </div>
             <div class="agent-mind-header-actions">
+                @if (string.Equals(Agent.Status, "Running", StringComparison.OrdinalIgnoreCase))
+                {
+                    <button type="button" class="agent-mind-stop-btn" @onclick="OnStop" aria-label="Stop" title="Stop">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="6" y="6" width="12" height="12"/>
+                        </svg>
+                        Stop
+                    </button>
+                }
                 <button type="button" class="agent-mind-settings-btn" @onclick="OnSettingsClick" aria-label="Settings" title="Settings">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -81,6 +90,9 @@
 
     [Parameter]
     public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback OnStop { get; set; }
 
     private ElementReference _bodyContainer;
     private int _lastCount;
