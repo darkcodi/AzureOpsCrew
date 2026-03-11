@@ -91,6 +91,7 @@ public class AgentScheduler : BackgroundService
         await dbContext.SaveChangesAsync();
 
         Log.Information("[BACKGROUND] Queued trigger {TriggerId} of type {TriggerType} for agent {AgentId} and chat {ChatId}", trigger.Id, trigger.Type, trigger.AgentId, trigger.ChatId);
+        StartAgent(trigger.AgentId, trigger.ChatId);
     }
 
     private async Task AgentLoop(Guid agentId, Guid chatId, CancellationToken ct)
