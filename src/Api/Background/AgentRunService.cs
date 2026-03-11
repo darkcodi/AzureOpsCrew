@@ -401,6 +401,10 @@ public class AgentRunService
             .Where(s => s.IsEnabled && agentMcpServerIds.Contains(s.Id))
             .ToListAsync(ct);
 
+        var allMcpServers = await _dbContext.McpServerConfigurations
+            .Where(s => s.IsEnabled)
+            .ToListAsync(ct);
+
         var mcpToolDeclarations = McpToolDeclarationBuilder.Build(mcpServers, agentMcpBindings);
         tools.AddRange(mcpToolDeclarations);
 
@@ -423,6 +427,7 @@ public class AgentRunService
             LlmThoughts = llmThoughts,
             Tools = tools,
             McpServers = mcpServers,
+            AllMcpServers = allMcpServers,
             ParticipantAgents = participantAgents,
         };
     }
