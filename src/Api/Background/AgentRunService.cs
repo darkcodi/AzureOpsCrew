@@ -98,7 +98,6 @@ public class AgentRunService
                 }
 
                 // Compact text content and save to DB
-                await SaveRawLlmHttpCall(agentId, chatId, newAgentThoughts, ct);
                 AgentThoughtHelper.SquashTextContent(newAgentThoughts);
                 await SaveAgentThoughts(agentId, chatId, newAgentThoughts, ct);
 
@@ -474,32 +473,6 @@ public class AgentRunService
                 }
             }
         }
-    }
-
-    private async Task SaveRawLlmHttpCall(Guid agentId, Guid chatId, List<AocAgentThought> newMessages, CancellationToken ct)
-    {
-        // Separate out messages related to HTTP client calls
-        const string httpClientRole = "HTTP_CLIENT";
-        var httpClientMessages = newMessages.Where(m => m.Role.Value == httpClientRole).ToArray();
-        newMessages.RemoveAll(x => x.Role.Value == httpClientRole);
-
-        // We should have two messages for each http client call: one for the request and one for the response
-        var httpRequestMessage = httpClientMessages.Length > 0 ? httpClientMessages[0] : null;
-        var httpResponseMessage = httpClientMessages.Length > 1 ? httpClientMessages[1] : null;
-
-        // Insert them in this activity to not pass huge strings between activities (they are stored in Temporal)
-        var rawCall = new RawLlmHttpCall
-        {
-            Id = Guid.NewGuid(),
-            AgentId = agentId,
-            ThreadId = chatId,
-            RunId = _runId,
-            HttpRequest = (httpRequestMessage?.ContentDto?.ToAocAiContent() as AocTextContent)?.Text ?? "<empty>",
-            HttpResponse = (httpResponseMessage?.ContentDto?.ToAocAiContent() as AocTextContent)?.Text ?? "<empty>",
-            CreatedAt = DateTime.UtcNow,
-        };
-        _dbContext.RawLlmHttpCalls.Add(rawCall);
-        await _dbContext.SaveChangesAsync(ct);
     }
 
     private async Task SaveAgentThoughts(Guid agentId, Guid chatId, List<AocAgentThought> newAgentThoughts, CancellationToken ct)
