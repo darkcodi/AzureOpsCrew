@@ -45,7 +45,7 @@
         @if (TypingUsernames.Count > 0)
         {
             <TypingIndicator Usernames="TypingUsernames" />
-            @if (IsAgentRunning)
+            @if (IsAgentRunning && ShowStopButton)
             {
                 <button class="stop-button" @onclick="OnStopAgent">
                     ⏹ Stop
@@ -88,6 +88,7 @@
     [Parameter] public List<string> TypingUsernames { get; set; } = [];
     [Parameter] public bool IsAgentRunning { get; set; }
     [Parameter] public EventCallback OnStopAgent { get; set; }
+    [Parameter] public bool ShowStopButton { get; set; } = true;
     [Parameter] public EventCallback<Guid?> OnAgentClick { get; set; }
 
     private ElementReference _messagesContainer;
