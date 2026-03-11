@@ -89,8 +89,8 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 "AzureOpsCrew@mail.xyz",
                 "AZUREOPSCREW@MAIL.XYZ",
                 "AQAAAAIAAYagAAAAEHds/S4gmNc0Cf04kSQ5E+g2anSh8VUU/xSrmiNqJiq4APpch0OhtXvIWF9wsTf+Rg==", // Pass1234
-                "AzureOpsCrew",
-                "azureopscrew");
+                "BossUser",
+                "bossuser");
             await AddUserIfNotExists(defaultUser);
 
             // Seed DM channels for all agents
