@@ -16,6 +16,8 @@ using MessageConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.MessageEntityTy
 using DirectMessageChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.DirectMessageChannelEntityTypeConfiguration;
 using AgentThoughtConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AgentThoughtEntityTypeConfiguration;
 using RawLlmHttpCallConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.RawLlmHttpCallEntityTypeConfiguration;
+using TriggerConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.TriggerEntityTypeConfiguration;
+using WaitConditionConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.WaitConditionEntityTypeConfiguration;
 using AiProvider = AzureOpsCrew.Domain.Providers.Provider;
 
 namespace AzureOpsCrew.Infrastructure.Db;
@@ -52,6 +54,8 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new DirectMessageChannelConfig());
         modelBuilder.ApplyConfiguration(new AgentThoughtConfig());
         modelBuilder.ApplyConfiguration(new RawLlmHttpCallConfig());
+        modelBuilder.ApplyConfiguration(new TriggerConfig());
+        modelBuilder.ApplyConfiguration(new WaitConditionConfig());
     }
 }
 
