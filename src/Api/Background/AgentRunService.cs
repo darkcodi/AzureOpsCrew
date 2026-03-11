@@ -110,7 +110,7 @@ public class AgentRunService
                             };
                             if (data.Channel != null)
                             {
-                                await _channelEventBroadcaster.BroadcastChannelReasoningContentAsync(data.Channel.Id, evt);
+                                await _channelEventBroadcaster.BroadcastChannelReasoningContentAsync(data.Channel.Id, data.Agent.Id, evt);
                             }
                             else if (data.DmChannel != null)
                             {
@@ -188,7 +188,7 @@ public class AgentRunService
                         };
                         if (data.Channel != null)
                         {
-                            await _channelEventBroadcaster.BroadcastChannelToolCallStartAsync(data.Channel.Id, startEvt);
+                            await _channelEventBroadcaster.BroadcastChannelToolCallStartAsync(data.Channel.Id, data.Agent.Id, startEvt);
                         }
                         else if (data.DmChannel != null)
                         {
@@ -215,7 +215,7 @@ public class AgentRunService
                         };
                         if (data.Channel != null)
                         {
-                            await _channelEventBroadcaster.BroadcastChannelToolCallCompletedAsync(data.Channel.Id, evt);
+                            await _channelEventBroadcaster.BroadcastChannelToolCallCompletedAsync(data.Channel.Id, data.Agent.Id, evt);
                         }
                         else if (data.DmChannel != null)
                         {
@@ -641,7 +641,7 @@ public class AgentRunService
         };
 
         if (data.Channel != null)
-            await _channelEventBroadcaster.BroadcastChannelToolCallStartAsync(data.Channel.Id, startEvt);
+            await _channelEventBroadcaster.BroadcastChannelToolCallStartAsync(data.Channel.Id, data.Agent.Id, startEvt);
         else if (data.DmChannel != null)
             await _channelEventBroadcaster.BroadcastDmToolCallStartAsync(data.DmChannel.Id, startEvt);
     }
@@ -664,7 +664,7 @@ public class AgentRunService
         };
 
         if (data.Channel != null)
-            await _channelEventBroadcaster.BroadcastChannelToolCallCompletedAsync(data.Channel.Id, evt);
+            await _channelEventBroadcaster.BroadcastChannelToolCallCompletedAsync(data.Channel.Id, data.Agent.Id, evt);
         else if (data.DmChannel != null)
             await _channelEventBroadcaster.BroadcastDmToolCallCompletedAsync(data.DmChannel.Id, evt);
     }
