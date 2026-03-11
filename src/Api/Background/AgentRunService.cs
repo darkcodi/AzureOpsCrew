@@ -32,10 +32,11 @@ public class AgentRunService
     private readonly IAiAgentFactory _aiAgentFactory;
     private readonly ContextService _contextService;
     private readonly IChannelEventBroadcaster? _channelEventBroadcaster;
+    private readonly AgentSignalManager _signalManager;
 
     private const int MaxIterations = 300;
 
-    public AgentRunService(IServiceProvider serviceProvider)
+    public AgentRunService(IServiceProvider serviceProvider, AgentSignalManager signalManager)
     {
         _dbContext = serviceProvider.GetRequiredService<AzureOpsCrewContext>();
         _providerFactory = serviceProvider.GetRequiredService<IProviderFacadeResolver>();
@@ -45,6 +46,7 @@ public class AgentRunService
         _contextService = serviceProvider.GetRequiredService<ContextService>();
         // Event broadcaster is optional - used for both channels and DMs
         _channelEventBroadcaster = serviceProvider.GetService<IChannelEventBroadcaster>();
+        _signalManager = signalManager;
     }
 
     public async Task Run(Guid agentId, Guid chatId, CancellationToken ct)
@@ -160,6 +162,9 @@ public class AgentRunService
                         _dbContext.WaitConditions.Add(waitCondition);
                         await _dbContext.SaveChangesAsync(ct);
 
+                        // Signal the scheduler
+                        _signalManager.Signal(agentId, chatId);
+
                         // Broadcast approval request event
                         await BroadcastApprovalRequest(data, approvalRequest, toolCall);
                         await BroadcastAgentStatus(data, "WaitingForApproval");
@@ -246,6 +251,9 @@ public class AgentRunService
                     };
                     _dbContext.WaitConditions.Add(waitCondition);
                     await _dbContext.SaveChangesAsync(ct);
+
+                    // Signal the scheduler
+                    _signalManager.Signal(agentId, chatId);
 
                     break;
                 }

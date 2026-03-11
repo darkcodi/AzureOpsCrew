@@ -11,10 +11,12 @@ public class AgentScheduler : BackgroundService
     private readonly object _lock = new();
     private readonly Dictionary<(Guid agentId, Guid chatId), CancellationTokenSource> _jobs = new();
     private readonly IServiceProvider _serviceProvider;
+    private readonly AgentSignalManager _signalManager;
 
-    public AgentScheduler(IServiceProvider serviceProvider)
+    public AgentScheduler(IServiceProvider serviceProvider, AgentSignalManager signalManager)
     {
         _serviceProvider = serviceProvider;
+        _signalManager = signalManager;
     }
 
     public bool StartAgent(Guid agentId, Guid chatId)
@@ -91,6 +93,10 @@ public class AgentScheduler : BackgroundService
         await dbContext.SaveChangesAsync();
 
         Log.Information("[BACKGROUND] Queued trigger {TriggerId} of type {TriggerType} for agent {AgentId} and chat {ChatId}", trigger.Id, trigger.GetType().Name, trigger.AgentId, trigger.ChatId);
+
+        // Signal the AgentLoop
+        _signalManager.Signal(trigger.AgentId, trigger.ChatId);
+
         StartAgent(trigger.AgentId, trigger.ChatId);
     }
 
@@ -100,6 +106,9 @@ public class AgentScheduler : BackgroundService
         {
             try
             {
+                // Wait for a signal
+                _signalManager.WaitForSignal(agentId, chatId, ct);
+
                 // get active wait conditions and triggers for this agent and chat
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
@@ -143,7 +152,6 @@ public class AgentScheduler : BackgroundService
                 else
                 {
                     Log.Debug("[BACKGROUND] Not all wait conditions satisfied for agent {AgentId} and chat {ChatId}", agentId, chatId);
-                    await Task.Delay(1000); // wait before checking again
                     continue;
                 }
 
@@ -151,7 +159,6 @@ public class AgentScheduler : BackgroundService
                 if (triggers.Length == 0)
                 {
                     Log.Debug("[BACKGROUND] No triggers for agent {AgentId} and chat {ChatId}", agentId, chatId);
-                    await Task.Delay(1000); // wait before checking again
                     continue;
                 }
 
@@ -193,7 +200,9 @@ public class AgentScheduler : BackgroundService
             catch (Exception e)
             {
                 Log.Error(e, "[BACKGROUND] Error in agent loop for agent {AgentId} and chat {ChatId}", agentId, chatId);
-                await Task.Delay(1000); // wait before retrying
+                // Wait a bit before retrying, but wake up if a signal arrives
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(TimeSpan.FromSeconds(1));
             }
         }
     }
