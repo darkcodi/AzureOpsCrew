@@ -326,26 +326,36 @@ public static class ChannelEndpoints
                          //&& toolResultsByCallId.TryGetValue((msg.ThreadId, msg.RunId, functionCallContent.CallId), out var resultStr))
                 {
             object? resultObj;
+                    bool isError = false;
                     try
                     {
                         var deserialized = JsonSerializer.Deserialize<JsonElement>(resultStr);
 
                         // The result may be wrapped in a ToolCallResult object: { "CallId": "...", "Result": "...", "IsError": false }
-                        // Extract the actual Result value if this wrapper is present
-                        if (deserialized.ValueKind == JsonValueKind.Object &&
-                            deserialized.TryGetProperty("Result", out var actualResult))
+                        // Extract both the actual Result value and IsError flag if this wrapper is present
+                        if (deserialized.ValueKind == JsonValueKind.Object)
                         {
-                            // Check if actualResult is a JSON string that needs to be parsed
-                            if (actualResult.ValueKind == JsonValueKind.String)
+                            if (deserialized.TryGetProperty("IsError", out var isErrorProp))
+                                isError = isErrorProp.ValueKind == JsonValueKind.True;
+
+                            if (deserialized.TryGetProperty("Result", out var actualResult))
                             {
-                                var innerStr = actualResult.GetString();
-                                if (!string.IsNullOrEmpty(innerStr))
+                                // Check if actualResult is a JSON string that needs to be parsed
+                                if (actualResult.ValueKind == JsonValueKind.String)
                                 {
-                                    try
+                                    var innerStr = actualResult.GetString();
+                                    if (!string.IsNullOrEmpty(innerStr))
                                     {
-                                        resultObj = JsonSerializer.Deserialize<JsonElement>(innerStr);
+                                        try
+                                        {
+                                            resultObj = JsonSerializer.Deserialize<JsonElement>(innerStr);
+                                        }
+                                        catch
+                                        {
+                                            resultObj = actualResult;
+                                        }
                                     }
-                                    catch
+                                    else
                                     {
                                         resultObj = actualResult;
                                     }
@@ -357,7 +367,7 @@ public static class ChannelEndpoints
                             }
                             else
                             {
-                                resultObj = actualResult;
+                                resultObj = deserialized;
                             }
                         }
                         else
@@ -381,7 +391,8 @@ public static class ChannelEndpoints
                             ToolName = functionCallContent.Name,
                             CallId = functionCallContent.CallId,
                             Args = functionCallContent.Arguments ?? new Dictionary<string, object?>(),
-                            Result = resultObj
+                            Result = resultObj,
+                            IsError = isError
                         }
                     });
                 }
