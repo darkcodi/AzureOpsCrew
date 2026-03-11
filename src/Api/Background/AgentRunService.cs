@@ -35,6 +35,13 @@ public class AgentRunService
     private readonly AgentSignalManager _signalManager;
 
     private const int MaxIterations = 300;
+    private List<string> ToolsThatRequireApproval =
+    [
+        "sql_server_reset_admin_password",
+        "pr_create",
+        "pr_abandon",
+        "pr_merge",
+    ];
 
     public AgentRunService(IServiceProvider serviceProvider, AgentSignalManager signalManager)
     {
@@ -135,7 +142,8 @@ public class AgentRunService
                     var toolDeclaration = data.Tools.FirstOrDefault(t =>
                         string.Equals(t.Name, toolCall.Name, StringComparison.OrdinalIgnoreCase));
 
-                    if (toolDeclaration?.ToolType == ToolType.McpServer)
+                    if (toolDeclaration?.ToolType == ToolType.McpServer &&
+                        ToolsThatRequireApproval.Contains(toolDeclaration.Name, StringComparer.InvariantCultureIgnoreCase))
                     {
                         // Save the approval request as an agent thought
                         var approvalRequest = new AocFunctionApprovalRequestContent
