@@ -46,8 +46,17 @@
     white-space: nowrap;
 }
 
+.approval-card-server {
+    flex-shrink: 0;
+    color: hsl(214, 5%, 65%);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
 .approval-card-tool-name {
-    flex: 1;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 320px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -58,6 +67,7 @@
 
 .approval-card-status {
     flex-shrink: 0;
+    margin-left: auto;
     padding: 1px 8px;
     border-radius: 9999px;
     font-size: 11px;

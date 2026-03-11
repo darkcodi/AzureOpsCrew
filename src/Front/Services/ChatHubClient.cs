@@ -175,6 +175,7 @@ public sealed class ChatHubClient : IAsyncDisposable
                 Args = approvalEvt.Args,
                 AgentId = approvalEvt.AgentId,
                 AgentName = approvalEvt.AgentName,
+                ServerName = approvalEvt.ServerName,
                 Timestamp = approvalEvt.Timestamp,
                 UserResponse = null,
             });

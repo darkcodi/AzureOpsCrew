@@ -14,6 +14,10 @@
         <span class="approval-card-title">Approval Required</span>
         <span class="approval-card-agent">from @GetAgentLabel()</span>
         <span class="approval-card-tool-name">@ApprovalRequest.ToolName</span>
+        @if (!string.IsNullOrWhiteSpace(ApprovalRequest.ServerName))
+        {
+            <span class="approval-card-server">via @ApprovalRequest.ServerName</span>
+        }
         <span class="approval-card-status @StatusClass">@StatusText</span>
     </div>
 

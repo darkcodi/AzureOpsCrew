@@ -149,6 +149,7 @@ public static class DmEndpoints
                     args = req.FunctionCall?.Arguments,
                     agentId = thought.AgentId,
                     agentName = agentNamesById.TryGetValue(thought.AgentId, out var agentName) ? agentName : null,
+                    serverName = req.ServerName,
                     timestamp = new DateTimeOffset(thought.CreatedAt, TimeSpan.Zero),
                     status,
                     reason = hasResponse ? response!.Reason : null,

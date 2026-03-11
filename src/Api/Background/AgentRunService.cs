@@ -140,7 +140,10 @@ public class AgentRunService
                         var approvalRequest = new AocFunctionApprovalRequestContent
                         {
                             Id = Guid.NewGuid().ToString(),
-                            FunctionCall = toolCall
+                            FunctionCall = toolCall,
+                            ServerName = toolDeclaration.McpServerConfigurationId is Guid serverId
+                                ? data.McpServers.FirstOrDefault(s => s.Id == serverId)?.Name
+                                : null,
                         };
                         var approvalThought = AocAgentThought.FromContent(
                             approvalRequest, ChatRole.Assistant, data.Agent.Info.Username,
@@ -580,6 +583,7 @@ public class AgentRunService
             Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
             AgentId = data.Agent.Id,
             AgentName = data.Agent.Info.Username,
+            ServerName = approvalRequest.ServerName,
             Timestamp = DateTimeOffset.UtcNow,
         };
 

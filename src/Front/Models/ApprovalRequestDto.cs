@@ -12,6 +12,7 @@ public class ApprovalRequestDto
     public object? Args { get; set; }
     public Guid AgentId { get; set; }
     public string? AgentName { get; set; }
+    public string? ServerName { get; set; }
     public DateTimeOffset Timestamp { get; set; }
     public string? Reason { get; set; }
 

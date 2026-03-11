@@ -156,6 +156,9 @@ public class ApprovalRequestEvent : ChannelEvent
     [JsonPropertyName("agentName")]
     public string? AgentName { get; set; }
 
+    [JsonPropertyName("serverName")]
+    public string? ServerName { get; set; }
+
     [JsonPropertyName("timestamp")]
     public new DateTimeOffset Timestamp { get; set; }
 }
