@@ -49,7 +49,6 @@ try
     builder.Services.AddEmailVerification(builder.Configuration);
     builder.Services.AddAgentFactory(builder.Configuration);
     builder.Services.AddAgentSchedulerBackgroundService();
-    builder.Services.AddTriggerSystem();
     builder.Services.AddHttpClient();
 
     // Configure SignalR
@@ -112,7 +111,6 @@ try
     app.MapMcpServerConfigurationEndpoints();
     app.MapDmEndpoints();
     app.MapProviderEndpoints();
-    app.MapTriggerEndpoints();
 
     // Map SignalR hubs
     app.MapHub<ChannelEventsHub>("/channels/{id}/events");

@@ -1,13 +1,11 @@
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Background;
-using AzureOpsCrew.Api.Background.Triggers;
 using AzureOpsCrew.Api.Email;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Api.Channels;
 using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.AgentServices;
 using AzureOpsCrew.Domain.ProviderServices;
-using AzureOpsCrew.Domain.Triggers;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
@@ -254,24 +252,5 @@ public static class ServiceCollectionExtensions
 
         // Channel event broadcasting via SignalR
         services.AddSingleton<IChannelEventBroadcaster, ChannelEventBroadcaster>();
-    }
-
-    public static void AddTriggerSystem(this IServiceCollection services)
-    {
-        // Register trigger handlers
-        services.AddScoped<ITriggerHandler, MessageTriggerHandler>();
-        services.AddScoped<ITriggerHandler, ScheduledTriggerHandler>();
-        services.AddScoped<ITriggerHandler, WebhookTriggerHandler>();
-        services.AddScoped<ITriggerHandler, EventTriggerHandler>();
-
-        // Register evaluator
-        services.AddScoped<TriggerEvaluator>();
-
-        // Register background services
-        services.AddSingleton<ScheduledTriggerService>();
-        services.AddHostedService(sp => sp.GetRequiredService<ScheduledTriggerService>());
-
-        services.AddSingleton<TriggerEventBus>();
-        services.AddHostedService(sp => sp.GetRequiredService<TriggerEventBus>());
     }
 }
