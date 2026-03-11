@@ -17,8 +17,6 @@ public sealed class CustomOpenAiChatClient : IChatClient
     private readonly CustomOpenAiChatClientOptions _options;
     private readonly HttpClient _httpClient;
 
-    public const string HttpClientRole = "HTTP_CLIENT";
-
     public CustomOpenAiChatClient(CustomOpenAiChatClientOptions options, HttpClient? httpClient = null)
     {
         _options = options;
@@ -48,10 +46,6 @@ public sealed class CustomOpenAiChatClient : IChatClient
 
         var chatResponse = OpenAiResponseMapper.ToChatResponse(response);
 
-        // Add request and response JSON as system messages for traceability
-        chatResponse.Messages.Insert(0, new ChatMessage(new ChatRole(HttpClientRole), requestJson));
-        chatResponse.Messages.Add(new ChatMessage(new ChatRole(HttpClientRole), responseJson));
-
         return chatResponse;
     }
 
@@ -62,8 +56,6 @@ public sealed class CustomOpenAiChatClient : IChatClient
     {
         var request = OpenAiRequestMapper.MapToOpenAiRequest(messages, options, _options.Model, stream: true);
         var requestJson = JsonSerializer.Serialize(request, JsonOptions);
-        yield return new ChatResponseUpdate(new ChatRole(HttpClientRole), requestJson);
-
         using var httpRequest = await CreateHttpRequestAsync(requestJson, cancellationToken);
 
         // Use ResponseHeadersRead to start streaming immediately
@@ -122,8 +114,6 @@ public sealed class CustomOpenAiChatClient : IChatClient
                 }
             }
         }
-
-        yield return new ChatResponseUpdate(new ChatRole(HttpClientRole), responseJsonBuilder.ToString());
     }
 
     // Why this method even exist in the IChatClient interface? Looks like a poor design.

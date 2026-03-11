@@ -242,9 +242,9 @@ public static class ServiceCollectionExtensions
 
     public static void AddAgentSchedulerBackgroundService(this IServiceCollection services)
     {
+        services.AddSingleton<AgentSignalManager>();
         services.AddSingleton<AgentScheduler>();
         services.AddHostedService(sp => sp.GetRequiredService<AgentScheduler>());
-        services.AddSingleton<AgentTriggerQueue>();
         services.AddScoped<AgentRunService>();
         services.AddScoped<BackendToolExecutor>();
         services.AddScoped<McpServerToolExecutor>();

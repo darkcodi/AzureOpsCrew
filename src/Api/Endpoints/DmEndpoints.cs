@@ -9,6 +9,8 @@ using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using System.Text.Json;
+using AzureOpsCrew.Domain.Tools;
+using AzureOpsCrew.Domain.Triggers;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -247,26 +249,36 @@ public static class DmEndpoints
                          && toolResultsByCallId.TryGetValue((msg.ThreadId, functionCallContent.CallId), out var resultStr))
                 {
                     object? resultObj;
+                    bool isError = false;
                     try
                     {
                         var deserialized = JsonSerializer.Deserialize<JsonElement>(resultStr);
 
                         // The result may be wrapped in a ToolCallResult object: { "CallId": "...", "Result": "...", "IsError": false }
-                        // Extract the actual Result value if this wrapper is present
-                        if (deserialized.ValueKind == JsonValueKind.Object &&
-                            deserialized.TryGetProperty("Result", out var actualResult))
+                        // Extract both the actual Result value and IsError flag if this wrapper is present
+                        if (deserialized.ValueKind == JsonValueKind.Object)
                         {
-                            // Check if actualResult is a JSON string that needs to be parsed
-                            if (actualResult.ValueKind == JsonValueKind.String)
+                            if (deserialized.TryGetProperty("IsError", out var isErrorProp))
+                                isError = isErrorProp.ValueKind == JsonValueKind.True;
+
+                            if (deserialized.TryGetProperty("Result", out var actualResult))
                             {
-                                var innerStr = actualResult.GetString();
-                                if (!string.IsNullOrEmpty(innerStr))
+                                // Check if actualResult is a JSON string that needs to be parsed
+                                if (actualResult.ValueKind == JsonValueKind.String)
                                 {
-                                    try
+                                    var innerStr = actualResult.GetString();
+                                    if (!string.IsNullOrEmpty(innerStr))
                                     {
-                                        resultObj = JsonSerializer.Deserialize<JsonElement>(innerStr);
+                                        try
+                                        {
+                                            resultObj = JsonSerializer.Deserialize<JsonElement>(innerStr);
+                                        }
+                                        catch
+                                        {
+                                            resultObj = actualResult;
+                                        }
                                     }
-                                    catch
+                                    else
                                     {
                                         resultObj = actualResult;
                                     }
@@ -278,7 +290,7 @@ public static class DmEndpoints
                             }
                             else
                             {
-                                resultObj = actualResult;
+                                resultObj = deserialized;
                             }
                         }
                         else
@@ -302,7 +314,8 @@ public static class DmEndpoints
                             ToolName = functionCallContent.Name,
                             CallId = functionCallContent.CallId,
                             Args = functionCallContent.Arguments ?? new Dictionary<string, object?>(),
-                            Result = resultObj
+                            Result = resultObj,
+                            IsError = isError
                         }
                     });
                 }
@@ -402,7 +415,7 @@ public static class DmEndpoints
             Guid agentId,
             CreateDirectMessageDto dto,
             AzureOpsCrewContext context,
-            AgentTriggerQueue agentTriggerQueue,
+            AgentScheduler agentScheduler,
             IChannelEventBroadcaster channelEventBroadcaster,
             CancellationToken cancellationToken) =>
         {
@@ -445,7 +458,19 @@ public static class DmEndpoints
             // Broadcast the new message via SignalR
             await channelEventBroadcaster.BroadcastDmMessageAddedAsync(dm.Id, message);
 
-            agentTriggerQueue.Enqueue(agentId, dm.Id);
+            // Enqueue the agent to process the new message
+            var trigger = new MessageTrigger
+            {
+                Id = Guid.NewGuid(),
+                AgentId = agentId,
+                ChatId = dm.Id,
+                CreatedAt = DateTime.UtcNow,
+                MessageId = message.Id,
+                AuthorId = userId,
+                AuthorName = user?.Username ?? "Unknown",
+                MessageContent = dto.Content,
+            };
+            await agentScheduler.QueueTrigger(trigger);
 
             return Results.Created($"/api/users/{userId}/dms/agents/{agentId}/messages/{message.Id}", message);
         })
@@ -458,7 +483,7 @@ public static class DmEndpoints
             string approvalId,
             ApprovalResponseDto body,
             AzureOpsCrewContext context,
-            AgentTriggerQueue agentTriggerQueue,
+            AgentScheduler agentScheduler,
             CancellationToken cancellationToken) =>
         {
             var userId = httpContext.User.GetRequiredUserId();
@@ -522,7 +547,19 @@ public static class DmEndpoints
             await context.SaveChangesAsync(cancellationToken);
 
             // Re-enqueue the agent to continue processing
-            agentTriggerQueue.Enqueue(agentId, dm.Id);
+            await agentScheduler.QueueTrigger(new ToolApprovalTrigger
+            {
+                Id = Guid.NewGuid(),
+                AgentId = matchingThought.AgentId,
+                ChatId = dm.Id,
+                CreatedAt = DateTime.UtcNow,
+                CallId = requestContent?.FunctionCall?.CallId ?? "",
+                Resolution = body.Approved ? ApprovalResolution.Approved : ApprovalResolution.Rejected,
+                ToolName = requestContent?.FunctionCall?.Name ?? "",
+                Parameters = requestContent != null
+                    ? JsonSerializer.Serialize(requestContent.FunctionCall?.Arguments ?? new Dictionary<string, object?>())
+                    : ""
+            });
 
             return Results.Ok(new { approved = body.Approved });
         })

@@ -164,16 +164,16 @@ public class ChannelService
         }
     }
 
-    public async Task<bool> StopAgentChannelAsync(Guid channelId)
+    public async Task<bool> StopAgentChannelAsync(Guid channelId, Guid agentId)
     {
         try
         {
-            var response = await _httpClient.PostAsync($"/api/channels/{channelId}/stop", null);
+            var response = await _httpClient.PostAsync($"/api/channels/{channelId}/agents/{agentId}/stop", null);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
-            Log.Error($"Error stopping agent in channel {channelId}: {ex.Message}");
+            Log.Error($"Error stopping agent {agentId} in channel {channelId}: {ex.Message}");
             return false;
         }
     }

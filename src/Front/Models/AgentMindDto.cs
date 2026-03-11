@@ -30,4 +30,7 @@ public record UiWidgetDto
 
     [JsonPropertyName("result")]
     public required object? Result { get; init; }
+
+    [JsonPropertyName("isError")]
+    public bool IsError { get; init; }
 }

@@ -17,6 +17,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Serilog;
 using System.Runtime.CompilerServices;
+using AzureOpsCrew.Api.Background.Tools;
+using AzureOpsCrew.Domain.WaitConditions;
 
 namespace AzureOpsCrew.Api.Background;
 
@@ -30,10 +32,18 @@ public class AgentRunService
     private readonly IAiAgentFactory _aiAgentFactory;
     private readonly ContextService _contextService;
     private readonly IChannelEventBroadcaster? _channelEventBroadcaster;
+    private readonly AgentSignalManager _signalManager;
 
     private const int MaxIterations = 300;
+    private List<string> ToolsThatRequireApproval =
+    [
+        "sql_server_reset_admin_password",
+        "pr_create",
+        "pr_abandon",
+        "pr_merge",
+    ];
 
-    public AgentRunService(IServiceProvider serviceProvider)
+    public AgentRunService(IServiceProvider serviceProvider, AgentSignalManager signalManager)
     {
         _dbContext = serviceProvider.GetRequiredService<AzureOpsCrewContext>();
         _providerFactory = serviceProvider.GetRequiredService<IProviderFacadeResolver>();
@@ -43,6 +53,7 @@ public class AgentRunService
         _contextService = serviceProvider.GetRequiredService<ContextService>();
         // Event broadcaster is optional - used for both channels and DMs
         _channelEventBroadcaster = serviceProvider.GetService<IChannelEventBroadcaster>();
+        _signalManager = signalManager;
     }
 
     public async Task Run(Guid agentId, Guid chatId, CancellationToken ct)
@@ -79,7 +90,6 @@ public class AgentRunService
                 // load new DB state for each iteration to get the latest messages and thoughts
                 var data = await LoadAgentRunData(agentId, chatId, ct);
 
-
                 // Make one LLM call
                 var newAgentThoughts = new List<AocAgentThought>();
                 await foreach (var agentThought in CallLlm(data, chatMessageId, ct))
@@ -88,7 +98,6 @@ public class AgentRunService
                 }
 
                 // Compact text content and save to DB
-                await SaveRawLlmHttpCall(agentId, chatId, newAgentThoughts, ct);
                 AgentThoughtHelper.SquashTextContent(newAgentThoughts);
                 await SaveAgentThoughts(agentId, chatId, newAgentThoughts, ct);
 
@@ -103,6 +112,7 @@ public class AgentRunService
                             {
                                 Text = reasoning.Text,
                                 AgentName = data.Agent.Info.Username,
+                                AgentId = data.Agent.Id,
                                 Timestamp = DateTimeOffset.UtcNow,
                             };
                             if (data.Channel != null)
@@ -118,7 +128,7 @@ public class AgentRunService
                 }
 
                 // Execute tools and save results to DB
-                var newToolCallResults = new List<AocAgentThought>();
+                var newToolCallResults = new List<AocFunctionResultContent>();
                 var newToolCalls = newAgentThoughts
                     .Select(m => m.ContentDto.ToAocAiContent())
                     .OfType<AocFunctionCallContent>()
@@ -131,7 +141,8 @@ public class AgentRunService
                     var toolDeclaration = data.Tools.FirstOrDefault(t =>
                         string.Equals(t.Name, toolCall.Name, StringComparison.OrdinalIgnoreCase));
 
-                    if (toolDeclaration?.ToolType == ToolType.McpServer)
+                    if (toolDeclaration?.ToolType == ToolType.McpServer &&
+                        ToolsThatRequireApproval.Contains(toolDeclaration.Name, StringComparer.InvariantCultureIgnoreCase))
                     {
                         // Save the approval request as an agent thought
                         var approvalRequest = new AocFunctionApprovalRequestContent
@@ -146,6 +157,21 @@ public class AgentRunService
                             approvalRequest, ChatRole.Assistant, data.Agent.Info.Username,
                             DateTime.UtcNow, chatMessageId);
                         await SaveAgentThoughts(agentId, chatId, [approvalThought], ct);
+
+                        // Insert wait condition
+                        var waitCondition = new ToolApprovalWaitCondition
+                        {
+                            Id = Guid.NewGuid(),
+                            AgentId = agentId,
+                            ChatId = chatId,
+                            CreatedAt = DateTime.UtcNow,
+                            ToolCallId = toolCall.CallId,
+                        };
+                        _dbContext.WaitConditions.Add(waitCondition);
+                        await _dbContext.SaveChangesAsync(ct);
+
+                        // Signal the scheduler
+                        _signalManager.Signal(agentId, chatId);
 
                         // Broadcast approval request event
                         await BroadcastApprovalRequest(data, approvalRequest, toolCall);
@@ -166,6 +192,7 @@ public class AgentRunService
                             ToolName = toolCall.Name,
                             CallId = toolCall.CallId,
                             Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
+                            AgentId = data.Agent.Id,
                             Timestamp = DateTimeOffset.UtcNow,
                         };
                         if (data.Channel != null)
@@ -179,8 +206,7 @@ public class AgentRunService
                     }
 
                     var toolCallResult = await _toolCallRouter.ExecuteToolCall(toolCall, data);
-                    var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow, Guid.NewGuid());
-                    newToolCallResults.Add(toolResultMessage);
+                    newToolCallResults.Add(toolCallResult);
 
                     if (_channelEventBroadcaster != null && (data.Channel != null || data.DmChannel != null))
                     {
@@ -193,6 +219,7 @@ public class AgentRunService
                             Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
                             Result = toolCallResultObj?.Result,
                             IsError = isError,
+                            AgentId = data.Agent.Id,
                             Timestamp = DateTimeOffset.UtcNow,
                         };
                         if (data.Channel != null)
@@ -209,19 +236,47 @@ public class AgentRunService
                 // Persist any tool results that were produced before we hit an approval gate.
                 if (newToolCallResults.Count > 0)
                 {
-                    await SaveAgentThoughts(agentId, chatId, newToolCallResults, ct);
+                    var toolResultMessage = newToolCallResults.Select(x => AocAgentThought.FromContent(x, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow, Guid.NewGuid())).ToList();
+                    await SaveAgentThoughts(agentId, chatId, toolResultMessage, ct);
                 }
 
                 // If waiting for approval, break the iteration loop
                 if (waitingForApproval)
                     break;
 
-                // If the agent called the skipTurn tool, we consider that it has finished its run and we stop the loop.
+                // If the agent called the waitForNextMessage tool, we consider that it has finished its run and we stop the loop.
                 // This allows agents to explicitly signal that they want to skip their turn and let other agents or the human take the lead.
-                if (newToolCalls.Any(c => string.Equals(c.Name, SkipTurnTool.ToolName, StringComparison.CurrentCultureIgnoreCase)))
+                var waitToolCall = newToolCalls.FirstOrDefault(c => string.Equals(c.Name, WaitForNextMessageTool.ToolName, StringComparison.CurrentCultureIgnoreCase));
+                if (waitToolCall != null)
                 {
-                    Log.Information("[BACKGROUND] Agent {AgentId} decided to skip its turn in chat {ChatId}", agentId, chatId);
-                    break;
+                    // find the corresponding tool call result to check if it successfully executed or if there was an error
+                    var waitToolResult = newToolCallResults.FirstOrDefault(r => r.CallId == waitToolCall.CallId);
+
+                    if (waitToolResult != null && waitToolResult.Result is ToolCallResult result && result.IsError)
+                    {
+                        Log.Warning("[BACKGROUND] Agent {AgentId} wanted to wait for next message in chat {ChatId} but there was an error executing the tool: {ErrorMessage}", agentId, chatId, result.Result);
+                    }
+                    else
+                    {
+                        Log.Information("[BACKGROUND] Agent {AgentId} decided to wait for next message in chat {ChatId}", agentId, chatId);
+
+                        // Insert wait condition
+                        var waitCondition = new MessageWaitCondition
+                        {
+                            Id = Guid.NewGuid(),
+                            AgentId = agentId,
+                            ChatId = chatId,
+                            CreatedAt = DateTime.UtcNow,
+                            MessageAfterDateTime = DateTime.UtcNow, // ToDo: load from referenced message in the tool arguments
+                        };
+                        _dbContext.WaitConditions.Add(waitCondition);
+                        await _dbContext.SaveChangesAsync(ct);
+
+                        // Signal the scheduler
+                        _signalManager.Signal(agentId, chatId);
+
+                        break;
+                    }
                 }
 
                 var lastTextAgentThought = newAgentThoughts.LastOrDefault(t => t.ContentDto.ToAocAiContent() is AocTextContent);
@@ -353,6 +408,10 @@ public class AgentRunService
             .Where(s => s.IsEnabled && agentMcpServerIds.Contains(s.Id))
             .ToListAsync(ct);
 
+        var allMcpServers = await _dbContext.McpServerConfigurations
+            .Where(s => s.IsEnabled)
+            .ToListAsync(ct);
+
         var mcpToolDeclarations = McpToolDeclarationBuilder.Build(mcpServers, agentMcpBindings);
         tools.AddRange(mcpToolDeclarations);
 
@@ -375,6 +434,7 @@ public class AgentRunService
             LlmThoughts = llmThoughts,
             Tools = tools,
             McpServers = mcpServers,
+            AllMcpServers = allMcpServers,
             ParticipantAgents = participantAgents,
         };
     }
@@ -413,32 +473,6 @@ public class AgentRunService
                 }
             }
         }
-    }
-
-    private async Task SaveRawLlmHttpCall(Guid agentId, Guid chatId, List<AocAgentThought> newMessages, CancellationToken ct)
-    {
-        // Separate out messages related to HTTP client calls
-        const string httpClientRole = "HTTP_CLIENT";
-        var httpClientMessages = newMessages.Where(m => m.Role.Value == httpClientRole).ToArray();
-        newMessages.RemoveAll(x => x.Role.Value == httpClientRole);
-
-        // We should have two messages for each http client call: one for the request and one for the response
-        var httpRequestMessage = httpClientMessages.Length > 0 ? httpClientMessages[0] : null;
-        var httpResponseMessage = httpClientMessages.Length > 1 ? httpClientMessages[1] : null;
-
-        // Insert them in this activity to not pass huge strings between activities (they are stored in Temporal)
-        var rawCall = new RawLlmHttpCall
-        {
-            Id = Guid.NewGuid(),
-            AgentId = agentId,
-            ThreadId = chatId,
-            RunId = _runId,
-            HttpRequest = (httpRequestMessage?.ContentDto?.ToAocAiContent() as AocTextContent)?.Text ?? "<empty>",
-            HttpResponse = (httpResponseMessage?.ContentDto?.ToAocAiContent() as AocTextContent)?.Text ?? "<empty>",
-            CreatedAt = DateTime.UtcNow,
-        };
-        _dbContext.RawLlmHttpCalls.Add(rawCall);
-        await _dbContext.SaveChangesAsync(ct);
     }
 
     private async Task SaveAgentThoughts(Guid agentId, Guid chatId, List<AocAgentThought> newAgentThoughts, CancellationToken ct)
@@ -603,6 +637,7 @@ public class AgentRunService
             ToolName = toolCall.Name,
             CallId = toolCall.CallId,
             Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
+            AgentId = data.Agent.Id,
             Timestamp = DateTimeOffset.UtcNow,
         };
 
@@ -626,6 +661,7 @@ public class AgentRunService
             Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
             Result = toolCallResultObj?.Result,
             IsError = isError,
+            AgentId = data.Agent.Id,
             Timestamp = DateTimeOffset.UtcNow,
         };
 

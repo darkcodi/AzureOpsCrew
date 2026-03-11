@@ -3,6 +3,8 @@ using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.McpServerConfigurations;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.Triggers;
+using AzureOpsCrew.Domain.WaitConditions;
 using Microsoft.EntityFrameworkCore;
 using AgentConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AgentEntityTypeConfiguration;
 using ChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.ChannelEntityTypeConfiguration;
@@ -14,6 +16,8 @@ using MessageConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.MessageEntityTy
 using DirectMessageChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.DirectMessageChannelEntityTypeConfiguration;
 using AgentThoughtConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AgentThoughtEntityTypeConfiguration;
 using RawLlmHttpCallConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.RawLlmHttpCallEntityTypeConfiguration;
+using TriggerConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.TriggerEntityTypeConfiguration;
+using WaitConditionConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.WaitConditionEntityTypeConfiguration;
 using AiProvider = AzureOpsCrew.Domain.Providers.Provider;
 
 namespace AzureOpsCrew.Infrastructure.Db;
@@ -35,6 +39,8 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<DirectMessageChannel> Dms => Set<DirectMessageChannel>();
     public DbSet<AgentThought> AgentThoughts => Set<AgentThought>();
     public DbSet<RawLlmHttpCall> RawLlmHttpCalls => Set<RawLlmHttpCall>();
+    public DbSet<Trigger> Triggers => Set<Trigger>();
+    public DbSet<WaitCondition> WaitConditions => Set<WaitCondition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,6 +54,8 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new DirectMessageChannelConfig());
         modelBuilder.ApplyConfiguration(new AgentThoughtConfig());
         modelBuilder.ApplyConfiguration(new RawLlmHttpCallConfig());
+        modelBuilder.ApplyConfiguration(new TriggerConfig());
+        modelBuilder.ApplyConfiguration(new WaitConditionConfig());
     }
 }
 

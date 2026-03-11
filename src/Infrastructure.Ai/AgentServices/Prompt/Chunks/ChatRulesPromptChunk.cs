@@ -42,7 +42,7 @@ Always respond in a way that is consistent with your agent description and promp
 Remember that you are not the only agent in the chat. Be mindful of other agents' personalities, descriptions, and prompts when crafting your responses.
 Do NOT try to respond to each message in the chat.
 If you see that another agent is much better suited to answer a question or perform a task, it's often best to let that agent respond instead of you.
-If this case, use the SkipTurn tool to skip your turn and let the other agent respond.
+If this case, use the WaitForNextMessage tool to skip your turn and let the other agent respond.
 
 """;
     }
