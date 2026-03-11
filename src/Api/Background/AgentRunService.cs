@@ -17,6 +17,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Serilog;
 using System.Runtime.CompilerServices;
+using AzureOpsCrew.Domain.WaitConditions;
 
 namespace AzureOpsCrew.Api.Background;
 
@@ -78,7 +79,6 @@ public class AgentRunService
 
                 // load new DB state for each iteration to get the latest messages and thoughts
                 var data = await LoadAgentRunData(agentId, chatId, ct);
-
 
                 // Make one LLM call
                 var newAgentThoughts = new List<AocAgentThought>();
@@ -146,6 +146,18 @@ public class AgentRunService
                             approvalRequest, ChatRole.Assistant, data.Agent.Info.Username,
                             DateTime.UtcNow, chatMessageId);
                         await SaveAgentThoughts(agentId, chatId, [approvalThought], ct);
+
+                        // Insert wait condition
+                        var waitCondition = new ToolApprovalWaitCondition
+                        {
+                            Id = Guid.NewGuid(),
+                            AgentId = agentId,
+                            ChatId = chatId,
+                            CreatedAt = DateTime.UtcNow,
+                            ToolCallId = toolCall.CallId,
+                        };
+                        _dbContext.WaitConditions.Add(WaitCondition.FromSpecificWaitCondition(waitCondition));
+                        await _dbContext.SaveChangesAsync(ct);
 
                         // Broadcast approval request event
                         await BroadcastApprovalRequest(data, approvalRequest, toolCall);
