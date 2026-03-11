@@ -33,6 +33,8 @@ public interface IAgentStatusTracker
     void SetDmStatus(Guid dmId, Guid agentId, string status, string? errorMessage = null);
     AgentStatusEntry? GetChannelStatus(Guid channelId, Guid agentId);
     AgentStatusEntry? GetDmStatus(Guid dmId, Guid agentId);
+    IReadOnlyList<AgentStatusEntry> GetChannelStatuses(Guid channelId);
+    IReadOnlyList<AgentStatusEntry> GetDmStatuses(Guid dmId);
 }
 
 /// <summary>
@@ -78,4 +80,16 @@ public class AgentStatusTracker : IAgentStatusTracker
 
     public AgentStatusEntry? GetDmStatus(Guid dmId, Guid agentId) =>
         _store.TryGetValue(DmKey(dmId, agentId), out var entry) ? entry : null;
+
+    public IReadOnlyList<AgentStatusEntry> GetChannelStatuses(Guid channelId)
+    {
+        var prefix = $"Channel_{channelId}_";
+        return _store.Where(kvp => kvp.Key.StartsWith(prefix, StringComparison.Ordinal)).Select(kvp => kvp.Value).ToList();
+    }
+
+    public IReadOnlyList<AgentStatusEntry> GetDmStatuses(Guid dmId)
+    {
+        var prefix = $"Dm_{dmId}_";
+        return _store.Where(kvp => kvp.Key.StartsWith(prefix, StringComparison.Ordinal)).Select(kvp => kvp.Value).ToList();
+    }
 }

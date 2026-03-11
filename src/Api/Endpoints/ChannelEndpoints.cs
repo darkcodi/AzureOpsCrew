@@ -237,6 +237,33 @@ public static class ChannelEndpoints
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
+        // GET: /api/channels/{channelId}/agent-statuses - Returns all agent statuses for the channel
+        group.MapGet("/{channelId}/agent-statuses", async (
+            Guid channelId,
+            IAgentStatusTracker tracker,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == channelId, cancellationToken);
+
+            if (channel is null)
+                return Results.NotFound();
+
+            var entries = tracker.GetChannelStatuses(channelId);
+            var dtos = entries.Select(e => new AgentStatusDto
+            {
+                AgentId = e.AgentId,
+                Status = e.Status,
+                ErrorMessage = e.ErrorMessage,
+                LastUpdated = e.LastUpdated
+            }).ToList();
+
+            return Results.Ok(dtos);
+        })
+        .Produces<List<AgentStatusDto>>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
         // GET: /api/channels/{channelId}/agents/{agentId}/mind - Returns agent thoughts scoped to a specific channel
         group.MapGet("/{channelId}/agents/{agentId}/mind", async (
             Guid channelId,

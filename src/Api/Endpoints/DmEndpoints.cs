@@ -1,6 +1,7 @@
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Background;
 using AzureOpsCrew.Api.Endpoints.Dtos.Agents;
+using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
 using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
 using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Chats;
@@ -161,6 +162,34 @@ public static class DmEndpoints
             return Results.Ok(requests);
         })
         .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
+        // GET: /api/dms/{dmId}/agent-statuses - Returns all agent statuses for the DM
+        group.MapGet("/{dmId}/agent-statuses", async (
+            HttpContext httpContext,
+            Guid dmId,
+            IAgentStatusTracker tracker,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = httpContext.User.GetRequiredUserId();
+            var isParticipant = await context.Dms
+                .AnyAsync(dm => dm.Id == dmId && (dm.User1Id == userId || dm.User2Id == userId), cancellationToken);
+            if (!isParticipant)
+                return Results.NotFound();
+
+            var entries = tracker.GetDmStatuses(dmId);
+            var dtos = entries.Select(e => new AgentStatusDto
+            {
+                AgentId = e.AgentId,
+                Status = e.Status,
+                ErrorMessage = e.ErrorMessage,
+                LastUpdated = e.LastUpdated
+            }).ToList();
+
+            return Results.Ok(dtos);
+        })
+        .Produces<List<AgentStatusDto>>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
         // GET: /api/dms/{dmId}/agents/{agentId}/mind - Returns agent thoughts scoped to a specific DM
