@@ -1,69 +1,79 @@
 @namespace Front.Components
 @using System.Text.Json
 
-<div class="approval-card">
-    <div class="approval-card-header">
-        <div class="approval-card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 9v4"/>
-                <path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636-2.87L13.637 3.59a1.914 1.914 0 0 0-3.274 0z"/>
-                <path d="M12 17h.01"/>
-            </svg>
-        </div>
-        <span class="approval-card-title">Approval Required</span>
-        <span class="approval-card-agent">from @GetAgentLabel()</span>
-        <span class="approval-card-tool-name">@ApprovalRequest.ToolName</span>
-        @if (!string.IsNullOrWhiteSpace(ApprovalRequest.ServerName))
-        {
-            <span class="approval-card-server">via @ApprovalRequest.ServerName</span>
-        }
-        <span class="approval-card-status @StatusClass">@StatusText</span>
+<div class="approval-request-message">
+    <div class="approval-request-avatar" style="@GetAvatarStyle()">
+        @GetInitials()
     </div>
-
-    @if (_isExpanded)
-    {
-        <div class="approval-card-body">
-            @if (ApprovalRequest.Args != null)
-            {
-                <div class="approval-card-section">
-                    <span class="approval-card-section-label">Arguments</span>
-                    <pre class="approval-card-json">@FormatArgs()</pre>
-                </div>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(ApprovalRequest.Reason))
-            {
-                <div class="approval-card-section">
-                    <span class="approval-card-section-label">Reason</span>
-                    <div class="approval-card-reason">@ApprovalRequest.Reason</div>
-                </div>
-            }
+    <div class="approval-request-content">
+        <div class="approval-request-header">
+            <span class="approval-request-name">@GetAgentLabel()</span>
+            <span class="approval-request-timestamp">@GetFormattedTimestamp()</span>
+            <span class="approval-card-status @StatusClass">@StatusText</span>
         </div>
-    }
+        <div class="approval-card">
+            <div class="approval-card-header">
+                <div class="approval-card-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 9v4"/>
+                        <path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636-2.87L13.637 3.59a1.914 1.914 0 0 0-3.274 0z"/>
+                        <path d="M12 17h.01"/>
+                    </svg>
+                </div>
+                <span class="approval-card-title">Approval Required</span>
+                <span class="approval-card-tool-name">@ApprovalRequest.ToolName</span>
+                @if (!string.IsNullOrWhiteSpace(ApprovalRequest.ServerName))
+                {
+                    <span class="approval-card-server">via @ApprovalRequest.ServerName</span>
+                }
+            </div>
 
-    <div class="approval-card-footer">
-        @if (ApprovalRequest.UserResponse is null)
-        {
-            <button class="approval-btn approve" @onclick="Approve" disabled="@_responding">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                Approve
-            </button>
-            <button class="approval-btn reject" @onclick="Reject" disabled="@_responding">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-                Reject
-            </button>
-        }
-        <button class="approval-btn toggle" @onclick="ToggleExpanded">
-            @(_isExpanded ? "Hide Details" : "Show Details")
-        </button>
+            @if (_isExpanded)
+            {
+                <div class="approval-card-body">
+                    @if (ApprovalRequest.Args != null)
+                    {
+                        <div class="approval-card-section">
+                            <span class="approval-card-section-label">Arguments</span>
+                            <pre class="approval-card-json">@FormatArgs()</pre>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(ApprovalRequest.Reason))
+                    {
+                        <div class="approval-card-section">
+                            <span class="approval-card-section-label">Reason</span>
+                            <div class="approval-card-reason">@ApprovalRequest.Reason</div>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="approval-card-footer">
+                @if (ApprovalRequest.UserResponse is null)
+                {
+                    <button class="approval-btn approve" @onclick="Approve" disabled="@_responding">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        Approve
+                    </button>
+                    <button class="approval-btn reject" @onclick="Reject" disabled="@_responding">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                        Reject
+                    </button>
+                }
+                <button class="approval-btn toggle" @onclick="ToggleExpanded">
+                    @(_isExpanded ? "Hide Details" : "Show Details")
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -73,6 +83,9 @@
 
     [Parameter]
     public EventCallback<(string approvalId, bool approved)> OnRespond { get; set; }
+
+    [Parameter]
+    public string? AgentColor { get; set; }
 
     private bool _responding;
     private bool _isExpanded;
@@ -90,6 +103,8 @@
         false => "Rejected",
         null => "Pending",
     };
+
+    private string? GetAvatarStyle() => !string.IsNullOrEmpty(AgentColor) ? $"background-color: {AgentColor}; color: #fff;" : null;
 
     private void ToggleExpanded() => _isExpanded = !_isExpanded;
 
@@ -110,6 +125,38 @@
     private string GetAgentLabel() => string.IsNullOrWhiteSpace(ApprovalRequest.AgentName)
         ? "unknown agent"
         : ApprovalRequest.AgentName!;
+
+    private string GetInitials()
+    {
+        var name = GetAgentLabel();
+        if (string.IsNullOrEmpty(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        }
+        return name.Length >= 2
+            ? name.Substring(0, 2).ToUpper()
+            : name.ToUpper();
+    }
+
+    private string GetFormattedTimestamp()
+    {
+        var now = DateTime.UtcNow;
+        var ts = ApprovalRequest.Timestamp.UtcDateTime;
+        var diff = now - ts;
+
+        if (diff.TotalMinutes < 1)
+            return "Just now";
+        if (diff.TotalMinutes < 60)
+            return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24)
+            return ts.ToString("HH:mm");
+        if (diff.TotalDays < 7)
+            return ts.ToString("ddd HH:mm");
+
+        return ts.ToString("MMM d, yyyy");
+    }
 
     private string FormatArgs()
     {

@@ -27,7 +27,10 @@
                 }
                 else if (entry.ApprovalRequest is { } approval)
                 {
-                    <ApprovalRequestCard ApprovalRequest="approval" OnRespond="OnApprovalRespond" />
+                    var approvalAgentColor = Agents != null && approval.AgentId != Guid.Empty
+                        ? Agents.FirstOrDefault(a => a.Id == approval.AgentId)?.Color
+                        : null;
+                    <ApprovalRequestCard ApprovalRequest="approval" AgentColor="@approvalAgentColor" OnRespond="OnApprovalRespond" />
                 }
                 else if (entry.Reasoning is { } reasoning)
                 {
