@@ -68,10 +68,16 @@
                         }
                         else
                         {
-                            <select id="agent-provider" class="agent-form-select" value="@_agentProviderId" @onchange="OnAgentProviderChanged">
+                            <select id="agent-provider"
+                                    class="agent-form-select"
+                                    value="@_agentProviderId"
+                                    @onchange="OnAgentProviderChanged">
                                 @foreach (var p in EnabledProviders)
                                 {
-                                    <option value="@p.BackendId">@p.Name (@(p.ProviderType ?? p.Name))</option>
+                                    var providerLabel = string.IsNullOrWhiteSpace(p.ProviderType) || string.Equals(p.ProviderType, "OpenAI", StringComparison.OrdinalIgnoreCase)
+                                        ? p.Name
+                                        : $"{p.Name} ({p.ProviderType})";
+                                    <option value="@p.BackendId">@providerLabel</option>
                                 }
                             </select>
                         }
@@ -362,8 +368,22 @@
                 _agentPrompt = agent.Prompt;
                 _agentColor = agent.Color;
                 _agentModel = agent.Model;
-                var matching = EnabledProviders.FirstOrDefault(p => (p.SelectedModels ?? []).Contains(agent.Model));
-                _agentProviderId = matching?.BackendId ?? EnabledProviders.FirstOrDefault()?.BackendId ?? "";
+
+                var providerId = agent.ProviderId;
+                if (providerId != Guid.Empty)
+                {
+                    var matchingById = EnabledProviders.FirstOrDefault(p =>
+                        Guid.TryParse(p.BackendId, out var backendGuid) && backendGuid == providerId);
+
+                    _agentProviderId = matchingById?.BackendId ?? "";
+                }
+
+                if (string.IsNullOrEmpty(_agentProviderId))
+                {
+                    var matchingByModel = EnabledProviders.FirstOrDefault(p => (p.SelectedModels ?? []).Contains(agent.Model));
+                    _agentProviderId = matchingByModel?.BackendId ?? EnabledProviders.FirstOrDefault()?.BackendId ?? "";
+                }
+
                 if (string.IsNullOrEmpty(_agentProviderId))
                     _agentModel = "";
 
