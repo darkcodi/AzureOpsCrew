@@ -459,7 +459,7 @@ public static class DmEndpoints
                 AuthorName = user?.Username ?? "Unknown",
                 MessageContent = dto.Content,
             };
-            await agentScheduler.QueueTrigger(Trigger.FromSpecificTrigger(trigger));
+            await agentScheduler.QueueTrigger(trigger);
 
             return Results.Created($"/api/users/{userId}/dms/agents/{agentId}/messages/{message.Id}", message);
         })
@@ -536,7 +536,7 @@ public static class DmEndpoints
             await context.SaveChangesAsync(cancellationToken);
 
             // Re-enqueue the agent to continue processing
-            await agentScheduler.QueueTrigger(Trigger.FromSpecificTrigger(new ToolApprovalTrigger
+            await agentScheduler.QueueTrigger(new ToolApprovalTrigger
             {
                 Id = Guid.NewGuid(),
                 AgentId = matchingThought.AgentId,
@@ -548,7 +548,7 @@ public static class DmEndpoints
                 Parameters = requestContent != null
                     ? JsonSerializer.Serialize(requestContent.FunctionCall?.Arguments ?? new Dictionary<string, object?>())
                     : ""
-            }));
+            });
 
             return Results.Ok(new { approved = body.Approved });
         })

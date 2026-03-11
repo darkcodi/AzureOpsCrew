@@ -14,10 +14,12 @@ public sealed class WaitConditionEntityTypeConfiguration : IEntityTypeConfigurat
         builder.Property(w => w.Id)
                .ValueGeneratedOnAdd();
 
-        // Common properties
-        builder.Property(w => w.Type)
-               .IsRequired();
+        // Configure TPH discriminator
+        builder.HasDiscriminator<int>("Type")
+               .HasValue<MessageWaitCondition>(0)
+               .HasValue<ToolApprovalWaitCondition>(1);
 
+        // Common properties
         builder.Property(w => w.AgentId)
                .IsRequired();
 
@@ -31,16 +33,10 @@ public sealed class WaitConditionEntityTypeConfiguration : IEntityTypeConfigurat
 
         builder.Property(w => w.SatisfiedByTriggerId);
 
-        // Message wait condition specific property
-        builder.Property(w => w.MessageAfterDateTime);
-
-        // Tool approval wait condition specific property
-        builder.Property(w => w.ToolCallId);
-
         // Indexes
         builder.HasIndex(w => w.AgentId);
         builder.HasIndex(w => w.ChatId);
-        builder.HasIndex(w => w.Type);
+        builder.HasIndex("Type");
         builder.HasIndex(w => w.SatisfiedByTriggerId);
     }
 }

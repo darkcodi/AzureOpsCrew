@@ -157,7 +157,7 @@ public class AgentRunService
                             CreatedAt = DateTime.UtcNow,
                             ToolCallId = toolCall.CallId,
                         };
-                        _dbContext.WaitConditions.Add(WaitCondition.FromSpecificWaitCondition(waitCondition));
+                        _dbContext.WaitConditions.Add(waitCondition);
                         await _dbContext.SaveChangesAsync(ct);
 
                         // Broadcast approval request event
@@ -244,7 +244,7 @@ public class AgentRunService
                         CreatedAt = DateTime.UtcNow,
                         MessageAfterDateTime = DateTime.UtcNow, // ToDo: load from referenced message in the tool arguments
                     };
-                    _dbContext.WaitConditions.Add(WaitCondition.FromSpecificWaitCondition(waitCondition));
+                    _dbContext.WaitConditions.Add(waitCondition);
                     await _dbContext.SaveChangesAsync(ct);
 
                     break;

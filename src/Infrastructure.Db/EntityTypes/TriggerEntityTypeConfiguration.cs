@@ -14,10 +14,12 @@ public sealed class TriggerEntityTypeConfiguration : IEntityTypeConfiguration<Tr
         builder.Property(t => t.Id)
                .ValueGeneratedOnAdd();
 
-        // Common properties
-        builder.Property(t => t.Type)
-               .IsRequired();
+        // Configure TPH discriminator
+        builder.HasDiscriminator<int>("Type")
+               .HasValue<MessageTrigger>(0)
+               .HasValue<ToolApprovalTrigger>(1);
 
+        // Common properties
         builder.Property(t => t.AgentId)
                .IsRequired();
 
@@ -35,31 +37,9 @@ public sealed class TriggerEntityTypeConfiguration : IEntityTypeConfiguration<Tr
                .IsRequired()
                .HasDefaultValue(false);
 
-        // Message trigger specific properties
-        builder.Property(t => t.MessageId);
-
-        builder.Property(t => t.AuthorId);
-
-        builder.Property(t => t.AuthorName)
-               .HasMaxLength(200);
-
-        builder.Property(t => t.MessageContent)
-               .HasColumnType("nvarchar(max)");
-
-        // Tool approval trigger specific properties
-        builder.Property(t => t.CallId);
-
-        builder.Property(t => t.Resolution);
-
-        builder.Property(t => t.ToolName)
-               .HasMaxLength(200);
-
-        builder.Property(t => t.Parameters)
-               .HasColumnType("nvarchar(max)");
-
         // Indexes
         builder.HasIndex(t => t.AgentId);
         builder.HasIndex(t => t.ChatId);
-        builder.HasIndex(t => t.Type);
+        builder.HasIndex("Type");
     }
 }

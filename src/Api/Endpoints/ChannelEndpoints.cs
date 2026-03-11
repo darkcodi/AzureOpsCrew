@@ -452,7 +452,7 @@ public static class ChannelEndpoints
             await context.SaveChangesAsync(cancellationToken);
 
             // Re-enqueue the agent to continue processing
-            await agentScheduler.QueueTrigger(Trigger.FromSpecificTrigger(new ToolApprovalTrigger
+            await agentScheduler.QueueTrigger(new ToolApprovalTrigger
             {
                 Id = Guid.NewGuid(),
                 AgentId = matchingThought.AgentId,
@@ -464,7 +464,7 @@ public static class ChannelEndpoints
                 Parameters = requestContent != null
                     ? JsonSerializer.Serialize(requestContent.FunctionCall?.Arguments ?? new Dictionary<string, object?>())
                     : ""
-            }));
+            });
 
             return Results.Ok(new { approved = body.Approved });
         })
@@ -517,7 +517,7 @@ public static class ChannelEndpoints
                     AuthorName = user?.Username ?? "Unknown",
                     MessageContent = dto.Content,
                 };
-                await agentScheduler.QueueTrigger(Trigger.FromSpecificTrigger(trigger));
+                await agentScheduler.QueueTrigger(trigger);
             }
 
             return Results.Created($"/api/channels/{id}/messages/{message.Id}", message);

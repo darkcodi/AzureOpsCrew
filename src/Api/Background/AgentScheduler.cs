@@ -90,7 +90,7 @@ public class AgentScheduler : BackgroundService
         await dbContext.Triggers.AddAsync(trigger);
         await dbContext.SaveChangesAsync();
 
-        Log.Information("[BACKGROUND] Queued trigger {TriggerId} of type {TriggerType} for agent {AgentId} and chat {ChatId}", trigger.Id, trigger.Type, trigger.AgentId, trigger.ChatId);
+        Log.Information("[BACKGROUND] Queued trigger {TriggerId} of type {TriggerType} for agent {AgentId} and chat {ChatId}", trigger.Id, trigger.GetType().Name, trigger.AgentId, trigger.ChatId);
         StartAgent(trigger.AgentId, trigger.ChatId);
     }
 
@@ -103,18 +103,16 @@ public class AgentScheduler : BackgroundService
                 // get active wait conditions and triggers for this agent and chat
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
-                var waitConditions = (await dbContext.WaitConditions
+                var waitConditions = await dbContext.WaitConditions
+                    .OfType<WaitCondition>()
                     .Where(wc => wc.AgentId == agentId && wc.ChatId == chatId && wc.CompletedAt == null)
                     .OrderBy(wc => wc.CreatedAt)
-                    .ToArrayAsync())
-                    .Select(wc => wc.ToSpecificWaitCondition())
-                    .ToArray();
-                var triggers = (await dbContext.Triggers
+                    .ToArrayAsync();
+                var triggers = await dbContext.Triggers
+                    .OfType<Trigger>()
                     .Where(t => t.AgentId == agentId && t.ChatId == chatId && t.CompletedAt == null)
                     .OrderBy(t => t.CreatedAt)
-                    .ToArrayAsync())
-                    .Select(t => t.ToSpecificTrigger())
-                    .ToArray();
+                    .ToArrayAsync();
 
                 // try satisfy wait conditions
                 var allWaitConditionsSatisfied = true;
@@ -125,7 +123,7 @@ public class AgentScheduler : BackgroundService
                     {
                         waitCondition.CompletedAt = DateTime.UtcNow;
                         waitCondition.SatisfiedByTriggerId = satisfiedTrigger.Id;
-                        dbContext.WaitConditions.Update(WaitCondition.FromSpecificWaitCondition(waitCondition));
+                        dbContext.WaitConditions.Update(waitCondition);
                         await dbContext.SaveChangesAsync();
                         Log.Information("[BACKGROUND] Wait condition {WaitConditionId} for agent {AgentId} and chat {ChatId} satisfied by trigger {TriggerId}", waitCondition.Id, agentId, chatId, satisfiedTrigger.Id);
                     }
@@ -165,7 +163,7 @@ public class AgentScheduler : BackgroundService
                     {
                         trigger.CompletedAt = DateTime.UtcNow;
                         trigger.IsSkipped = true;
-                        dbContext.Triggers.Update(Trigger.FromSpecificTrigger(trigger));
+                        dbContext.Triggers.Update(trigger);
                         await dbContext.SaveChangesAsync();
                         Log.Warning("[BACKGROUND] Skipping overlapping trigger {TriggerId} for agent {AgentId} and chat {ChatId}", trigger.Id, agentId, chatId);
                     }
@@ -173,7 +171,7 @@ public class AgentScheduler : BackgroundService
 
                 // mark the first trigger as started
                 firstTrigger.StartedAt = DateTime.UtcNow;
-                dbContext.Triggers.Update(Trigger.FromSpecificTrigger(firstTrigger));
+                dbContext.Triggers.Update(firstTrigger);
                 await dbContext.SaveChangesAsync();
 
                 // run the agent for this trigger
@@ -189,7 +187,7 @@ public class AgentScheduler : BackgroundService
 
                 // mark the first trigger as completed
                 firstTrigger.CompletedAt = DateTime.UtcNow;
-                dbContext.Triggers.Update(Trigger.FromSpecificTrigger(firstTrigger));
+                dbContext.Triggers.Update(firstTrigger);
                 await dbContext.SaveChangesAsync();
             }
             catch (Exception e)
