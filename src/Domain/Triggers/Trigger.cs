@@ -1,3 +1,5 @@
+using AzureOpsCrew.Domain.Tools;
+
 namespace AzureOpsCrew.Domain.Triggers;
 
 public class Trigger
@@ -20,6 +22,7 @@ public class Trigger
 
     // tool approval trigger specific
     public string? CallId { get; set; }
+    public ApprovalResolution? Resolution { get; set; }
     public string? ToolName { get; set; }
     public string? Parameters { get; set; }
 
@@ -51,6 +54,7 @@ public class Trigger
                 CompletedAt = CompletedAt,
                 IsSkipped = IsSkipped,
                 CallId = CallId ?? string.Empty,
+                Resolution = Resolution ?? ApprovalResolution.None,
                 ToolName = ToolName ?? string.Empty,
                 Parameters = Parameters ?? string.Empty,
             },
@@ -87,6 +91,7 @@ public class Trigger
                 CompletedAt = trigger.CompletedAt,
                 IsSkipped = ((ToolApprovalTrigger)trigger).IsSkipped,
                 CallId = ((ToolApprovalTrigger)trigger).CallId,
+                Resolution = ((ToolApprovalTrigger)trigger).Resolution,
                 ToolName = ((ToolApprovalTrigger)trigger).ToolName,
                 Parameters = ((ToolApprovalTrigger)trigger).Parameters,
             },

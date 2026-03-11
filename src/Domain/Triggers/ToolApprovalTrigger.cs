@@ -1,3 +1,5 @@
+using AzureOpsCrew.Domain.Tools;
+
 namespace AzureOpsCrew.Domain.Triggers;
 
 public class ToolApprovalTrigger : ITrigger
@@ -14,6 +16,7 @@ public class ToolApprovalTrigger : ITrigger
 
     // specific
     public string CallId { get; set; } = string.Empty;
+    public ApprovalResolution Resolution { get; set; } = ApprovalResolution.None;
     public string ToolName { get; set; } = string.Empty;
     public string Parameters { get; set; } = string.Empty;
 }

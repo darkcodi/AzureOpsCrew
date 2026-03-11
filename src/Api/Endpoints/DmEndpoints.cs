@@ -9,6 +9,7 @@ using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using System.Text.Json;
+using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Domain.Triggers;
 
 namespace AzureOpsCrew.Api.Endpoints;
@@ -542,6 +543,7 @@ public static class DmEndpoints
                 ChatId = dm.Id,
                 CreatedAt = DateTime.UtcNow,
                 CallId = requestContent?.FunctionCall?.CallId ?? "",
+                Resolution = body.Approved ? ApprovalResolution.Approved : ApprovalResolution.Rejected,
                 ToolName = requestContent?.FunctionCall?.Name ?? "",
                 Parameters = requestContent != null
                     ? JsonSerializer.Serialize(requestContent.FunctionCall?.Arguments ?? new Dictionary<string, object?>())
