@@ -3,6 +3,7 @@ using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Domain.Tools.BackEnd;
+using AzureOpsCrew.Domain.Triggers;
 using AzureOpsCrew.Domain.Utils;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
@@ -103,16 +104,50 @@ public class PostMessageTool : IBackendTool
                 if (channel != null)
                 {
                     var otherAgentIds = channel.AgentIds.Where(id => id != data.Agent.Id).ToArray();
-                    var scheduler = serviceProvider.GetRequiredService<AgentScheduler>();
+                    var agentScheduler = serviceProvider.GetRequiredService<AgentScheduler>();
                     foreach (var agentId in otherAgentIds)
                     {
-                        scheduler.StartAgent(agentId, channel.Id);
+                        var trigger = new MessageTrigger
+                        {
+                            Id = Guid.NewGuid(),
+                            AgentId = agentId,
+                            ChatId = channel.Id,
+                            CreatedAt = DateTime.UtcNow,
+                            MessageId = message.Id,
+                            AuthorId = data.Agent.Id,
+                            AuthorName = data.Agent.Info.Username,
+                            MessageContent = text,
+                        };
+                        await agentScheduler.QueueTrigger(trigger);
                     }
                 }
             }
             else if (message.DmId.HasValue)
             {
                 await broadcaster.BroadcastDmMessageAddedAsync(message.DmId.Value, message);
+                var dm = await dbContext.Dms.FindAsync(message.DmId.Value);
+                if (dm != null)
+                {
+                    // DirectMessageChannel has Agent1Id and Agent2Id properties
+                    // Find the other agent (not the current one) to trigger
+                    var otherAgentId = dm.Agent1Id == data.Agent.Id ? dm.Agent2Id : dm.Agent1Id;
+                    if (otherAgentId.HasValue)
+                    {
+                        var agentScheduler = serviceProvider.GetRequiredService<AgentScheduler>();
+                        var trigger = new MessageTrigger
+                        {
+                            Id = Guid.NewGuid(),
+                            AgentId = otherAgentId.Value,
+                            ChatId = dm.Id,
+                            CreatedAt = DateTime.UtcNow,
+                            MessageId = message.Id,
+                            AuthorId = data.Agent.Id,
+                            AuthorName = data.Agent.Info.Username,
+                            MessageContent = text,
+                        };
+                        await agentScheduler.QueueTrigger(trigger);
+                    }
+                }
             }
 
             return new ToolCallResult(callId, new { messageId = message.Id }, false);
