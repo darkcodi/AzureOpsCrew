@@ -1,4 +1,5 @@
 using AzureOpsCrew.Api.Background.ToolExecutors;
+using AzureOpsCrew.Api.Background.Triggers;
 using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
 using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Agents;
@@ -9,6 +10,7 @@ using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Domain.Tools.BackEnd;
 using AzureOpsCrew.Domain.Tools.FrontEnd;
 using AzureOpsCrew.Domain.Tools.Mcp;
+using AzureOpsCrew.Domain.Triggers;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
@@ -23,6 +25,7 @@ namespace AzureOpsCrew.Api.Background;
 public class AgentRunService
 {
     private readonly Guid _runId = Guid.NewGuid();
+    private readonly IServiceProvider _serviceProvider;
     private readonly AzureOpsCrewContext _dbContext;
     private readonly IProviderFacadeResolver _providerFactory;
     private readonly ToolCallRouter _toolCallRouter;
@@ -35,6 +38,7 @@ public class AgentRunService
 
     public AgentRunService(IServiceProvider serviceProvider)
     {
+        _serviceProvider = serviceProvider;
         _dbContext = serviceProvider.GetRequiredService<AzureOpsCrewContext>();
         _providerFactory = serviceProvider.GetRequiredService<IProviderFacadeResolver>();
         _toolCallRouter = serviceProvider.GetRequiredService<ToolCallRouter>();
@@ -256,7 +260,14 @@ public class AgentRunService
         }
 
         if (!waitingForApproval)
+        {
             await BroadcastAgentStatus(initialData, "Idle");
+
+            // Publish AgentCompleted event for event-based triggers (chain-of-agents)
+            var eventBus = _serviceProvider.GetService<TriggerEventBus>();
+            if (eventBus != null)
+                await eventBus.PublishAsync(new TriggerContext { EventType = "AgentCompleted", SourceAgentId = agentId });
+        }
 
         Log.Information("[BACKGROUND] Agent run completed: {AgentId}, chat: {ChatId}", agentId, chatId);
     }

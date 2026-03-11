@@ -1,5 +1,6 @@
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Background;
+using AzureOpsCrew.Api.Background.Triggers;
 using AzureOpsCrew.Api.Endpoints.Dtos.Agents;
 using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
 using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
@@ -7,6 +8,7 @@ using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Agents;
 using AzureOpsCrew.Domain.Channels;
 using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.Triggers;
 using AzureOpsCrew.Infrastructure.Ai.Models;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
@@ -462,7 +464,7 @@ public static class ChannelEndpoints
             CreateDirectMessageDto dto,
             HttpContext httpContext,
             AzureOpsCrewContext context,
-            AgentTriggerQueue agentTriggerQueue,
+            TriggerEvaluator evaluator,
             IChannelEventBroadcaster channelEventBroadcaster,
             CancellationToken cancellationToken) =>
         {
@@ -489,11 +491,9 @@ public static class ChannelEndpoints
             // Broadcast the new message via SignalR
             await channelEventBroadcaster.BroadcastMessageAddedAsync(channel.Id, message);
 
-            // Trigger all agents in the channel
-            foreach (var agentId in channel.AgentIds)
-            {
-                agentTriggerQueue.Enqueue(agentId, channel.Id);
-            }
+            // Evaluate message triggers for this channel
+            var triggerContext = new TriggerContext { MessageChatId = channel.Id };
+            await evaluator.EvaluateAsync(triggerContext, [TriggerType.Message], cancellationToken);
 
             return Results.Created($"/api/channels/{id}/messages/{message.Id}", message);
         })

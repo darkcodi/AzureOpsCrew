@@ -1,9 +1,11 @@
 using AzureOpsCrew.Api.Auth;
 using AzureOpsCrew.Api.Background;
+using AzureOpsCrew.Api.Background.Triggers;
 using AzureOpsCrew.Api.Endpoints.Dtos.Agents;
 using AzureOpsCrew.Api.Endpoints.Dtos.Chats;
 using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Chats;
+using AzureOpsCrew.Domain.Triggers;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
@@ -402,7 +404,7 @@ public static class DmEndpoints
             Guid agentId,
             CreateDirectMessageDto dto,
             AzureOpsCrewContext context,
-            AgentTriggerQueue agentTriggerQueue,
+            TriggerEvaluator evaluator,
             IChannelEventBroadcaster channelEventBroadcaster,
             CancellationToken cancellationToken) =>
         {
@@ -445,7 +447,9 @@ public static class DmEndpoints
             // Broadcast the new message via SignalR
             await channelEventBroadcaster.BroadcastDmMessageAddedAsync(dm.Id, message);
 
-            agentTriggerQueue.Enqueue(agentId, dm.Id);
+            // Evaluate message triggers for this DM
+            var triggerContext = new TriggerContext { MessageChatId = dm.Id };
+            await evaluator.EvaluateAsync(triggerContext, [TriggerType.Message], cancellationToken);
 
             return Results.Created($"/api/users/{userId}/dms/agents/{agentId}/messages/{message.Id}", message);
         })
