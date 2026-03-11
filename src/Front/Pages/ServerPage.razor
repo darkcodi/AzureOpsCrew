@@ -141,32 +141,6 @@
             _mindToolCalls = [];
             _mindReasonings = [];
 
-            var agentIdStr = AppState.SelectedChannel?.AgentIds.FirstOrDefault();
-            if (!string.IsNullOrEmpty(agentIdStr) && Guid.TryParse(agentIdStr, out var agentId))
-            {
-                _isAgentRunning = AgentState.IsAgentRunning(channelId.Value, ConversationType.Channel);
-                var typingUsername = AgentState.GetTypingUsername(
-                    channelId.Value,
-                    ConversationType.Channel,
-                    id => AppState.Agents.FirstOrDefault(a => a.Id == id)?.Username);
-                if (typingUsername != null && _isAgentRunning)
-                {
-                    _typingUsernames.Add(typingUsername);
-                }
-
-                var agentState = AgentState.GetState(channelId.Value, ConversationType.Channel);
-                if (agentState != null)
-                {
-                    var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentState.AgentId);
-                    if (agent != null)
-                    {
-                        agent.Status = agentState.Status;
-                        agent.ErrorMessage = agentState.ErrorMessage;
-                        AppState.Agents.NotifyChanged();
-                    }
-                }
-            }
-
             await ConnectToChannelHub(channelId.Value);
         }
     }

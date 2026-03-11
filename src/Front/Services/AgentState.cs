@@ -1,69 +1,24 @@
-using System.Text.Json;
 using Front.Models;
-using Microsoft.JSInterop;
-using Serilog;
 
 namespace Front.Services;
 
 /// <summary>
-/// Singleton service that tracks and persists agent status across page refreshes.
-/// Stores agent status (running/idle/error) in localStorage for each conversation.
+/// Singleton service that tracks agent status in memory for the current session.
+/// Status is updated via SignalR; no persistence across page refreshes.
 /// </summary>
 public class AgentState
 {
-    private const string StorageKey = "agent_status_states";
     private readonly Reactive<Dictionary<string, AgentStatusState>> _states = new(new Dictionary<string, AgentStatusState>());
-    private readonly IJSRuntime _js;
     private bool _isInitialized;
 
-    public AgentState(IJSRuntime js)
-    {
-        _js = js;
-    }
-
     /// <summary>
-    /// Initialize the service by loading states from localStorage.
-    /// Filters out states older than 1 hour to prevent stale data.
+    /// Initialize the service. No-op; kept for API compatibility.
     /// </summary>
-    public async Task InitializeAsync()
+    public Task InitializeAsync()
     {
-        if (_isInitialized)
-            return;
-
-        try
-        {
-            var raw = await _js.InvokeAsync<string?>("localStorage.getItem", StorageKey);
-            if (!string.IsNullOrEmpty(raw))
-            {
-                var loadedStates = JsonSerializer.Deserialize<Dictionary<string, AgentStatusState>>(raw, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                });
-
-                if (loadedStates != null)
-                {
-                    // Filter out states older than 1 hour
-                    var cutoff = DateTimeOffset.UtcNow.AddHours(-1);
-                    var validStates = loadedStates
-                        .Where(kvp => kvp.Value.LastUpdated > cutoff)
-                        .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-                    _states.Value = validStates;
-
-                    var removedCount = loadedStates.Count - validStates.Count;
-                    if (removedCount > 0)
-                    {
-                        Log.Information("Filtered out {Count} stale agent states (older than 1 hour)", removedCount);
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Failed to load agent states from localStorage");
-        }
-
-        _isInitialized = true;
+        if (!_isInitialized)
+            _isInitialized = true;
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -82,9 +37,9 @@ public class AgentState
     }
 
     /// <summary>
-    /// Set the agent status for a conversation and persist to localStorage.
+    /// Set the agent status for a conversation (in-memory only).
     /// </summary>
-    public async Task SetAgentStatusAsync(
+    public Task SetAgentStatusAsync(
         Guid conversationId,
         ConversationType conversationType,
         Guid agentId,
@@ -105,26 +60,20 @@ public class AgentState
         var currentStates = _states.Value;
         currentStates[key] = newState;
 
-        // Trigger change notification
         _states.ForceNotify();
-
-        // Persist to localStorage
-        await PersistToLocalStorageAsync();
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// Clear the state for a specific conversation.
     /// </summary>
-    public async Task ClearStateAsync(Guid conversationId, ConversationType conversationType)
+    public Task ClearStateAsync(Guid conversationId, ConversationType conversationType)
     {
         var key = GetKey(conversationId, conversationType);
         var currentStates = _states.Value;
         if (currentStates.Remove(key))
-        {
-            // Trigger change notification
             _states.ForceNotify();
-            await PersistToLocalStorageAsync();
-        }
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -154,23 +103,4 @@ public class AgentState
     /// Subscribe to changes in agent states.
     /// </summary>
     public IDisposable Subscribe(Action handler) => _states.Subscribe(handler);
-
-    /// <summary>
-    /// Persist current states to localStorage.
-    /// </summary>
-    private async Task PersistToLocalStorageAsync()
-    {
-        try
-        {
-            var json = JsonSerializer.Serialize(_states.Value, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            });
-            await _js.InvokeVoidAsync("localStorage.setItem", StorageKey, json);
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Failed to persist agent states to localStorage");
-        }
-    }
 }
