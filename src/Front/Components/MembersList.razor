@@ -52,7 +52,7 @@
                                 </div>
                                 <div class="members-item-info">
                                     <span class="members-item-name">@agent.Username</span>
-                                    <span class="members-item-status @GetAgentStatusClass(agent.Status)">@FormatAgentStatus(agent.Status)</span>
+                                    <span class="members-item-status @(AgentStatusDisplay.IsWaitingForApproval(agent.Status) ? "members-item-status-waiting" : string.Empty)">@AgentStatusDisplay.ToDisplayText(agent.Status)</span>
                                 </div>
                             </div>
                             <button type="button"
@@ -182,7 +182,7 @@
                 </button>
                 <button type="button" class="btn btn-danger" disabled="@_isRemovingAgent"
                         @onclick="ConfirmRemoveAgent">
-                    @(_isRemovingAgent ? "Removing…" : "Remove")
+                    @(_isRemovingAgent ? "Removing..." : "Remove")
                 </button>
             </div>
         </div>
@@ -256,21 +256,6 @@
     }
 
     private List<UserDto> GetOnlineUsers() => []; // TODO: Implement online users tracking
-
-    private static string FormatAgentStatus(string? status)
-    {
-        if (string.IsNullOrWhiteSpace(status)) return "Idle";
-        if (string.Equals(status, "WaitingForApproval", StringComparison.OrdinalIgnoreCase))
-            return "Waiting for approval";
-        return status;
-    }
-
-    private static string GetAgentStatusClass(string? status)
-    {
-        return string.Equals(status, "WaitingForApproval", StringComparison.OrdinalIgnoreCase)
-            ? "members-item-status-waiting"
-            : string.Empty;
-    }
 
     private List<AgentDto> AgentsNotInChannel()
     {

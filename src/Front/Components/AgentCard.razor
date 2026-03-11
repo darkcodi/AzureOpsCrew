@@ -1,5 +1,4 @@
 @namespace Front.Components
-
 <div class="agent-card">
     <div class="agent-card-header-wrap">
         <div class="agent-card-strip" style="background-color: @Agent.Color;"></div>
@@ -8,8 +7,8 @@
                 @GetAgentAvatar()
             </div>
         </div>
-        <div class="agent-card-status @GetStatusClass()">
-            @FormatStatusText()
+        <div class="agent-card-status @(AgentStatusDisplay.IsWaitingForApproval(Agent.Status) ? "agent-card-status-waiting" : string.Empty)">
+            @AgentStatusDisplay.ToDisplayText(Agent.Status)
         </div>
     </div>
     <div class="agent-card-body">
@@ -50,14 +49,11 @@
         }
     </div>
 </div>
-
 @code {
     [Parameter, EditorRequired]
     public AgentDto Agent { get; set; } = null!;
-
     [CascadingParameter]
     public IEnumerable<McpServerConfigurationItem>? AllMcpServers { get; set; }
-
     private string GetAgentAvatar()
     {
         var u = Agent.Username;
@@ -67,22 +63,6 @@
             return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}";
         return u.Length >= 2 ? u[..2].ToUpperInvariant() : u.ToUpperInvariant();
     }
-
-    private string FormatStatusText()
-    {
-        if (string.IsNullOrWhiteSpace(Agent.Status)) return "Idle";
-        if (string.Equals(Agent.Status, "WaitingForApproval", StringComparison.OrdinalIgnoreCase))
-            return "Waiting for approval";
-        return Agent.Status;
-    }
-
-    private string GetStatusClass()
-    {
-        return string.Equals(Agent.Status, "WaitingForApproval", StringComparison.OrdinalIgnoreCase)
-            ? "agent-card-status-waiting"
-            : string.Empty;
-    }
-
     private string GetBio()
     {
         var text = Agent.Prompt;
@@ -91,7 +71,6 @@
         if (text.Length <= 120) return text;
         return text[..120].TrimEnd() + "...";
     }
-
     private string GetModelDisplay()
     {
         var model = Agent.Model;
@@ -101,25 +80,20 @@
             ? model[(lastSlash + 1)..]
             : model;
     }
-
     private List<(string Name, List<string> EnabledTools)> GetAgentMcpTools()
     {
         if (AllMcpServers == null) return [];
-
         var result = new List<(string Name, List<string> EnabledTools)>();
-
         foreach (var availability in Agent.AvailableMcpServerTools)
         {
             var server = AllMcpServers.FirstOrDefault(s =>
                 Guid.TryParse(s.BackendId, out var serverId) &&
                 serverId == availability.McpServerConfigurationId);
-
             if (server != null && availability.EnabledToolNames.Count > 0)
             {
                 result.Add((server.Name, availability.EnabledToolNames));
             }
         }
-
         return result;
     }
 }
