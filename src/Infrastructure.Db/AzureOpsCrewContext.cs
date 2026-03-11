@@ -16,6 +16,7 @@ using DirectMessageChannelConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.Di
 using AgentThoughtConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AgentThoughtEntityTypeConfiguration;
 using RawLlmHttpCallConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.RawLlmHttpCallEntityTypeConfiguration;
 using AgentTriggerConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AgentTriggerEntityTypeConfiguration;
+using AgentTriggerExecutionConfig = AzureOpsCrew.Infrastructure.Db.EntityTypes.AgentTriggerExecutionEntityTypeConfiguration;
 using AiProvider = AzureOpsCrew.Domain.Providers.Provider;
 
 namespace AzureOpsCrew.Infrastructure.Db;
@@ -38,6 +39,7 @@ public class AzureOpsCrewContext : DbContext
     public DbSet<AgentThought> AgentThoughts => Set<AgentThought>();
     public DbSet<RawLlmHttpCall> RawLlmHttpCalls => Set<RawLlmHttpCall>();
     public DbSet<AgentTrigger> Triggers => Set<AgentTrigger>();
+    public DbSet<AgentTriggerExecution> TriggerExecutions => Set<AgentTriggerExecution>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -52,6 +54,7 @@ public class AzureOpsCrewContext : DbContext
         modelBuilder.ApplyConfiguration(new AgentThoughtConfig());
         modelBuilder.ApplyConfiguration(new RawLlmHttpCallConfig());
         modelBuilder.ApplyConfiguration(new AgentTriggerConfig());
+        modelBuilder.ApplyConfiguration(new AgentTriggerExecutionConfig());
     }
 }
 
