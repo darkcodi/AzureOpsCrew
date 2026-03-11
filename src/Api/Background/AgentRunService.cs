@@ -122,7 +122,7 @@ public class AgentRunService
                 }
 
                 // Execute tools and save results to DB
-                var newToolCallResults = new List<AocAgentThought>();
+                var newToolCallResults = new List<AocFunctionResultContent>();
                 var newToolCalls = newAgentThoughts
                     .Select(m => m.ContentDto.ToAocAiContent())
                     .OfType<AocFunctionCallContent>()
@@ -199,8 +199,7 @@ public class AgentRunService
                     }
 
                     var toolCallResult = await _toolCallRouter.ExecuteToolCall(toolCall, data);
-                    var toolResultMessage = AocAgentThought.FromContent(toolCallResult, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow, Guid.NewGuid());
-                    newToolCallResults.Add(toolResultMessage);
+                    newToolCallResults.Add(toolCallResult);
 
                     if (_channelEventBroadcaster != null && (data.Channel != null || data.DmChannel != null))
                     {
@@ -230,7 +229,8 @@ public class AgentRunService
                 // Persist any tool results that were produced before we hit an approval gate.
                 if (newToolCallResults.Count > 0)
                 {
-                    await SaveAgentThoughts(agentId, chatId, newToolCallResults, ct);
+                    var toolResultMessage = newToolCallResults.Select(x => AocAgentThought.FromContent(x, ChatRole.Tool, data.Agent.Info.Username, DateTime.UtcNow, Guid.NewGuid())).ToList();
+                    await SaveAgentThoughts(agentId, chatId, toolResultMessage, ct);
                 }
 
                 // If waiting for approval, break the iteration loop
@@ -239,26 +239,37 @@ public class AgentRunService
 
                 // If the agent called the waitForNextMessage tool, we consider that it has finished its run and we stop the loop.
                 // This allows agents to explicitly signal that they want to skip their turn and let other agents or the human take the lead.
-                if (newToolCalls.Any(c => string.Equals(c.Name, WaitForNextMessageTool.ToolName, StringComparison.CurrentCultureIgnoreCase)))
+                var waitToolCall = newToolCalls.FirstOrDefault(c => string.Equals(c.Name, WaitForNextMessageTool.ToolName, StringComparison.CurrentCultureIgnoreCase));
+                if (waitToolCall != null)
                 {
-                    Log.Information("[BACKGROUND] Agent {AgentId} decided to wait for next message in chat {ChatId}", agentId, chatId);
+                    // find the corresponding tool call result to check if it successfully executed or if there was an error
+                    var waitToolResult = newToolCallResults.FirstOrDefault(r => r.CallId == waitToolCall.CallId);
 
-                    // Insert wait condition
-                    var waitCondition = new MessageWaitCondition
+                    if (waitToolResult != null && waitToolResult.Result is ToolCallResult result && result.IsError)
                     {
-                        Id = Guid.NewGuid(),
-                        AgentId = agentId,
-                        ChatId = chatId,
-                        CreatedAt = DateTime.UtcNow,
-                        MessageAfterDateTime = DateTime.UtcNow, // ToDo: load from referenced message in the tool arguments
-                    };
-                    _dbContext.WaitConditions.Add(waitCondition);
-                    await _dbContext.SaveChangesAsync(ct);
+                        Log.Warning("[BACKGROUND] Agent {AgentId} wanted to wait for next message in chat {ChatId} but there was an error executing the tool: {ErrorMessage}", agentId, chatId, result.Result);
+                    }
+                    else
+                    {
+                        Log.Information("[BACKGROUND] Agent {AgentId} decided to wait for next message in chat {ChatId}", agentId, chatId);
 
-                    // Signal the scheduler
-                    _signalManager.Signal(agentId, chatId);
+                        // Insert wait condition
+                        var waitCondition = new MessageWaitCondition
+                        {
+                            Id = Guid.NewGuid(),
+                            AgentId = agentId,
+                            ChatId = chatId,
+                            CreatedAt = DateTime.UtcNow,
+                            MessageAfterDateTime = DateTime.UtcNow, // ToDo: load from referenced message in the tool arguments
+                        };
+                        _dbContext.WaitConditions.Add(waitCondition);
+                        await _dbContext.SaveChangesAsync(ct);
 
-                    break;
+                        // Signal the scheduler
+                        _signalManager.Signal(agentId, chatId);
+
+                        break;
+                    }
                 }
 
                 var lastTextAgentThought = newAgentThoughts.LastOrDefault(t => t.ContentDto.ToAocAiContent() is AocTextContent);
