@@ -78,7 +78,7 @@ public class AgentRunService
                 }
                 if (approvalResolution == ApprovalResolution.Resolved)
                 {
-                    // Approval was resolved (approved → executed, or rejected → error saved)
+                    // Approval was resolved (approved -> executed, or rejected -> error saved)
                     // Continue to next iteration so LLM sees the result in context
                     continue;
                 }
@@ -248,7 +248,7 @@ public class AgentRunService
         catch (Exception ex)
         {
             Log.Error(ex, "[BACKGROUND] Agent run failed: {AgentId}, chat: {ChatId}", agentId, chatId);
-            var errorMsg = ex.Message.Length > 300 ? ex.Message[..300] + "…" : ex.Message;
+            var errorMsg = ex.Message.Length > 300 ? ex.Message[..300] + "..." : ex.Message;
             await BroadcastAgentStatus(initialData, "Error", errorMsg);
             throw;
         }
@@ -579,6 +579,7 @@ public class AgentRunService
             CallId = toolCall.CallId,
             Args = toolCall.Arguments ?? new Dictionary<string, object?>(),
             AgentId = data.Agent.Id,
+            AgentName = data.Agent.Info.Username,
             Timestamp = DateTimeOffset.UtcNow,
         };
 

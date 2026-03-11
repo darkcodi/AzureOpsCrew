@@ -12,6 +12,7 @@
             </svg>
         </div>
         <span class="approval-card-title">Approval Required</span>
+        <span class="approval-card-agent">from @GetAgentLabel()</span>
         <span class="approval-card-tool-name">@ApprovalRequest.ToolName</span>
         <span class="approval-card-status @StatusClass">@StatusText</span>
     </div>
@@ -101,6 +102,10 @@
         await OnRespond.InvokeAsync((ApprovalRequest.ApprovalId, false));
         _responding = false;
     }
+
+    private string GetAgentLabel() => string.IsNullOrWhiteSpace(ApprovalRequest.AgentName)
+        ? "unknown agent"
+        : ApprovalRequest.AgentName!;
 
     private string FormatArgs()
     {

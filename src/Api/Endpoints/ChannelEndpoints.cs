@@ -188,6 +188,11 @@ public static class ChannelEndpoints
                 .ToListAsync(cancellationToken);
 
             var responsesById = new Dictionary<string, AocFunctionApprovalResponseContent>();
+            var agentIds = approvalThoughts.Select(t => t.AgentId).Distinct().ToList();
+            var agentNamesById = await context.Agents
+                .Where(a => agentIds.Contains(a.Id))
+                .Select(a => new { a.Id, a.Info.Username })
+                .ToDictionaryAsync(a => a.Id, a => a.Username, cancellationToken);
             foreach (var thought in approvalThoughts)
             {
                 if (thought.ContentType == LlmMessageContentType.FunctionApprovalResponseContent)
@@ -217,6 +222,7 @@ public static class ChannelEndpoints
                     callId = req.FunctionCall?.CallId,
                     args = req.FunctionCall?.Arguments,
                     agentId = thought.AgentId,
+                    agentName = agentNamesById.TryGetValue(thought.AgentId, out var agentName) ? agentName : null,
                     timestamp = new DateTimeOffset(thought.CreatedAt, TimeSpan.Zero),
                     status,
                     reason = hasResponse ? response!.Reason : null,

@@ -11,6 +11,7 @@ public class ApprovalRequestDto
     public string CallId { get; set; } = string.Empty;
     public object? Args { get; set; }
     public Guid AgentId { get; set; }
+    public string? AgentName { get; set; }
     public DateTimeOffset Timestamp { get; set; }
     public string? Reason { get; set; }
 
