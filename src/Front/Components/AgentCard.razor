@@ -8,8 +8,8 @@
                 @GetAgentAvatar()
             </div>
         </div>
-        <div class="agent-card-status">
-            @(Agent.Status ?? "Idle")
+        <div class="agent-card-status @GetStatusClass()">
+            @FormatStatusText()
         </div>
     </div>
     <div class="agent-card-body">
@@ -66,6 +66,21 @@
         if (parts.Length >= 2)
             return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}";
         return u.Length >= 2 ? u[..2].ToUpperInvariant() : u.ToUpperInvariant();
+    }
+
+    private string FormatStatusText()
+    {
+        if (string.IsNullOrWhiteSpace(Agent.Status)) return "Idle";
+        if (string.Equals(Agent.Status, "WaitingForApproval", StringComparison.OrdinalIgnoreCase))
+            return "Waiting for approval";
+        return Agent.Status;
+    }
+
+    private string GetStatusClass()
+    {
+        return string.Equals(Agent.Status, "WaitingForApproval", StringComparison.OrdinalIgnoreCase)
+            ? "agent-card-status-waiting"
+            : string.Empty;
     }
 
     private string GetBio()

@@ -193,6 +193,17 @@
     color: hsl(214, 5%, 55%);
 }
 
+.members-item-status-waiting {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    margin-top: 2px;
+    padding: 1px 8px;
+    border-radius: 9999px;
+    background-color: hsla(38, 96%, 54%, 0.2);
+    color: hsl(38, 96%, 64%);
+}
+
 .members-item-status-online {
     display: inline-flex;
     align-items: center;

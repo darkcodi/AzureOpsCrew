@@ -11,7 +11,7 @@
                 </div>
                 <div class="agent-mind-header-title-row">
                     <h2 class="agent-mind-title">@Agent.Username's Mind</h2>
-                    <span class="agent-mind-status agent-mind-status-@(GetStatusClass())">@(Agent.Status ?? "Idle")</span>
+                    <span class="agent-mind-status agent-mind-status-@(GetStatusClass())">@FormatStatusText()</span>
                     @if (string.Equals(Agent.Status, "Error", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(Agent.ErrorMessage))
                     {
                         <span class="agent-mind-status-errormessage" title="@Agent.ErrorMessage">@TruncateError(Agent.ErrorMessage)</span>
@@ -135,11 +135,19 @@
         return "idle";
     }
 
+    private string FormatStatusText()
+    {
+        if (string.IsNullOrWhiteSpace(Agent.Status)) return "Idle";
+        if (string.Equals(Agent.Status, "WaitingForApproval", StringComparison.OrdinalIgnoreCase))
+            return "Waiting for approval";
+        return Agent.Status;
+    }
+
     private static string TruncateError(string? message)
     {
         if (string.IsNullOrEmpty(message)) return string.Empty;
         const int maxLen = 60;
-        return message.Length <= maxLen ? message : message[..maxLen] + "…";
+        return message.Length <= maxLen ? message : message[..maxLen] + "...";
     }
 
     private void OnSettingsClick()
