@@ -184,7 +184,7 @@ public static class DmEndpoints
             var historyMessages = new List<AgentMindEventDto>();
 
             // First pass: collect tool result content by CallId (from tool-role messages)
-            var toolResultsByCallId = new Dictionary<(Guid threadId, Guid runId, string callId), string>();
+            var toolResultsByCallId = new Dictionary<(Guid threadId, string callId), string>();
             foreach (var msg in messages)
             {
                 if (msg.Role.ToString() != "tool")
@@ -204,7 +204,7 @@ public static class DmEndpoints
                         JsonElement el => el.GetRawText(),
                         _ => JsonSerializer.Serialize(functionResult.Result)
                     };
-                    toolResultsByCallId[(msg.ThreadId, msg.RunId, functionResult.CallId)] = resultStr ?? "";
+                    toolResultsByCallId[(msg.ThreadId, functionResult.CallId)] = resultStr ?? "";
                 }
             }
 
@@ -244,7 +244,7 @@ public static class DmEndpoints
                     });
                 }
                 else if (aiContent is AocFunctionCallContent functionCallContent
-                         && toolResultsByCallId.TryGetValue((msg.ThreadId, msg.RunId, functionCallContent.CallId), out var resultStr))
+                         && toolResultsByCallId.TryGetValue((msg.ThreadId, functionCallContent.CallId), out var resultStr))
                 {
                     object? resultObj;
                     try

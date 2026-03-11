@@ -1,4 +1,5 @@
 using AzureOpsCrew.Domain.Agents;
+using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Utils;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using Microsoft.Extensions.AI;
@@ -81,7 +82,15 @@ public class ContextService
         // Thoughts with the same ChatMessageId belong to the same original message
         var thoughtGroups = new List<List<AocAgentThought>>();
 
-        var thoughtsByChatMessageId = data.LlmThoughts
+        // Exclude approval request/response thoughts from LLM context.
+        // The approval flow is a backend enforcement concern — the LLM should only see
+        // the original function call and its result, not the approval handshake in between.
+        var filteredThoughts = data.LlmThoughts
+            .Where(t => t.ContentType != LlmMessageContentType.FunctionApprovalRequestContent
+                     && t.ContentType != LlmMessageContentType.FunctionApprovalResponseContent)
+            .ToList();
+
+        var thoughtsByChatMessageId = filteredThoughts
             .GroupBy(t => t.ChatMessageId)
             .Select(g => g.OrderBy(t => t.CreatedAt).Select(AocAgentThought.FromDomain).ToList())
             .ToList();
