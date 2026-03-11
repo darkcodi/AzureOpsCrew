@@ -10,6 +10,7 @@ public class ToolApprovalTrigger : ITrigger
     public DateTime CreatedAt { get; set; }
     public DateTime? StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public bool IsSkipped { get; set; }
 
     // specific
     public string CallId { get; set; } = string.Empty;

@@ -10,6 +10,7 @@ public class MessageTrigger : ITrigger
     public DateTime CreatedAt { get; set; }
     public DateTime? StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public bool IsSkipped { get; set; }
 
     // specific
     public Guid MessageId { get; set; }

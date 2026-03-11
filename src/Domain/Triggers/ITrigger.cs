@@ -9,4 +9,5 @@ public interface ITrigger
     DateTime CreatedAt { get; }
     DateTime? StartedAt { get; set; }
     DateTime? CompletedAt { get; set; }
+    bool IsSkipped { get; set; }
 }

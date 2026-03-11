@@ -10,6 +10,7 @@ public class Trigger
     public DateTime CreatedAt { get; set; }
     public DateTime? StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public bool IsSkipped { get; set; }
 
     // message trigger specific
     public Guid? MessageId { get; set; }
@@ -34,6 +35,7 @@ public class Trigger
                 CreatedAt = CreatedAt,
                 StartedAt = StartedAt,
                 CompletedAt = CompletedAt,
+                IsSkipped = IsSkipped,
                 MessageId = MessageId ?? Guid.Empty,
                 AuthorId = AuthorId ?? Guid.Empty,
                 AuthorName = AuthorName ?? string.Empty,
@@ -47,6 +49,7 @@ public class Trigger
                 CreatedAt = CreatedAt,
                 StartedAt = StartedAt,
                 CompletedAt = CompletedAt,
+                IsSkipped = IsSkipped,
                 CallId = CallId ?? string.Empty,
                 ToolName = ToolName ?? string.Empty,
                 Parameters = Parameters ?? string.Empty,
@@ -67,6 +70,7 @@ public class Trigger
                 CreatedAt = trigger.CreatedAt,
                 StartedAt = trigger.StartedAt,
                 CompletedAt = trigger.CompletedAt,
+                IsSkipped = ((MessageTrigger)trigger).IsSkipped,
                 MessageId = ((MessageTrigger)trigger).MessageId,
                 AuthorId = ((MessageTrigger)trigger).AuthorId,
                 AuthorName = ((MessageTrigger)trigger).AuthorName,
@@ -81,6 +85,7 @@ public class Trigger
                 CreatedAt = trigger.CreatedAt,
                 StartedAt = trigger.StartedAt,
                 CompletedAt = trigger.CompletedAt,
+                IsSkipped = ((ToolApprovalTrigger)trigger).IsSkipped,
                 CallId = ((ToolApprovalTrigger)trigger).CallId,
                 ToolName = ((ToolApprovalTrigger)trigger).ToolName,
                 Parameters = ((ToolApprovalTrigger)trigger).Parameters,
