@@ -104,106 +104,96 @@ public class AgentScheduler : BackgroundService
     {
         while (!ct.IsCancellationRequested)
         {
-            try
+            // Wait for a signal
+            _signalManager.WaitForSignal(agentId, chatId, ct);
+
+            // get active wait conditions and triggers for this agent and chat
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
+            var waitConditions = await dbContext.WaitConditions
+                .OfType<WaitCondition>()
+                .Where(wc => wc.AgentId == agentId && wc.ChatId == chatId && wc.CompletedAt == null)
+                .OrderBy(wc => wc.CreatedAt)
+                .ToArrayAsync(cancellationToken: ct);
+            var triggers = await dbContext.Triggers
+                .OfType<Trigger>()
+                .Where(t => t.AgentId == agentId && t.ChatId == chatId && t.CompletedAt == null)
+                .OrderBy(t => t.CreatedAt)
+                .ToArrayAsync(cancellationToken: ct);
+
+            // try satisfy wait conditions
+            var allWaitConditionsSatisfied = true;
+            foreach (var waitCondition in waitConditions)
             {
-                // Wait for a signal
-                _signalManager.WaitForSignal(agentId, chatId, ct);
-
-                // get active wait conditions and triggers for this agent and chat
-                using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
-                var waitConditions = await dbContext.WaitConditions
-                    .OfType<WaitCondition>()
-                    .Where(wc => wc.AgentId == agentId && wc.ChatId == chatId && wc.CompletedAt == null)
-                    .OrderBy(wc => wc.CreatedAt)
-                    .ToArrayAsync();
-                var triggers = await dbContext.Triggers
-                    .OfType<Trigger>()
-                    .Where(t => t.AgentId == agentId && t.ChatId == chatId && t.CompletedAt == null)
-                    .OrderBy(t => t.CreatedAt)
-                    .ToArrayAsync();
-
-                // try satisfy wait conditions
-                var allWaitConditionsSatisfied = true;
-                foreach (var waitCondition in waitConditions)
+                var satisfiedTrigger = triggers.FirstOrDefault(t => waitCondition.CanBeSatisfiedByTrigger(t));
+                if (satisfiedTrigger != null)
                 {
-                    var satisfiedTrigger = triggers.FirstOrDefault(t => waitCondition.CanBeSatisfiedByTrigger(t));
-                    if (satisfiedTrigger != null)
-                    {
-                        waitCondition.CompletedAt = DateTime.UtcNow;
-                        waitCondition.SatisfiedByTriggerId = satisfiedTrigger.Id;
-                        dbContext.WaitConditions.Update(waitCondition);
-                        await dbContext.SaveChangesAsync();
-                        Log.Information("[BACKGROUND] Wait condition {WaitConditionId} for agent {AgentId} and chat {ChatId} satisfied by trigger {TriggerId}", waitCondition.Id, agentId, chatId, satisfiedTrigger.Id);
-                    }
-                    else
-                    {
-                        allWaitConditionsSatisfied = false;
-                    }
-                }
-                if (waitConditions.Length == 0)
-                {
-                    Log.Debug("[BACKGROUND] No wait conditions for agent {AgentId} and chat {ChatId}", agentId, chatId);
-                }
-                else if (allWaitConditionsSatisfied)
-                {
-                    Log.Debug("[BACKGROUND] All wait conditions satisfied for agent {AgentId} and chat {ChatId}", agentId, chatId);
+                    waitCondition.CompletedAt = DateTime.UtcNow;
+                    waitCondition.SatisfiedByTriggerId = satisfiedTrigger.Id;
+                    dbContext.WaitConditions.Update(waitCondition);
+                    await dbContext.SaveChangesAsync(ct);
+                    Log.Information("[BACKGROUND] Wait condition {WaitConditionId} for agent {AgentId} and chat {ChatId} satisfied by trigger {TriggerId}", waitCondition.Id, agentId, chatId, satisfiedTrigger.Id);
                 }
                 else
                 {
-                    Log.Debug("[BACKGROUND] Not all wait conditions satisfied for agent {AgentId} and chat {ChatId}", agentId, chatId);
-                    continue;
+                    allWaitConditionsSatisfied = false;
                 }
+            }
+            if (waitConditions.Length == 0)
+            {
+                Log.Debug("[BACKGROUND] No wait conditions for agent {AgentId} and chat {ChatId}", agentId, chatId);
+            }
+            else if (allWaitConditionsSatisfied)
+            {
+                Log.Debug("[BACKGROUND] All wait conditions satisfied for agent {AgentId} and chat {ChatId}", agentId, chatId);
+            }
+            else
+            {
+                Log.Debug("[BACKGROUND] Not all wait conditions satisfied for agent {AgentId} and chat {ChatId}", agentId, chatId);
+                continue;
+            }
 
-                // if there are no triggers, just continue the loop and wait for triggers to arrive
-                if (triggers.Length == 0)
+            // if there are no triggers, just continue the loop and wait for triggers to arrive
+            if (triggers.Length == 0)
+            {
+                Log.Debug("[BACKGROUND] No triggers for agent {AgentId} and chat {ChatId}", agentId, chatId);
+                continue;
+            }
+
+            // skip extra overlapping triggers
+            var firstTrigger = triggers.First();
+            foreach (var trigger in triggers)
+            {
+                if (trigger.Id != firstTrigger.Id)
                 {
-                    Log.Debug("[BACKGROUND] No triggers for agent {AgentId} and chat {ChatId}", agentId, chatId);
-                    continue;
+                    trigger.CompletedAt = DateTime.UtcNow;
+                    trigger.IsSkipped = true;
+                    dbContext.Triggers.Update(trigger);
+                    await dbContext.SaveChangesAsync(ct);
+                    Log.Warning("[BACKGROUND] Skipping overlapping trigger {TriggerId} for agent {AgentId} and chat {ChatId}", trigger.Id, agentId, chatId);
                 }
+            }
 
-                // skip extra overlapping triggers
-                var firstTrigger = triggers.First();
-                foreach (var trigger in triggers)
-                {
-                    if (trigger.Id != firstTrigger.Id)
-                    {
-                        trigger.CompletedAt = DateTime.UtcNow;
-                        trigger.IsSkipped = true;
-                        dbContext.Triggers.Update(trigger);
-                        await dbContext.SaveChangesAsync();
-                        Log.Warning("[BACKGROUND] Skipping overlapping trigger {TriggerId} for agent {AgentId} and chat {ChatId}", trigger.Id, agentId, chatId);
-                    }
-                }
+            // mark the first trigger as started
+            firstTrigger.StartedAt = DateTime.UtcNow;
+            dbContext.Triggers.Update(firstTrigger);
+            await dbContext.SaveChangesAsync(ct);
 
-                // mark the first trigger as started
-                firstTrigger.StartedAt = DateTime.UtcNow;
-                dbContext.Triggers.Update(firstTrigger);
-                await dbContext.SaveChangesAsync();
-
-                // run the agent for this trigger
-                try
-                {
-                    var agentRunService = scope.ServiceProvider.GetRequiredService<AgentRunService>();
-                    await agentRunService.Run(agentId, chatId, ct);
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "[BACKGROUND] Error running agent {AgentId} for chat {ChatId}", agentId, chatId);
-                }
-
-                // mark the first trigger as completed
-                firstTrigger.CompletedAt = DateTime.UtcNow;
-                dbContext.Triggers.Update(firstTrigger);
-                await dbContext.SaveChangesAsync();
+            // run the agent for this trigger
+            try
+            {
+                var agentRunService = scope.ServiceProvider.GetRequiredService<AgentRunService>();
+                await agentRunService.Run(agentId, chatId, ct);
             }
             catch (Exception e)
             {
-                Log.Error(e, "[BACKGROUND] Error in agent loop for agent {AgentId} and chat {ChatId}", agentId, chatId);
-                // Wait a bit before retrying, but wake up if a signal arrives
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                cts.CancelAfter(TimeSpan.FromSeconds(1));
+                Log.Error(e, "[BACKGROUND] Error running agent {AgentId} for chat {ChatId}", agentId, chatId);
             }
+
+            // mark the first trigger as completed
+            firstTrigger.CompletedAt = DateTime.UtcNow;
+            dbContext.Triggers.Update(firstTrigger);
+            await dbContext.SaveChangesAsync(ct);
         }
     }
 
