@@ -144,31 +144,6 @@ public static class TriggerEndpoints
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status404NotFound);
 
-        group.MapGet("/{id}/executions", async (
-            Guid id,
-            AzureOpsCrewContext context,
-            CancellationToken cancellationToken,
-            int limit = 50) =>
-        {
-            var executions = await context.TriggerExecutions
-                .Where(e => e.TriggerId == id)
-                .OrderByDescending(e => e.FiredAt)
-                .Take(limit)
-                .Select(e => new
-                {
-                    e.Id,
-                    e.FiredAt,
-                    e.Success,
-                    e.ErrorMessage,
-                    e.CompletedAt
-                })
-                .ToListAsync(cancellationToken);
-
-            return Results.Ok(executions);
-        })
-        .WithTags("Triggers")
-        .Produces(StatusCodes.Status200OK);
-
         // Webhook ingress - anonymous, outside auth group
         routeBuilder.MapPost("/api/triggers/webhook/{token}", async (
             string token,
