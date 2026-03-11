@@ -149,6 +149,20 @@ public class ChannelService
         }
     }
 
+    public async Task<List<AgentStatusDto>> GetAgentStatusesAsync(Guid channelId)
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<AgentStatusDto>>($"/api/channels/{channelId}/agent-statuses");
+            return response ?? [];
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error fetching agent statuses for channel {channelId}: {ex.Message}");
+            return [];
+        }
+    }
+
     public async Task<bool> RespondToApprovalAsync(Guid channelId, string approvalId, bool approved, string? reason = null)
     {
         try

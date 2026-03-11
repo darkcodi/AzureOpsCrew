@@ -141,6 +141,29 @@
             _mindToolCalls = [];
             _mindReasonings = [];
 
+            var statuses = await ChannelService.GetAgentStatusesAsync(channelId.Value);
+            foreach (var entry in statuses)
+            {
+                var agent = AppState.Agents.FirstOrDefault(a => a.Id == entry.AgentId);
+                if (agent != null)
+                {
+                    agent.Status = entry.Status;
+                    agent.ErrorMessage = string.Equals(entry.Status, "Error", StringComparison.OrdinalIgnoreCase) ? entry.ErrorMessage : null;
+                }
+            }
+            if (statuses.Count > 0)
+            {
+                _isAgentRunning = statuses.Any(s => string.Equals(s.Status, "Running", StringComparison.OrdinalIgnoreCase));
+                foreach (var entry in statuses.Where(s => string.Equals(s.Status, "Running", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var username = AppState.Agents.FirstOrDefault(a => a.Id == entry.AgentId)?.Username;
+                    if (!string.IsNullOrEmpty(username) && !_typingUsernames.Contains(username))
+                        _typingUsernames.Add(username);
+                }
+                AppState.Agents.NotifyChanged();
+            }
+            StateHasChanged();
+
             await ConnectToChannelHub(channelId.Value);
         }
     }
