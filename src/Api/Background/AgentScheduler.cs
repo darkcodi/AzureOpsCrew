@@ -96,12 +96,13 @@ public class AgentScheduler : BackgroundService
 
     private async Task AgentLoop(Guid agentId, Guid chatId, CancellationToken ct)
     {
-        var dbContext = _serviceProvider.GetRequiredService<AzureOpsCrewContext>();
         while (!ct.IsCancellationRequested)
         {
             try
             {
                 // get active wait conditions and triggers for this agent and chat
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
                 var waitConditions = (await dbContext.WaitConditions
                     .Where(wc => wc.AgentId == agentId && wc.ChatId == chatId && wc.CompletedAt == null)
                     .OrderBy(wc => wc.CreatedAt)
@@ -178,7 +179,6 @@ public class AgentScheduler : BackgroundService
                 // run the agent for this trigger
                 try
                 {
-                    using var scope = _serviceProvider.CreateScope();
                     var agentRunService = scope.ServiceProvider.GetRequiredService<AgentRunService>();
                     await agentRunService.Run(agentId, chatId, ct);
                 }
