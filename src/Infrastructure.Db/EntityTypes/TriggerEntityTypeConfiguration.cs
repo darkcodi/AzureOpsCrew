@@ -16,7 +16,6 @@ public sealed class TriggerEntityTypeConfiguration : IEntityTypeConfiguration<Tr
 
         // Common properties
         builder.Property(t => t.Type)
-               .HasConversion<string>()
                .IsRequired();
 
         builder.Property(t => t.AgentId)
@@ -50,8 +49,7 @@ public sealed class TriggerEntityTypeConfiguration : IEntityTypeConfiguration<Tr
         // Tool approval trigger specific properties
         builder.Property(t => t.CallId);
 
-        builder.Property(t => t.Resolution)
-               .HasConversion<string>();
+        builder.Property(t => t.Resolution);
 
         builder.Property(t => t.ToolName)
                .HasMaxLength(200);

@@ -16,7 +16,6 @@ public sealed class WaitConditionEntityTypeConfiguration : IEntityTypeConfigurat
 
         // Common properties
         builder.Property(w => w.Type)
-               .HasConversion<string>()
                .IsRequired();
 
         builder.Property(w => w.AgentId)
