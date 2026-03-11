@@ -5,13 +5,13 @@
     {
         @if (Message.IsAgentMessage && OnAgentClick.HasDelegate && Message.AgentId.HasValue)
         {
-            <div class="message-avatar @GetAvatarClass()" @onclick="() => OnAgentClick.InvokeAsync(Message.AgentId)" @onclick:preventDefault>
+            <div class="message-avatar @GetAvatarClass()" style="@GetAvatarStyle()" @onclick="() => OnAgentClick.InvokeAsync(Message.AgentId)" @onclick:preventDefault>
                 @GetInitials()
             </div>
         }
         else
         {
-            <div class="message-avatar @GetAvatarClass()">
+            <div class="message-avatar @GetAvatarClass()" style="@GetAvatarStyle()">
                 @GetInitials()
             </div>
         }
@@ -51,12 +51,15 @@
     [Parameter] public bool IsGrouped { get; set; }
     [Parameter] public bool IsOwn { get; set; }
     [Parameter] public EventCallback<Guid?> OnAgentClick { get; set; }
+    [Parameter] public string? AgentColor { get; set; }
 
     private string GetGroupClass() => IsGrouped ? "grouped" : "";
 
     private string GetOwnClass() => IsOwn ? "own-message" : "";
 
     private string GetAvatarClass() => Message.IsAgentMessage ? "agent-avatar" : "";
+
+    private string? GetAvatarStyle() => Message.IsAgentMessage && !string.IsNullOrEmpty(AgentColor) ? $"background-color: {AgentColor}; color: #fff;" : null;
 
     private string GetUsernameClass() => Message.IsAgentMessage ? "bot-username" : "";
 

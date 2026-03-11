@@ -35,7 +35,10 @@
                 }
                 else if (entry.Message is { } msgGroup)
                 {
-                    <MessageBubble Message="@msgGroup.Message" IsGrouped="@msgGroup.IsGrouped" IsOwn="@msgGroup.IsOwn" OnAgentClick="OnAgentClick" />
+                    var agentColor = Agents != null && msgGroup.Message.AgentId is { } agentId
+                        ? Agents.FirstOrDefault(a => a.Id == agentId)?.Color
+                        : null;
+                    <MessageBubble Message="@msgGroup.Message" IsGrouped="@msgGroup.IsGrouped" IsOwn="@msgGroup.IsOwn" OnAgentClick="OnAgentClick" AgentColor="@agentColor" />
                 }
             }
         }
@@ -90,6 +93,7 @@
     [Parameter] public EventCallback OnStopAgent { get; set; }
     [Parameter] public bool ShowStopButton { get; set; } = true;
     [Parameter] public EventCallback<Guid?> OnAgentClick { get; set; }
+    [Parameter] public IEnumerable<AgentDto>? Agents { get; set; }
 
     private ElementReference _messagesContainer;
     private string _messageText = string.Empty;
