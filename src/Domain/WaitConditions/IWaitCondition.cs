@@ -9,8 +9,8 @@ public interface IWaitCondition
     Guid AgentId { get; }
     Guid ChatId { get; }
     DateTime CreatedAt { get; }
-    DateTime? CompletedAt { get; }
-    Guid? SatisfiedByTriggerId { get; }
+    DateTime? CompletedAt { get; set; }
+    Guid? SatisfiedByTriggerId { get; set; }
 
     bool CanBeSatisfiedByTrigger(ITrigger trigger);
 }

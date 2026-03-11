@@ -7,6 +7,6 @@ public interface ITrigger
     Guid AgentId { get; }
     Guid ChatId { get; }
     DateTime CreatedAt { get; }
-    DateTime? StartedAt { get; }
-    DateTime? CompletedAt { get; }
+    DateTime? StartedAt { get; set; }
+    DateTime? CompletedAt { get; set; }
 }
