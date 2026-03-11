@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+using AzureOpsCrew.Api.Background.ToolExecutors;
 using AzureOpsCrew.Api.Endpoints.Dtos.Channels;
 using AzureOpsCrew.Api.Services;
 using AzureOpsCrew.Domain.Agents;
@@ -7,16 +7,16 @@ using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Domain.Tools;
 using AzureOpsCrew.Domain.Tools.BackEnd;
+using AzureOpsCrew.Domain.Tools.FrontEnd;
+using AzureOpsCrew.Domain.Tools.Mcp;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.Agents.AI;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Serilog;
-using AzureOpsCrew.Domain.Tools.FrontEnd;
-using AzureOpsCrew.Domain.Tools.Mcp;
-using AzureOpsCrew.Api.Background.ToolExecutors;
-using AzureOpsCrew.Infrastructure.Ai.AgentServices;
+using System.Runtime.CompilerServices;
 
 namespace AzureOpsCrew.Api.Background;
 
@@ -30,6 +30,8 @@ public class AgentRunService
     private readonly IAiAgentFactory _aiAgentFactory;
     private readonly ContextService _contextService;
     private readonly IChannelEventBroadcaster? _channelEventBroadcaster;
+
+    private const int MaxIterations = 300;
 
     public AgentRunService(IServiceProvider serviceProvider)
     {
@@ -53,13 +55,22 @@ public class AgentRunService
 
         try
         {
+            // Check for pending approval resolutions before calling LLM
+            var approvalResolution = await CheckAndResolveApprovals(agentId, chatId, initialData, ct);
+            if (approvalResolution == ApprovalResolution.StillPending)
+            {
+                Log.Information("[BACKGROUND] Agent {AgentId} still waiting for approval in chat {ChatId}", agentId, chatId);
+                await BroadcastAgentStatus(initialData, "WaitingForApproval");
+
+                return;
+            }
+
             // Broadcast "Running" status at the start
             await BroadcastAgentStatus(initialData, "Running");
 
             var iteration = 0;
-            const int maxIterations = 300;
             // multiple iterations for one run, stops when outputted a final text content
-            while (!ct.IsCancellationRequested && iteration < maxIterations)
+            while (!ct.IsCancellationRequested)
             {
                 iteration++;
                 var chatMessageId = Guid.NewGuid(); // This will be used to link all thoughts from this iteration to the same message
@@ -68,20 +79,6 @@ public class AgentRunService
                 // load new DB state for each iteration to get the latest messages and thoughts
                 var data = await LoadAgentRunData(agentId, chatId, ct);
 
-                // Check for pending approval resolutions before calling LLM
-                var approvalResolution = await CheckAndResolveApprovals(agentId, chatId, data, ct);
-                if (approvalResolution == ApprovalResolution.StillPending)
-                {
-                    Log.Information("[BACKGROUND] Agent {AgentId} still waiting for approval in chat {ChatId}", agentId, chatId);
-                    waitingForApproval = true;
-                    break;
-                }
-                if (approvalResolution == ApprovalResolution.Resolved)
-                {
-                    // Approval was resolved (approved -> executed, or rejected -> error saved)
-                    // Continue to next iteration so LLM sees the result in context
-                    continue;
-                }
 
                 // Make one LLM call
                 var newAgentThoughts = new List<AocAgentThought>();
@@ -241,11 +238,13 @@ public class AgentRunService
                 {
                     break;
                 }
-            }
 
-            if (iteration >= maxIterations)
-            {
-                Log.Warning("[BACKGROUND] Agent run hit max iterations: {AgentId}, chat: {ChatId}", agentId, chatId);
+                if (iteration >= MaxIterations)
+                {
+                    Log.Warning("[BACKGROUND] Agent run hit max iterations: {AgentId}, chat: {ChatId}", agentId, chatId);
+
+                    break;
+                }
             }
         }
         catch (Exception ex)
@@ -258,6 +257,7 @@ public class AgentRunService
 
         if (!waitingForApproval)
             await BroadcastAgentStatus(initialData, "Idle");
+
         Log.Information("[BACKGROUND] Agent run completed: {AgentId}, chat: {ChatId}", agentId, chatId);
     }
 
