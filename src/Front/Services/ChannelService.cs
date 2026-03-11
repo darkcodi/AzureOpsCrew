@@ -135,6 +135,35 @@ public class ChannelService
         }
     }
 
+    public async Task<List<ApprovalRequestDto>> GetApprovalsAsync(Guid channelId)
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<ApprovalRequestDto>>($"/api/channels/{channelId}/approvals");
+            return response ?? [];
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error fetching approvals for channel {channelId}: {ex.Message}");
+            return [];
+        }
+    }
+
+    public async Task<bool> RespondToApprovalAsync(Guid channelId, string approvalId, bool approved, string? reason = null)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"/api/channels/{channelId}/approvals/{approvalId}",
+                new { Approved = approved, Reason = reason });
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error responding to approval {approvalId}: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<bool> StopAgentChannelAsync(Guid channelId)
     {
         try

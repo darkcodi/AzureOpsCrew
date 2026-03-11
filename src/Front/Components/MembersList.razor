@@ -52,7 +52,7 @@
                                 </div>
                                 <div class="members-item-info">
                                     <span class="members-item-name">@agent.Username</span>
-                                    <span class="members-item-status">@(agent.Status ?? "Idle")</span>
+                                    <span class="members-item-status @(AgentStatusDisplay.IsWaitingForApproval(agent.Status) ? "members-item-status-waiting" : string.Empty)">@AgentStatusDisplay.ToDisplayText(agent.Status)</span>
                                 </div>
                             </div>
                             <button type="button"
@@ -182,7 +182,7 @@
                 </button>
                 <button type="button" class="btn btn-danger" disabled="@_isRemovingAgent"
                         @onclick="ConfirmRemoveAgent">
-                    @(_isRemovingAgent ? "Removing…" : "Remove")
+                    @(_isRemovingAgent ? "Removing..." : "Remove")
                 </button>
             </div>
         </div>

@@ -25,6 +25,7 @@
         <ChatArea Messages="_messages"
                   ToolCalls="_emptyToolCalls"
                   Reasonings="_emptyReasonings"
+                  ApprovalRequests="_approvalRequests"
                   CurrentUserId="AppState.CurrentUser?.Id"
                   ShowInput="AppState.SelectedChannel != null"
                   Placeholder="@(AppState.SelectedChannel != null ? $"Message #{AppState.SelectedChannel.Name}" : "")"
@@ -35,7 +36,8 @@
                   IsAgentRunning="_isAgentRunning"
                   OnStopAgent="StopAgent"
                   OnSendMessage="SendChannelMessage"
-                  OnAgentClick="HandleAgentClickFromChat" />
+                  OnAgentClick="HandleAgentClickFromChat"
+                  OnApprovalRespond="RespondToApproval" />
     </MainArea>
     <RightSidebar>
         <Front.Layout.Components.RightSidebar>
@@ -61,17 +63,16 @@
     public string? ChannelId { get; set; }
 
     private List<ChatMessageDto> _messages = [];
+    private List<ApprovalRequestDto> _approvalRequests = [];
     private List<string> _typingUsernames = [];
     private Guid? _loadedChannelId;
     private IDisposable? _appStateSubscription;
     private ChatHubClient? _hubClient;
     private bool _isAgentRunning;
 
-    // Empty lists passed to ChatArea (mind no longer shown inline)
     private static readonly List<ToolCallDto> _emptyToolCalls = [];
     private static readonly List<ReasoningDto> _emptyReasonings = [];
 
-    // Agent mind popup state
     private AgentDto? _mindViewAgent;
     private List<ToolCallDto> _mindToolCalls = [];
     private List<ReasoningDto> _mindReasonings = [];
@@ -99,6 +100,7 @@
             _hubClient.ToolCallReceived -= OnToolCallReceived;
             _hubClient.ReasoningReceived -= OnReasoningReceived;
             _hubClient.AgentStatusReceived -= OnAgentStatusReceived;
+            _hubClient.ApprovalRequestReceived -= OnApprovalRequestReceived;
             await _hubClient.DisposeAsync();
         }
     }
@@ -129,13 +131,12 @@
             _typingUsernames = [];
             _isAgentRunning = false;
             _messages = await ChannelService.GetChannelMessagesAsync(channelId.Value);
+            _approvalRequests = await ChannelService.GetApprovalsAsync(channelId.Value);
 
-            // Close agent mind popup on channel change
             _mindViewAgent = null;
             _mindToolCalls = [];
             _mindReasonings = [];
 
-            // Restore agent running state from persisted storage
             var agentIdStr = AppState.SelectedChannel?.AgentIds.FirstOrDefault();
             if (!string.IsNullOrEmpty(agentIdStr) && Guid.TryParse(agentIdStr, out var agentId))
             {
@@ -149,7 +150,6 @@
                     _typingUsernames.Add(typingUsername);
                 }
 
-                // Update the agent's status in AppState.Agents to restore the agent card status
                 var agentState = AgentState.GetState(channelId.Value, ConversationType.Channel);
                 if (agentState != null)
                 {
@@ -175,6 +175,7 @@
             _hubClient.ToolCallReceived -= OnToolCallReceived;
             _hubClient.ReasoningReceived -= OnReasoningReceived;
             _hubClient.AgentStatusReceived -= OnAgentStatusReceived;
+            _hubClient.ApprovalRequestReceived -= OnApprovalRequestReceived;
             await _hubClient.DisposeAsync();
         }
 
@@ -183,6 +184,7 @@
         _hubClient.ToolCallReceived += OnToolCallReceived;
         _hubClient.ReasoningReceived += OnReasoningReceived;
         _hubClient.AgentStatusReceived += OnAgentStatusReceived;
+        _hubClient.ApprovalRequestReceived += OnApprovalRequestReceived;
 
         var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/');
         var hubUrl = $"{baseUrl}/channels/{channelId}/events";
@@ -270,6 +272,7 @@
         {
             _mindToolCalls.Add(toolCall);
         }
+
         await InvokeAsync(StateHasChanged);
     }
 
@@ -291,8 +294,8 @@
             agent.ErrorMessage = string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase) ? errorMessage : null;
             AppState.Agents.NotifyChanged();
 
-            // Update typing indicator and running state
             var isRunning = string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase);
+            var isWaitingForApproval = string.Equals(status, "WaitingForApproval", StringComparison.OrdinalIgnoreCase);
             _isAgentRunning = isRunning;
 
             if (isRunning)
@@ -305,11 +308,10 @@
                 _typingUsernames.Remove(agent.Username);
             }
 
-            // Persist the status change to localStorage
             var channelId = AppState.SelectedChannel?.Id;
             if (channelId.HasValue)
             {
-                if (isRunning)
+                if (isRunning || isWaitingForApproval)
                 {
                     await AgentState.SetAgentStatusAsync(channelId.Value, ConversationType.Channel, agentId, status, errorMessage);
                 }
@@ -319,12 +321,49 @@
                 }
             }
         }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnApprovalRequestReceived(ApprovalRequestDto approval)
+    {
+        var existing = _approvalRequests.FirstOrDefault(a => a.ApprovalId == approval.ApprovalId);
+        if (existing != null)
+        {
+            existing.AgentName = approval.AgentName;
+            existing.ServerName = approval.ServerName;
+            existing.Status = approval.Status;
+            existing.Reason = approval.Reason;
+            existing.UserResponse = approval.UserResponse;
+        }
+        else
+        {
+            _approvalRequests.Add(approval);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RespondToApproval((string approvalId, bool approved) response)
+    {
+        var channel = AppState.SelectedChannel;
+        if (channel == null) return;
+
+        var success = await ChannelService.RespondToApprovalAsync(channel.Id, response.approvalId, response.approved);
+        if (!success)
+            return;
+
+        var approval = _approvalRequests.FirstOrDefault(a => a.ApprovalId == response.approvalId);
+        if (approval != null)
+        {
+            approval.Status = response.approved ? "approved" : "rejected";
+        }
+
         await InvokeAsync(StateHasChanged);
     }
 
     private void SerServerIdAndChannelIdFromRoute()
     {
-        // Set server from route
         if (!string.IsNullOrEmpty(ServerId) && Guid.TryParse(ServerId, out var parsedServerId))
         {
             var server = AppState.Servers.FirstOrDefault(s => s.Id == parsedServerId);
@@ -334,7 +373,6 @@
             }
         }
 
-        // Set channel from route
         if (!string.IsNullOrEmpty(ChannelId) && Guid.TryParse(ChannelId, out var parsedChannelId))
         {
             var channel = AppState.Channels.FirstOrDefault(c => c.Id == parsedChannelId);
@@ -345,14 +383,9 @@
             }
         }
 
-        // If channel not found in route, fall back to last used channel
-        if (string.IsNullOrEmpty(ChannelId))
+        if (string.IsNullOrEmpty(ChannelId) && AppState.LastUsedChannelId.HasValue)
         {
-            // Try to use the last used channel
-            if (AppState.LastUsedChannelId.HasValue)
-            {
-                Navigation.NavigateTo($"/servers/{AppState.SelectedServer?.Id}/channels/{AppState.LastUsedChannelId.Value}");
-            }
+            Navigation.NavigateTo($"/servers/{AppState.SelectedServer?.Id}/channels/{AppState.LastUsedChannelId.Value}");
         }
     }
 

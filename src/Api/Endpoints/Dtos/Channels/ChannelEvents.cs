@@ -99,6 +99,7 @@ public class ReasoningContentEvent : ChannelEvent
     [JsonPropertyName("agentName")]
     public string? AgentName { get; set; }
 
+
     [JsonPropertyName("timestamp")]
     public new DateTimeOffset Timestamp { get; set; }
 }
@@ -121,6 +122,41 @@ public class AgentStatusEvent : ChannelEvent
 
     [JsonPropertyName("errorMessage")]
     public string? ErrorMessage { get; set; }
+
+    [JsonPropertyName("timestamp")]
+    public new DateTimeOffset Timestamp { get; set; }
+}
+
+/// <summary>
+/// Event fired when an agent requests user approval before executing an MCP tool.
+/// </summary>
+public class ApprovalRequestEvent : ChannelEvent
+{
+    public ApprovalRequestEvent()
+    {
+        Type = ChannelEventTypes.ApprovalRequest;
+    }
+
+    [JsonPropertyName("approvalId")]
+    public string ApprovalId { get; set; } = string.Empty;
+
+    [JsonPropertyName("toolName")]
+    public string ToolName { get; set; } = string.Empty;
+
+    [JsonPropertyName("callId")]
+    public string CallId { get; set; } = string.Empty;
+
+    [JsonPropertyName("args")]
+    public object? Args { get; set; }
+
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
+
+    [JsonPropertyName("agentName")]
+    public string? AgentName { get; set; }
+
+    [JsonPropertyName("serverName")]
+    public string? ServerName { get; set; }
 
     [JsonPropertyName("timestamp")]
     public new DateTimeOffset Timestamp { get; set; }
@@ -158,6 +194,7 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
             ChannelEventTypes.ToolCallCompleted => jsonElement.Deserialize(options.GetTypeInfo(typeof(ToolCallCompletedEvent))) as ToolCallCompletedEvent,
             ChannelEventTypes.ReasoningContent => jsonElement.Deserialize(options.GetTypeInfo(typeof(ReasoningContentEvent))) as ReasoningContentEvent,
             ChannelEventTypes.AgentStatus => jsonElement.Deserialize(options.GetTypeInfo(typeof(AgentStatusEvent))) as AgentStatusEvent,
+            ChannelEventTypes.ApprovalRequest => jsonElement.Deserialize(options.GetTypeInfo(typeof(ApprovalRequestEvent))) as ApprovalRequestEvent,
             _ => throw new JsonException($"Unknown ChannelEvent type discriminator: '{discriminator}'")
         };
 
@@ -190,6 +227,9 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
                 break;
             case AgentStatusEvent agentStatus:
                 JsonSerializer.Serialize(writer, agentStatus, options.GetTypeInfo(typeof(AgentStatusEvent)));
+                break;
+            case ApprovalRequestEvent approvalRequest:
+                JsonSerializer.Serialize(writer, approvalRequest, options.GetTypeInfo(typeof(ApprovalRequestEvent)));
                 break;
             default:
                 throw new InvalidOperationException($"Unknown channel event type: {value.GetType().Name}");

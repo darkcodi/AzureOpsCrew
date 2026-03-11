@@ -1,7 +1,6 @@
 @namespace Front.Components
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
-
 <div class="agent-mind-overlay" @onclick="OnClose">
     <div class="agent-mind-content" @onclick:stopPropagation="true">
         <div class="agent-mind-header">
@@ -11,7 +10,7 @@
                 </div>
                 <div class="agent-mind-header-title-row">
                     <h2 class="agent-mind-title">@Agent.Username's Mind</h2>
-                    <span class="agent-mind-status agent-mind-status-@(GetStatusClass())">@(Agent.Status ?? "Idle")</span>
+                    <span class="agent-mind-status agent-mind-status-@(GetStatusClass())">@AgentStatusDisplay.ToDisplayText(Agent.Status)</span>
                     @if (string.Equals(Agent.Status, "Error", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(Agent.ErrorMessage))
                     {
                         <span class="agent-mind-status-errormessage" title="@Agent.ErrorMessage">@TruncateError(Agent.ErrorMessage)</span>
@@ -35,7 +34,6 @@
                 </button>
             </div>
         </div>
-
         <div class="agent-mind-body" @ref="_bodyContainer">
             @if (IsLoading)
             {
@@ -130,15 +128,15 @@
         var status = Agent.Status;
         if (string.IsNullOrEmpty(status)) return "idle";
         if (string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase)) return "running";
+        if (AgentStatusDisplay.IsWaitingForApproval(status)) return "waiting";
         if (string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase)) return "error";
         return "idle";
     }
-
     private static string TruncateError(string? message)
     {
         if (string.IsNullOrEmpty(message)) return string.Empty;
         const int maxLen = 60;
-        return message.Length <= maxLen ? message : message[..maxLen] + "…";
+        return message.Length <= maxLen ? message : message[..maxLen] + "...";
     }
 
     private void OnSettingsClick()
@@ -147,3 +145,4 @@
         Navigation.NavigateTo("/settings/agents/" + Agent.Id.ToString());
     }
 }
+

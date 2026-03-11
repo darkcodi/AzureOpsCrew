@@ -25,6 +25,7 @@
         <ChatArea Messages="_messages"
                   ToolCalls="_toolCalls"
                   Reasonings="_reasonings"
+                  ApprovalRequests="_approvalRequests"
                   CurrentUserId="AppState.CurrentUser?.Id"
                   ShowInput="AppState.SelectedDm != null"
                   Placeholder="@(AppState.SelectedDm != null ? $"Message @{GetDmName()}" : "")"
@@ -34,7 +35,8 @@
                   TypingUsernames="_typingUsernames"
                   IsAgentRunning="_isAgentRunning"
                   OnStopAgent="StopAgent"
-                  OnSendMessage="SendDmMessage" />
+                  OnSendMessage="SendDmMessage"
+                  OnApprovalRespond="RespondToApproval" />
     </MainArea>
     <RightSidebar>
         <Front.Layout.Components.RightSidebar Title="">
@@ -50,6 +52,7 @@
     private List<ChatMessageDto> _messages = [];
     private List<ToolCallDto> _toolCalls = [];
     private List<ReasoningDto> _reasonings = [];
+    private List<ApprovalRequestDto> _approvalRequests = [];
     private List<string> _typingUsernames = [];
     private Guid? _loadedDmId;
     private IDisposable? _appStateSubscription;
@@ -107,6 +110,7 @@
             _hubClient.ToolCallReceived -= OnToolCallReceived;
             _hubClient.ReasoningReceived -= OnReasoningReceived;
             _hubClient.AgentStatusReceived -= OnAgentStatusReceived;
+            _hubClient.ApprovalRequestReceived -= OnApprovalRequestReceived;
             await _hubClient.DisposeAsync();
         }
     }
@@ -154,6 +158,7 @@
                 _toolCalls = ExtractToolCalls(AppState.CurrentAgentMind);
                 var dmAgentName = AppState.Agents.FirstOrDefault(a => a.Id == agentId.Value)?.Username;
                 _reasonings = ExtractReasonings(AppState.CurrentAgentMind, dmAgentName);
+                _approvalRequests = await DmService.GetApprovalsAsync(dmId.Value);
             }
             else
             {
@@ -167,6 +172,7 @@
                 }
                 _toolCalls = [];
                 _reasonings = [];
+                _approvalRequests = [];
                 AppState.CurrentAgentMind = null;
             }
 
@@ -182,6 +188,7 @@
             _hubClient.ToolCallReceived -= OnToolCallReceived;
             _hubClient.ReasoningReceived -= OnReasoningReceived;
             _hubClient.AgentStatusReceived -= OnAgentStatusReceived;
+            _hubClient.ApprovalRequestReceived -= OnApprovalRequestReceived;
             await _hubClient.DisposeAsync();
         }
 
@@ -190,6 +197,7 @@
         _hubClient.ToolCallReceived += OnToolCallReceived;
         _hubClient.ReasoningReceived += OnReasoningReceived;
         _hubClient.AgentStatusReceived += OnAgentStatusReceived;
+        _hubClient.ApprovalRequestReceived += OnApprovalRequestReceived;
 
         var baseUrl = Http.BaseAddress?.ToString().TrimEnd('/');
         var hubUrl = $"{baseUrl}/dms/{dmId}/events";
@@ -239,6 +247,7 @@
 
             // Update typing indicator and running state
             var isRunning = string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase);
+            var isWaitingForApproval = string.Equals(status, "WaitingForApproval", StringComparison.OrdinalIgnoreCase);
             _isAgentRunning = isRunning;
 
             if (isRunning)
@@ -255,7 +264,7 @@
             var dmId = AppState.SelectedDm?.Id;
             if (dmId.HasValue)
             {
-                if (isRunning)
+                if (isRunning || isWaitingForApproval)
                 {
                     await AgentState.SetAgentStatusAsync(dmId.Value, ConversationType.Dm, agentId, status, errorMessage);
                 }
@@ -266,6 +275,45 @@
             }
         }
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnApprovalRequestReceived(ApprovalRequestDto approval)
+    {
+        var existing = _approvalRequests.FirstOrDefault(a => a.ApprovalId == approval.ApprovalId);
+        if (existing != null)
+        {
+            existing.AgentName = approval.AgentName;
+            existing.ServerName = approval.ServerName;
+            existing.Status = approval.Status;
+            existing.Reason = approval.Reason;
+            existing.UserResponse = approval.UserResponse;
+        }
+        else
+        {
+            _approvalRequests.Add(approval);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RespondToApproval((string approvalId, bool approved) response)
+    {
+        var dm = AppState.SelectedDm;
+        if (dm == null) return;
+
+        var agentId = dm.Agent1Id ?? dm.Agent2Id;
+        if (!agentId.HasValue) return;
+
+        var success = await DmService.RespondToApprovalAsync(agentId.Value, response.approvalId, response.approved);
+        if (success)
+        {
+            var approval = _approvalRequests.FirstOrDefault(a => a.ApprovalId == response.approvalId);
+            if (approval != null)
+            {
+                approval.Status = response.approved ? "approved" : "rejected";
+            }
+            StateHasChanged();
+        }
     }
 
     private async Task SendDmMessage(string text)
@@ -398,3 +446,4 @@
             .ToList();
     }
 }
+

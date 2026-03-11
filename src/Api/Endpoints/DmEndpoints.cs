@@ -7,6 +7,7 @@ using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
 using System.Text.Json;
 
 namespace AzureOpsCrew.Api.Endpoints;
@@ -87,6 +88,78 @@ public static class DmEndpoints
             return Results.Ok(messages);
         })
         .Produces<List<Message>>(StatusCodes.Status200OK);
+
+        // GET: /api/dms/{dmId}/approvals - Returns all approval requests for a DM with their status
+        group.MapGet("/{dmId}/approvals", async (
+            HttpContext httpContext,
+            Guid dmId,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = httpContext.User.GetRequiredUserId();
+            var dmExists = await context.Dms.AnyAsync(dm => dm.Id == dmId && (dm.User1Id == userId || dm.User2Id == userId), cancellationToken);
+            if (!dmExists)
+                return Results.NotFound();
+
+            // Load all approval-related thoughts for this thread
+            var approvalThoughts = await context.AgentThoughts
+                .Where(t => t.ThreadId == dmId
+                    && (t.ContentType == LlmMessageContentType.FunctionApprovalRequestContent
+                        || t.ContentType == LlmMessageContentType.FunctionApprovalResponseContent))
+                .OrderBy(t => t.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+            // Build response: pair requests with their responses
+            var requests = new List<object>();
+            var responsesById = new Dictionary<string, AocFunctionApprovalResponseContent>();
+            var agentIds = approvalThoughts.Select(t => t.AgentId).Distinct().ToList();
+            var agentNamesById = await context.Agents
+                .Where(a => agentIds.Contains(a.Id))
+                .Select(a => new { a.Id, a.Info.Username })
+                .ToDictionaryAsync(a => a.Id, a => a.Username, cancellationToken);
+
+            // First pass: collect responses
+            foreach (var thought in approvalThoughts)
+            {
+                if (thought.ContentType == LlmMessageContentType.FunctionApprovalResponseContent)
+                {
+                    var resp = JsonSerializer.Deserialize<AocFunctionApprovalResponseContent>(thought.ContentJson);
+                    if (resp != null)
+                        responsesById[resp.Id] = resp;
+                }
+            }
+
+            // Second pass: build request list with status
+            foreach (var thought in approvalThoughts)
+            {
+                if (thought.ContentType != LlmMessageContentType.FunctionApprovalRequestContent)
+                    continue;
+
+                var req = JsonSerializer.Deserialize<AocFunctionApprovalRequestContent>(thought.ContentJson);
+                if (req == null) continue;
+
+                var hasResponse = responsesById.TryGetValue(req.Id, out var response);
+                var status = hasResponse ? (response!.Approved ? "approved" : "rejected") : "pending";
+
+                requests.Add(new
+                {
+                    approvalId = req.Id,
+                    toolName = req.FunctionCall?.Name,
+                    callId = req.FunctionCall?.CallId,
+                    args = req.FunctionCall?.Arguments,
+                    agentId = thought.AgentId,
+                    agentName = agentNamesById.TryGetValue(thought.AgentId, out var agentName) ? agentName : null,
+                    serverName = req.ServerName,
+                    timestamp = new DateTimeOffset(thought.CreatedAt, TimeSpan.Zero),
+                    status,
+                    reason = hasResponse ? response!.Reason : null,
+                });
+            }
+
+            return Results.Ok(requests);
+        })
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
 
         // GET: /api/dms/{dmId}/agents/{agentId}/mind - Returns agent thoughts scoped to a specific DM
         group.MapGet("/{dmId}/agents/{agentId}/mind", async (
@@ -378,6 +451,84 @@ public static class DmEndpoints
         })
         .Produces<Message>(StatusCodes.Status201Created);
 
+        // POST: /api/dms/agents/{agentId}/approvals/{approvalId} - Responds to an approval request
+        group.MapPost("/agents/{agentId}/approvals/{approvalId}", async (
+            HttpContext httpContext,
+            Guid agentId,
+            string approvalId,
+            ApprovalResponseDto body,
+            AzureOpsCrewContext context,
+            AgentTriggerQueue agentTriggerQueue,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = httpContext.User.GetRequiredUserId();
+
+            // Find the DM channel between the user and the agent
+            var dm = await context.Dms
+                .FirstOrDefaultAsync(dm =>
+                    (dm.User1Id == userId && dm.Agent1Id == agentId) ||
+                    (dm.User2Id == userId && dm.Agent1Id == agentId) ||
+                    (dm.User1Id == userId && dm.Agent2Id == agentId) ||
+                    (dm.User2Id == userId && dm.Agent2Id == agentId),
+                    cancellationToken);
+
+            if (dm is null)
+                return Results.NotFound("DM channel not found.");
+
+            // Find the approval request thought
+            var requestThought = await context.AgentThoughts
+                .Where(t => t.AgentId == agentId
+                    && t.ThreadId == dm.Id
+                    && t.ContentType == LlmMessageContentType.FunctionApprovalRequestContent)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+            var matchingThought = requestThought.FirstOrDefault(t =>
+            {
+                var content = JsonSerializer.Deserialize<AocFunctionApprovalRequestContent>(t.ContentJson);
+                return content?.Id == approvalId;
+            });
+
+            if (matchingThought is null)
+                return Results.NotFound("Approval request not found.");
+
+            var existingResponses = await context.AgentThoughts
+                .Where(t => t.AgentId == agentId
+                    && t.ThreadId == dm.Id
+                    && t.ContentType == LlmMessageContentType.FunctionApprovalResponseContent)
+                .ToListAsync(cancellationToken);
+
+            var existingResponse = existingResponses.Any(t =>
+                JsonSerializer.Deserialize<AocFunctionApprovalResponseContent>(t.ContentJson)?.Id == approvalId);
+
+            if (existingResponse)
+                return Results.Conflict("Approval request already has a response.");
+
+            // Deserialize the original function call from the request
+            var requestContent = JsonSerializer.Deserialize<AocFunctionApprovalRequestContent>(matchingThought.ContentJson);
+
+            // Save the approval response as an agent thought
+            var responseContent = new AocFunctionApprovalResponseContent
+            {
+                Id = approvalId,
+                Approved = body.Approved,
+                Reason = body.Reason,
+                FunctionCall = requestContent?.FunctionCall
+            };
+            var responseThought = AocAgentThought.FromContent(
+                responseContent, ChatRole.User, null, DateTime.UtcNow, Guid.NewGuid());
+            var domainThought = responseThought.ToDomain(agentId, dm.Id, matchingThought.RunId);
+            context.AgentThoughts.Add(domainThought);
+            await context.SaveChangesAsync(cancellationToken);
+
+            // Re-enqueue the agent to continue processing
+            agentTriggerQueue.Enqueue(agentId, dm.Id);
+
+            return Results.Ok(new { approved = body.Approved });
+        })
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
         // POST: /api/dms/agents/{agentId}/stop - Stops a running agent in a DM
         group.MapPost("/agents/{agentId}/stop", (
             HttpContext httpContext,
@@ -407,3 +558,6 @@ public static class DmEndpoints
         .Produces(StatusCodes.Status200OK);
     }
 }
+
+
+

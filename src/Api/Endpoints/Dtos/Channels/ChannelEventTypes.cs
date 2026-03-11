@@ -59,4 +59,9 @@ public static class ChannelEventTypes
     /// Reasoning content produced by an agent during processing.
     /// </summary>
     public const string ReasoningContent = "REASONING_CONTENT";
+
+    /// <summary>
+    /// An agent requested approval before executing an MCP tool.
+    /// </summary>
+    public const string ApprovalRequest = "APPROVAL_REQUEST";
 }

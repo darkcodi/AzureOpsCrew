@@ -20,6 +20,8 @@ public interface IChannelEventBroadcaster
     Task BroadcastDmToolCallCompletedAsync(Guid dmId, ToolCallCompletedEvent evt);
     Task BroadcastDmReasoningContentAsync(Guid dmId, ReasoningContentEvent evt);
     Task BroadcastDmAgentStatusAsync(Guid dmId, AgentStatusEvent evt);
+    Task BroadcastChannelApprovalRequestAsync(Guid channelId, ApprovalRequestEvent evt);
+    Task BroadcastDmApprovalRequestAsync(Guid dmId, ApprovalRequestEvent evt);
 }
 
 /// <summary>
@@ -114,6 +116,20 @@ public class ChannelEventBroadcaster : IChannelEventBroadcaster
     {
         var groupName = GetDmGroupName(dmId);
         _logger.LogDebug("Broadcasting AGENT_STATUS ({Status}) to DM {DmId}", evt.Status, dmId);
+        return _dmHubContext.Clients.Group(groupName).SendAsync("event", evt);
+    }
+
+    public Task BroadcastChannelApprovalRequestAsync(Guid channelId, ApprovalRequestEvent evt)
+    {
+        var groupName = GetChannelGroupName(channelId);
+        _logger.LogDebug("Broadcasting APPROVAL_REQUEST to channel {ChannelId}", channelId);
+        return _channelHubContext.Clients.Group(groupName).SendAsync("event", evt);
+    }
+
+    public Task BroadcastDmApprovalRequestAsync(Guid dmId, ApprovalRequestEvent evt)
+    {
+        var groupName = GetDmGroupName(dmId);
+        _logger.LogDebug("Broadcasting APPROVAL_REQUEST to DM {DmId}", dmId);
         return _dmHubContext.Clients.Group(groupName).SendAsync("event", evt);
     }
 
