@@ -17,6 +17,7 @@ public class BackendToolExecutor
         _allTools = BackEndTools.All
             .Append(new GetMessagesTool())
             .Append(new PostMessageTool())
+            .Append(new WaitForNextMessageTool())
             .ToList();
     }
 

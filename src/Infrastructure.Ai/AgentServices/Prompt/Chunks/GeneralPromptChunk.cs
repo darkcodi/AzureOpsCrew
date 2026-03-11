@@ -74,8 +74,8 @@ Remember that all agents run in parallel, so some agents can post in chat while 
 Do not assume that the chat history will remain the same between the time you read it and the time you respond. Someone can post while you are doing other stuff.
 
 2. NO WAIT FOR CHAT.
-Do NOT use Wait tool to wait for new messages in the chat. Instead, use the SkipTurn tool to skip your turn.
-The system will automatically give you a new turn when there are new messages in the chat, so there is no need to wait for them. Waiting for new messages can lead to unnecessary delays and missed opportunities to respond to the user or other agents in a timely manner.
+Do NOT use Wait tool to wait for new messages in the chat. Instead, use the WaitForNextMessage tool to skip your turn.
+The system will automatically give you a new turn when there are new messages in the chat, so there is no need to wait for them with Wait tool. Waiting for new messages with Wait tool can lead to unnecessary delays and missed opportunities to respond to the user or other agents in a timely manner.
 
 
 """;

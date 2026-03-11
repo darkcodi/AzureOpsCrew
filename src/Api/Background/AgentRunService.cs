@@ -17,6 +17,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Serilog;
 using System.Runtime.CompilerServices;
+using AzureOpsCrew.Api.Background.Tools;
 using AzureOpsCrew.Domain.WaitConditions;
 
 namespace AzureOpsCrew.Api.Background;
@@ -228,11 +229,24 @@ public class AgentRunService
                 if (waitingForApproval)
                     break;
 
-                // If the agent called the skipTurn tool, we consider that it has finished its run and we stop the loop.
+                // If the agent called the waitForNextMessage tool, we consider that it has finished its run and we stop the loop.
                 // This allows agents to explicitly signal that they want to skip their turn and let other agents or the human take the lead.
-                if (newToolCalls.Any(c => string.Equals(c.Name, SkipTurnTool.ToolName, StringComparison.CurrentCultureIgnoreCase)))
+                if (newToolCalls.Any(c => string.Equals(c.Name, WaitForNextMessageTool.ToolName, StringComparison.CurrentCultureIgnoreCase)))
                 {
-                    Log.Information("[BACKGROUND] Agent {AgentId} decided to skip its turn in chat {ChatId}", agentId, chatId);
+                    Log.Information("[BACKGROUND] Agent {AgentId} decided to wait for next message in chat {ChatId}", agentId, chatId);
+
+                    // Insert wait condition
+                    var waitCondition = new MessageWaitCondition
+                    {
+                        Id = Guid.NewGuid(),
+                        AgentId = agentId,
+                        ChatId = chatId,
+                        CreatedAt = DateTime.UtcNow,
+                        MessageAfterDateTime = DateTime.UtcNow, // ToDo: load from referenced message in the tool arguments
+                    };
+                    _dbContext.WaitConditions.Add(WaitCondition.FromSpecificWaitCondition(waitCondition));
+                    await _dbContext.SaveChangesAsync(ct);
+
                     break;
                 }
 
