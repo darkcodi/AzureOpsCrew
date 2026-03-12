@@ -115,12 +115,12 @@ AzureOpsCrew/
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Docker compose)
 
 ### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- [Docker](https://www.docker.com/products/docker-desktop) (for containerized setup)
+- [Docker](https://www.docker.com/products/docker-desktop)
 - Azure OpenAI API key 🔑
 - (Optional) Neo4j instance for long-term memory
 
@@ -134,17 +134,21 @@ cp .env.example .env
 
 ### 2️⃣ Configure Environment Variables
 
-Edit `.env` with your settings:
+#### Edit `.env` with your settings:
 
 ```bash
 # API Configuration
 API_BASE_URL=http://localhost:42000
 API_PORT=42000
 
-# Azure OpenAI
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_DEPLOYMENT=gpt-4
+#Frontend Configuration
+FRONTEND_PORT=42080
+
+# Seeding
+SEEDING_ENABLED=true
+SEEDING_AZURE_OPENAI_API_ENDPOINT=https://your-resource.openai.azure.com/
+SEEDING_AZURE_OPENAI_API_KEY=your-api-key
+SEEDING_AZURE_OPENAI_API_DEFAULTMODEL=gpt-5-2-chat
 
 # Database
 SQL_SERVER_PASSWORD=YourSecurePassword123!
@@ -153,8 +157,20 @@ SQL_SERVER_PASSWORD=YourSecurePassword123!
 JWT_SIGNING_KEY=your-256-bit-secret-key
 
 # Email Verification (optional)
+EMAIL_VERIFICATION_ENABLED=false
+BREVO_API_BASE_URL=https://api.brevo.com
 BREVO_API_KEY=your-brevo-api-key
+
+#Long-term memory
+LONG_TERM_MEMORY_TYPE=InMemory
 ```
+
+See `appsettings.json` files for additional configuration:
+- Database provider selection 🗄️
+- JWT authentication settings 🔐
+- Email verification configuration 📧
+- Azure Foundry seed settings 🌱
+- Long-term memory configuration 🧠
 
 ### 3️⃣ Run with Docker
 
@@ -183,22 +199,47 @@ dotnet run
 
 ---
 
-## ⚙️ Configuration
+## 🚀 Quick Start (Locally)
 
-### Environment Variables
+### Prerequisites
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `API_BASE_URL` | API base URL | ✅ Yes |
-| `API_PORT` | API port | ✅ Yes |
-| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint | ✅ Yes |
-| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key | ✅ Yes |
-| `SQL_SERVER_PASSWORD` | SQL Server password | ✅ Yes |
-| `JWT_SIGNING_KEY` | JWT signing key | ✅ Yes |
-| `BREVO_API_KEY` | Brevo API key for email | ❌ No |
-| `NEO4J_CONNECTION_URI` | Neo4j connection URI | ❌ No |
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- Azure OpenAI API key 🔑
+- (Optional) Neo4j instance for long-term memory
 
-### App Settings
+### 1️⃣ Clone and Configure
+
+```bash
+git clone https://github.com/your-org/AzureOpsCrew.git
+cd AzureOpsCrew
+cp .env.example .env
+```
+
+### 2️⃣ Configure minimal User Secrets
+
+#### API
+
+```bash
+{
+  "SqlServer": {
+    "ConnectionString": "Server=localhost;Database=AzureOpsCrew;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+  "Jwt": {
+    "SigningKey": "",
+  },
+  "EmailVerification": {
+    "IsEnabled": false,
+  },
+  "Seeding": {
+    "IsEnabled": true,
+    "AzureFoundrySeed": {
+      "ApiEndpoint": "",
+      "Key": "",
+      "DefaultModel": "gpt-5-2-chat"
+    }
+  }
+}
+```
 
 See `appsettings.json` for additional configuration:
 - Database provider selection 🗄️
@@ -206,6 +247,29 @@ See `appsettings.json` for additional configuration:
 - Email verification configuration 📧
 - Azure Foundry seed settings 🌱
 - Long-term memory configuration 🧠
+
+#### Frontend
+```json
+appsettings.json
+{
+  "ApiBaseUrl": ""
+}
+```
+
+### 4️⃣ Run Locally (Development)
+
+```bash
+# Install dependencies
+dotnet restore
+
+# Run API
+cd src/Api
+dotnet run
+
+# Run Frontend (in another terminal)
+cd src/Front
+dotnet run
+```
 
 ---
 
