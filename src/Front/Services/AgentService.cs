@@ -98,7 +98,11 @@ public class AgentService
         }
     }
 
-    public async Task<AgentDto?> SetAvailableMcpServerAsync(Guid agentId, Guid mcpServerConfigurationId, IEnumerable<string> enabledToolNames)
+    public async Task<AgentDto?> SetAvailableMcpServerAsync(
+        Guid agentId,
+        Guid mcpServerConfigurationId,
+        IEnumerable<string> enabledToolNames,
+        IEnumerable<string> approvalRequiredNames)
     {
         try
         {
@@ -106,7 +110,8 @@ public class AgentService
                 new
                 {
                     McpServerConfigurationId = mcpServerConfigurationId,
-                    EnabledToolNames = enabledToolNames.ToArray()
+                    EnabledToolNames = enabledToolNames.ToArray(),
+                    ApprovalRequiredNames = approvalRequiredNames.ToArray()
                 });
 
             if (response.IsSuccessStatusCode)

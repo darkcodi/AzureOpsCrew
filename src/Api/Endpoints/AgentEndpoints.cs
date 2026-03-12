@@ -185,7 +185,8 @@ namespace AzureOpsCrew.Api.Endpoints
 
                 var availability = new AgentMcpServerToolAvailability(body.McpServerConfigurationId)
                 {
-                    EnabledToolNames = body.EnabledToolNames ?? []
+                    EnabledToolNames = body.EnabledToolNames ?? [],
+                    ApprovalRequiredNames = body.ApprovalRequiredNames ?? []
                 };
 
                 found.SetAvailableMcpServer(availability);

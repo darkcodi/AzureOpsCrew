@@ -48,6 +48,9 @@ public class AgentMcpServerToolAvailabilityDto
 
     [JsonPropertyName("enabledToolNames")]
     public List<string> EnabledToolNames { get; set; } = [];
+
+    [JsonPropertyName("approvalRequiredNames")]
+    public List<string> ApprovalRequiredNames { get; set; } = [];
 }
 
 public class AgentToolDto

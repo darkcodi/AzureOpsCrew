@@ -119,10 +119,10 @@
             ? model[(lastSlash + 1)..]
             : model;
     }
-    private List<(string Name, List<string> EnabledTools)> GetAgentMcpTools()
+    private List<(string Name, List<string> EnabledTools, HashSet<string> ApprovalRequiredTools)> GetAgentMcpTools()
     {
         if (AllMcpServers == null) return [];
-        var result = new List<(string Name, List<string> EnabledTools)>();
+        var result = new List<(string Name, List<string> EnabledTools, HashSet<string> ApprovalRequiredTools)>();
         foreach (var availability in Agent.AvailableMcpServerTools)
         {
             var server = AllMcpServers.FirstOrDefault(s =>
@@ -130,7 +130,7 @@
                 serverId == availability.McpServerConfigurationId);
             if (server != null && availability.EnabledToolNames.Count > 0)
             {
-                result.Add((server.Name, availability.EnabledToolNames));
+                result.Add((server.Name, availability.EnabledToolNames, availability.ApprovalRequiredNames.ToHashSet(StringComparer.OrdinalIgnoreCase)));
             }
         }
         return result;
