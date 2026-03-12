@@ -175,8 +175,7 @@
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 18px 2px 18px;
+    padding: 2px 6px 2px 16px;
     border: 1px solid hsl(228, 6%, 30%);
     border-radius: 9999px;
     background: hsl(228, 6%, 16%);
@@ -184,7 +183,7 @@
     font-family: inherit;
     color: hsl(214, 5%, 50%);
     cursor: pointer;
-    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, padding 0.15s ease;
     white-space: nowrap;
     line-height: 1;
 }
@@ -195,6 +194,7 @@
 }
 
 .approval-toggle.on {
+    padding: 2px 16px 2px 6px;
     background: hsl(35, 65%, 18%);
     border-color: hsl(35, 80%, 45%);
     color: hsl(35, 80%, 65%);
