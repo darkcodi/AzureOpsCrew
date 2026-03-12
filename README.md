@@ -219,7 +219,7 @@ cp .env.example .env
 
 #### API
 
-```bash
+```json
 {
   "SqlServer": {
     "ConnectionString": "Server=localhost;Database=AzureOpsCrew;Trusted_Connection=True;TrustServerCertificate=True;"
@@ -249,8 +249,8 @@ See `appsettings.json` for additional configuration:
 - Long-term memory configuration 🧠
 
 #### Frontend
-```json
 appsettings.json
+```json
 {
   "ApiBaseUrl": ""
 }
