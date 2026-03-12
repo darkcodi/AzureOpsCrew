@@ -89,21 +89,31 @@
             @if (ApprovalRequest.UserResponse is null)
             {
                 <div class="approval-card-footer">
-                    <button class="approval-btn approve" @onclick="Approve" disabled="@_responding">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        Approve
-                    </button>
-                    <button class="approval-btn reject" @onclick="Reject" disabled="@_responding">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"/>
-                            <line x1="6" y1="6" x2="18" y2="18"/>
-                        </svg>
-                        Reject
-                    </button>
+                    <div class="approval-card-buttons">
+                        <button class="approval-btn approve" @onclick="Approve" disabled="@(_responding || HasReason)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Approve
+                        </button>
+                        <button class="approval-btn reject" @onclick="Reject" disabled="@_responding">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                            Reject
+                        </button>
+                    </div>
+                    <div class="approval-card-reason-input-row">
+                        <input type="text"
+                               class="approval-card-reason-input"
+                               placeholder="Rejection reason, or what to do instead"
+                               @bind="_rejectionReason"
+                               @bind:event="oninput"
+                               disabled="@_responding" />
+                    </div>
                 </div>
             }
         </div>
@@ -115,13 +125,16 @@
     public ApprovalRequestDto ApprovalRequest { get; set; } = null!;
 
     [Parameter]
-    public EventCallback<(string approvalId, bool approved)> OnRespond { get; set; }
+    public EventCallback<(string approvalId, bool approved, string? reason)> OnRespond { get; set; }
 
     [Parameter]
     public string? AgentColor { get; set; }
 
     private bool _responding;
     private bool _isExpanded;
+    private string _rejectionReason = string.Empty;
+
+    private bool HasReason => !string.IsNullOrWhiteSpace(_rejectionReason);
 
     private string StatusClass => ApprovalRequest.UserResponse switch
     {
@@ -144,14 +157,15 @@
     private async Task Approve()
     {
         _responding = true;
-        await OnRespond.InvokeAsync((ApprovalRequest.ApprovalId, true));
+        await OnRespond.InvokeAsync((ApprovalRequest.ApprovalId, true, (string?)null));
         _responding = false;
     }
 
     private async Task Reject()
     {
         _responding = true;
-        await OnRespond.InvokeAsync((ApprovalRequest.ApprovalId, false));
+        var reason = string.IsNullOrWhiteSpace(_rejectionReason) ? null : _rejectionReason.Trim();
+        await OnRespond.InvokeAsync((ApprovalRequest.ApprovalId, false, reason));
         _responding = false;
     }
 

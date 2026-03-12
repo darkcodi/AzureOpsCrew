@@ -84,7 +84,7 @@
     [Parameter] public List<ReasoningDto> Reasonings { get; set; } = [];
     [Parameter] public List<ApprovalRequestDto> ApprovalRequests { get; set; } = [];
     [Parameter] public EventCallback<string> OnSendMessage { get; set; }
-    [Parameter] public EventCallback<(string approvalId, bool approved)> OnApprovalRespond { get; set; }
+    [Parameter] public EventCallback<(string approvalId, bool approved, string? reason)> OnApprovalRespond { get; set; }
     [Parameter] public Guid? CurrentUserId { get; set; }
     [Parameter] public bool ShowInput { get; set; } = true;
     [Parameter] public string Placeholder { get; set; } = "Type a message...";

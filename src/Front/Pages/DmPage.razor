@@ -279,7 +279,7 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task RespondToApproval((string approvalId, bool approved) response)
+    private async Task RespondToApproval((string approvalId, bool approved, string? reason) response)
     {
         var dm = AppState.SelectedDm;
         if (dm == null) return;
@@ -287,13 +287,14 @@
         var agentId = dm.Agent1Id ?? dm.Agent2Id;
         if (!agentId.HasValue) return;
 
-        var success = await DmService.RespondToApprovalAsync(agentId.Value, response.approvalId, response.approved);
+        var success = await DmService.RespondToApprovalAsync(agentId.Value, response.approvalId, response.approved, response.reason);
         if (success)
         {
             var approval = _approvalRequests.FirstOrDefault(a => a.ApprovalId == response.approvalId);
             if (approval != null)
             {
                 approval.Status = response.approved ? "approved" : "rejected";
+                approval.Reason = response.reason;
             }
             StateHasChanged();
         }
