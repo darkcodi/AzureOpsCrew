@@ -57,6 +57,14 @@
     margin: 8px 0 0 0;
 }
 
+.approval-card.status-approved {
+    border-color: hsl(139, 47%, 35%);
+}
+
+.approval-card.status-rejected {
+    border-color: hsl(0, 72%, 45%);
+}
+
 .approval-card-header {
     display: flex;
     align-items: center;
@@ -83,6 +91,24 @@
     font-weight: 600;
     color: hsl(38, 96%, 64%);
     white-space: nowrap;
+}
+
+.approval-card.status-approved .approval-card-icon {
+    background-color: hsla(139, 47%, 44%, 0.25);
+    color: hsl(139, 47%, 55%);
+}
+
+.approval-card.status-approved .approval-card-title {
+    color: hsl(139, 47%, 55%);
+}
+
+.approval-card.status-rejected .approval-card-icon {
+    background-color: hsla(0, 72%, 51%, 0.25);
+    color: hsl(0, 72%, 61%);
+}
+
+.approval-card.status-rejected .approval-card-title {
+    color: hsl(0, 72%, 61%);
 }
 
 .approval-card-server {
