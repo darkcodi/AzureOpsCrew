@@ -75,6 +75,11 @@
     font-weight: 500;
 }
 
+.approval-card-header .approval-btn.toggle {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
 .approval-card-icon {
     display: flex;
     align-items: center;
