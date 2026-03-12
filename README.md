@@ -5,6 +5,8 @@
 [![.NET](https://img.shields.io/badge/.NET-10-purple)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![Azure](https://img.shields.io/badge/Azure-Deploy-blue)](https://azure.microsoft.com/)
 
+![Demo](demo.png)
+
 ---
 
 ## 📑 Table of Contents
