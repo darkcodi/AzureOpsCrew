@@ -122,6 +122,7 @@
                                 {
                                     var isServerEnabledForAgent = IsAgentMcpServerEnabled(server);
                                     var enabledToolNames = GetAgentEnabledToolNames(server);
+                                    var approvalRequiredNames = GetAgentApprovalRequiredNames(server);
                                     var tools = GetAgentVisibleTools(server);
                                     var canToggleServer = !_isSavingAgent && (server.IsEnabled || isServerEnabledForAgent);
                                     var canToggleTool = !_isSavingAgent && isServerEnabledForAgent;
@@ -164,11 +165,25 @@
                                                         @foreach (var tool in tools)
                                                         {
                                                             var isToolEnabled = enabledToolNames.Contains(tool.Name);
+                                                            var isApprovalRequired = approvalRequiredNames.Contains(tool.Name);
                                                             <div class="mcp-tool-chip-wrapper">
-                                                                <span class="mcp-tool-chip @(isToolEnabled ? "" : "disabled") @(canToggleTool ? "clickable" : "")"
-                                                                      @onmouseenter="() => ShowMcpToolTooltip(server.Id, tool.Name)"
-                                                                      @onmouseleave="HideMcpToolTooltip"
-                                                                      @onclick="() => ToggleAgentMcpTool(server, tool)">@tool.Name</span>
+                                                                <div class="mcp-tool-chip @(isToolEnabled ? "" : "disabled") @(canToggleTool ? "clickable" : "")">
+                                                                    <span class="mcp-tool-chip-name"
+                                                                          @onmouseenter="() => ShowMcpToolTooltip(server.Id, tool.Name)"
+                                                                          @onmouseleave="HideMcpToolTooltip"
+                                                                          @onclick="() => ToggleAgentMcpTool(server, tool)">@tool.Name</span>
+                                                                    @if (isToolEnabled && canToggleTool)
+                                                                    {
+                                                                        <button type="button"
+                                                                                class="approval-toggle @(isApprovalRequired ? "on" : "")"
+                                                                                title="@(isApprovalRequired ? "Approval required before execution" : "Click to require approval")"
+                                                                                @onclick="() => ToggleAgentMcpToolApproval(server, tool)"
+                                                                                @onclick:stopPropagation="true">
+                                                                            <span class="approval-toggle-knob"></span>
+                                                                            <span class="approval-toggle-label">approval</span>
+                                                                        </button>
+                                                                    }
+                                                                </div>
                                                                 @if (_hoveredMcpToolKey == $"{server.Id}|{tool.Name}" && !string.IsNullOrWhiteSpace(tool.Description))
                                                                 {
                                                                     <div class="mcp-tool-tooltip">
@@ -467,6 +482,9 @@
     private HashSet<string> GetAgentEnabledToolNames(McpServerConfigurationItem server) =>
         GetDraftMcpServerAvailability(server)?.EnabledToolNames.ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
 
+    private HashSet<string> GetAgentApprovalRequiredNames(McpServerConfigurationItem server) =>
+        GetDraftMcpServerAvailability(server)?.ApprovalRequiredNames.ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+
     private List<McpServerToolItem> GetAgentVisibleTools(McpServerConfigurationItem server) =>
         server.Tools
             .Where(tool => tool.IsEnabled)
@@ -482,6 +500,7 @@
             {
                 McpServerConfigurationId = item.McpServerConfigurationId,
                 EnabledToolNames = [..item.EnabledToolNames],
+                ApprovalRequiredNames = [..item.ApprovalRequiredNames],
             })
             .ToList();
 
@@ -490,12 +509,19 @@
             "|",
             source
                 .OrderBy(item => item.McpServerConfigurationId)
-                .Select(item => $"{item.McpServerConfigurationId}:{string.Join(",", item.EnabledToolNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase))}"));
+                .Select(item =>
+                    $"{item.McpServerConfigurationId}" +
+                    $":{string.Join(",", item.EnabledToolNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase))}" +
+                    $"@{string.Join(",", item.ApprovalRequiredNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase))}"));
 
-    private static bool HaveSameEnabledToolNames(AgentMcpServerToolAvailabilityDto left, AgentMcpServerToolAvailabilityDto right) =>
+    private static bool HaveSameToolConfiguration(AgentMcpServerToolAvailabilityDto left, AgentMcpServerToolAvailabilityDto right) =>
         string.Equals(
             string.Join(",", left.EnabledToolNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)),
             string.Join(",", right.EnabledToolNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)),
+            StringComparison.Ordinal)
+        && string.Equals(
+            string.Join(",", left.ApprovalRequiredNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)),
+            string.Join(",", right.ApprovalRequiredNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)),
             StringComparison.Ordinal);
 
     private void SetSavedAgentSnapshot(AgentDto? agent, string providerId)
@@ -553,9 +579,36 @@
 
         var enabledToolNames = availability.EnabledToolNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (!enabledToolNames.Add(tool.Name))
+        {
             enabledToolNames.Remove(tool.Name);
+            // Also remove from approval-required when disabling a tool
+            var approvalNames = availability.ApprovalRequiredNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            approvalNames.Remove(tool.Name);
+            availability.ApprovalRequiredNames = approvalNames
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
 
         availability.EnabledToolNames = enabledToolNames
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private void ToggleAgentMcpToolApproval(McpServerConfigurationItem server, McpServerToolItem tool)
+    {
+        var availability = GetDraftMcpServerAvailability(server);
+        if (availability == null)
+            return;
+
+        // Only toggle approval for enabled tools
+        if (!availability.EnabledToolNames.Contains(tool.Name, StringComparer.OrdinalIgnoreCase))
+            return;
+
+        var approvalNames = availability.ApprovalRequiredNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!approvalNames.Add(tool.Name))
+            approvalNames.Remove(tool.Name);
+
+        availability.ApprovalRequiredNames = approvalNames
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
@@ -645,7 +698,7 @@
         foreach (var draftBinding in draftByServerId.Values.OrderBy(item => item.McpServerConfigurationId))
         {
             if (savedByServerId.TryGetValue(draftBinding.McpServerConfigurationId, out var savedBinding)
-                && HaveSameEnabledToolNames(savedBinding, draftBinding))
+                && HaveSameToolConfiguration(savedBinding, draftBinding))
             {
                 continue;
             }
@@ -653,7 +706,8 @@
             latestAgent = await AgentService.SetAvailableMcpServerAsync(
                 agentId,
                 draftBinding.McpServerConfigurationId,
-                draftBinding.EnabledToolNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
+                draftBinding.EnabledToolNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase),
+                draftBinding.ApprovalRequiredNames.OrderBy(name => name, StringComparer.OrdinalIgnoreCase));
 
             if (latestAgent == null)
             {

@@ -134,6 +134,7 @@
 .mcp-tool-chip {
     display: inline-flex;
     align-items: center;
+    gap: 8px;
     padding: 5px 10px;
     border-radius: 8px;
     border: 1px solid hsl(228, 6%, 30%);
@@ -163,6 +164,65 @@
 .mcp-tool-chip.disabled:hover {
     background: hsl(228, 6%, 16%);
     border-color: hsl(228, 6%, 26%);
+}
+
+.mcp-tool-chip-name {
+    cursor: inherit;
+}
+
+/* Inline approval toggle inside enabled tool chip */
+.approval-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px 2px 18px;
+    border: 1px solid hsl(228, 6%, 30%);
+    border-radius: 9999px;
+    background: hsl(228, 6%, 16%);
+    font-size: 10px;
+    font-family: inherit;
+    color: hsl(214, 5%, 50%);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.approval-toggle:hover {
+    border-color: hsl(228, 6%, 40%);
+    color: hsl(214, 5%, 65%);
+}
+
+.approval-toggle.on {
+    background: hsl(35, 65%, 18%);
+    border-color: hsl(35, 80%, 45%);
+    color: hsl(35, 80%, 65%);
+}
+
+.approval-toggle.on:hover {
+    background: hsl(35, 65%, 22%);
+    border-color: hsl(35, 80%, 52%);
+}
+
+.approval-toggle-knob {
+    position: absolute;
+    left: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: hsl(214, 5%, 40%);
+    transition: background-color 0.15s ease, left 0.15s ease;
+}
+
+.approval-toggle.on .approval-toggle-knob {
+    background: hsl(35, 80%, 55%);
+}
+
+.approval-toggle-label {
+    user-select: none;
 }
 
 .mcp-tool-chip-wrapper {
