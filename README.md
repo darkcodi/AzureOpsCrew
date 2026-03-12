@@ -63,7 +63,7 @@ AzureOpsCrew follows **Clean Architecture** principles with Domain-Driven Design
 │  Channels │ Chats │ Agents │ Users │ Settings │ Auth        │
 ├─────────────────────────────┬───────────────────────────────┤
 │         Domain Layer        │      Infrastructure           │
-│   (Entities & Interfaces)   │  AI │ DB │ MCP │ Email       │
+│   (Entities & Interfaces)   │  AI │ DB │ MCP │ Email        │
 └─────────────────────────────┴───────────────────────────────┘
                               │
           ┌───────────────────┼───────────────────┐
@@ -95,10 +95,8 @@ AzureOpsCrew/
 │   ├── Api/                      # ASP.NET Core Web API backend
 │   ├── Domain/                   # Domain models and interfaces (DDD)
 │   ├── Front/                    # Blazor WebAssembly frontend
-│   ├── Infrastructure.Ai/        # AI infrastructure (MCP, AI clients)
-│   ├── Infrastructure.Db/        # Database infrastructure (EF Core)
-│   ├── Chat/                     # Chat-related components
-│   └── Worker/                   # Background services
+│   ├── Infrastructure.Ai/        # AI infrastructure (MCP, AI clients, Long-term memory)
+│   └── Infrastructure.Db/        # Database infrastructure (EF Core)
 ├── tests/
 │   ├── Api.Tests/                # API integration tests
 │   └── Infrastructure.Ai.Tests/  # AI infrastructure tests
