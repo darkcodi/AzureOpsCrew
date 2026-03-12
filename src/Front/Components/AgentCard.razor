@@ -1,4 +1,6 @@
 @namespace Front.Components
+@inject AgentState AgentState
+@implements IDisposable
 <div class="agent-card">
     <div class="agent-card-header-wrap">
         <div class="agent-card-strip" style="background-color: @Agent.Color;"></div>
@@ -7,8 +9,8 @@
                 @GetAgentAvatar()
             </div>
         </div>
-        <div class="agent-card-status @(AgentStatusDisplay.IsWaitingForApproval(Agent.Status) ? "agent-card-status-waiting" : string.Empty)">
-            @AgentStatusDisplay.ToDisplayText(Agent.Status)
+        <div class="agent-card-status @(AgentStatusDisplay.IsWaitingForApproval(GetDisplayStatus()) ? "agent-card-status-waiting" : string.Empty)">
+            @AgentStatusDisplay.ToDisplayText(GetDisplayStatus())
         </div>
     </div>
     <div class="agent-card-body">
@@ -22,11 +24,11 @@
             </span>
             <span class="agent-card-pill agent-card-pill-model">@GetModelDisplay()</span>
         </div>
-        @if (!string.IsNullOrEmpty(Agent.ErrorMessage))
+        @if (!string.IsNullOrEmpty(GetDisplayErrorMessage()))
         {
             <div class="agent-card-error">
                 <span class="agent-card-error-icon">⚠</span>
-                <span class="agent-card-error-text">@Agent.ErrorMessage</span>
+                <span class="agent-card-error-text">@GetDisplayErrorMessage()</span>
             </div>
         }
         @if (GetAgentMcpTools().Count > 0)
@@ -52,8 +54,45 @@
 @code {
     [Parameter, EditorRequired]
     public AgentDto Agent { get; set; } = null!;
+    [Parameter]
+    public Guid? ConversationId { get; set; }
+    [Parameter]
+    public ConversationType? ConversationType { get; set; }
     [CascadingParameter]
     public IEnumerable<McpServerConfigurationItem>? AllMcpServers { get; set; }
+
+    private IDisposable? _agentStateSubscription;
+
+    protected override void OnInitialized()
+    {
+        _agentStateSubscription = AgentState.Subscribe(() => _ = InvokeAsync(StateHasChanged));
+    }
+
+    public void Dispose()
+    {
+        _agentStateSubscription?.Dispose();
+    }
+
+    private string GetDisplayStatus()
+    {
+        if (ConversationId.HasValue && ConversationType.HasValue)
+        {
+            var state = AgentState.GetState(ConversationId.Value, ConversationType.Value, Agent.Id);
+            return state?.Status ?? "Idle";
+        }
+        return Agent.Status;
+    }
+
+    private string? GetDisplayErrorMessage()
+    {
+        if (ConversationId.HasValue && ConversationType.HasValue)
+        {
+            var state = AgentState.GetState(ConversationId.Value, ConversationType.Value, Agent.Id);
+            return state?.ErrorMessage;
+        }
+        return Agent.ErrorMessage;
+    }
+
     private string GetAgentAvatar()
     {
         var u = Agent.Username;
