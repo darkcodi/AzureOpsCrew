@@ -35,13 +35,6 @@ public class AgentRunService
     private readonly AgentSignalManager _signalManager;
 
     private const int MaxIterations = 300;
-    private static readonly List<string> ToolsThatRequireApproval =
-    [
-        "sql_server_reset_admin_password",
-        "pr_create",
-        "pr_abandon",
-        "pr_merge",
-    ];
 
     public AgentRunService(IServiceProvider serviceProvider, AgentSignalManager signalManager)
     {
@@ -141,17 +134,19 @@ public class AgentRunService
                     var toolDeclaration = data.Tools.FirstOrDefault(t =>
                         string.Equals(t.Name, toolCall.Name, StringComparison.OrdinalIgnoreCase));
 
-                    if (toolDeclaration?.ToolType == ToolType.McpServer &&
-                        ToolsThatRequireApproval.Contains(toolDeclaration.Name, StringComparer.InvariantCultureIgnoreCase))
+                    if (toolDeclaration?.ToolType == ToolType.McpServer
+                        && toolDeclaration.McpServerConfigurationId is Guid mcpServerId
+                        && (data.Agent.Info.AvailableMcpServerTools
+                            .FirstOrDefault(b => b.McpServerConfigurationId == mcpServerId)
+                            ?.ApprovalRequiredNames
+                            .Contains(toolDeclaration.Name, StringComparer.InvariantCultureIgnoreCase)).GetValueOrDefault())
                     {
                         // Save the approval request as an agent thought
                         var approvalRequest = new AocFunctionApprovalRequestContent
                         {
                             Id = Guid.NewGuid().ToString(),
                             FunctionCall = toolCall,
-                            ServerName = toolDeclaration.McpServerConfigurationId is Guid serverId
-                                ? data.McpServers.FirstOrDefault(s => s.Id == serverId)?.Name
-                                : null,
+                            ServerName = data.McpServers.FirstOrDefault(s => s.Id == mcpServerId)?.Name,
                         };
                         var approvalThought = AocAgentThought.FromContent(
                             approvalRequest, ChatRole.Assistant, data.Agent.Info.Username,
