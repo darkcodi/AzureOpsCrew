@@ -36,6 +36,7 @@
                   IsAgentRunning="_isAgentRunning"
                   OnStopAgent="StopAgent"
                   OnSendMessage="SendDmMessage"
+                  Agents="AppState.Agents"
                   OnApprovalRespond="RespondToApproval" />
     </MainArea>
     <RightSidebar>
@@ -125,32 +126,6 @@
             _isAgentRunning = false;
             var agentId = AppState.SelectedDm?.Agent1Id ?? AppState.SelectedDm?.Agent2Id;
 
-            // Restore agent running state from persisted storage
-            if (dmId.HasValue && agentId.HasValue)
-            {
-                _isAgentRunning = AgentState.IsAgentRunning(dmId.Value, ConversationType.Dm);
-                var typingUsername = AgentState.GetTypingUsername(
-                    dmId.Value,
-                    ConversationType.Dm,
-                    id => AppState.Agents.FirstOrDefault(a => a.Id == id)?.Username);
-                if (typingUsername != null && _isAgentRunning)
-                {
-                    _typingUsernames.Add(typingUsername);
-                }
-
-                // Update the agent's status in AppState.Agents to restore the agent card status
-                var agentState = AgentState.GetState(dmId.Value, ConversationType.Dm);
-                if (agentState != null)
-                {
-                    var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentState.AgentId);
-                    if (agent != null)
-                    {
-                        agent.Status = agentState.Status;
-                        agent.ErrorMessage = agentState.ErrorMessage;
-                        AppState.Agents.NotifyChanged();
-                    }
-                }
-            }
             if (agentId.HasValue)
             {
                 _messages = await DmService.GetAgentDmMessagesAsync(agentId.Value);
@@ -175,6 +150,23 @@
                 _approvalRequests = [];
                 AppState.CurrentAgentMind = null;
             }
+
+            var statuses = await DmService.GetAgentStatusesAsync(dmId.Value);
+            foreach (var entry in statuses)
+            {
+                await AgentState.SetAgentStatusAsync(dmId.Value, ConversationType.Dm, entry.AgentId, entry.Status, entry.ErrorMessage);
+            }
+            var states = AgentState.GetStatesForConversation(dmId.Value, ConversationType.Dm);
+            _isAgentRunning = states.Any(s => string.Equals(s.Status, "Running", StringComparison.OrdinalIgnoreCase));
+            foreach (var s in states.Where(s => string.Equals(s.Status, "Running", StringComparison.OrdinalIgnoreCase)))
+            {
+                var username = AppState.Agents.FirstOrDefault(a => a.Id == s.AgentId)?.Username;
+                if (!string.IsNullOrEmpty(username) && !_typingUsernames.Contains(username))
+                    _typingUsernames.Add(username);
+            }
+            if (statuses.Count > 0)
+                StateHasChanged();
+            StateHasChanged();
 
             await ConnectToDmHub(dmId.Value);
         }
@@ -238,18 +230,22 @@
 
     private async void OnAgentStatusReceived(Guid agentId, string status, string? errorMessage)
     {
+        var dmId = AppState.SelectedDm?.Id;
+        if (!dmId.HasValue)
+        {
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        await AgentState.SetAgentStatusAsync(dmId.Value, ConversationType.Dm, agentId, status, errorMessage);
+
+        var states = AgentState.GetStatesForConversation(dmId.Value, ConversationType.Dm);
+        _isAgentRunning = states.Any(s => string.Equals(s.Status, "Running", StringComparison.OrdinalIgnoreCase));
+
         var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentId);
+        var isRunning = string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase);
         if (agent != null)
         {
-            agent.Status = status;
-            agent.ErrorMessage = string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase) ? errorMessage : null;
-            AppState.Agents.NotifyChanged();
-
-            // Update typing indicator and running state
-            var isRunning = string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase);
-            var isWaitingForApproval = string.Equals(status, "WaitingForApproval", StringComparison.OrdinalIgnoreCase);
-            _isAgentRunning = isRunning;
-
             if (isRunning)
             {
                 if (!_typingUsernames.Contains(agent.Username))
@@ -259,21 +255,8 @@
             {
                 _typingUsernames.Remove(agent.Username);
             }
-
-            // Persist the status change to localStorage
-            var dmId = AppState.SelectedDm?.Id;
-            if (dmId.HasValue)
-            {
-                if (isRunning || isWaitingForApproval)
-                {
-                    await AgentState.SetAgentStatusAsync(dmId.Value, ConversationType.Dm, agentId, status, errorMessage);
-                }
-                else
-                {
-                    await AgentState.ClearStateAsync(dmId.Value, ConversationType.Dm);
-                }
-            }
         }
+
         await InvokeAsync(StateHasChanged);
     }
 

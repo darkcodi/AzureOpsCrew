@@ -1,6 +1,8 @@
 @namespace Front.Components
+@inject AgentState AgentState
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@implements IDisposable
 <div class="agent-mind-overlay" @onclick="OnClose">
     <div class="agent-mind-content" @onclick:stopPropagation="true">
         <div class="agent-mind-header">
@@ -10,15 +12,15 @@
                 </div>
                 <div class="agent-mind-header-title-row">
                     <h2 class="agent-mind-title">@Agent.Username's Mind</h2>
-                    <span class="agent-mind-status agent-mind-status-@(GetStatusClass())">@AgentStatusDisplay.ToDisplayText(Agent.Status)</span>
-                    @if (string.Equals(Agent.Status, "Error", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(Agent.ErrorMessage))
+                    <span class="agent-mind-status agent-mind-status-@(GetStatusClass())">@AgentStatusDisplay.ToDisplayText(GetDisplayStatus())</span>
+                    @if (string.Equals(GetDisplayStatus(), "Error", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(GetDisplayErrorMessage()))
                     {
-                        <span class="agent-mind-status-errormessage" title="@Agent.ErrorMessage">@TruncateError(Agent.ErrorMessage)</span>
+                        <span class="agent-mind-status-errormessage" title="@GetDisplayErrorMessage()">@TruncateError(GetDisplayErrorMessage())</span>
                     }
                 </div>
             </div>
             <div class="agent-mind-header-actions">
-                @if (string.Equals(Agent.Status, "Running", StringComparison.OrdinalIgnoreCase))
+                @if (string.Equals(GetDisplayStatus(), "Running", StringComparison.OrdinalIgnoreCase))
                 {
                     <button type="button" class="agent-mind-stop-btn" @onclick="OnStop" aria-label="Stop" title="Stop">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -80,6 +82,12 @@
     public AgentDto Agent { get; set; } = null!;
 
     [Parameter]
+    public Guid? ConversationId { get; set; }
+
+    [Parameter]
+    public ConversationType? ConversationType { get; set; }
+
+    [Parameter]
     public List<ToolCallDto> ToolCalls { get; set; } = [];
 
     [Parameter]
@@ -96,6 +104,37 @@
 
     private ElementReference _bodyContainer;
     private int _lastCount;
+    private IDisposable? _agentStateSubscription;
+
+    protected override void OnInitialized()
+    {
+        _agentStateSubscription = AgentState.Subscribe(() => _ = InvokeAsync(StateHasChanged));
+    }
+
+    public void Dispose()
+    {
+        _agentStateSubscription?.Dispose();
+    }
+
+    private string GetDisplayStatus()
+    {
+        if (ConversationId.HasValue && ConversationType.HasValue)
+        {
+            var state = AgentState.GetState(ConversationId.Value, ConversationType.Value, Agent.Id);
+            return state?.Status ?? "Idle";
+        }
+        return Agent.Status;
+    }
+
+    private string? GetDisplayErrorMessage()
+    {
+        if (ConversationId.HasValue && ConversationType.HasValue)
+        {
+            var state = AgentState.GetState(ConversationId.Value, ConversationType.Value, Agent.Id);
+            return state?.ErrorMessage;
+        }
+        return Agent.ErrorMessage;
+    }
 
     private record TimelineEntry(ToolCallDto? ToolCall, ReasoningDto? Reasoning, DateTimeOffset Timestamp);
 
@@ -137,7 +176,7 @@
 
     private string GetStatusClass()
     {
-        var status = Agent.Status;
+        var status = GetDisplayStatus();
         if (string.IsNullOrEmpty(status)) return "idle";
         if (string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase)) return "running";
         if (AgentStatusDisplay.IsWaitingForApproval(status)) return "waiting";

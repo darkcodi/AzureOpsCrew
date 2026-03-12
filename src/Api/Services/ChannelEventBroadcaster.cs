@@ -31,15 +31,18 @@ public class ChannelEventBroadcaster : IChannelEventBroadcaster
 {
     private readonly IHubContext<ChannelEventsHub> _channelHubContext;
     private readonly IHubContext<DmEventsHub> _dmHubContext;
+    private readonly IAgentStatusTracker _agentStatusTracker;
     private readonly ILogger<ChannelEventBroadcaster> _logger;
 
     public ChannelEventBroadcaster(
         IHubContext<ChannelEventsHub> channelHubContext,
         IHubContext<DmEventsHub> dmHubContext,
+        IAgentStatusTracker agentStatusTracker,
         ILogger<ChannelEventBroadcaster> logger)
     {
         _channelHubContext = channelHubContext;
         _dmHubContext = dmHubContext;
+        _agentStatusTracker = agentStatusTracker;
         _logger = logger;
     }
 
@@ -86,6 +89,7 @@ public class ChannelEventBroadcaster : IChannelEventBroadcaster
 
     public Task BroadcastChannelAgentStatusAsync(Guid channelId, AgentStatusEvent evt)
     {
+        _agentStatusTracker.SetChannelStatus(channelId, evt.AgentId, evt.Status, evt.ErrorMessage);
         var groupName = GetChannelGroupName(channelId);
         _logger.LogDebug("Broadcasting AGENT_STATUS ({Status}) to channel {ChannelId}", evt.Status, channelId);
         return _channelHubContext.Clients.Group(groupName).SendAsync("event", evt);
@@ -114,6 +118,7 @@ public class ChannelEventBroadcaster : IChannelEventBroadcaster
 
     public Task BroadcastDmAgentStatusAsync(Guid dmId, AgentStatusEvent evt)
     {
+        _agentStatusTracker.SetDmStatus(dmId, evt.AgentId, evt.Status, evt.ErrorMessage);
         var groupName = GetDmGroupName(dmId);
         _logger.LogDebug("Broadcasting AGENT_STATUS ({Status}) to DM {DmId}", evt.Status, dmId);
         return _dmHubContext.Clients.Group(groupName).SendAsync("event", evt);

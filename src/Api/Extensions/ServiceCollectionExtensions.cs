@@ -251,6 +251,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ToolCallRouter>();
 
         // Channel event broadcasting via SignalR
+        services.AddSingleton<IAgentStatusTracker, AgentStatusTracker>();
         services.AddSingleton<IChannelEventBroadcaster, ChannelEventBroadcaster>();
     }
 }

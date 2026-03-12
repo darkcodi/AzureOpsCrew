@@ -1,6 +1,7 @@
 @inject AppState AppState
 @implements IDisposable
 @inject ChannelService ChannelService
+@inject AgentState AgentState
 
 <div class="members-list">
     <div class="members-list-header">
@@ -52,7 +53,7 @@
                                 </div>
                                 <div class="members-item-info">
                                     <span class="members-item-name">@agent.Username</span>
-                                    <span class="members-item-status @(AgentStatusDisplay.IsWaitingForApproval(agent.Status) ? "members-item-status-waiting" : string.Empty)">@AgentStatusDisplay.ToDisplayText(agent.Status)</span>
+                                    <span class="members-item-status @(AgentStatusDisplay.IsWaitingForApproval(GetAgentStatus(agent.Id)) ? "members-item-status-waiting" : string.Empty)">@AgentStatusDisplay.ToDisplayText(GetAgentStatus(agent.Id))</span>
                                 </div>
                             </div>
                             <button type="button"
@@ -204,7 +205,8 @@
     {
         _appStateSubscription = AppState.SubscribeSelectedChannel(OnStateChanged)
             .Combine(AppState.SubscribeCurrentUser(OnStateChanged))
-            .Combine(AppState.SubscribeAgents(OnStateChanged));
+            .Combine(AppState.SubscribeAgents(OnStateChanged))
+            .Combine(AgentState.Subscribe(OnStateChanged));
     }
 
     private void OnStateChanged() => InvokeAsync(() =>
@@ -313,4 +315,11 @@
 
 
     private void MentionUser(UserDto user) { /* TODO */ }
+
+    private string GetAgentStatus(Guid agentId)
+    {
+        var channel = AppState.SelectedChannel;
+        if (channel == null) return "Idle";
+        return AgentState.GetState(channel.Id, ConversationType.Channel, agentId)?.Status ?? "Idle";
+    }
 }

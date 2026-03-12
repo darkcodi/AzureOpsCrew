@@ -111,6 +111,20 @@ public class DmService
         }
     }
 
+    public async Task<List<AgentStatusDto>> GetAgentStatusesAsync(Guid dmId)
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<AgentStatusDto>>($"/api/dms/{dmId}/agent-statuses");
+            return response ?? [];
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error fetching agent statuses for DM {dmId}: {ex.Message}");
+            return [];
+        }
+    }
+
     public async Task<bool> RespondToApprovalAsync(Guid agentId, string approvalId, bool approved, string? reason = null)
     {
         try

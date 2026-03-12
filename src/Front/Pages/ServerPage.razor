@@ -39,6 +39,7 @@
                   ShowStopButton="false"
                   OnSendMessage="SendChannelMessage"
                   OnAgentClick="HandleAgentClickFromChat"
+                  Agents="AppState.Agents"
                   OnApprovalRespond="RespondToApproval" />
     </MainArea>
     <RightSidebar>
@@ -51,6 +52,8 @@
 @if (_mindViewAgent != null)
 {
     <AgentMindView Agent="_mindViewAgent"
+                   ConversationId="@(AppState.SelectedChannel?.Id)"
+                   ConversationType="ConversationType.Channel"
                    ToolCalls="_mindToolCalls"
                    Reasonings="_mindReasonings"
                    IsLoading="_isMindLoading"
@@ -140,31 +143,22 @@
             _mindToolCalls = [];
             _mindReasonings = [];
 
-            var agentIdStr = AppState.SelectedChannel?.AgentIds.FirstOrDefault();
-            if (!string.IsNullOrEmpty(agentIdStr) && Guid.TryParse(agentIdStr, out var agentId))
+            var statuses = await ChannelService.GetAgentStatusesAsync(channelId.Value);
+            foreach (var entry in statuses)
             {
-                _isAgentRunning = AgentState.IsAgentRunning(channelId.Value, ConversationType.Channel);
-                var typingUsername = AgentState.GetTypingUsername(
-                    channelId.Value,
-                    ConversationType.Channel,
-                    id => AppState.Agents.FirstOrDefault(a => a.Id == id)?.Username);
-                if (typingUsername != null && _isAgentRunning)
-                {
-                    _typingUsernames.Add(typingUsername);
-                }
-
-                var agentState = AgentState.GetState(channelId.Value, ConversationType.Channel);
-                if (agentState != null)
-                {
-                    var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentState.AgentId);
-                    if (agent != null)
-                    {
-                        agent.Status = agentState.Status;
-                        agent.ErrorMessage = agentState.ErrorMessage;
-                        AppState.Agents.NotifyChanged();
-                    }
-                }
+                await AgentState.SetAgentStatusAsync(channelId.Value, ConversationType.Channel, entry.AgentId, entry.Status, entry.ErrorMessage);
             }
+            var states = AgentState.GetStatesForConversation(channelId.Value, ConversationType.Channel);
+            _isAgentRunning = states.Any(s => string.Equals(s.Status, "Running", StringComparison.OrdinalIgnoreCase));
+            foreach (var s in states.Where(s => string.Equals(s.Status, "Running", StringComparison.OrdinalIgnoreCase)))
+            {
+                var username = AppState.Agents.FirstOrDefault(a => a.Id == s.AgentId)?.Username;
+                if (!string.IsNullOrEmpty(username) && !_typingUsernames.Contains(username))
+                    _typingUsernames.Add(username);
+            }
+            if (statuses.Count > 0)
+                StateHasChanged();
+            StateHasChanged();
 
             await ConnectToChannelHub(channelId.Value);
         }
@@ -296,17 +290,22 @@
 
     private async void OnAgentStatusReceived(Guid agentId, string status, string? errorMessage)
     {
+        var channelId = AppState.SelectedChannel?.Id;
+        if (!channelId.HasValue)
+        {
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        await AgentState.SetAgentStatusAsync(channelId.Value, ConversationType.Channel, agentId, status, errorMessage);
+
+        var states = AgentState.GetStatesForConversation(channelId.Value, ConversationType.Channel);
+        _isAgentRunning = states.Any(s => string.Equals(s.Status, "Running", StringComparison.OrdinalIgnoreCase));
+
         var agent = AppState.Agents.FirstOrDefault(a => a.Id == agentId);
+        var isRunning = string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase);
         if (agent != null)
         {
-            agent.Status = status;
-            agent.ErrorMessage = string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase) ? errorMessage : null;
-            AppState.Agents.NotifyChanged();
-
-            var isRunning = string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase);
-            var isWaitingForApproval = string.Equals(status, "WaitingForApproval", StringComparison.OrdinalIgnoreCase);
-            _isAgentRunning = isRunning;
-
             if (isRunning)
             {
                 if (!_typingUsernames.Contains(agent.Username))
@@ -315,19 +314,6 @@
             else
             {
                 _typingUsernames.Remove(agent.Username);
-            }
-
-            var channelId = AppState.SelectedChannel?.Id;
-            if (channelId.HasValue)
-            {
-                if (isRunning || isWaitingForApproval)
-                {
-                    await AgentState.SetAgentStatusAsync(channelId.Value, ConversationType.Channel, agentId, status, errorMessage);
-                }
-                else
-                {
-                    await AgentState.ClearStateAsync(channelId.Value, ConversationType.Channel);
-                }
             }
         }
 
