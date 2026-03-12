@@ -21,7 +21,7 @@ public class AgentScheduler : BackgroundService
 
         if (!_jobs.TryAdd(key, cts))
         {
-            Log.Warning("[BACKGROUND] Agent {AgentId} for chat {ChatId} is already running (trigger: {TriggerKind})",
+            Log.Debug("[BACKGROUND] Agent {AgentId} for chat {ChatId} is already running (trigger: {TriggerKind})",
                 trigger.AgentId, trigger.ChatId, trigger.Kind);
             return false;
         }
@@ -81,7 +81,12 @@ public class AgentScheduler : BackgroundService
 
             foreach (var trigger in triggers)
             {
-                StartAgent(trigger);
+                var started = StartAgent(trigger);
+                if (!started)
+                {
+                    // Keep trigger for later if the agent is currently busy.
+                    triggerQueue.Enqueue(trigger);
+                }
             }
 
             await Task.Delay(1000, stoppingToken);

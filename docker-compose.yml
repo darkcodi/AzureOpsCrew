@@ -68,16 +68,25 @@ services:
       - SA_PASSWORD=${SQLSERVER_SA_PASSWORD:-YourStrong@Password}
     ports:
       - "${SQLSERVER_PORT:-42433}:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
     command:
       - /bin/bash
       - -c
       - |
         /opt/mssql/bin/sqlservr &
-        sleep 30
-        /opt/mssql-tools18/bin/sqlcmd -U sa -P "${SQLSERVER_SA_PASSWORD:-YourStrong@Password}" -C -Q "IF DB_ID('${SQLSERVER_DB_NAME:-AzureOpsCrew}') IS NULL CREATE DATABASE [${SQLSERVER_DB_NAME:-AzureOpsCrew}];"
-        wait
+        sql_pid=$!
+        until /opt/mssql-tools18/bin/sqlcmd -U sa -P "${SQLSERVER_SA_PASSWORD:-YourStrong@Password}" -d master -C -Q "SELECT 1" >/dev/null 2>&1; do
+          sleep 2
+        done
+        /opt/mssql-tools18/bin/sqlcmd -U sa -P "${SQLSERVER_SA_PASSWORD:-YourStrong@Password}" -d master -C -Q "IF DB_ID('${SQLSERVER_DB_NAME:-AzureOpsCrew}') IS NULL CREATE DATABASE [${SQLSERVER_DB_NAME:-AzureOpsCrew}];"
+        wait "$$sql_pid"
     healthcheck:
-      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-U", "sa", "-P", "${SQLSERVER_SA_PASSWORD:-YourStrong@Password}", "-d", "${SQLSERVER_DB_NAME:-AzureOpsCrew}", "-C", "-Q", "SELECT 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -U sa -P \"${SQLSERVER_SA_PASSWORD:-YourStrong@Password}\" -d master -C -h -1 -W -Q \"SET NOCOUNT ON; SELECT CASE WHEN DB_ID('${SQLSERVER_DB_NAME:-AzureOpsCrew}') IS NULL THEN 0 ELSE 1 END\" | grep -q '^1$'",
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -104,3 +113,6 @@ services:
 #
 #volumes:
 #  neo4j_data:
+
+volumes:
+  sqlserver_data:

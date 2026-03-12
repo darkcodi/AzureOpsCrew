@@ -19,6 +19,7 @@ using AzureOpsCrew.Domain.Tools.FrontEnd;
 using AzureOpsCrew.Domain.Tools.Mcp;
 using AzureOpsCrew.Api.Background.ToolExecutors;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices;
+using System.Text.Json;
 
 namespace AzureOpsCrew.Api.Background;
 
@@ -54,11 +55,17 @@ public class AgentRunService
 
     private async Task Run(Guid agentId, Guid chatId, CancellationToken ct, AgentTrigger? trigger)
     {
-        Log.Information("[BACKGROUND] Starting agent run: {AgentId}, chat: {ChatId}, trigger: {TriggerKind}",
-            agentId, chatId, trigger?.Kind.ToString() ?? "legacy");
+        Log.Information("[BACKGROUND] Starting agent run: {AgentId}, chat: {ChatId}, trigger: {TriggerKind}, taskId: {TaskId}",
+            agentId, chatId, trigger?.Kind.ToString() ?? "legacy", trigger?.TaskId);
 
         // Pre-load data to determine chat type for status broadcasts
         var initialData = await LoadAgentRunData(agentId, chatId, ct, trigger);
+        if (!IsRunAllowed(initialData, trigger, out var rejectReason))
+        {
+            Log.Information("[BACKGROUND] Skipping agent run: {AgentId}, chat: {ChatId}, trigger: {TriggerKind}. Reason: {Reason}",
+                agentId, chatId, trigger?.Kind.ToString() ?? "legacy", rejectReason);
+            return;
+        }
 
         try
         {
@@ -67,6 +74,8 @@ public class AgentRunService
 
             var iteration = 0;
             const int maxIterations = 50;
+            var delegatedAssignments = new List<(string Agent, string Title)>();
+            var delegatedAssignmentKeys = new HashSet<string>(StringComparer.Ordinal);
             // multiple iterations for one run, stops when outputted a final text content
             while (!ct.IsCancellationRequested && iteration < maxIterations)
             {
@@ -76,6 +85,12 @@ public class AgentRunService
 
                 // load new DB state for each iteration to get the latest messages and thoughts
                 var data = await LoadAgentRunData(agentId, chatId, ct, trigger);
+                if (!IsRunAllowed(data, trigger, out var stopReason))
+                {
+                    Log.Information("[BACKGROUND] Stopping agent run loop: {AgentId}, chat: {ChatId}, trigger: {TriggerKind}. Reason: {Reason}",
+                        agentId, chatId, trigger?.Kind.ToString() ?? "legacy", stopReason);
+                    break;
+                }
 
                 // Make one LLM call
                 var newAgentThoughts = new List<AocAgentThought>();
@@ -149,6 +164,7 @@ public class AgentRunService
                     }
                 }
                 await SaveAgentThoughts(agentId, chatId, newToolCallResults, ct);
+                CaptureDelegatedAssignments(newToolCalls, delegatedAssignments, delegatedAssignmentKeys);
 
                 // If the agent called the skipTurn tool, we consider that it has finished its run and we stop the loop.
                 // This allows agents to explicitly signal that they want to skip their turn and let other agents or the human take the lead.
@@ -158,12 +174,47 @@ public class AgentRunService
                     break;
                 }
 
+                // In orchestrated channels, suppress worker text output — workers communicate via orchestration tools only.
+                var isOrchestratedWorker = data.Channel?.IsOrchestrated == true
+                    && data.Channel.ManagerAgentId != data.Agent.Id;
+                var isOrchestratedManager = data.Channel?.IsOrchestrated == true
+                    && data.Channel.ManagerAgentId == data.Agent.Id;
+
                 var lastTextAgentThought = newAgentThoughts.LastOrDefault(t => t.ContentDto.ToAocAiContent() is AocTextContent);
                 var lastTextContent = lastTextAgentThought?.ContentDto.ToAocAiContent() as AocTextContent;
                 if (lastTextContent != null && !string.IsNullOrEmpty(lastTextContent.Text))
                 {
-                    var message = await SaveLastMessage( data, lastTextContent.Text, lastTextAgentThought!.Id, ct);
-                    await Broadcast(data, message);
+                    if (isOrchestratedWorker)
+                    {
+                        Log.Debug("[BACKGROUND] Suppressing worker text output in orchestrated channel for agent {AgentId}", agentId);
+                    }
+                    else if (isOrchestratedManager && IsDuplicateManagerPublicUpdate(data, lastTextContent.Text))
+                    {
+                        Log.Information("[BACKGROUND] Suppressed duplicate manager public update for agent {AgentId} in channel {ChannelId}",
+                            data.Agent.Id, data.Channel!.Id);
+                    }
+                    else
+                    {
+                        var publicText = isOrchestratedManager
+                            ? BuildManagerPublicMessage(newToolCalls, delegatedAssignments, lastTextContent.Text)
+                            : lastTextContent.Text;
+
+                        if (string.IsNullOrWhiteSpace(publicText))
+                        {
+                            Log.Information("[BACKGROUND] Suppressed empty manager public update for agent {AgentId} in channel {ChannelId}",
+                                data.Agent.Id, data.Channel!.Id);
+                        }
+                        else if (isOrchestratedManager && IsDuplicateManagerPublicUpdate(data, publicText))
+                        {
+                            Log.Information("[BACKGROUND] Suppressed duplicate manager public update after sanitization for agent {AgentId} in channel {ChannelId}",
+                                data.Agent.Id, data.Channel!.Id);
+                        }
+                        else
+                        {
+                            var message = await SaveLastMessage(data, publicText, lastTextAgentThought!.Id, ct);
+                            await Broadcast(data, message);
+                        }
+                    }
                 }
 
                 // If there are no tool calls, we can assume the agent has finished its run after one iteration.
@@ -171,6 +222,19 @@ public class AgentRunService
                 if (newToolCalls.Count == 0)
                 {
                     break;
+                }
+
+                // In orchestrated channels, break after a worker calls completeTask or failTask
+                if (isOrchestratedWorker)
+                {
+                    var calledTerminalTool = newToolCalls.Any(c =>
+                        string.Equals(c.Name, "completeTask", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(c.Name, "failTask", StringComparison.OrdinalIgnoreCase));
+                    if (calledTerminalTool)
+                    {
+                        Log.Information("[BACKGROUND] Orchestrated worker {AgentId} completed/failed task — stopping loop", agentId);
+                        break;
+                    }
                 }
             }
 
@@ -219,6 +283,352 @@ public class AgentRunService
         }
     }
 
+    private static bool IsRunAllowed(AgentRunData data, AgentTrigger? trigger, out string reason)
+    {
+        reason = string.Empty;
+
+        var channel = data.Channel;
+        if (channel == null || !channel.IsOrchestrated)
+        {
+            return true;
+        }
+
+        if (trigger is null)
+        {
+            reason = "missing trigger for orchestrated channel";
+            return false;
+        }
+
+        var isManager = channel.ManagerAgentId == data.Agent.Id;
+        if (isManager)
+        {
+            if (trigger.Kind is AgentTriggerKind.UserMessage or AgentTriggerKind.TaskUpdated)
+            {
+                return true;
+            }
+
+            reason = $"manager cannot run on trigger kind '{trigger.Kind}'";
+            return false;
+        }
+
+        if (trigger.Kind != AgentTriggerKind.TaskAssigned)
+        {
+            reason = $"worker can run only on TaskAssigned, actual '{trigger.Kind}'";
+            return false;
+        }
+
+        if (trigger.TaskId is null)
+        {
+            reason = "worker task trigger does not contain taskId";
+            return false;
+        }
+
+        var task = data.CurrentTask;
+        if (task is null)
+        {
+            reason = $"task '{trigger.TaskId}' not found";
+            return false;
+        }
+
+        if (task.ChannelId != channel.Id)
+        {
+            reason = $"task '{task.Id}' belongs to another channel";
+            return false;
+        }
+
+        if (task.AssignedAgentId != data.Agent.Id)
+        {
+            reason = $"task '{task.Id}' is assigned to another agent";
+            return false;
+        }
+
+        if (task.Status is OrchestrationTaskStatus.Completed or OrchestrationTaskStatus.Failed)
+        {
+            reason = $"task '{task.Id}' is already terminal ({task.Status})";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsDuplicateManagerPublicUpdate(AgentRunData data, string candidateText)
+    {
+        if (data.Channel?.ManagerAgentId is null || string.IsNullOrWhiteSpace(candidateText))
+            return false;
+
+        var thresholdUtc = DateTime.UtcNow.AddMinutes(-10);
+        var recentManagerMessages = data.ChatMessages
+            .Where(m =>
+                m.ChannelId == data.Channel.Id &&
+                m.AgentId == data.Channel.ManagerAgentId &&
+                m.PostedAt >= thresholdUtc)
+            .OrderByDescending(m => m.PostedAt)
+            .Take(3)
+            .ToList();
+
+        return recentManagerMessages.Any(m => IsNearDuplicateText(m.Text, candidateText));
+    }
+
+    private static string BuildManagerPublicMessage(
+        IReadOnlyList<AocFunctionCallContent> toolCalls,
+        IReadOnlyList<(string Agent, string Title)> delegatedAssignments,
+        string modelText)
+    {
+        if (delegatedAssignments.Count > 0)
+        {
+            return BuildDelegationSummary(delegatedAssignments);
+        }
+
+        var createTaskCalls = toolCalls
+            .Where(c => string.Equals(c.Name, OrchestrationTools.CreateTaskName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (createTaskCalls.Count == 0)
+        {
+            var textWithoutUnverifiedDelegation = StripUnverifiedDelegationClaims(modelText);
+            return ClampAndCompactManagerText(textWithoutUnverifiedDelegation, maxLength: 700);
+        }
+
+        var uniqueAssignments = new List<(string Agent, string Title)>();
+        var assignmentKeys = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var toolCall in createTaskCalls)
+        {
+            var agentUsername = GetStringArg(toolCall.Arguments, "agentUsername") ?? "worker";
+            var title = GetStringArg(toolCall.Arguments, "title") ?? "task";
+            var dedupKey = $"{NormalizeForDedup(agentUsername)}|{NormalizeForDedup(title)}";
+
+            if (!assignmentKeys.Add(dedupKey))
+                continue;
+
+            uniqueAssignments.Add((agentUsername, title));
+        }
+
+        if (uniqueAssignments.Count == 0)
+        {
+            return "Delegated tasks to specialists. Waiting for worker results.";
+        }
+
+        return BuildDelegationSummary(uniqueAssignments);
+    }
+
+    private static string BuildDelegationSummary(IReadOnlyList<(string Agent, string Title)> assignments)
+    {
+        const int maxVisibleAssignments = 6;
+        var lines = assignments
+            .Take(maxVisibleAssignments)
+            .Select(a => $"- {a.Agent}: {a.Title}")
+            .ToList();
+
+        var hiddenCount = assignments.Count - maxVisibleAssignments;
+        if (hiddenCount > 0)
+        {
+            lines.Add($"- ... and {hiddenCount} additional delegated tasks");
+        }
+
+        var summary = "Delegated tasks:\n" + string.Join('\n', lines) + "\nWaiting for worker results.";
+        return ClampAndCompactManagerText(summary, maxLength: 700);
+    }
+
+    private static void CaptureDelegatedAssignments(
+        IReadOnlyList<AocFunctionCallContent> toolCalls,
+        List<(string Agent, string Title)> delegatedAssignments,
+        HashSet<string> delegatedAssignmentKeys)
+    {
+        foreach (var toolCall in toolCalls)
+        {
+            if (!string.Equals(toolCall.Name, OrchestrationTools.CreateTaskName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var agentUsername = GetStringArg(toolCall.Arguments, "agentUsername") ?? "worker";
+            var title = GetStringArg(toolCall.Arguments, "title") ?? "task";
+            var dedupKey = $"{NormalizeForDedup(agentUsername)}|{NormalizeForDedup(title)}";
+            if (!delegatedAssignmentKeys.Add(dedupKey))
+                continue;
+
+            delegatedAssignments.Add((agentUsername, title));
+        }
+    }
+
+    private static string ClampAndCompactManagerText(string text, int maxLength)
+    {
+        var compact = CompactDuplicateLines(text);
+
+        if (compact.Length <= maxLength)
+            return compact;
+
+        return compact[..maxLength] + "\n[truncated]";
+    }
+
+    private static string CompactDuplicateLines(string text)
+    {
+        var normalizedText = text.Replace("\r\n", "\n");
+        var lines = normalizedText.Split('\n');
+
+        var result = new List<string>(Math.Min(lines.Length, 24));
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var suppressed = 0;
+        var appendedNonEmpty = false;
+
+        for (var index = 0; index < lines.Length; index++)
+        {
+            var trimmed = lines[index].Trim();
+            if (trimmed.Length == 0)
+            {
+                if (appendedNonEmpty && result.Count > 0 && result[^1].Length > 0)
+                {
+                    result.Add(string.Empty);
+                }
+                continue;
+            }
+
+            var dedupKey = NormalizeForDedup(trimmed);
+            if (dedupKey.Length == 0)
+                continue;
+
+            if (!seen.Add(dedupKey))
+            {
+                suppressed++;
+                continue;
+            }
+
+            result.Add(trimmed);
+            appendedNonEmpty = true;
+
+            if (result.Count >= 24)
+            {
+                suppressed += lines.Length - index - 1;
+                break;
+            }
+        }
+
+        if (suppressed > 0)
+        {
+            result.Add($"[suppressed {suppressed} repeated lines]");
+        }
+
+        return string.Join('\n', result).Trim();
+    }
+
+    private static string StripUnverifiedDelegationClaims(string text)
+    {
+        var lines = text.Replace("\r\n", "\n").Split('\n');
+        var filtered = new List<string>(lines.Length);
+        var removedAny = false;
+
+        foreach (var raw in lines)
+        {
+            var trimmed = raw.Trim();
+            if (trimmed.Length == 0)
+            {
+                filtered.Add(raw);
+                continue;
+            }
+
+            if (LooksLikeDelegationClaim(trimmed))
+            {
+                removedAny = true;
+                continue;
+            }
+
+            filtered.Add(raw);
+        }
+
+        if (!removedAny)
+            return text;
+
+        var rebuilt = string.Join('\n', filtered).Trim();
+        if (rebuilt.Length > 0)
+            return rebuilt;
+
+        return "Acknowledged. I will coordinate the next steps and provide a concise update.";
+    }
+
+    private static bool LooksLikeDelegationClaim(string line)
+    {
+        var normalized = NormalizeForDedup(line);
+        if (normalized.Length == 0)
+            return false;
+
+        return normalized.Contains("assigning task", StringComparison.Ordinal)
+            || normalized.Contains("assigning tasks", StringComparison.Ordinal)
+            || normalized.Contains("назначаю задачу", StringComparison.Ordinal)
+            || normalized.Contains("назначаю задачи", StringComparison.Ordinal)
+            || normalized.Contains("назначил задачу", StringComparison.Ordinal)
+            || normalized.Contains("получил задачу", StringComparison.Ordinal)
+            || normalized.Contains("делегирую задачу", StringComparison.Ordinal)
+            || normalized.Contains("поручаю задачу", StringComparison.Ordinal);
+    }
+
+    private static bool IsNearDuplicateText(string previous, string current)
+    {
+        var prev = NormalizeForDedup(previous);
+        var next = NormalizeForDedup(current);
+
+        if (string.IsNullOrEmpty(prev) || string.IsNullOrEmpty(next))
+            return false;
+
+        if (string.Equals(prev, next, StringComparison.Ordinal))
+            return true;
+
+        var minLength = Math.Min(prev.Length, next.Length);
+        var maxLength = Math.Max(prev.Length, next.Length);
+        if (minLength < 25 || maxLength == 0)
+            return false;
+
+        var lengthRatio = (double)minLength / maxLength;
+        if (lengthRatio < 0.85d)
+            return false;
+
+        return prev.Contains(next, StringComparison.Ordinal) || next.Contains(prev, StringComparison.Ordinal);
+    }
+
+    private static string NormalizeForDedup(string text)
+    {
+        var normalized = text.Trim().ToLowerInvariant();
+        if (normalized.Length == 0)
+            return string.Empty;
+
+        var compact = new char[normalized.Length];
+        var position = 0;
+        var previousWasSpace = false;
+        foreach (var ch in normalized)
+        {
+            if (char.IsLetterOrDigit(ch))
+            {
+                compact[position++] = ch;
+                previousWasSpace = false;
+                continue;
+            }
+
+            if (char.IsWhiteSpace(ch) && !previousWasSpace)
+            {
+                compact[position++] = ' ';
+                previousWasSpace = true;
+            }
+        }
+
+        if (position == 0)
+            return string.Empty;
+
+        return new string(compact, 0, position).Trim();
+    }
+
+    private static string? GetStringArg(IDictionary<string, object?>? args, string key)
+    {
+        if (args is null || !args.TryGetValue(key, out var value) || value is null)
+            return null;
+
+        if (value is JsonElement element)
+        {
+            return element.ValueKind == JsonValueKind.String
+                ? element.GetString()
+                : element.GetRawText();
+        }
+
+        return value.ToString();
+    }
+
     private async Task<AgentRunData> LoadAgentRunData(Guid agentId, Guid chatId, CancellationToken ct, AgentTrigger? trigger = null)
     {
         Log.Debug("[BACKGROUND] Loading data for agent {AgentId}, chat {ChatId}", agentId, chatId);
@@ -263,6 +673,23 @@ public class AgentRunService
 
         // load tools
         var backendTools = BackEndTools.All.Select(t => t.GetDeclaration()).ToList();
+        if (channel?.IsOrchestrated == true && channel.ManagerAgentId != agentId)
+        {
+            // Workers in orchestrated mode should not rely on turn-taking or per-agent todo planning.
+            var blockedToolNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                SkipTurnTool.ToolName,
+                "wait",
+                "createTodoItem",
+                "listTodoItems",
+                "markTodoItemCompleted",
+                "deleteTodoItem",
+            };
+            backendTools = backendTools
+                .Where(t => !blockedToolNames.Contains(t.Name))
+                .ToList();
+        }
+
         var frontEndTools = FrontEndTools.GetDeclarations();
         var tools = backendTools
             .Concat(frontEndTools)
@@ -289,7 +716,7 @@ public class AgentRunService
                 // Manager gets createTask + listTasks
                 tools.AddRange(OrchestrationTools.GetManagerTools());
             }
-            else if (trigger?.Kind == AgentTriggerKind.TaskAssigned || trigger?.Kind == AgentTriggerKind.TaskUpdated)
+            else if (trigger?.Kind == AgentTriggerKind.TaskAssigned)
             {
                 // Worker on task assignment gets postTaskProgress + completeTask + failTask
                 tools.AddRange(OrchestrationTools.GetWorkerTools());
@@ -425,4 +852,3 @@ public class AgentRunService
     }
 
 }
-

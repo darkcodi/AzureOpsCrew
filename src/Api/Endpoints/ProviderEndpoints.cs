@@ -156,12 +156,28 @@ public static class ProviderEndpoints
             if (found is null)
                 return Results.NotFound();
 
+            var assignedAgents = await context.Agents
+                .AsNoTracking()
+                .Where(a => a.ProviderId == id)
+                .Select(a => a.Info.Username)
+                .ToListAsync(cancellationToken);
+
+            if (assignedAgents.Count > 0)
+            {
+                return Results.Conflict(new
+                {
+                    Error = "Provider is assigned to agents and cannot be deleted.",
+                    AssignedAgents = assignedAgents
+                });
+            }
+
             context.Set<Provider>().Remove(found);
             await context.SaveChangesAsync(cancellationToken);
 
             return Results.NoContent();
         })
         .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status409Conflict)
         .Produces(StatusCodes.Status404NotFound);
 
         // TEST CONNECTION (by inline config, for drafts / not-yet-saved providers) — must be before /{id}/test

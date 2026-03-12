@@ -102,7 +102,12 @@ public sealed class OpenRouterProviderFacade : IProviderFacade
 
     public IChatClient CreateChatClient(Provider config, string model, CancellationToken cancellationToken)
     {
-        var options = new CustomOpenAiChatClientOptions(new Uri(config.ApiEndpoint!), config.ApiKey!, model) ;
+        var options = new CustomOpenAiChatClientOptions(new Uri(config.ApiEndpoint!), config.ApiKey!, model)
+        {
+            ProviderName = config.Name,
+            ProviderType = config.ProviderType.ToString(),
+            ForceReasoningCompatibility = model.Contains("deepseek", StringComparison.OrdinalIgnoreCase)
+        };
         var chatClient = new CustomOpenAiChatClient(options);
 
         return chatClient;

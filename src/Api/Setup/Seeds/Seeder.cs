@@ -5,6 +5,7 @@ using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace AzureOpsCrew.Api.Setup.Seeds
 {
@@ -72,7 +73,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             };
 
             foreach (var agent in agents)
-                await AddAgentIfNotExists(agent);
+                await AddAgentIfNotExists(agent, provider.Id);
 
             // Create the General channel with its corresponding chat
             var generalChannel = new Channel(generalChatId, "General")
@@ -146,14 +147,28 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 _context.Add(provider);
         }
 
-        private async Task AddAgentIfNotExists(Agent agent)
+        private async Task AddAgentIfNotExists(Agent agent, Guid fallbackProviderId)
         {
-            var exists = await _context.Set<Agent>()
-                .AsNoTracking()
-                .AnyAsync(a => a.Id == agent.Id);
+            var existing = await _context.Set<Agent>()
+                .FirstOrDefaultAsync(a => a.Id == agent.Id);
 
-            if (!exists)
+            if (existing is null)
+            {
                 _context.Add(agent);
+                return;
+            }
+
+            // Self-heal stale seeded agents: keep current profile, but recover from orphaned ProviderId.
+            var providerExists = await _context.Set<Provider>()
+                .AsNoTracking()
+                .AnyAsync(p => p.Id == existing.ProviderId);
+
+            if (!providerExists)
+            {
+                Log.Warning("Seed repair: agent {AgentId}/{Username} had missing provider {MissingProviderId}; reassigning to {FallbackProviderId}",
+                    existing.Id, existing.Info.Username, existing.ProviderId, fallbackProviderId);
+                existing.Update(existing.Info, fallbackProviderId, existing.Color);
+            }
         }
 
         private async Task AddChannelIfNotExists(Channel channel)

@@ -16,7 +16,10 @@ public class OpenAiRequestMapperTests
             {
                 AuthorName = "User"
             },
-            new ChatMessage(ChatRole.Assistant, "Running deployment")
+            new ChatMessage(ChatRole.Assistant, [
+                new TextContent("Running deployment"),
+                new FunctionCallContent("call_123", "deploy", null)
+            ])
             {
                 AuthorName = "Manager"
             },
@@ -89,6 +92,80 @@ public class OpenAiRequestMapperTests
         Assert.Equal("call_2", serializedMessages[3].GetProperty("tool_call_id").GetString());
         Assert.Equal("assistant", serializedMessages[4].GetProperty("role").GetString());
         Assert.Equal("Summarizing next.", serializedMessages[4].GetProperty("content").GetString());
+    }
+
+    [Fact]
+    public void MapToOpenAiRequest_DeepSeekProfile_AddsFallbackContentForReasoningOnlyAssistantMessage()
+    {
+        var messages = new[]
+        {
+            new ChatMessage(ChatRole.Assistant, [new TextReasoningContent("internal reasoning only")])
+        };
+
+        var profile = new OpenAiRequestProfile
+        {
+            Name = "deepseek-compatible",
+            IncludeReasoningContent = true,
+            RequireReasoningContentForAssistantMessages = true,
+            RequireAssistantContentOrToolCalls = true,
+            InjectAssistantContentFromReasoningWhenMissing = true,
+            DropOrphanToolMessages = true
+        };
+
+        var request = OpenAiRequestMapper.MapToOpenAiRequest(messages, options: null, model: "deepseek-chat", stream: true, profile);
+        var serializedMessages = SerializeMessages(request);
+        var assistant = serializedMessages[0];
+
+        Assert.Equal("assistant", assistant.GetProperty("role").GetString());
+        Assert.Equal("internal reasoning only", assistant.GetProperty("reasoning_content").GetString());
+        Assert.True(assistant.TryGetProperty("content", out var contentProp));
+        Assert.False(string.IsNullOrWhiteSpace(contentProp.GetString()));
+    }
+
+    [Fact]
+    public void MapToOpenAiRequest_DropsOrphanToolMessages()
+    {
+        var messages = new[]
+        {
+            new ChatMessage(ChatRole.User, "hello"),
+            new ChatMessage(ChatRole.Tool, [new FunctionResultContent("call_orphan", "{\"ok\":true}")])
+        };
+
+        var request = OpenAiRequestMapper.MapToOpenAiRequest(messages, options: null, model: "gpt-5", stream: true);
+        var serializedMessages = SerializeMessages(request);
+
+        Assert.Equal(1, serializedMessages.GetArrayLength());
+        Assert.Equal("user", serializedMessages[0].GetProperty("role").GetString());
+    }
+
+    [Fact]
+    public void MapToOpenAiRequest_DeepSeekProfile_KeepsReasoningWhenAssistantHasReasoningAndText()
+    {
+        var messages = new[]
+        {
+            new ChatMessage(ChatRole.Assistant, [
+                new TextReasoningContent("step by step"),
+                new TextContent("final answer")
+            ])
+        };
+
+        var profile = new OpenAiRequestProfile
+        {
+            Name = "deepseek-compatible",
+            IncludeReasoningContent = true,
+            RequireReasoningContentForAssistantMessages = true,
+            RequireAssistantContentOrToolCalls = true,
+            InjectAssistantContentFromReasoningWhenMissing = true,
+            DropOrphanToolMessages = true
+        };
+
+        var request = OpenAiRequestMapper.MapToOpenAiRequest(messages, options: null, model: "deepseek-chat", stream: true, profile);
+        var serializedMessages = SerializeMessages(request);
+        var assistant = serializedMessages[0];
+
+        Assert.Equal("assistant", assistant.GetProperty("role").GetString());
+        Assert.Equal("step by step", assistant.GetProperty("reasoning_content").GetString());
+        Assert.Equal("final answer", assistant.GetProperty("content").GetString());
     }
 
     private static JsonElement SerializeMessages(OpenAiChatCompletionRequest request)

@@ -14,6 +14,7 @@ using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
+using Serilog;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -317,11 +318,16 @@ public static class ChannelEndpoints
             // Broadcast the new message via SignalR
             await channelEventBroadcaster.BroadcastMessageAddedAsync(channel.Id, message);
 
+            var hasDirectMention = dto.Content.Contains('@');
+
             // Trigger agents in the channel
             if (channel.IsOrchestrated)
             {
                 // Orchestrated: only the manager agent is triggered by user messages
                 agentTriggerQueue.Enqueue(AgentTrigger.UserMessage(channel.ManagerAgentId!.Value, channel.Id));
+                Log.Information(
+                    "[ORCHESTRATION] User message routed to manager only: channel={ChannelId}, manager={ManagerAgentId}, hasDirectMention={HasDirectMention}",
+                    channel.Id, channel.ManagerAgentId.Value, hasDirectMention);
             }
             else
             {

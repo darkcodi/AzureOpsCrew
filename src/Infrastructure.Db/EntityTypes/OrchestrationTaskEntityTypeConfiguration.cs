@@ -29,6 +29,7 @@ public sealed class OrchestrationTaskEntityTypeConfiguration : IEntityTypeConfig
 
         builder.Property(t => t.AnnounceInChat).IsRequired();
         builder.Property(t => t.CreatedAtUtc).IsRequired();
+        builder.Property(t => t.LastPublicProgressSummary).HasMaxLength(4000);
 
         builder.HasIndex(t => t.ChannelId);
         builder.HasIndex(t => t.AssignedAgentId);

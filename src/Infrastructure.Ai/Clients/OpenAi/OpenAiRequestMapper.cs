@@ -12,9 +12,11 @@ public static class OpenAiRequestMapper
         IEnumerable<ChatMessage> messages,
         ChatOptions? options,
         string model,
-        bool stream)
+        bool stream,
+        OpenAiRequestProfile? profile = null)
     {
-        var openAiMessages = ToOpenAiMessages(messages);
+        var effectiveProfile = profile ?? OpenAiRequestProfile.Default;
+        var openAiMessages = ToOpenAiMessages(messages, effectiveProfile);
 
         var request = new OpenAiChatCompletionRequest
         {
@@ -51,7 +53,7 @@ public static class OpenAiRequestMapper
         return request;
     }
 
-    private static List<OpenAiMessage> ToOpenAiMessages(IEnumerable<ChatMessage> messages)
+    private static List<OpenAiMessage> ToOpenAiMessages(IEnumerable<ChatMessage> messages, OpenAiRequestProfile profile)
     {
         var normalizedMessages = NormalizeToolMessageOrder(messages);
         var result = new List<OpenAiMessage>();
@@ -72,15 +74,36 @@ public static class OpenAiRequestMapper
                 if (hasReasoning && hasFunctionCalls)
                 {
                     // Create assistant message with reasoning + tool_calls (DeepSeek format)
-                    var reasoningContent = messageContents.OfType<TextReasoningContent>().FirstOrDefault();
+                    var reasoningContent = string.Join(
+                        "\n",
+                        messageContents
+                            .OfType<TextReasoningContent>()
+                            .Select(r => r.Text)
+                            .Where(t => !string.IsNullOrWhiteSpace(t)));
                     var functionCalls = messageContents.OfType<FunctionCallContent>().ToList();
 
                     var assistantMessage = new OpenAiMessage
                     {
                         Role = mappedRole,
                         Name = message.AuthorName,
-                        ReasoningContent = reasoningContent?.Text
+                        ReasoningContent = profile.IncludeReasoningContent ? reasoningContent : null
                     };
+
+                    var assistantText = string.Join(
+                        "\n",
+                        messageContents
+                            .OfType<TextContent>()
+                            .Select(t => t.Text)
+                            .Where(t => !string.IsNullOrWhiteSpace(t)));
+                    if (!string.IsNullOrWhiteSpace(assistantText))
+                    {
+                        assistantMessage.Content = assistantText;
+                    }
+                    else if (profile.InjectAssistantContentFromReasoningWhenMissing &&
+                             !string.IsNullOrWhiteSpace(reasoningContent))
+                    {
+                        assistantMessage.Content = BuildReasoningFallbackContent(reasoningContent);
+                    }
 
                     var toolCalls = new List<OpenAiToolCall>();
                     foreach (var functionCall in functionCalls)
@@ -113,6 +136,53 @@ public static class OpenAiRequestMapper
                             ToolCallId = functionResult.CallId,
                             Content = functionResult.Result?.ToString() ?? string.Empty
                         });
+                    }
+
+                    continue;
+                }
+
+                if (hasReasoning && !hasFunctionCalls)
+                {
+                    var reasoningText = string.Join(
+                        "\n",
+                        messageContents
+                            .OfType<TextReasoningContent>()
+                            .Select(r => r.Text)
+                            .Where(t => !string.IsNullOrWhiteSpace(t)));
+
+                    var nonReasoningContents = messageContents
+                        .Where(c => c is not TextReasoningContent)
+                        .ToList();
+
+                    var assistantMessage = new OpenAiMessage
+                    {
+                        Role = mappedRole,
+                        Name = message.AuthorName,
+                        ReasoningContent = profile.IncludeReasoningContent ? reasoningText : null
+                    };
+
+                    if (nonReasoningContents.Count == 0)
+                    {
+                        assistantMessage.Content = profile.InjectAssistantContentFromReasoningWhenMissing && !string.IsNullOrWhiteSpace(reasoningText)
+                            ? BuildReasoningFallbackContent(reasoningText)
+                            : null;
+                    }
+                    else if (nonReasoningContents.Count == 1)
+                    {
+                        assistantMessage.Content = ConvertSingleContent(nonReasoningContents[0], out _, out var toolCalls);
+                        if (toolCalls != null && toolCalls.Count > 0)
+                            assistantMessage.ToolCalls = toolCalls;
+                    }
+                    else
+                    {
+                        assistantMessage.Content = ConvertMultipleContents(nonReasoningContents, out var toolCalls);
+                        if (toolCalls != null && toolCalls.Count > 0)
+                            assistantMessage.ToolCalls = toolCalls;
+                    }
+
+                    if (ShouldKeepMessage(assistantMessage, profile))
+                    {
+                        result.Add(assistantMessage);
                     }
 
                     continue;
@@ -157,7 +227,15 @@ public static class OpenAiRequestMapper
                 var content = messageContents[0];
                 if (content is TextReasoningContent)
                 {
-                    openAiMessage.ReasoningContent = ConvertSingleContent(messageContents[0], out var toolCallId, out var toolCalls)?.ToString();
+                    var reasoningText = ConvertSingleContent(messageContents[0], out var toolCallId, out var toolCalls)?.ToString();
+                    if (profile.IncludeReasoningContent)
+                    {
+                        openAiMessage.ReasoningContent = reasoningText;
+                    }
+                    else
+                    {
+                        openAiMessage.Content = reasoningText;
+                    }
                     if (toolCallId != null)
                     {
                         openAiMessage.ToolCallId = toolCallId;
@@ -190,14 +268,209 @@ public static class OpenAiRequestMapper
                 }
             }
 
-            if (openAiMessage.Content != null || openAiMessage.ReasoningContent != null || openAiMessage.ToolCalls != null)
+            if (ShouldKeepMessage(openAiMessage, profile))
             {
-                // Only add messages that have content or tool calls to avoid sending empty messages to OpenAI
                 result.Add(openAiMessage);
             }
         }
 
+        return NormalizeAndValidateMessagesForProfile(result, profile);
+    }
+
+    private static bool ShouldKeepMessage(OpenAiMessage message, OpenAiRequestProfile profile)
+    {
+        if (message.Role != "assistant")
+        {
+            if (message.Role == "tool")
+            {
+                return !string.IsNullOrWhiteSpace(message.ToolCallId) && message.Content != null;
+            }
+
+            return message.Content != null || !string.IsNullOrWhiteSpace(message.ReasoningContent);
+        }
+
+        if (!profile.RequireAssistantContentOrToolCalls)
+        {
+            return message.Content != null || !string.IsNullOrWhiteSpace(message.ReasoningContent) ||
+                   (message.ToolCalls != null && message.ToolCalls.Count > 0);
+        }
+
+        if (HasAssistantPayload(message))
+        {
+            return true;
+        }
+
+        if (!profile.InjectAssistantContentFromReasoningWhenMissing ||
+            string.IsNullOrWhiteSpace(message.ReasoningContent))
+        {
+            return false;
+        }
+
+        message.Content = BuildReasoningFallbackContent(message.ReasoningContent);
+        return HasAssistantPayload(message);
+    }
+
+    private static List<OpenAiMessage> NormalizeAndValidateMessagesForProfile(
+        IEnumerable<OpenAiMessage> messages,
+        OpenAiRequestProfile profile)
+    {
+        var result = new List<OpenAiMessage>();
+        var seenToolCallIds = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var message in messages)
+        {
+            if (message.Role == "assistant")
+            {
+                if (profile.IncludeReasoningContent &&
+                    profile.RequireReasoningContentForAssistantMessages &&
+                    string.IsNullOrWhiteSpace(message.ReasoningContent) &&
+                    HasTextualAssistantContent(message))
+                {
+                    message.ReasoningContent = ExtractTextualContent(message.Content);
+                }
+
+                if (profile.RequireAssistantContentOrToolCalls && !HasAssistantPayload(message))
+                {
+                    if (!profile.InjectAssistantContentFromReasoningWhenMissing ||
+                        string.IsNullOrWhiteSpace(message.ReasoningContent))
+                    {
+                        continue;
+                    }
+
+                    message.Content = BuildReasoningFallbackContent(message.ReasoningContent);
+                }
+
+                if (message.ToolCalls != null)
+                {
+                    foreach (var toolCall in message.ToolCalls.Where(t => !string.IsNullOrWhiteSpace(t.Id)))
+                    {
+                        seenToolCallIds.Add(toolCall.Id);
+                    }
+                }
+
+                result.Add(message);
+                continue;
+            }
+
+            if (message.Role == "tool")
+            {
+                if (string.IsNullOrWhiteSpace(message.ToolCallId))
+                    continue;
+
+                if (profile.DropOrphanToolMessages && !seenToolCallIds.Contains(message.ToolCallId))
+                    continue;
+
+                if (message.Content == null)
+                    message.Content = string.Empty;
+
+                result.Add(message);
+                continue;
+            }
+
+            // Non-assistant/non-tool roles
+            if (message.Content == null && !string.IsNullOrWhiteSpace(message.ReasoningContent))
+            {
+                message.Content = BuildReasoningFallbackContent(message.ReasoningContent);
+            }
+
+            if (message.Content != null || !string.IsNullOrWhiteSpace(message.ReasoningContent))
+            {
+                result.Add(message);
+            }
+        }
+
         return result;
+    }
+
+    private static bool HasAssistantPayload(OpenAiMessage message)
+    {
+        if (message.ToolCalls != null && message.ToolCalls.Count > 0)
+            return true;
+
+        return HasTextualAssistantContent(message);
+    }
+
+    private static bool HasTextualAssistantContent(OpenAiMessage message)
+    {
+        if (message.Content is null)
+            return false;
+
+        if (message.Content is string contentText)
+            return !string.IsNullOrWhiteSpace(contentText);
+
+        if (message.Content is IReadOnlyCollection<OpenAiContentPart> contentParts)
+            return contentParts.Any(part => !string.IsNullOrWhiteSpace(part.Text) || part.ImageUrl != null);
+
+        if (message.Content is IEnumerable<OpenAiContentPart> enumerableParts)
+            return enumerableParts.Any(part => !string.IsNullOrWhiteSpace(part.Text) || part.ImageUrl != null);
+
+        if (message.Content is JsonElement jsonElement)
+        {
+            return jsonElement.ValueKind switch
+            {
+                JsonValueKind.String => !string.IsNullOrWhiteSpace(jsonElement.GetString()),
+                JsonValueKind.Array => jsonElement.EnumerateArray().Any(item =>
+                    (item.TryGetProperty("text", out var textProp) && !string.IsNullOrWhiteSpace(textProp.GetString())) ||
+                    item.TryGetProperty("image_url", out _)),
+                _ => !string.IsNullOrWhiteSpace(jsonElement.GetRawText())
+            };
+        }
+
+        return true;
+    }
+
+    private static string BuildReasoningFallbackContent(string reasoningContent)
+    {
+        var trimmed = reasoningContent.Trim();
+        if (trimmed.Length == 0)
+            return string.Empty;
+
+        return trimmed.Length <= 1200
+            ? trimmed
+            : trimmed[..1200];
+    }
+
+    private static string ExtractTextualContent(object? content)
+    {
+        if (content is null)
+            return string.Empty;
+
+        if (content is string text)
+            return text;
+
+        if (content is IEnumerable<OpenAiContentPart> parts)
+        {
+            var texts = parts
+                .Select(p => p.Text)
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .ToList();
+
+            return texts.Count == 0 ? string.Empty : string.Join("\n", texts);
+        }
+
+        if (content is JsonElement element)
+        {
+            if (element.ValueKind == JsonValueKind.String)
+                return element.GetString() ?? string.Empty;
+
+            if (element.ValueKind == JsonValueKind.Array)
+            {
+                var texts = new List<string>();
+                foreach (var part in element.EnumerateArray())
+                {
+                    if (part.TryGetProperty("text", out var textProp))
+                    {
+                        var value = textProp.GetString();
+                        if (!string.IsNullOrWhiteSpace(value))
+                            texts.Add(value);
+                    }
+                }
+
+                return texts.Count == 0 ? string.Empty : string.Join("\n", texts);
+            }
+        }
+
+        return content.ToString() ?? string.Empty;
     }
 
     private static List<ChatMessage> NormalizeToolMessageOrder(IEnumerable<ChatMessage> messages)
@@ -390,6 +663,17 @@ public static class OpenAiRequestMapper
                     });
                     break;
 
+                case TextReasoningContent reasoningContent:
+                    if (!string.IsNullOrWhiteSpace(reasoningContent.Text))
+                    {
+                        parts.Add(new OpenAiContentPart
+                        {
+                            Type = "text",
+                            Text = reasoningContent.Text
+                        });
+                    }
+                    break;
+
                 case DataContent dataContent when dataContent.Uri != null:
                     parts.Add(new OpenAiContentPart
                     {
@@ -578,4 +862,16 @@ public static class OpenAiRequestMapper
 
         return result;
     }
+}
+
+public sealed class OpenAiRequestProfile
+{
+    public static OpenAiRequestProfile Default { get; } = new();
+
+    public string Name { get; init; } = "openai-default";
+    public bool IncludeReasoningContent { get; init; }
+    public bool RequireReasoningContentForAssistantMessages { get; init; }
+    public bool RequireAssistantContentOrToolCalls { get; init; } = true;
+    public bool InjectAssistantContentFromReasoningWhenMissing { get; init; } = true;
+    public bool DropOrphanToolMessages { get; init; } = true;
 }

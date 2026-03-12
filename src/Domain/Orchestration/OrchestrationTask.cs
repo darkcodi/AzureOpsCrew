@@ -17,4 +17,10 @@ public class OrchestrationTask
     public DateTime? StartedAtUtc { get; set; }
     public DateTime? CompletedAtUtc { get; set; }
     public DateTime? FailedAtUtc { get; set; }
+
+    // Public chat guardrails (Phase 1.1): keep mirrored worker updates concise and bounded.
+    public DateTime? PublicStartedMessageAtUtc { get; set; }
+    public DateTime? PublicProgressMessageAtUtc { get; set; }
+    public DateTime? PublicFinalMessageAtUtc { get; set; }
+    public string? LastPublicProgressSummary { get; set; }
 }

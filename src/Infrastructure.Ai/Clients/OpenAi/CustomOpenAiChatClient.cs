@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
+using Serilog;
 
 namespace AzureOpsCrew.Infrastructure.Ai.Clients.OpenAi;
 
@@ -16,13 +17,16 @@ public sealed class CustomOpenAiChatClient : IChatClient
 {
     private readonly CustomOpenAiChatClientOptions _options;
     private readonly HttpClient _httpClient;
+    private readonly OpenAiRequestProfile _requestProfile;
 
     public const string HttpClientRole = "HTTP_CLIENT";
+    private const int MaxRawHttpTraceChars = 200_000;
 
     public CustomOpenAiChatClient(CustomOpenAiChatClientOptions options, HttpClient? httpClient = null)
     {
         _options = options;
         _httpClient = httpClient ?? new HttpClient();
+        _requestProfile = BuildRequestProfile(options);
     }
 
     public async Task<ChatResponse> GetResponseAsync(
@@ -30,7 +34,9 @@ public sealed class CustomOpenAiChatClient : IChatClient
         ChatOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        var request = OpenAiRequestMapper.MapToOpenAiRequest(messages, options, _options.Model, stream: false);
+        var request = OpenAiRequestMapper.MapToOpenAiRequest(messages, options, _options.Model, stream: false, _requestProfile);
+        ValidateRequestOrThrow(request);
+        LogOutboundRequestSummary(request, isStreaming: false);
         var requestJson = JsonSerializer.Serialize(request, JsonOptions);
 
         using var httpRequest = await CreateHttpRequestAsync(requestJson, cancellationToken);
@@ -60,9 +66,11 @@ public sealed class CustomOpenAiChatClient : IChatClient
         ChatOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var request = OpenAiRequestMapper.MapToOpenAiRequest(messages, options, _options.Model, stream: true);
+        var request = OpenAiRequestMapper.MapToOpenAiRequest(messages, options, _options.Model, stream: true, _requestProfile);
+        ValidateRequestOrThrow(request);
+        LogOutboundRequestSummary(request, isStreaming: true);
         var requestJson = JsonSerializer.Serialize(request, JsonOptions);
-        yield return new ChatResponseUpdate(new ChatRole(HttpClientRole), requestJson);
+        yield return new ChatResponseUpdate(new ChatRole(HttpClientRole), ClampRawHttpTrace(requestJson));
 
         using var httpRequest = await CreateHttpRequestAsync(requestJson, cancellationToken);
 
@@ -79,8 +87,7 @@ public sealed class CustomOpenAiChatClient : IChatClient
         var isReasoning = false;
         await foreach (var (data, chunk) in OpenAiSseParser.ParseStreamAsync(responseStream, cancellationToken))
         {
-            responseJsonBuilder.AppendLine(data);
-            responseJsonBuilder.AppendLine();
+            AppendRawHttpTrace(responseJsonBuilder, data);
             if (chunk != null && chunk.Choices.Count > 0)
             {
                 var update = OpenAiResponseMapper.ToChatResponseUpdate(chunk, ref isReasoning, toolCallBuilder);
@@ -123,13 +130,182 @@ public sealed class CustomOpenAiChatClient : IChatClient
             }
         }
 
-        yield return new ChatResponseUpdate(new ChatRole(HttpClientRole), responseJsonBuilder.ToString());
+        yield return new ChatResponseUpdate(new ChatRole(HttpClientRole), ClampRawHttpTrace(responseJsonBuilder.ToString()));
     }
 
     // Why this method even exist in the IChatClient interface? Looks like a poor design.
     public object? GetService(Type serviceType, object? serviceKey = null)
     {
         return null;
+    }
+
+    private static void AppendRawHttpTrace(StringBuilder builder, string? chunk)
+    {
+        if (builder.Length >= MaxRawHttpTraceChars)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(chunk))
+        {
+            var remaining = MaxRawHttpTraceChars - builder.Length;
+            if (remaining > 0)
+            {
+                if (chunk.Length > remaining)
+                {
+                    builder.Append(chunk.AsSpan(0, remaining));
+                }
+                else
+                {
+                    builder.Append(chunk);
+                }
+            }
+        }
+
+        if (builder.Length < MaxRawHttpTraceChars)
+        {
+            builder.AppendLine();
+            builder.AppendLine();
+        }
+    }
+
+    private static string ClampRawHttpTrace(string value)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= MaxRawHttpTraceChars)
+        {
+            return value;
+        }
+
+        return value[..MaxRawHttpTraceChars] + "\n[raw trace truncated]";
+    }
+
+    private static OpenAiRequestProfile BuildRequestProfile(CustomOpenAiChatClientOptions options)
+    {
+        var model = options.Model.ToLowerInvariant();
+        var endpoint = options.Endpoint.ToString().ToLowerInvariant();
+        var providerName = options.ProviderName?.ToLowerInvariant() ?? string.Empty;
+        var providerType = options.ProviderType?.ToLowerInvariant() ?? string.Empty;
+
+        var isDeepSeekCompatible =
+            model.Contains("deepseek", StringComparison.Ordinal) ||
+            endpoint.Contains("deepseek", StringComparison.Ordinal) ||
+            providerName.Contains("deepseek", StringComparison.Ordinal) ||
+            providerType.Contains("deepseek", StringComparison.Ordinal) ||
+            options.ForceReasoningCompatibility;
+
+        return new OpenAiRequestProfile
+        {
+            Name = isDeepSeekCompatible ? "deepseek-compatible" : "openai-default",
+            IncludeReasoningContent = isDeepSeekCompatible,
+            RequireReasoningContentForAssistantMessages = isDeepSeekCompatible,
+            RequireAssistantContentOrToolCalls = true,
+            InjectAssistantContentFromReasoningWhenMissing = true,
+            DropOrphanToolMessages = true,
+        };
+    }
+
+    private void ValidateRequestOrThrow(OpenAiChatCompletionRequest request)
+    {
+        var seenToolCalls = new HashSet<string>(StringComparer.Ordinal);
+
+        for (var i = 0; i < request.Messages.Count; i++)
+        {
+            var message = request.Messages[i];
+            if (string.Equals(message.Role, "assistant", StringComparison.Ordinal))
+            {
+                var hasToolCalls = message.ToolCalls != null && message.ToolCalls.Count > 0;
+                var hasContent = HasNonEmptyContent(message.Content);
+                if (!hasToolCalls && !hasContent)
+                {
+                    throw new InvalidOperationException(
+                        $"Malformed outbound assistant message at index {i}: content or tool_calls must be set.");
+                }
+
+                if (_requestProfile.RequireReasoningContentForAssistantMessages &&
+                    hasContent &&
+                    string.IsNullOrWhiteSpace(message.ReasoningContent))
+                {
+                    throw new InvalidOperationException(
+                        $"Malformed outbound assistant message at index {i}: reasoning_content is required by profile '{_requestProfile.Name}'.");
+                }
+
+                if (hasToolCalls)
+                {
+                    foreach (var toolCall in message.ToolCalls!)
+                    {
+                        if (!string.IsNullOrWhiteSpace(toolCall.Id))
+                            seenToolCalls.Add(toolCall.Id);
+                    }
+                }
+            }
+            else if (string.Equals(message.Role, "tool", StringComparison.Ordinal))
+            {
+                if (string.IsNullOrWhiteSpace(message.ToolCallId))
+                {
+                    throw new InvalidOperationException(
+                        $"Malformed outbound tool message at index {i}: tool_call_id is required.");
+                }
+
+                if (_requestProfile.DropOrphanToolMessages && !seenToolCalls.Contains(message.ToolCallId))
+                {
+                    throw new InvalidOperationException(
+                        $"Malformed outbound tool message at index {i}: orphan tool_call_id '{message.ToolCallId}'.");
+                }
+            }
+        }
+    }
+
+    private void LogOutboundRequestSummary(OpenAiChatCompletionRequest request, bool isStreaming)
+    {
+        var roleCounts = request.Messages
+            .GroupBy(m => m.Role)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+
+        var assistantMessages = request.Messages
+            .Where(m => string.Equals(m.Role, "assistant", StringComparison.Ordinal))
+            .ToList();
+
+        var assistantWithToolCalls = assistantMessages.Count(m => m.ToolCalls != null && m.ToolCalls.Count > 0);
+        var assistantWithReasoning = assistantMessages.Count(m => !string.IsNullOrWhiteSpace(m.ReasoningContent));
+        var assistantWithContent = assistantMessages.Count(m => HasNonEmptyContent(m.Content));
+
+        Log.Information(
+            "[LLM] Outbound request summary: provider={ProviderName}, type={ProviderType}, model={Model}, profile={Profile}, stream={Stream}, messages={TotalMessages}, roles={RoleCounts}, assistant={AssistantCount}, assistantWithContent={AssistantWithContent}, assistantWithToolCalls={AssistantWithToolCalls}, assistantWithReasoning={AssistantWithReasoning}",
+            _options.ProviderName ?? "unknown",
+            _options.ProviderType ?? "unknown",
+            _options.Model,
+            _requestProfile.Name,
+            isStreaming,
+            request.Messages.Count,
+            string.Join(", ", roleCounts.OrderBy(x => x.Key).Select(x => $"{x.Key}:{x.Value}")),
+            assistantMessages.Count,
+            assistantWithContent,
+            assistantWithToolCalls,
+            assistantWithReasoning);
+    }
+
+    private static bool HasNonEmptyContent(object? content)
+    {
+        if (content is null)
+            return false;
+
+        if (content is string text)
+            return !string.IsNullOrWhiteSpace(text);
+
+        if (content is JsonElement element)
+        {
+            return element.ValueKind switch
+            {
+                JsonValueKind.String => !string.IsNullOrWhiteSpace(element.GetString()),
+                JsonValueKind.Array => element.GetArrayLength() > 0,
+                _ => true
+            };
+        }
+
+        if (content is IEnumerable<OpenAiContentPart> parts)
+            return parts.Any(part => !string.IsNullOrWhiteSpace(part.Text) || part.ImageUrl != null);
+
+        return true;
     }
 
     public void Dispose()
@@ -294,6 +470,9 @@ public class CustomOpenAiChatClientOptions
     public string? OrganizationId { get; set; }
     public string? ProjectId { get; set; }
     public string? UserAgentApplicationId { get; set; }
+    public string? ProviderName { get; set; }
+    public string? ProviderType { get; set; }
+    public bool ForceReasoningCompatibility { get; set; }
 
     // Optional Azure-specific options
     public string? AzureAudience { get; set; }

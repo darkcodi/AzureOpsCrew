@@ -30,7 +30,7 @@ public static class OrchestrationTools
                 "agentUsername": { "type": "string", "description": "The username of the worker agent to assign the task to" },
                 "title": { "type": "string", "description": "Short title of the task" },
                 "description": { "type": "string", "description": "Detailed description of what the worker should do" },
-                "announceInChat": { "type": "boolean", "description": "Whether to post a visible delegation message in the chat. Default: true" }
+                "announceInChat": { "type": "boolean", "description": "Whether this task may produce visible chat updates (manager assignment + worker progress/result). Default: true" }
               },
               "required": ["agentUsername", "title", "description"],
               "additionalProperties": false
@@ -96,7 +96,7 @@ public static class OrchestrationTools
         new ToolDeclaration
         {
             Name = PostTaskProgressName,
-            Description = "Posts a progress update for your current assigned task. Optionally mirrors the update as a visible message in the channel chat.",
+            Description = "Posts a progress update for your current assigned task. Optionally mirrors the update as a visible message if the manager allowed chat announcements for this task. Public progress mirroring is throttled and deduplicated.",
             JsonSchema = JsonUtils.Schema("""
             {
               "type": "object",
@@ -123,7 +123,7 @@ public static class OrchestrationTools
         new ToolDeclaration
         {
             Name = CompleteTaskName,
-            Description = "Completes your current assigned task with a result summary. The manager will be notified to review results.",
+            Description = "Completes your current assigned task with a result summary. The manager will be notified to review results; chat mirroring happens only when allowed by the manager for this task and only once per final event.",
             JsonSchema = JsonUtils.Schema("""
             {
               "type": "object",
@@ -150,7 +150,7 @@ public static class OrchestrationTools
         new ToolDeclaration
         {
             Name = FailTaskName,
-            Description = "Fails your current assigned task with a reason. The manager will be notified to decide next steps.",
+            Description = "Fails your current assigned task with a reason. The manager will be notified to decide next steps; chat mirroring happens only when allowed by the manager for this task and only once per final event.",
             JsonSchema = JsonUtils.Schema("""
             {
               "type": "object",

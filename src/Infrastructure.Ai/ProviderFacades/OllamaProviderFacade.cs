@@ -107,7 +107,12 @@ public sealed class OllamaProviderFacade : IProviderFacade
 
         // Ollama provides an OpenAI-compatible API endpoint at /v1
         // Use dummy API key as it's required by OpenAIClient but ignored by Ollama
-        var options = new CustomOpenAiChatClientOptions(new Uri(endpoint), "ollama", model);
+        var options = new CustomOpenAiChatClientOptions(new Uri(endpoint), "ollama", model)
+        {
+            ProviderName = config.Name,
+            ProviderType = config.ProviderType.ToString(),
+            ForceReasoningCompatibility = model.Contains("deepseek", StringComparison.OrdinalIgnoreCase)
+        };
         var chatClient = new CustomOpenAiChatClient(options);
 
         return chatClient;

@@ -1,4 +1,5 @@
 using AzureOpsCrew.Domain.Orchestration;
+using Serilog;
 
 namespace AzureOpsCrew.Api.Background;
 
@@ -8,15 +9,40 @@ public class AgentTriggerQueue
     private readonly List<AgentTrigger> _pendingTriggers = new();
 
     /// <summary>
-    /// Enqueue a rich trigger. Deduplicates by (AgentId, ChatId) — newer trigger replaces older one.
+    /// Enqueue a rich trigger.
+    /// TaskAssigned triggers are deduped by exact task identity so multiple tasks for one worker are preserved.
+    /// User/manager coordination triggers are deduped by (AgentId, ChatId, Kind).
     /// </summary>
     public void Enqueue(AgentTrigger trigger)
     {
         lock (_lock)
         {
-            // Remove any existing trigger for the same agent+chat (replace semantics)
-            _pendingTriggers.RemoveAll(t => t.AgentId == trigger.AgentId && t.ChatId == trigger.ChatId);
+            var duplicateExists = trigger.Kind switch
+            {
+                AgentTriggerKind.TaskAssigned => _pendingTriggers.Any(t =>
+                    t.Kind == AgentTriggerKind.TaskAssigned &&
+                    t.AgentId == trigger.AgentId &&
+                    t.ChatId == trigger.ChatId &&
+                    t.TaskId == trigger.TaskId),
+                AgentTriggerKind.UserMessage or AgentTriggerKind.TaskUpdated => _pendingTriggers.Any(t =>
+                    t.Kind == trigger.Kind &&
+                    t.AgentId == trigger.AgentId &&
+                    t.ChatId == trigger.ChatId),
+                _ => false,
+            };
+
+            if (duplicateExists)
+            {
+                Log.Debug(
+                    "[BACKGROUND] Suppressed duplicate agent trigger: kind={TriggerKind}, agent={AgentId}, chat={ChatId}, taskId={TaskId}",
+                    trigger.Kind, trigger.AgentId, trigger.ChatId, trigger.TaskId);
+                return;
+            }
+
             _pendingTriggers.Add(trigger);
+            Log.Debug(
+                "[BACKGROUND] Enqueued agent trigger: kind={TriggerKind}, agent={AgentId}, chat={ChatId}, taskId={TaskId}",
+                trigger.Kind, trigger.AgentId, trigger.ChatId, trigger.TaskId);
         }
     }
 
