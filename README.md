@@ -1,4 +1,4 @@
-# AzureOpsCrew
+# 🚀 AzureOpsCrew
 
 > **Agentic DevOps Platform** — A multi-agent system where AI agents and humans collaborate as teammates to automate software delivery workflows.
 
@@ -7,7 +7,7 @@
 
 ---
 
-## Table of Contents
+## 📑 Table of Contents
 
 - [Overview](#overview)
 - [What It Does](#what-it-does)
@@ -21,29 +21,29 @@
 
 ---
 
-## Overview
+## 📖 Overview
 
-AzureOpsCrew is a **hybrid collaboration platform** where specialized AI agents work alongside human developers in shared conversations. It automates CI/CD pipelines, incident response, and reliability engineering workflows through a chat-based interface where multiple agents and humans collaborate in real-time.
+AzureOpsCrew is a **hybrid collaboration platform** where specialized AI agents 🤖 work alongside human developers 👨‍💻 in shared conversations. It automates CI/CD pipelines, incident response, and reliability engineering workflows through a chat-based interface where multiple agents and humans collaborate in real-time ⚡.
 
-**The key insight:** AI agents aren't isolated tools — they're teammates. AzureOpsCrew creates a chat interface where multiple agents and multiple humans all participate together.
+**The key insight:** AI agents aren't isolated tools — they're teammates 🤝. AzureOpsCrew creates a chat interface where multiple agents and multiple humans all participate together.
 
 ---
 
-## What It Does
+## ✨ What It Does
 
 ### Core Capabilities
 
 | Feature | Description |
 |---------|-------------|
-| **Real-time Collaboration** | SignalR-powered chat where agents and humans participate in the same conversation |
-| **Agent Orchestration** | Create specialized agents with custom roles, prompts, and tool access |
-| **Workflow Automation** | Agents execute tools, respond to events, and coordinate with each other |
-| **Azure Integration** | Native support for MCP servers, Azure services, and tool-based extensibility |
-| **Long-term Memory** | Neo4j-powered memory that persists across conversations |
+| **💬 Real-time Collaboration** | SignalR-powered chat where agents and humans participate in the same conversation |
+| **🎭 Agent Orchestration** | Create specialized agents with custom roles, prompts, and tool access |
+| **⚙️ Workflow Automation** | Agents execute tools, respond to events, and coordinate with each other |
+| **☁️ Azure Integration** | Native support for MCP servers, Azure services, and tool-based extensibility |
+| **🧠 Long-term Memory** | Neo4j-powered memory that persists across conversations |
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 AzureOpsCrew follows **Clean Architecture** principles with Domain-Driven Design (DDD):
 
@@ -72,20 +72,20 @@ AzureOpsCrew follows **Clean Architecture** principles with Domain-Driven Design
 
 ---
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 | Layer | Technology |
 |-------|------------|
-| **Backend** | .NET 10, ASP.NET Core, SignalR, Serilog |
-| **Frontend** | Blazor WebAssembly, Nginx |
-| **AI/Agents** | Microsoft Foundry, Azure OpenAI, Microsoft Agents Framework (MAF) |
-| **Databases** | SQL Server (primary), Neo4j (memory) |
-| **Deployment** | Azure App Service, Azure SQL, Docker |
-| **Authentication** | JWT with email verification |
+| **⚙️ Backend** | .NET 10, ASP.NET Core, SignalR, Serilog |
+| **🎨 Frontend** | Blazor WebAssembly, Nginx |
+| **🤖 AI/Agents** | Microsoft Foundry, Azure OpenAI, Microsoft Agents Framework (MAF) |
+| **🗄️ Databases** | SQL Server (primary), Neo4j (memory) |
+| **🚀 Deployment** | Azure App Service, Azure SQL, Docker |
+| **🔐 Authentication** | JWT with email verification |
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 AzureOpsCrew/
@@ -107,24 +107,24 @@ AzureOpsCrew/
 
 ### Key Modules
 
-- **Api** — Main backend server with authentication, channels, chats, and agents endpoints
-- **Front** — Single-page application with real-time chat interface
-- **Domain** — Core business entities (Agents, Channels, Chats, Messages, MCP Servers)
-- **Infrastructure.Ai** — MCP servers, AI client abstractions, provider facades
-- **Infrastructure.Db** — Entity Framework context and migrations
+- **🔌 Api** — Main backend server with authentication, channels, chats, and agents endpoints
+- **🎨 Front** — Single-page application with real-time chat interface
+- **🏛️ Domain** — Core business entities (Agents, Channels, Chats, Messages, MCP Servers)
+- **🤖 Infrastructure.Ai** — MCP servers, AI client abstractions, provider facades
+- **💾 Infrastructure.Db** — Entity Framework context and migrations
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Docker](https://www.docker.com/products/docker-desktop) (for containerized setup)
-- Azure OpenAI API key
+- Azure OpenAI API key 🔑
 - (Optional) Neo4j instance for long-term memory
 
-### 1. Clone and Configure
+### 1️⃣ Clone and Configure
 
 ```bash
 git clone https://github.com/your-org/AzureOpsCrew.git
@@ -132,7 +132,7 @@ cd AzureOpsCrew
 cp .env.example .env
 ```
 
-### 2. Configure Environment Variables
+### 2️⃣ Configure Environment Variables
 
 Edit `.env` with your settings:
 
@@ -156,7 +156,7 @@ JWT_SIGNING_KEY=your-256-bit-secret-key
 BREVO_API_KEY=your-brevo-api-key
 ```
 
-### 3. Run with Docker
+### 3️⃣ Run with Docker
 
 ```bash
 docker-compose up -d
@@ -166,7 +166,7 @@ Services will be available at:
 - **Frontend**: http://localhost:42080
 - **API**: http://localhost:42000
 
-### 4. Run Locally (Development)
+### 4️⃣ Run Locally (Development)
 
 ```bash
 # Install dependencies
@@ -183,33 +183,33 @@ dotnet run
 
 ---
 
-## Configuration
+## ⚙️ Configuration
 
 ### Environment Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `API_BASE_URL` | API base URL | Yes |
-| `API_PORT` | API port | Yes |
-| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint | Yes |
-| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key | Yes |
-| `SQL_SERVER_PASSWORD` | SQL Server password | Yes |
-| `JWT_SIGNING_KEY` | JWT signing key | Yes |
-| `BREVO_API_KEY` | Brevo API key for email | No |
-| `NEO4J_CONNECTION_URI` | Neo4j connection URI | No |
+| `API_BASE_URL` | API base URL | ✅ Yes |
+| `API_PORT` | API port | ✅ Yes |
+| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint | ✅ Yes |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key | ✅ Yes |
+| `SQL_SERVER_PASSWORD` | SQL Server password | ✅ Yes |
+| `JWT_SIGNING_KEY` | JWT signing key | ✅ Yes |
+| `BREVO_API_KEY` | Brevo API key for email | ❌ No |
+| `NEO4J_CONNECTION_URI` | Neo4j connection URI | ❌ No |
 
 ### App Settings
 
 See `appsettings.json` for additional configuration:
-- Database provider selection
-- JWT authentication settings
-- Email verification configuration
-- Azure Foundry seed settings
-- Long-term memory configuration
+- Database provider selection 🗄️
+- JWT authentication settings 🔐
+- Email verification configuration 📧
+- Azure Foundry seed settings 🌱
+- Long-term memory configuration 🧠
 
 ---
 
-## Development
+## 💻 Development
 
 ### Running Tests
 
@@ -233,31 +233,31 @@ dotnet ef database update
 ### Code Style
 
 The project follows C# coding conventions with:
-- Clean Architecture principles
-- Domain-Driven Design patterns
-- Async/await for I/O operations
-- Dependency Injection throughout
+- Clean Architecture principles 🏛️
+- Domain-Driven Design patterns 🎯
+- Async/await for I/O operations ⏳
+- Dependency Injection throughout 💉
 
 ---
 
-## Deploy to Azure
+## ☁️ Deploy to Azure
 
 ### Azure Resources
 
-- **Azure App Service** — Hosting for API and Frontend
-- **Azure SQL Database** — Relational data storage
-- **Azure OpenAI** — AI model hosting
-- **Azure Container Instances** — For Neo4j (optional)
+- **Azure App Service** — Hosting for API and Frontend 🌐
+- **Azure SQL Database** — Relational data storage 🗄️
+- **Azure OpenAI** — AI model hosting 🧠
+- **Azure Container Instances** — For Neo4j (optional) 🐳
 
 ### Deployment Steps
 
-1. **Create resources** via Azure Portal or Terraform
-2. **Configure environment** variables in App Service
-3. **Deploy API**:
+1. **Create resources** via Azure Portal or Terraform 🏗️
+2. **Configure environment** variables in App Service ⚙️
+3. **Deploy API** 🚀:
    ```bash
    az webapp up --name azureopscrew-api --resource-group YourRG
    ```
-4. **Deploy Frontend**:
+4. **Deploy Frontend** 🎨:
    ```bash
    cd src/Front
    dotnet publish -c Release
@@ -266,4 +266,4 @@ The project follows C# coding conventions with:
 
 ---
 
-*Built with .NET 10, Microsoft Foundry & Microsoft Agent Framework*
+*Built with .NET 10, Microsoft Foundry & Microsoft Agent Framework* ✨
