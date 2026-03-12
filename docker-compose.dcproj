@@ -10,5 +10,6 @@
     <None Include="docker-compose.yml" />
     <None Include=".dockerignore" />
     <None Include="Dockerfile.Front" />
+    <None Include="neo4j.docker-compose.yml" />
   </ItemGroup>
 </Project>

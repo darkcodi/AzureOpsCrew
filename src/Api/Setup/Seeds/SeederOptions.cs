@@ -1,4 +1,4 @@
-﻿namespace AzureOpsCrew.Api.Setup.Seeds
+namespace AzureOpsCrew.Api.Setup.Seeds
 {
     public record SeederOptions
     {
@@ -12,5 +12,7 @@
         public string ApiEndpoint { get; set;}
 
         public string Key { get; set; }
+
+        public string DefaultModel { get; set; }
     }
 }
