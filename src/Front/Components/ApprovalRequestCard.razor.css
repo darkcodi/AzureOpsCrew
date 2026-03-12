@@ -207,10 +207,47 @@
 
 .approval-card-footer {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 8px;
     padding: 8px 12px;
     border-top: 1px solid hsl(228, 6%, 20%);
+}
+
+.approval-card-reason-input-row {
+    width: 100%;
+}
+
+.approval-card-reason-input {
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid hsl(228, 6%, 25%);
+    background-color: hsl(228, 7%, 10%);
+    color: hsl(210, 3%, 90%);
+    font-size: 0.8125rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.approval-card-reason-input::placeholder {
+    color: hsl(214, 5%, 45%);
+}
+
+.approval-card-reason-input:focus {
+    border-color: hsl(214, 5%, 40%);
+}
+
+.approval-card-reason-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.approval-card-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .approval-btn {

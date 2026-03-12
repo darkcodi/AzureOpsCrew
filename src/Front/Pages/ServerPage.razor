@@ -339,12 +339,12 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task RespondToApproval((string approvalId, bool approved) response)
+    private async Task RespondToApproval((string approvalId, bool approved, string? reason) response)
     {
         var channel = AppState.SelectedChannel;
         if (channel == null) return;
 
-        var success = await ChannelService.RespondToApprovalAsync(channel.Id, response.approvalId, response.approved);
+        var success = await ChannelService.RespondToApprovalAsync(channel.Id, response.approvalId, response.approved, response.reason);
         if (!success)
             return;
 
@@ -352,6 +352,7 @@
         if (approval != null)
         {
             approval.Status = response.approved ? "approved" : "rejected";
+            approval.Reason = response.reason;
         }
 
         await InvokeAsync(StateHasChanged);

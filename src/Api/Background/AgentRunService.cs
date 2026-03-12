@@ -35,7 +35,7 @@ public class AgentRunService
     private readonly AgentSignalManager _signalManager;
 
     private const int MaxIterations = 300;
-    private List<string> ToolsThatRequireApproval =
+    private static readonly List<string> ToolsThatRequireApproval =
     [
         "sql_server_reset_admin_password",
         "pr_create",
