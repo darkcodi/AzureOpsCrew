@@ -1,49 +1,56 @@
 # AzureOpsCrew 🤖
 
-**Hybrid team collaboration platform** — where AI agents and humans work together in a shared chat interface.
-
-Build teams that combine human expertise with AI capabilities, all collaborating through natural conversation.
+**Agentic DevOps Platform** 🚀 — Multi-agent system for automating software delivery workflows, where AI agents and humans collaborate as teammates.
 
 ---
 
-## ✨ What it does
+## About 💭
 
-Create **hybrid teams** where AI agents and humans:
-
-- 💬 **Chat together** in shared channels and DMs — everyone participates in the same conversation
-- 👥 **Collaborate seamlessly** — agents respond to humans, humans respond to agents, and agents coordinate with each other
-- 🔧 **Execute tools** — MCP servers, message tools, backend integrations, triggered through chat
-- ⚡ **Respond to events** — automated workflows that wake agents when needed
-- 🧠 **Remember everything** — Neo4j long-term memory across conversations
-
-**The key insight:** AI agents aren't isolated tools — they're teammates. AzureOpsCrew gives you a chat interface where multiple agents and multiple humans can all participate, creating truly hybrid teams.
+AzureOpsCrew is a **hybrid collaboration platform** where specialized AI agents work alongside human developers in shared conversations — automating CI/CD, incident response, and reliability engineering workflows.
 
 ---
 
-## 🛠️ Tech Stack
+## What It Does 🎯
 
-| Layer     | Tech                           |
-|-----------|--------------------------------|
-| Backend   | .NET 10, ASP.NET Core, SignalR |
-| Frontend  | Blazor WebAssembly             |
-| Database  | SQL Server + Neo4j             |
-| AI        | Azure Foundry, OpenAI          |
+Create hybrid teams where AI agents and humans:
 
----
+- **Collaborate in real-time** 💬 — SignalR-powered chat where agents and humans participate in the same conversation
+- **Automate DevOps workflows** 🔄 — Agents execute tools, respond to events, and coordinate with each other
+- **Orchestrate multi-agent systems** 🤖 — Specialized agents with custom roles, prompts, and tool access
+- **Integrate with Azure** ☁️ — MCP servers, Azure services, and tool-based extensibility
+- **Remember everything** 🧠 — Neo4j long-term memory across conversations
 
-## 🎯 Key Features
-
-- **Hybrid Team Chat** — Multiple AI agents and humans collaborating in the same conversation
-- **Agent Management** — Create specialized agents with custom roles, prompts & tool access
-- **Multi-Provider AI** — Switch between OpenAI, Azure OpenAI, and other providers
-- **Real-time Messaging** — SignalR-powered live chat where agents and humans respond in real-time
-- **Tool System** — Built-in tools + extensible MCP servers for agent capabilities
-- **Channel System** — Organize conversations across different topics and teams
-- **Auth** — JWT with email verification
+**The key insight:** AI agents aren't isolated tools — they're teammates. AzureOpsCrew creates a chat interface where multiple agents and multiple humans all participate together. 🤝
 
 ---
 
-## 🚀 Quick Start
+## Tech Stack 🛠️
+
+| Layer | Tech |
+|-------|------|
+| Backend | .NET 10, ASP.NET Core, SignalR |
+| Frontend | Blazor WebAssembly 🌐 |
+| AI | **Microsoft Foundry**, Azure OpenAI |
+| Agent Framework | **Microsoft Agents Framework (MAF)** 🤖 |
+| Database | SQL Server + Neo4j |
+| Deployment | **Azure** (Azure App Service, Azure SQL) ☁️ |
+| Development | **GitHub + VS Code + GitHub Copilot** |
+
+---
+
+## Key Features ✨
+
+- **Hybrid Team Chat** 👥 — Multiple AI agents and humans collaborating in the same conversation
+- **Agent Management** ⚙️ — Create specialized agents with custom roles, prompts & tool access
+- **Multi-Provider AI** 🎛️ — Switch between providers via Microsoft Foundry
+- **Real-time Messaging** ⚡ — SignalR-powered live chat with streaming responses
+- **Tool System** 🔧 — Built-in tools + extensible MCP servers
+- **Channel System** 📢 — Organize conversations across topics and teams
+- **JWT Auth** 🔐 — Secure authentication with email verification
+
+---
+
+## Quick Start 🚀
 
 ```bash
 # 1. Configure environment
@@ -60,6 +67,15 @@ docker-compose up
 
 ---
 
-*Build hybrid teams where AI and humans work together as equals.*
+## Deploy to Azure ☁️
 
-*Built with ❤️ using .NET 10 & MAF (Microsoft Agents Framework)*
+This project is designed for Azure deployment:
+
+- Azure App Service for hosting 🖥️
+- Azure SQL for relational data
+- Azure OpenAI for AI capabilities
+- Microsoft Foundry for agent orchestration 🤖
+
+---
+
+*Built with ❤️ using .NET 10, Microsoft Foundry & Microsoft Agent Framework* ✨
