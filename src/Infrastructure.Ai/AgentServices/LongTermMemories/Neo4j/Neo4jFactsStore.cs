@@ -56,7 +56,7 @@ public class Neo4jFactsStore
                     AND ($category IS NULL AND f.category IS NULL
                          OR $category IS NOT NULL AND f.category = $category)
                   RETURN f LIMIT 1",
-                new { agentId, text, category });
+                new { agentId = agentId.ToString(), text, category });
 
             if (await checkCursor.FetchAsync())
             {
@@ -78,7 +78,7 @@ public class Neo4jFactsStore
                     id: $id, agentId: $agentId, text: $text,
                     category: $category, createdAtUtc: $now, updatedAtUtc: $now
                 })",
-                new { id = newId, agentId, text, category, now = now.ToString("O") });
+                new { id = newId, agentId = agentId.ToString(), text, category, now = now.ToString("O") });
 
             return new Neo4jFactDto(newId, text, category, now, now);
         });
@@ -103,7 +103,7 @@ public class Neo4jFactsStore
                       RETURN f",
                     new
                     {
-                        factId, agentId, text = newText,
+                        factId, agentId = agentId.ToString(), text = newText,
                         category = NormalizeCategory(categoryOrNullToKeep),
                         now = now.ToString("O")
                     });
@@ -114,7 +114,7 @@ public class Neo4jFactsStore
                     @"MATCH (f:Fact {id: $factId, agentId: $agentId})
                       SET f.text = $text, f.updatedAtUtc = $now
                       RETURN f",
-                    new { factId, agentId, text = newText, now = now.ToString("O") });
+                    new { factId, agentId = agentId.ToString(), text = newText, now = now.ToString("O") });
             }
 
             return await cursor.FetchAsync() ? MapFact(cursor.Current["f"].As<INode>()) : null;
@@ -133,7 +133,7 @@ public class Neo4jFactsStore
                        f.createdAtUtc AS createdAtUtc, f.updatedAtUtc AS updatedAtUtc, f
                   DETACH DELETE f
                   RETURN id, text, category, createdAtUtc, updatedAtUtc",
-                new { factId, agentId });
+                new { factId, agentId = agentId.ToString() });
 
             if (!await cursor.FetchAsync())
                 return null;
@@ -164,7 +164,7 @@ public class Neo4jFactsStore
                 var cursor = await tx.RunAsync(
                     @"MATCH (f:Fact {agentId: $agentId})
                       RETURN f ORDER BY f.updatedAtUtc DESC LIMIT $limit",
-                    new { agentId, limit });
+                    new { agentId = agentId.ToString(), limit });
 
                 facts = await CollectFacts(cursor);
                 return new Neo4jFactSearchResult(query, facts.Count, facts);
@@ -177,7 +177,7 @@ public class Neo4jFactsStore
                   RETURN node
                   ORDER BY score DESC
                   LIMIT $limit",
-                new { query = SanitizeForFullText(query), agentId, limit });
+                new { query = SanitizeForFullText(query), agentId = agentId.ToString(), limit });
 
             facts = new List<Neo4jFactDto>();
             while (await ftCursor.FetchAsync())
@@ -198,7 +198,7 @@ public class Neo4jFactsStore
             var cursor = await tx.RunAsync(
                 @"MATCH (f:Fact {agentId: $agentId})
                   RETURN f ORDER BY f.updatedAtUtc DESC LIMIT $limit",
-                new { agentId, limit });
+                new { agentId = agentId.ToString(), limit });
 
             return (IReadOnlyList<Neo4jFactDto>)await CollectFacts(cursor);
         });

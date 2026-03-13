@@ -30,7 +30,7 @@ public sealed class Neo4jFactsContextProvider : AIContextProvider
         var aiContext = new AIContext
         {
             Instructions = _memoryInstructions,
-            Tools = _tools.Any() ? null : _tools
+            Tools = _tools
         };
 
         return new ValueTask<AIContext>(aiContext);
@@ -155,7 +155,7 @@ IMPORTANT: Format facts to maximize Lucene keyword recall.
   Include multilingual variants and domain terms (project/tool/feature names) when relevant.
 
 <example>
-memory_add_fact("User prefers concise answers; short responses; minimal verbosity. tags: preference, style, concise, verbosity", "preference")
+memory_add_fact("User %Username% prefers concise answers; short responses; minimal verbosity. tags: preference, style, concise, verbosity. User: %Username%", "preference")
 </example>
 
 <example>

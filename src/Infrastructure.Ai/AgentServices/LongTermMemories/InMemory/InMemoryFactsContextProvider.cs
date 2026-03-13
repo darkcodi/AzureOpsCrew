@@ -31,7 +31,7 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory
             var aiContext = new AIContext
             {
                 Instructions = _memoryInstructions,
-                Tools = _tools.Any() ? null : _tools
+                Tools = _tools
             };
 
             return new ValueTask<AIContext>(aiContext);
@@ -166,7 +166,7 @@ IMPORTANT: Format facts for optimal search recall.
   Reflect the category in tags (e.g. category=preference => add tag preference).
 
 <example>
-memory_add_fact("User prefers concise answers; short responses; minimal verbosity. tags: preference, style, concise, verbosity", "preference")
+memory_add_fact(User "%UserName% prefers concise answers; short responses; minimal verbosity. tags: preference, style, concise, verbosity. User: %Username%", "preference")
 </example>
 
 <example>

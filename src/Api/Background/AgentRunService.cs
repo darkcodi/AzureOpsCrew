@@ -122,9 +122,15 @@ public class AgentRunService
 
                 // Execute tools and save results to DB
                 var newToolCallResults = new List<AocFunctionResultContent>();
+                var newToolResults = newAgentThoughts
+                    .Select(m => m.ContentDto.ToAocAiContent())
+                    .OfType<AocFunctionResultContent>()
+                    .Select(r => r.CallId)
+                    .ToList();
                 var newToolCalls = newAgentThoughts
                     .Select(m => m.ContentDto.ToAocAiContent())
                     .OfType<AocFunctionCallContent>()
+                    .Where(c => !newToolResults.Contains(c.CallId, StringComparer.InvariantCultureIgnoreCase))
                     .ToList();
 
                 // ToDo: Add support for parallel tool calls if needed. For now we execute them sequentially for simplicity.
