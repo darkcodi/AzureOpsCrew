@@ -154,7 +154,7 @@ SEEDING_USER_USERNAME=BossUSer
 SEEDING_USER_PASSWORD=Pass1234
 
 # Database
-SQLSERVER_SA_PASSWORD=YourSecurePassword123!
+SQLSERVER_SA_PASSWORD=YourStrong@Password
 
 # JWT
 JWT_SIGNING_KEY=your-256-bit-secret-key
@@ -172,9 +172,9 @@ LONG_TERM_MEMORY_TYPE=InMemory
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `API_BASE_URL` | API base URL | ✅ Yes |
-| `API_PORT` | API port | ✅ Yes |
-| `FRONTEND_PORT` | Frontend port | ✅ Yes |
+| `API_BASE_URL` | API base URL | ❌ No |
+| `API_PORT` | API port | ❌ No |
+| `FRONTEND_PORT` | Frontend port | ❌ No |
 | `SQLSERVER_SA_PASSWORD` | SQL Server SA password | ❌ No |
 | `JWT_SIGNING_KEY` | JWT signing key (min 32 chars) | ✅ Yes |
 | `SEEDING_ENABLED` | Enable database seeding | ✅ Yes |
@@ -218,8 +218,9 @@ Services will be available at:
 ### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) (LocalDB, Express, or Developer edition) 🗄️
 - Azure OpenAI API key 🔑
-- (Optional) Neo4j instance for long-term memory
+- (Optional) [Neo4j](https://neo4j.com/download/) instance for long-term memory 🧠
 
 ### 1️⃣ Clone and Configure
 
