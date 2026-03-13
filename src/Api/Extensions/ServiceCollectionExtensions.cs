@@ -223,7 +223,7 @@ public static class ServiceCollectionExtensions
         {
             services.AddSingleton<InMemoryFactsStore>();
         }
-        else if (string.Equals(memoryType, "Cypher", StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(memoryType, "Neo4j", StringComparison.OrdinalIgnoreCase))
         {
             var uri = configuration["LongTermMemory:Neo4j:Uri"] ?? "bolt://localhost:7687";
             var username = configuration["LongTermMemory:Neo4j:Username"] ?? "neo4j";
