@@ -12,12 +12,12 @@
 ## 📑 Table of Contents
 
 - [Overview](#overview)
-- [What It Does](#what-it-does)
+- [Production-Grade AI Principles](#production-grade-ai-principles)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
-- [Quick Start](#quick-start)
-- [Configuration](#configuration)
+- [Quick Start (Docker compose)](#quick-start-docker-compose)
+- [Quick Start (Locally)](#quick-start-locally)
 - [Development](#development)
 - [Deploy to Azure](#deploy-to-azure)
 
@@ -150,7 +150,7 @@ SEEDING_AZURE_OPENAI_API_ENDPOINT=https://your-resource.openai.azure.com/
 SEEDING_AZURE_OPENAI_API_KEY=your-api-key
 SEEDING_AZURE_OPENAI_API_DEFAULTMODEL=gpt-5-2-chat
 SEEDING_USER_EMAIL=AzureOpsCrew@mail.xyz
-SEEDING_USER_USERNAME=BossUSer
+SEEDING_USER_USERNAME=BossUser
 SEEDING_USER_PASSWORD=Pass1234
 
 # Database
