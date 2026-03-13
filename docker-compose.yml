@@ -3,7 +3,7 @@ services:
     image: ${DOCKER_REGISTRY-}api
     build:
       context: .
-      dockerfile: Dockerfile.Api
+      dockerfile: src/Api/Dockerfile
     env_file:
       - .env
     environment:
@@ -44,13 +44,11 @@ services:
         condition: service_healthy
 
   # Blazor WASM frontend (static files served by nginx).
-  # Dockerfile is the Dockerfile.Front (not src/Front/Dockerfile) so VS Docker tooling
-  # doesn't match it to Front.csproj and won't override the entrypoint.
   frontend:
     image: ${DOCKER_REGISTRY-}frontend
     build:
       context: .
-      dockerfile: Dockerfile.Front
+      dockerfile: src/Front/Dockerfile
       args:
         API_BASE_URL: ${API_BASE_URL:-http://localhost:42000}
     env_file:

@@ -9,8 +9,8 @@
     <None Include=".env.example" />
     <None Include="docker-compose.yml" />
     <None Include=".dockerignore" />
-    <None Include="Dockerfile.Api" />
-    <None Include="Dockerfile.Front" />
+    <None Include="src\Api\Dockerfile" />
+    <None Include="src\Front\Dockerfile" />
     <None Include="neo4j.docker-compose.yml" />
   </ItemGroup>
 </Project>
