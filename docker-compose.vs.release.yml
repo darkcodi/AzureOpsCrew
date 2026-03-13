@@ -3,5 +3,5 @@ services:
   frontend:
     build:
       target: final
-    entrypoint: ["/usr/bin/caddy"]
-    command: ["run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+    entrypoint: !reset null
+    command: !reset null

@@ -7,10 +7,11 @@ COPY . .
 WORKDIR "/src/src/Front"
 RUN dotnet publish "Front.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-# Runtime stage
-FROM caddy:2-alpine AS final
+# Production stage - serve with nginx
+FROM nginx:alpine AS final
 ARG API_BASE_URL=http://localhost:42000
-COPY --from=build /app/publish/wwwroot /srv
-COPY --from=build /src/src/Front/Caddyfile /etc/caddy/Caddyfile
-RUN sed -i "s|\"ApiBaseUrl\":.*|\"ApiBaseUrl\": \"${API_BASE_URL}\"|" /srv/appsettings.json
+COPY --from=build /app/publish/wwwroot /usr/share/nginx/html
+COPY --from=build /src/src/Front/nginx.conf /etc/nginx/conf.d/default.conf
+RUN sed -i "s|\"ApiBaseUrl\":.*|\"ApiBaseUrl\": \"${API_BASE_URL}\"|" /usr/share/nginx/html/appsettings.json
 EXPOSE 80
+
