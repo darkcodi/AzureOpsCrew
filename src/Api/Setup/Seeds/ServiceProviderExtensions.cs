@@ -1,4 +1,6 @@
+using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Db;
+using Microsoft.AspNetCore.Identity;
 using Serilog;
 
 namespace AzureOpsCrew.Api.Setup.Seeds;
@@ -20,7 +22,9 @@ public static class ServiceProviderExtensions
         using (var scope = provider.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<AzureOpsCrewContext>();
-            var seeder = new Seeder(context, options);
+            var passworHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<PendingRegistration>>();
+
+            var seeder = new Seeder(context, options, passworHasher);
 
             await seeder.Seed();
         }
