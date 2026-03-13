@@ -2,7 +2,7 @@
 
 <div class="chat-area">
     <div class="messages-container" @ref="_messagesContainer">
-        @if (Messages.Count == 0 && ToolCalls.Count == 0 && Reasonings.Count == 0)
+        @if (Messages.Count == 0 && ToolCalls.Count == 0 && Reasonings.Count == 0 && ApprovalRequests.Count == 0)
         {
             <div class="no-messages">
                 <div class="welcome-icon">@EmptyIcon</div>
@@ -25,13 +25,23 @@
                         <ToolCallCard ToolCall="toolCall" />
                     }
                 }
+                else if (entry.ApprovalRequest is { } approval)
+                {
+                    var approvalAgentColor = Agents != null && approval.AgentId != Guid.Empty
+                        ? Agents.FirstOrDefault(a => a.Id == approval.AgentId)?.Color
+                        : null;
+                    <ApprovalRequestCard ApprovalRequest="approval" AgentColor="@approvalAgentColor" OnRespond="OnApprovalRespond" />
+                }
                 else if (entry.Reasoning is { } reasoning)
                 {
                     <ReasoningCard Reasoning="reasoning" />
                 }
                 else if (entry.Message is { } msgGroup)
                 {
-                    <MessageBubble Message="@msgGroup.Message" IsGrouped="@msgGroup.IsGrouped" IsOwn="@msgGroup.IsOwn" />
+                    var agentColor = Agents != null && msgGroup.Message.AgentId is { } agentId
+                        ? Agents.FirstOrDefault(a => a.Id == agentId)?.Color
+                        : null;
+                    <MessageBubble Message="@msgGroup.Message" IsGrouped="@msgGroup.IsGrouped" IsOwn="@msgGroup.IsOwn" OnAgentClick="OnAgentClick" AgentColor="@agentColor" />
                 }
             }
         }
@@ -41,7 +51,7 @@
         @if (TypingUsernames.Count > 0)
         {
             <TypingIndicator Usernames="TypingUsernames" />
-            @if (IsAgentRunning)
+            @if (IsAgentRunning && ShowStopButton)
             {
                 <button class="stop-button" @onclick="OnStopAgent">
                     ⏹ Stop
@@ -72,7 +82,9 @@
     [Parameter] public List<ChatMessageDto> Messages { get; set; } = [];
     [Parameter] public List<ToolCallDto> ToolCalls { get; set; } = [];
     [Parameter] public List<ReasoningDto> Reasonings { get; set; } = [];
+    [Parameter] public List<ApprovalRequestDto> ApprovalRequests { get; set; } = [];
     [Parameter] public EventCallback<string> OnSendMessage { get; set; }
+    [Parameter] public EventCallback<(string approvalId, bool approved, string? reason)> OnApprovalRespond { get; set; }
     [Parameter] public Guid? CurrentUserId { get; set; }
     [Parameter] public bool ShowInput { get; set; } = true;
     [Parameter] public string Placeholder { get; set; } = "Type a message...";
@@ -82,22 +94,27 @@
     [Parameter] public List<string> TypingUsernames { get; set; } = [];
     [Parameter] public bool IsAgentRunning { get; set; }
     [Parameter] public EventCallback OnStopAgent { get; set; }
+    [Parameter] public bool ShowStopButton { get; set; } = true;
+    [Parameter] public EventCallback<Guid?> OnAgentClick { get; set; }
+    [Parameter] public IEnumerable<AgentDto>? Agents { get; set; }
 
     private ElementReference _messagesContainer;
     private string _messageText = string.Empty;
     private int _lastMessageCount;
     private int _lastToolCallCount;
     private int _lastReasoningCount;
+    private int _lastApprovalCount;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender || Messages.Count != _lastMessageCount || ToolCalls.Count != _lastToolCallCount || Reasonings.Count != _lastReasoningCount)
+        if (firstRender || Messages.Count != _lastMessageCount || ToolCalls.Count != _lastToolCallCount || Reasonings.Count != _lastReasoningCount || ApprovalRequests.Count != _lastApprovalCount)
         {
-            var hadNoContent = _lastMessageCount == 0 && _lastToolCallCount == 0 && _lastReasoningCount == 0;
-            var hasContent = Messages.Count > 0 || ToolCalls.Count > 0 || Reasonings.Count > 0;
+            var hadNoContent = _lastMessageCount == 0 && _lastToolCallCount == 0 && _lastReasoningCount == 0 && _lastApprovalCount == 0;
+            var hasContent = Messages.Count > 0 || ToolCalls.Count > 0 || Reasonings.Count > 0 || ApprovalRequests.Count > 0;
             _lastMessageCount = Messages.Count;
             _lastToolCallCount = ToolCalls.Count;
             _lastReasoningCount = Reasonings.Count;
+            _lastApprovalCount = ApprovalRequests.Count;
             var forceScroll = firstRender || (hadNoContent && hasContent);
             await ScrollToBottomAsync(forceScroll: forceScroll);
         }
@@ -107,6 +124,7 @@
         (ChatMessageDto Message, bool IsGrouped, bool IsOwn)? Message,
         ToolCallDto? ToolCall,
         ReasoningDto? Reasoning,
+        ApprovalRequestDto? ApprovalRequest,
         DateTimeOffset Timestamp);
 
     private List<TimelineEntry> GetTimeline()
@@ -125,18 +143,24 @@
                 (message, isGrouped, isOwn),
                 null,
                 null,
+                null,
                 new DateTimeOffset(message.PostedAt, TimeSpan.Zero)));
             previousMsg = message;
         }
 
         foreach (var toolCall in ToolCalls)
         {
-            entries.Add(new TimelineEntry(null, toolCall, null, toolCall.Timestamp));
+            entries.Add(new TimelineEntry(null, toolCall, null, null, toolCall.Timestamp));
         }
 
         foreach (var reasoning in Reasonings)
         {
-            entries.Add(new TimelineEntry(null, null, reasoning, reasoning.Timestamp));
+            entries.Add(new TimelineEntry(null, null, reasoning, null, reasoning.Timestamp));
+        }
+
+        foreach (var approvalRequest in ApprovalRequests)
+        {
+            entries.Add(new TimelineEntry(null, null, null, approvalRequest, approvalRequest.Timestamp));
         }
 
         entries.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));

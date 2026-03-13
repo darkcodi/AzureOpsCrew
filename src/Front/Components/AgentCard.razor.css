@@ -60,6 +60,11 @@
     line-height: 1;
 }
 
+.agent-card-status-waiting {
+    background-color: hsla(38, 96%, 54%, 0.2);
+    color: hsl(38, 96%, 64%);
+}
+
 .agent-card-body {
     display: flex;
     flex-direction: column;
@@ -204,4 +209,5 @@
     font-family: "SF Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
     color: hsl(210, 3%, 75%);
 }
+
 

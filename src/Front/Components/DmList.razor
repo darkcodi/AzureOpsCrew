@@ -1,6 +1,7 @@
 @inject AppState AppState
 @implements IDisposable
 @inject NavigationManager NavigationManager
+@inject AgentState AgentState
 
 <div class="channels-list">
     <div class="channels-list-inner">
@@ -14,7 +15,7 @@
                     @GetAgentAvatar(agent)
                 </div>
                 <span class="dm-name">@GetDmDisplayName(dm)</span>
-                <span class="dm-status">@(agent?.Status ?? "Idle")</span>
+                <span class="dm-status">@GetAgentStatusForDm(dm)</span>
             </div>
         }
         <div class="dm-section-label dm-section-label-humans">Humans</div>
@@ -45,7 +46,8 @@
     {
         _appStateSubscription = AppState.SubscribeDms(OnStateChanged)
             .Combine(AppState.SubscribeSelectedDm(OnStateChanged))
-            .Combine(AppState.SubscribeAgents(OnStateChanged));
+            .Combine(AppState.SubscribeAgents(OnStateChanged))
+            .Combine(AgentState.Subscribe(OnStateChanged));
     }
 
     private void OnStateChanged() => InvokeAsync(() =>
@@ -115,6 +117,14 @@
         if (agent != null && !string.IsNullOrWhiteSpace(agent.Username))
             return agent.Username;
         return "Unknown";
+    }
+
+    private string GetAgentStatusForDm(DmChannelDto dm)
+    {
+        var agentId = dm.Agent1Id ?? dm.Agent2Id;
+        if (!agentId.HasValue) return "Idle";
+        var status = AgentState.GetState(dm.Id, ConversationType.Dm, agentId.Value)?.Status ?? "Idle";
+        return AgentStatusDisplay.ToDisplayText(status);
     }
 
     private string GetHumanDmDisplayName(DmChannelDto dm)

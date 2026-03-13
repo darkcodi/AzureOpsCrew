@@ -1,0 +1,320 @@
+.approval-request-message {
+    display: flex;
+    padding: 2px 48px 2px 72px;
+    margin: 8px 0;
+    position: relative;
+    min-height: 44px;
+}
+
+.approval-request-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #3ba55c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 16px;
+    margin-right: 16px;
+    flex-shrink: 0;
+    color: white;
+}
+
+.approval-request-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.approval-request-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.approval-request-name {
+    font-weight: 600;
+    font-size: 16px;
+    color: white;
+}
+
+.approval-request-timestamp {
+    font-size: 12px;
+    color: #72767d;
+}
+
+.approval-card {
+    display: flex;
+    flex-direction: column;
+    border-radius: 6px;
+    background-color: hsl(228, 7%, 14%);
+    border: 1px solid hsl(38, 60%, 30%);
+    overflow: hidden;
+    font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 8px 0 0 0;
+}
+
+.approval-card.status-approved {
+    border-color: hsl(139, 47%, 35%);
+}
+
+.approval-card.status-rejected {
+    border-color: hsl(0, 72%, 45%);
+}
+
+.approval-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    color: hsl(210, 3%, 90%);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.approval-card-header .approval-btn.toggle {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.approval-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    background-color: hsla(38, 96%, 54%, 0.25);
+    color: hsl(38, 96%, 64%);
+}
+
+.approval-card-title {
+    font-weight: 600;
+    color: hsl(38, 96%, 64%);
+    white-space: nowrap;
+}
+
+.approval-card.status-approved .approval-card-icon {
+    background-color: hsla(139, 47%, 44%, 0.25);
+    color: hsl(139, 47%, 55%);
+}
+
+.approval-card.status-approved .approval-card-title {
+    color: hsl(139, 47%, 55%);
+}
+
+.approval-card.status-rejected .approval-card-icon {
+    background-color: hsla(0, 72%, 51%, 0.25);
+    color: hsl(0, 72%, 61%);
+}
+
+.approval-card.status-rejected .approval-card-title {
+    color: hsl(0, 72%, 61%);
+}
+
+.approval-card-server {
+    flex-shrink: 0;
+    color: hsl(214, 5%, 65%);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.approval-card-tool-name {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: "Consolas", "Courier New", monospace;
+    font-weight: 600;
+    color: hsl(210, 3%, 98%);
+}
+
+.approval-request-header .approval-card-status {
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.approval-card-status {
+    padding: 1px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.approval-card-status.pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background-color: hsla(38, 96%, 54%, 0.2);
+    color: hsl(38, 96%, 64%);
+}
+
+.approval-card-status.approved {
+    background-color: hsla(139, 47%, 44%, 0.2);
+    color: hsl(139, 47%, 55%);
+}
+
+.approval-card-status.rejected {
+    background-color: hsla(0, 72%, 51%, 0.2);
+    color: hsl(0, 72%, 61%);
+}
+
+.approval-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 12px 10px 12px;
+    border-top: 1px solid hsl(228, 6%, 20%);
+}
+
+.approval-card-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.approval-card-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: hsl(214, 5%, 55%);
+}
+
+.approval-card-json {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background-color: hsl(228, 7%, 10%);
+    color: hsl(210, 3%, 80%);
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 200px;
+}
+
+.approval-card-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid hsl(228, 6%, 20%);
+}
+
+.approval-card-reason-input-row {
+    width: 100%;
+}
+
+.approval-card-reason-input {
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid hsl(228, 6%, 25%);
+    background-color: hsl(228, 7%, 10%);
+    color: hsl(210, 3%, 90%);
+    font-size: 0.8125rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.approval-card-reason-input::placeholder {
+    color: hsl(214, 5%, 45%);
+}
+
+.approval-card-reason-input:focus {
+    border-color: hsl(214, 5%, 40%);
+}
+
+.approval-card-reason-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.approval-card-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.approval-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 4px;
+    border: none;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+    font-family: inherit;
+}
+
+.approval-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.approval-btn.approve {
+    background-color: hsl(139, 47%, 44%);
+    color: #fff;
+}
+
+.approval-btn.approve:hover:not(:disabled) {
+    background-color: hsl(139, 47%, 38%);
+}
+
+.approval-btn.reject {
+    background-color: hsl(0, 72%, 51%);
+    color: #fff;
+}
+
+.approval-btn.reject:hover:not(:disabled) {
+    background-color: hsl(0, 72%, 45%);
+}
+
+.approval-btn.toggle {
+    margin-left: auto;
+    background: none;
+    color: hsl(214, 5%, 55%);
+    padding: 5px 8px;
+}
+
+.approval-btn.toggle:hover {
+    color: hsl(210, 3%, 80%);
+    background-color: hsl(228, 6%, 18%);
+}
+
+@media (max-width: 768px) {
+    .approval-request-message {
+        padding: 2px 16px 2px 56px;
+    }
+
+    .approval-request-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+        margin-right: 12px;
+    }
+}
+
+.approval-card-reason {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: hsl(220, 15%, 82%);
+    white-space: pre-wrap;
+}

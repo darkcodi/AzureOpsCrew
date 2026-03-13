@@ -24,6 +24,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
 using AzureOpsCrew.Api.Background.ToolExecutors;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.Prompt;
 
 namespace AzureOpsCrew.Api.Extensions;
 
@@ -222,7 +223,7 @@ public static class ServiceCollectionExtensions
         {
             services.AddSingleton<InMemoryFactsStore>();
         }
-        else if (string.Equals(memoryType, "Cypher", StringComparison.OrdinalIgnoreCase))
+        else if (string.Equals(memoryType, "Neo4j", StringComparison.OrdinalIgnoreCase))
         {
             var uri = configuration["LongTermMemory:Neo4j:Uri"] ?? "bolt://localhost:7687";
             var username = configuration["LongTermMemory:Neo4j:Username"] ?? "neo4j";
@@ -241,15 +242,16 @@ public static class ServiceCollectionExtensions
 
     public static void AddAgentSchedulerBackgroundService(this IServiceCollection services)
     {
+        services.AddSingleton<AgentSignalManager>();
         services.AddSingleton<AgentScheduler>();
         services.AddHostedService(sp => sp.GetRequiredService<AgentScheduler>());
-        services.AddSingleton<AgentTriggerQueue>();
         services.AddScoped<AgentRunService>();
         services.AddScoped<BackendToolExecutor>();
         services.AddScoped<McpServerToolExecutor>();
         services.AddScoped<ToolCallRouter>();
 
         // Channel event broadcasting via SignalR
+        services.AddSingleton<IAgentStatusTracker, AgentStatusTracker>();
         services.AddSingleton<IChannelEventBroadcaster, ChannelEventBroadcaster>();
     }
 }

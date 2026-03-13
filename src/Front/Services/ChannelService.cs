@@ -135,16 +135,59 @@ public class ChannelService
         }
     }
 
-    public async Task<bool> StopAgentChannelAsync(Guid channelId)
+    public async Task<List<ApprovalRequestDto>> GetApprovalsAsync(Guid channelId)
     {
         try
         {
-            var response = await _httpClient.PostAsync($"/api/channels/{channelId}/stop", null);
+            var response = await _httpClient.GetFromJsonAsync<List<ApprovalRequestDto>>($"/api/channels/{channelId}/approvals");
+            return response ?? [];
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error fetching approvals for channel {channelId}: {ex.Message}");
+            return [];
+        }
+    }
+
+    public async Task<List<AgentStatusDto>> GetAgentStatusesAsync(Guid channelId)
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<AgentStatusDto>>($"/api/channels/{channelId}/agent-statuses");
+            return response ?? [];
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error fetching agent statuses for channel {channelId}: {ex.Message}");
+            return [];
+        }
+    }
+
+    public async Task<bool> RespondToApprovalAsync(Guid channelId, string approvalId, bool approved, string? reason = null)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"/api/channels/{channelId}/approvals/{approvalId}",
+                new { Approved = approved, Reason = reason });
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
-            Log.Error($"Error stopping agent in channel {channelId}: {ex.Message}");
+            Log.Error($"Error responding to approval {approvalId}: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> StopAgentChannelAsync(Guid channelId, Guid agentId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"/api/channels/{channelId}/agents/{agentId}/stop", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error stopping agent {agentId} in channel {channelId}: {ex.Message}");
             return false;
         }
     }

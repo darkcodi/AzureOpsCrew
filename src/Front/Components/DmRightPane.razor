@@ -13,7 +13,9 @@
     {
         <div class="dm-right-pane-content">
             <CascadingValue Value="@_mcpServers">
-                <AgentCard Agent="agent" />
+                <AgentCard Agent="agent"
+                           ConversationId="@(AppState.SelectedDm?.Id)"
+                           ConversationType="ConversationType.Dm" />
             </CascadingValue>
         </div>
     }

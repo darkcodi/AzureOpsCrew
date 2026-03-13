@@ -49,6 +49,9 @@ public class ToolCallStartEvent : ChannelEvent
     [JsonPropertyName("args")]
     public JsonElement? Args { get; set; }
 
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
+
     [JsonPropertyName("timestamp")]
     public DateTimeOffset Timestamp { get; set; }
 }
@@ -78,6 +81,9 @@ public class ToolCallCompletedEvent : ChannelEvent
     [JsonPropertyName("isError")]
     public bool IsError { get; set; }
 
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
+
     [JsonPropertyName("timestamp")]
     public DateTimeOffset Timestamp { get; set; }
 }
@@ -100,6 +106,9 @@ public class ReasoningContentEvent : ChannelEvent
 
     [JsonPropertyName("agentName")]
     public string? AgentName { get; set; }
+
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
 
     [JsonPropertyName("timestamp")]
     public DateTimeOffset Timestamp { get; set; }
@@ -128,6 +137,41 @@ public class AgentStatusEvent : ChannelEvent
     public new DateTimeOffset Timestamp { get; set; }
 }
 
+/// <summary>
+/// Event fired when an agent requests user approval before executing an MCP tool.
+/// </summary>
+public class ApprovalRequestEvent : ChannelEvent
+{
+    public ApprovalRequestEvent()
+    {
+        Type = ChannelEventTypes.ApprovalRequest;
+    }
+
+    [JsonPropertyName("approvalId")]
+    public string ApprovalId { get; set; } = string.Empty;
+
+    [JsonPropertyName("toolName")]
+    public string ToolName { get; set; } = string.Empty;
+
+    [JsonPropertyName("callId")]
+    public string CallId { get; set; } = string.Empty;
+
+    [JsonPropertyName("args")]
+    public JsonElement? Args { get; set; }
+
+    [JsonPropertyName("agentId")]
+    public Guid AgentId { get; set; }
+
+    [JsonPropertyName("agentName")]
+    public string? AgentName { get; set; }
+
+    [JsonPropertyName("serverName")]
+    public string? ServerName { get; set; }
+
+    [JsonPropertyName("timestamp")]
+    public new DateTimeOffset Timestamp { get; set; }
+}
+
 public static class ChannelEventTypes
 {
     public const string MessageAdded = "MESSAGE_ADDED";
@@ -135,6 +179,7 @@ public static class ChannelEventTypes
     public const string ToolCallCompleted = "TOOL_CALL_COMPLETED";
     public const string ReasoningContent = "REASONING_CONTENT";
     public const string AgentStatus = "AGENT_STATUS";
+    public const string ApprovalRequest = "APPROVAL_REQUEST";
 }
 
 /// <summary>
@@ -168,6 +213,7 @@ public class ChannelEventJsonConverter : JsonConverter<ChannelEvent>
             ChannelEventTypes.ToolCallCompleted => jsonElement.Deserialize<ToolCallCompletedEvent>(options),
             ChannelEventTypes.ReasoningContent => jsonElement.Deserialize<ReasoningContentEvent>(options),
             ChannelEventTypes.AgentStatus => jsonElement.Deserialize<AgentStatusEvent>(options),
+            ChannelEventTypes.ApprovalRequest => jsonElement.Deserialize<ApprovalRequestEvent>(options),
             _ => null
         };
     }

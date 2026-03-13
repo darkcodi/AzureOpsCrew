@@ -97,6 +97,49 @@ public class DmService
         }
     }
 
+    public async Task<List<ApprovalRequestDto>> GetApprovalsAsync(Guid dmId)
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<ApprovalRequestDto>>($"/api/dms/{dmId}/approvals");
+            return response ?? [];
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error fetching approvals for DM {dmId}: {ex.Message}");
+            return [];
+        }
+    }
+
+    public async Task<List<AgentStatusDto>> GetAgentStatusesAsync(Guid dmId)
+    {
+        try
+        {
+            var response = await _httpClient.GetFromJsonAsync<List<AgentStatusDto>>($"/api/dms/{dmId}/agent-statuses");
+            return response ?? [];
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error fetching agent statuses for DM {dmId}: {ex.Message}");
+            return [];
+        }
+    }
+
+    public async Task<bool> RespondToApprovalAsync(Guid agentId, string approvalId, bool approved, string? reason = null)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"/api/dms/agents/{agentId}/approvals/{approvalId}",
+                new { Approved = approved, Reason = reason });
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error responding to approval {approvalId}: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<bool> StopAgentDmAsync(Guid agentId)
     {
         try

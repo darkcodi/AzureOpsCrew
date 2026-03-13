@@ -1,0 +1,199 @@
+@namespace Front.Components
+@inject AgentState AgentState
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@implements IDisposable
+<div class="agent-mind-overlay" @onclick="OnClose">
+    <div class="agent-mind-content" @onclick:stopPropagation="true">
+        <div class="agent-mind-header">
+            <div class="agent-mind-header-info">
+                <div class="agent-mind-avatar" style="background-color: @Agent.Color; color: #fff;">
+                    @GetAgentInitials(Agent.Username)
+                </div>
+                <div class="agent-mind-header-title-row">
+                    <h2 class="agent-mind-title">@Agent.Username's Mind</h2>
+                    <span class="agent-mind-status agent-mind-status-@(GetStatusClass())">@AgentStatusDisplay.ToDisplayText(GetDisplayStatus())</span>
+                    @if (string.Equals(GetDisplayStatus(), "Error", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(GetDisplayErrorMessage()))
+                    {
+                        <span class="agent-mind-status-errormessage" title="@GetDisplayErrorMessage()">@TruncateError(GetDisplayErrorMessage())</span>
+                    }
+                </div>
+            </div>
+            <div class="agent-mind-header-actions">
+                @if (string.Equals(GetDisplayStatus(), "Running", StringComparison.OrdinalIgnoreCase))
+                {
+                    <button type="button" class="agent-mind-stop-btn" @onclick="OnStop" aria-label="Stop" title="Stop">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="6" y="6" width="12" height="12"/>
+                        </svg>
+                        Stop
+                    </button>
+                }
+                <button type="button" class="agent-mind-settings-btn" @onclick="OnSettingsClick" aria-label="Settings" title="Settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0a2.34 2.34 0 0 0 3.319 1.915a2.34 2.34 0 0 1 2.33 4.033a2.34 2.34 0 0 0 0 3.831a2.34 2.34 0 0 1-2.33 4.033a2.34 2.34 0 0 0-3.319 1.915a2.34 2.34 0 0 1-4.659 0a2.34 2.34 0 0 0-3.32-1.915a2.34 2.34 0 0 1-2.33-4.033a2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+                <button type="button" class="agent-mind-close-btn" @onclick="OnClose" aria-label="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="agent-mind-body" @ref="_bodyContainer">
+            @if (IsLoading)
+            {
+                <div class="agent-mind-loading">
+                    <div class="agent-mind-spinner"></div>
+                    <span>Loading agent mind...</span>
+                </div>
+            }
+            else if (ToolCalls.Count == 0 && Reasonings.Count == 0)
+            {
+                <div class="agent-mind-empty">
+                    No tool calls or reasoning yet for this agent.
+                </div>
+            }
+            else
+            {
+                @foreach (var entry in GetTimeline())
+                {
+                    if (entry.ToolCall is { } toolCall)
+                    {
+                        <ToolCallCard ToolCall="toolCall" />
+                    }
+                    else if (entry.Reasoning is { } reasoning)
+                    {
+                        <ReasoningCard Reasoning="reasoning" DefaultExpanded="true" />
+                    }
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public AgentDto Agent { get; set; } = null!;
+
+    [Parameter]
+    public Guid? ConversationId { get; set; }
+
+    [Parameter]
+    public ConversationType? ConversationType { get; set; }
+
+    [Parameter]
+    public List<ToolCallDto> ToolCalls { get; set; } = [];
+
+    [Parameter]
+    public List<ReasoningDto> Reasonings { get; set; } = [];
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback OnStop { get; set; }
+
+    private ElementReference _bodyContainer;
+    private int _lastCount;
+    private IDisposable? _agentStateSubscription;
+
+    protected override void OnInitialized()
+    {
+        _agentStateSubscription = AgentState.Subscribe(() => _ = InvokeAsync(StateHasChanged));
+    }
+
+    public void Dispose()
+    {
+        _agentStateSubscription?.Dispose();
+    }
+
+    private string GetDisplayStatus()
+    {
+        if (ConversationId.HasValue && ConversationType.HasValue)
+        {
+            var state = AgentState.GetState(ConversationId.Value, ConversationType.Value, Agent.Id);
+            return state?.Status ?? "Idle";
+        }
+        return Agent.Status;
+    }
+
+    private string? GetDisplayErrorMessage()
+    {
+        if (ConversationId.HasValue && ConversationType.HasValue)
+        {
+            var state = AgentState.GetState(ConversationId.Value, ConversationType.Value, Agent.Id);
+            return state?.ErrorMessage;
+        }
+        return Agent.ErrorMessage;
+    }
+
+    private record TimelineEntry(ToolCallDto? ToolCall, ReasoningDto? Reasoning, DateTimeOffset Timestamp);
+
+    private List<TimelineEntry> GetTimeline()
+    {
+        var entries = new List<TimelineEntry>(ToolCalls.Count + Reasonings.Count);
+
+        foreach (var tc in ToolCalls)
+            entries.Add(new TimelineEntry(tc, null, tc.Timestamp));
+
+        foreach (var r in Reasonings)
+            entries.Add(new TimelineEntry(null, r, r.Timestamp));
+
+        entries.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+        return entries;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var currentCount = ToolCalls.Count + Reasonings.Count;
+        if (firstRender || currentCount != _lastCount)
+        {
+            var hadNoContent = _lastCount == 0;
+            var hasContent = currentCount > 0;
+            var forceScroll = firstRender || (hadNoContent && hasContent);
+            _lastCount = currentCount;
+            await JS.InvokeVoidAsync("scrollToBottom", _bodyContainer, forceScroll);
+        }
+    }
+
+    private string GetAgentInitials(string username)
+    {
+        if (string.IsNullOrEmpty(username)) return "?";
+        var parts = username.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}";
+        return username.Length >= 2 ? username[..2].ToUpperInvariant() : username.ToUpperInvariant();
+    }
+
+    private string GetStatusClass()
+    {
+        var status = GetDisplayStatus();
+        if (string.IsNullOrEmpty(status)) return "idle";
+        if (string.Equals(status, "Running", StringComparison.OrdinalIgnoreCase)) return "running";
+        if (AgentStatusDisplay.IsWaitingForApproval(status)) return "waiting";
+        if (string.Equals(status, "Error", StringComparison.OrdinalIgnoreCase)) return "error";
+        return "idle";
+    }
+    private static string TruncateError(string? message)
+    {
+        if (string.IsNullOrEmpty(message)) return string.Empty;
+        const int maxLen = 60;
+        return message.Length <= maxLen ? message : message[..maxLen] + "...";
+    }
+
+    private void OnSettingsClick()
+    {
+        OnClose.InvokeAsync();
+        Navigation.NavigateTo("/settings/agents/" + Agent.Id.ToString());
+    }
+}
+

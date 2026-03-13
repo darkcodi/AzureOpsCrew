@@ -44,6 +44,7 @@ public abstract class AocAiContent
                 {
                     Id = c.Id,
                     FunctionCall = FromAiContent(c.FunctionCall) as AocFunctionCallContent,
+                    ServerName = "[UNKNOWN]",
                 };
             case FunctionApprovalResponseContent c:
                 return new AocFunctionApprovalResponseContent

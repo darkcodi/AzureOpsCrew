@@ -23,6 +23,8 @@ public class AgentRunData
     // Used to resolve server connection details when executing MCP tool calls.
     public List<McpServerConfiguration> McpServers { get; set; } = [];
 
+    public List<McpServerConfiguration> AllMcpServers { get; set; } = [];
+
     // List of all other agents in the channel or DM, including the current agent
     public List<Agent> ParticipantAgents { get; set; } = null!;
 }

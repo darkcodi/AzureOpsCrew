@@ -4,6 +4,7 @@ using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Db;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace AzureOpsCrew.Api.Setup.Seeds
@@ -12,25 +13,27 @@ namespace AzureOpsCrew.Api.Setup.Seeds
     {
         private readonly AzureOpsCrewContext _context;
         private readonly SeederOptions _seederOptions;
+        private readonly IPasswordHasher<PendingRegistration> _pendingRegistrationHasher;
 
-        public Seeder(AzureOpsCrewContext context, SeederOptions seederOptions)
+        public Seeder(AzureOpsCrewContext context, SeederOptions seederOptions, IPasswordHasher<PendingRegistration> pendingRegistrationHasher)
         {
             _context = context;
             _seederOptions = seederOptions;
+            _pendingRegistrationHasher = pendingRegistrationHasher;
         }
 
         public async Task Seed()
         {
             var providerId = Guid.Parse("5f4e3d10-0123-4000-9abc-def123456789");
             var provider = new Provider(providerId,
-                name: "Azure OpenAI", ProviderType.AzureFoundry, apiKey: _seederOptions.AzureFoundrySeed.Key,
+                name: "Azure OpenAI", ProviderType.OpenAI, apiKey: _seederOptions.AzureFoundrySeed.Key,
                 apiEndpoint: _seederOptions.AzureFoundrySeed.ApiEndpoint,
-                selectedModels: "[\"gpt-5-2-chat\"]", defaultModel: "gpt-5-2-chat");
+                selectedModels: _seederOptions.AzureFoundrySeed.DefaultModel, defaultModel: _seederOptions.AzureFoundrySeed.DefaultModel);
             await AddProviderIfNotExists(provider);
 
             var managerId = Guid.Parse("6a5d8a20-1234-4000-a1b2-c3d4e5f6a7b8");
-            var azDevOpsId = Guid.Parse("7b6e9b30-2345-4111-b2c3-d4e5f6a7b8c9");
-            var azDevId = Guid.Parse("8c7f0c40-3456-4222-c3d4-e5f6a7b8c9d0");
+            var devOpsId = Guid.Parse("7b6e9b30-2345-4111-b2c3-d4e5f6a7b8c9");
+            var devId = Guid.Parse("8c7f0c40-3456-4222-c3d4-e5f6a7b8c9d0");
             var generalChatId = Guid.Parse("a5d8a20a-1234-4000-a1b2-c3d4e5f6a7b9");
 
             var agents = new[]
@@ -38,7 +41,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 new Agent(managerId,
                     new AgentInfo("manager",
                         "You are a Manager AI assistant. You help with planning, priorities, resource allocation, team coordination, and delivery. You think in terms of goals, milestones, risks, and stakeholder communication. Keep answers actionable and concise.",
-                        "gpt-5-2-chat")
+                        _seederOptions.AzureFoundrySeed.DefaultModel)
                         {
                             Description = "Helps with planning, priorities, resource allocation, team coordination, and delivery",
                             AvailableMcpServerTools = Array.Empty<AgentMcpServerToolAvailability>()
@@ -47,27 +50,27 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 ),
 
                 new Agent(
-                    azDevOpsId,
+                    devOpsId,
                     new AgentInfo(
-                        "azuredevops",
-                        "You are an Azure DevOps expert. You help with pipelines (YAML and classic), CI/CD, Azure Repos, Boards, Artifacts, Test Plans, and release management. You know branching strategies, approvals, variable groups, service connections, and Azure DevOps REST APIs. Give concrete, step-by-step guidance when asked.",
-                        "gpt-5-2-chat")
+                        "devops",
+                        "You are a DevOps expert / SRE. You help with pipelines (YAML and classic), CI/CD, Azure Repos, Boards, Artifacts, Test Plans, and release management. You know branching strategies, approvals, variable groups, service connections, and Azure DevOps REST APIs. You also help troubleshooting issues, checking logs, monitoring, and optimizing performance. Keep answers actionable and concise.",
+                        _seederOptions.AzureFoundrySeed.DefaultModel)
                         {
-                            Description = "Expert in Azure DevOps pipelines, CI/CD, repos, boards, artifacts, and release management",
+                            Description = "Expert in Azure DevOps pipelines, CI/CD, repos, boards, artifacts, monitoring and release management",
                             AvailableMcpServerTools = Array.Empty<AgentMcpServerToolAvailability>()
                         },
-                    provider.Id, "azure-devops", "#0078d4"),
+                    provider.Id, "devops", "#0078d4"),
 
-                new Agent(azDevId,
+                new Agent(devId,
                     new AgentInfo(
-                        "azuredev",
-                        "You are an Azure development expert. You help with building and deploying apps on Azure: App Service, Functions, Container Apps, AKS, Azure SDKs, identity (Microsoft Entra ID), storage, messaging, and serverless. You focus on code, configuration, and best practices for Azure-native development.",
-                        "gpt-5-2-chat")
+                        "developer",
+                        "You are a software engineer. You focus on code only.",
+                        _seederOptions.AzureFoundrySeed.DefaultModel)
                         {
-                            Description = "Expert in building and deploying apps on Azure: App Service, Functions, Container Apps, AKS, and more",
+                            Description = "Expert in building apps.",
                             AvailableMcpServerTools = Array.Empty<AgentMcpServerToolAvailability>()
                         },
-                    provider.Id, "azure-dev", "#00bcf2"
+                    provider.Id, "developer", "#00bcf2"
                 )
             };
 
@@ -84,17 +87,10 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             };
             await AddChannelWithChatIfNotExists(generalChannel, agents.Select(a => a.Id).ToArray());
 
-            var defaultUser = new User(
-                Guid.Parse("EBB8CF5F-CA75-49C0-BED2-91C2DCCAB415"),
-                "AzureOpsCrew@mail.xyz",
-                "AZUREOPSCREW@MAIL.XYZ",
-                "AQAAAAIAAYagAAAAEHds/S4gmNc0Cf04kSQ5E+g2anSh8VUU/xSrmiNqJiq4APpch0OhtXvIWF9wsTf+Rg==", // Pass1234
-                "AzureOpsCrew",
-                "azureopscrew");
-            await AddUserIfNotExists(defaultUser);
+            var defaultUser = await AddUserIfNotExists(_seederOptions.UserSeed);
 
             // Seed DM channels for all agents
-            await SeedDmChannels(defaultUser.Id, new[] { managerId, azDevOpsId, azDevId });
+            await SeedDmChannels(defaultUser.Id, new[] { managerId, devOpsId, devId });
 
             await _context.SaveChangesAsync();
         }
@@ -177,14 +173,30 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             }
         }
 
-        private async Task AddUserIfNotExists(User user)
+        private async Task<User> AddUserIfNotExists(UserSeedData userSeed)
         {
+            var pendingRegistration = new PendingRegistration(
+                userSeed.Email, userSeed.Email.ToUpperInvariant(),
+                userSeed.Username, userSeed.Username.ToLowerInvariant());
+
             var exists = await _context.Set<User>()
                 .AsNoTracking()
-                .AnyAsync(u => u.NormalizedEmail == user.NormalizedEmail);
+                .FirstOrDefaultAsync(u => u.NormalizedEmail == pendingRegistration.NormalizedEmail);
 
-            if (!exists)
-                _context.Add(user);
+            if (exists is not null)
+                return exists;
+
+            var userToAdd = new User(
+                Guid.Parse("EBB8CF5F-CA75-49C0-BED2-91C2DCCAB415"),
+                pendingRegistration.Email,
+                pendingRegistration.NormalizedEmail,
+                _pendingRegistrationHasher.HashPassword(pendingRegistration, userSeed.Password),
+                pendingRegistration.Username,
+                pendingRegistration.NormalizedUsername);
+
+            _context.Add(userToAdd);
+
+            return userToAdd;
         }
     }
 }

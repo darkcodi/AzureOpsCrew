@@ -11,8 +11,11 @@ using AzureOpsCrew.Infrastructure.Ai.Models;
 using AzureOpsCrew.Infrastructure.Ai.Models.Content;
 using AzureOpsCrew.Infrastructure.Db;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
+using AzureOpsCrew.Domain.Tools;
+using AzureOpsCrew.Domain.Triggers;
 
 namespace AzureOpsCrew.Api.Endpoints;
 
@@ -167,6 +170,100 @@ public static class ChannelEndpoints
         })
         .Produces<List<Message>>(StatusCodes.Status200OK);
 
+        // GET: /api/channels/{channelId}/approvals - Returns all approval requests for a channel with their status
+        group.MapGet("/{channelId}/approvals", async (
+            Guid channelId,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == channelId, cancellationToken);
+
+            if (channel is null)
+                return Results.NotFound();
+
+            var approvalThoughts = await context.AgentThoughts
+                .Where(t => t.ThreadId == channelId
+                    && (t.ContentType == LlmMessageContentType.FunctionApprovalRequestContent
+                        || t.ContentType == LlmMessageContentType.FunctionApprovalResponseContent))
+                .OrderBy(t => t.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+            var responsesById = new Dictionary<string, AocFunctionApprovalResponseContent>();
+            var agentIds = approvalThoughts.Select(t => t.AgentId).Distinct().ToList();
+            var agentNamesById = await context.Agents
+                .Where(a => agentIds.Contains(a.Id))
+                .Select(a => new { a.Id, a.Info.Username })
+                .ToDictionaryAsync(a => a.Id, a => a.Username, cancellationToken);
+            foreach (var thought in approvalThoughts)
+            {
+                if (thought.ContentType == LlmMessageContentType.FunctionApprovalResponseContent)
+                {
+                    var resp = JsonSerializer.Deserialize<AocFunctionApprovalResponseContent>(thought.ContentJson);
+                    if (resp != null)
+                        responsesById[resp.Id] = resp;
+                }
+            }
+
+            var requests = new List<object>();
+            foreach (var thought in approvalThoughts)
+            {
+                if (thought.ContentType != LlmMessageContentType.FunctionApprovalRequestContent)
+                    continue;
+
+                var req = JsonSerializer.Deserialize<AocFunctionApprovalRequestContent>(thought.ContentJson);
+                if (req == null) continue;
+
+                var hasResponse = responsesById.TryGetValue(req.Id, out var response);
+                var status = hasResponse ? (response!.Approved ? "approved" : "rejected") : "pending";
+
+                requests.Add(new
+                {
+                    approvalId = req.Id,
+                    toolName = req.FunctionCall?.Name,
+                    callId = req.FunctionCall?.CallId,
+                    args = req.FunctionCall?.Arguments,
+                    agentId = thought.AgentId,
+                    agentName = agentNamesById.TryGetValue(thought.AgentId, out var agentName) ? agentName : null,
+                    serverName = req.ServerName,
+                    timestamp = new DateTimeOffset(thought.CreatedAt, TimeSpan.Zero),
+                    status,
+                    reason = hasResponse ? response!.Reason : null,
+                });
+            }
+
+            return Results.Ok(requests);
+        })
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
+        // GET: /api/channels/{channelId}/agent-statuses - Returns all agent statuses for the channel
+        group.MapGet("/{channelId}/agent-statuses", async (
+            Guid channelId,
+            IAgentStatusTracker tracker,
+            AzureOpsCrewContext context,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == channelId, cancellationToken);
+
+            if (channel is null)
+                return Results.NotFound();
+
+            var entries = tracker.GetChannelStatuses(channelId);
+            var dtos = entries.Select(e => new AgentStatusDto
+            {
+                AgentId = e.AgentId,
+                Status = e.Status,
+                ErrorMessage = e.ErrorMessage,
+                LastUpdated = e.LastUpdated
+            }).ToList();
+
+            return Results.Ok(dtos);
+        })
+        .Produces<List<AgentStatusDto>>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
         // GET: /api/channels/{channelId}/agents/{agentId}/mind - Returns agent thoughts scoped to a specific channel
         group.MapGet("/{channelId}/agents/{agentId}/mind", async (
             Guid channelId,
@@ -190,7 +287,8 @@ public static class ChannelEndpoints
             var historyMessages = new List<AgentMindEventDto>();
 
             // First pass: collect tool result content by CallId (from tool-role messages)
-            var toolResultsByCallId = new Dictionary<(Guid threadId, Guid runId, string callId), string>();
+            var toolResultsByCallId = new Dictionary<(Guid threadId, string callId), string>();
+            //var toolResultsByCallId = new Dictionary<(Guid threadId, Guid runId, string callId), string>();
             foreach (var msg in messages)
             {
                 if (msg.Role.ToString() != "tool")
@@ -210,7 +308,8 @@ public static class ChannelEndpoints
                         JsonElement el => el.GetRawText(),
                         _ => JsonSerializer.Serialize(functionResult.Result)
                     };
-                    toolResultsByCallId[(msg.ThreadId, msg.RunId, functionResult.CallId)] = resultStr ?? "";
+                    toolResultsByCallId[(msg.ThreadId, functionResult.CallId)] = resultStr ?? "";
+                    //toolResultsByCallId[(msg.ThreadId, msg.RunId, functionResult.CallId)] = resultStr ?? "";
                 }
             }
 
@@ -250,29 +349,40 @@ public static class ChannelEndpoints
                     });
                 }
                 else if (aiContent is AocFunctionCallContent functionCallContent
-                         && toolResultsByCallId.TryGetValue((msg.ThreadId, msg.RunId, functionCallContent.CallId), out var resultStr))
+                         && toolResultsByCallId.TryGetValue((msg.ThreadId, functionCallContent.CallId), out var resultStr))
+                         //&& toolResultsByCallId.TryGetValue((msg.ThreadId, msg.RunId, functionCallContent.CallId), out var resultStr))
                 {
-                    object? resultObj;
+            object? resultObj;
+                    bool isError = false;
                     try
                     {
                         var deserialized = JsonSerializer.Deserialize<JsonElement>(resultStr);
 
                         // The result may be wrapped in a ToolCallResult object: { "CallId": "...", "Result": "...", "IsError": false }
-                        // Extract the actual Result value if this wrapper is present
-                        if (deserialized.ValueKind == JsonValueKind.Object &&
-                            deserialized.TryGetProperty("Result", out var actualResult))
+                        // Extract both the actual Result value and IsError flag if this wrapper is present
+                        if (deserialized.ValueKind == JsonValueKind.Object)
                         {
-                            // Check if actualResult is a JSON string that needs to be parsed
-                            if (actualResult.ValueKind == JsonValueKind.String)
+                            if (deserialized.TryGetProperty("IsError", out var isErrorProp))
+                                isError = isErrorProp.ValueKind == JsonValueKind.True;
+
+                            if (deserialized.TryGetProperty("Result", out var actualResult))
                             {
-                                var innerStr = actualResult.GetString();
-                                if (!string.IsNullOrEmpty(innerStr))
+                                // Check if actualResult is a JSON string that needs to be parsed
+                                if (actualResult.ValueKind == JsonValueKind.String)
                                 {
-                                    try
+                                    var innerStr = actualResult.GetString();
+                                    if (!string.IsNullOrEmpty(innerStr))
                                     {
-                                        resultObj = JsonSerializer.Deserialize<JsonElement>(innerStr);
+                                        try
+                                        {
+                                            resultObj = JsonSerializer.Deserialize<JsonElement>(innerStr);
+                                        }
+                                        catch
+                                        {
+                                            resultObj = actualResult;
+                                        }
                                     }
-                                    catch
+                                    else
                                     {
                                         resultObj = actualResult;
                                     }
@@ -284,7 +394,7 @@ public static class ChannelEndpoints
                             }
                             else
                             {
-                                resultObj = actualResult;
+                                resultObj = deserialized;
                             }
                         }
                         else
@@ -308,7 +418,8 @@ public static class ChannelEndpoints
                             ToolName = functionCallContent.Name,
                             CallId = functionCallContent.CallId,
                             Args = functionCallContent.Arguments ?? new Dictionary<string, object?>(),
-                            Result = resultObj
+                            Result = resultObj,
+                            IsError = isError
                         }
                     });
                 }
@@ -319,12 +430,91 @@ public static class ChannelEndpoints
         .Produces<AgentMindResponseDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound);
 
+        // POST: /api/channels/{channelId}/approvals/{approvalId} - Responds to an approval request in a channel
+        group.MapPost("/{channelId}/approvals/{approvalId}", async (
+            Guid channelId,
+            string approvalId,
+            ApprovalResponseDto body,
+            AzureOpsCrewContext context,
+            AgentScheduler agentScheduler,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == channelId, cancellationToken);
+
+            if (channel is null)
+                return Results.NotFound("Channel not found.");
+
+            // Find the approval request thought in this channel
+            var requestThoughts = await context.AgentThoughts
+                .Where(t => t.ThreadId == channelId
+                    && t.ContentType == LlmMessageContentType.FunctionApprovalRequestContent)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+            var matchingThought = requestThoughts.FirstOrDefault(t =>
+            {
+                var content = JsonSerializer.Deserialize<AocFunctionApprovalRequestContent>(t.ContentJson);
+                return content?.Id == approvalId;
+            });
+
+            if (matchingThought is null)
+                return Results.NotFound("Approval request not found.");
+
+            var existingResponses = await context.AgentThoughts
+                .Where(t => t.AgentId == matchingThought.AgentId
+                    && t.ThreadId == channelId
+                    && t.ContentType == LlmMessageContentType.FunctionApprovalResponseContent)
+                .ToListAsync(cancellationToken);
+
+            var existingResponse = existingResponses.Any(t =>
+                JsonSerializer.Deserialize<AocFunctionApprovalResponseContent>(t.ContentJson)?.Id == approvalId);
+
+            if (existingResponse)
+                return Results.Conflict("Approval request already has a response.");
+
+            var requestContent = JsonSerializer.Deserialize<AocFunctionApprovalRequestContent>(matchingThought.ContentJson);
+
+            // Save the approval response as an agent thought
+            var responseContent = new AocFunctionApprovalResponseContent
+            {
+                Id = approvalId,
+                Approved = body.Approved,
+                Reason = body.Reason,
+                FunctionCall = requestContent?.FunctionCall
+            };
+            var responseThought = AocAgentThought.FromContent(
+                responseContent, ChatRole.User, null, DateTime.UtcNow, Guid.NewGuid());
+            var domainThought = responseThought.ToDomain(matchingThought.AgentId, channelId, matchingThought.RunId);
+            context.AgentThoughts.Add(domainThought);
+            await context.SaveChangesAsync(cancellationToken);
+
+            // Re-enqueue the agent to continue processing
+            await agentScheduler.QueueTrigger(new ToolApprovalTrigger
+            {
+                Id = Guid.NewGuid(),
+                AgentId = matchingThought.AgentId,
+                ChatId = channelId,
+                CreatedAt = DateTime.UtcNow,
+                CallId = requestContent?.FunctionCall?.CallId ?? "",
+                Resolution = body.Approved ? ApprovalResolution.Approved : ApprovalResolution.Rejected,
+                ToolName = requestContent?.FunctionCall?.Name ?? "",
+                Parameters = requestContent != null
+                    ? JsonSerializer.Serialize(requestContent.FunctionCall?.Arguments ?? new Dictionary<string, object?>())
+                    : ""
+            });
+
+            return Results.Ok(new { approved = body.Approved });
+        })
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
         group.MapPost("/{id}/messages", async (
             Guid id,
             CreateDirectMessageDto dto,
             HttpContext httpContext,
             AzureOpsCrewContext context,
-            AgentTriggerQueue agentTriggerQueue,
+            AgentScheduler agentScheduler,
             IChannelEventBroadcaster channelEventBroadcaster,
             CancellationToken cancellationToken) =>
         {
@@ -334,14 +524,14 @@ public static class ChannelEndpoints
             if (channel is null)
                 return Results.NotFound();
 
-            var senderId = httpContext.User.GetRequiredUserId();
-            var user = await context.Users.SingleOrDefaultAsync(u => u.Id == senderId, cancellationToken);
+            var userId = httpContext.User.GetRequiredUserId();
+            var user = await context.Users.SingleOrDefaultAsync(u => u.Id == userId, cancellationToken);
             var message = new Message
             {
                 Id = Guid.NewGuid(),
                 Text = dto.Content,
                 PostedAt = DateTime.UtcNow,
-                UserId = senderId,
+                UserId = userId,
                 ChannelId = channel.Id,
                 AuthorName = user?.Username,
             };
@@ -354,12 +544,47 @@ public static class ChannelEndpoints
             // Trigger all agents in the channel
             foreach (var agentId in channel.AgentIds)
             {
-                agentTriggerQueue.Enqueue(agentId, channel.Id);
+                var trigger = new MessageTrigger
+                {
+                    Id = Guid.NewGuid(),
+                    AgentId = agentId,
+                    ChatId = channel.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    MessageId = message.Id,
+                    AuthorId = userId,
+                    AuthorName = user?.Username ?? "Unknown",
+                    MessageContent = dto.Content,
+                };
+                await agentScheduler.QueueTrigger(trigger);
             }
 
             return Results.Created($"/api/channels/{id}/messages/{message.Id}", message);
         })
         .Produces<Message>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status404NotFound);
+
+        // POST: /api/channels/{channelId}/agents/{agentId}/stop - Stops a specific agent in a channel
+        group.MapPost("/{channelId}/agents/{agentId}/stop", async (
+            Guid channelId,
+            Guid agentId,
+            AzureOpsCrewContext context,
+            AgentScheduler agentScheduler,
+            CancellationToken cancellationToken) =>
+        {
+            var channel = await context.Set<Channel>()
+                .SingleOrDefaultAsync(c => c.Id == channelId, cancellationToken);
+
+            if (channel is null)
+                return Results.NotFound();
+
+            var stopped = agentScheduler.StopAgent(agentId, channelId);
+            return stopped
+                ? Results.Ok(new { stopped = true })
+                : Results.Ok(new { stopped = false, message = "Agent was not running." });
+        })
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
     }
 }
+
+

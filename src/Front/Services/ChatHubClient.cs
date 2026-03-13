@@ -20,6 +20,7 @@ public sealed class ChatHubClient : IAsyncDisposable
     public event Action<ToolCallDto>? ToolCallReceived;
     public event Action<ReasoningDto>? ReasoningReceived;
     public event Action<Guid, string, string?>? AgentStatusReceived;
+    public event Action<ApprovalRequestDto>? ApprovalRequestReceived;
 
     private ChatHubClient(string joinMethod, string leaveMethod, ILogger logger)
     {
@@ -125,6 +126,7 @@ public sealed class ChatHubClient : IAsyncDisposable
                 ToolName = toolStartEvt.ToolName,
                 CallId = toolStartEvt.CallId,
                 Args = toolStartEvt.Args,
+                AgentId = toolStartEvt.AgentId,
                 Result = null,
                 IsError = false,
                 IsFinished = false,
@@ -140,6 +142,7 @@ public sealed class ChatHubClient : IAsyncDisposable
                 ToolName = toolEvt.ToolName,
                 CallId = toolEvt.CallId,
                 Args = toolEvt.Args,
+                AgentId = toolEvt.AgentId,
                 Result = toolEvt.Result,
                 IsError = toolEvt.IsError,
                 IsFinished = true,
@@ -154,6 +157,7 @@ public sealed class ChatHubClient : IAsyncDisposable
             {
                 Text = reasoningEvt.Text,
                 AgentName = reasoningEvt.AgentName,
+                AgentId = reasoningEvt.AgentId,
                 Timestamp = reasoningEvt.Timestamp,
             };
             ReasoningReceived?.Invoke(dto);
@@ -162,6 +166,22 @@ public sealed class ChatHubClient : IAsyncDisposable
         {
             _logger.LogDebug("Received AGENT_STATUS: {AgentId} -> {Status}", statusEvt.AgentId, statusEvt.Status);
             AgentStatusReceived?.Invoke(statusEvt.AgentId, statusEvt.Status, statusEvt.ErrorMessage);
+        }
+        else if (evt is ApprovalRequestEvent approvalEvt)
+        {
+            _logger.LogDebug("Received APPROVAL_REQUEST: {ApprovalId} for tool {ToolName}", approvalEvt.ApprovalId, approvalEvt.ToolName);
+            ApprovalRequestReceived?.Invoke(new ApprovalRequestDto
+            {
+                ApprovalId = approvalEvt.ApprovalId,
+                ToolName = approvalEvt.ToolName,
+                CallId = approvalEvt.CallId,
+                Args = approvalEvt.Args,
+                AgentId = approvalEvt.AgentId,
+                AgentName = approvalEvt.AgentName,
+                ServerName = approvalEvt.ServerName,
+                Timestamp = approvalEvt.Timestamp,
+                UserResponse = null,
+            });
         }
     }
 

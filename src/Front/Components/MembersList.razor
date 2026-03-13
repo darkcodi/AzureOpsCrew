@@ -1,6 +1,7 @@
 @inject AppState AppState
 @implements IDisposable
 @inject ChannelService ChannelService
+@inject AgentState AgentState
 
 <div class="members-list">
     <div class="members-list-header">
@@ -45,14 +46,14 @@
                 {
                     @foreach (var agent in channelAgents)
                     {
-                        <div class="members-item" @onclick="() => MentionAgent(agent)">
+                        <div class="members-item" @onclick="() => OnAgentClick.InvokeAsync(agent)">
                             <div class="members-item-main">
                                 <div class="members-avatar members-avatar-agent" style="background-color: @agent.Color; color: #fff;">
                                     @GetAgentInitials(agent.Username)
                                 </div>
                                 <div class="members-item-info">
                                     <span class="members-item-name">@agent.Username</span>
-                                    <span class="members-item-status">@(agent.Status ?? "Idle")</span>
+                                    <span class="members-item-status @(AgentStatusDisplay.IsWaitingForApproval(GetAgentStatus(agent.Id)) ? "members-item-status-waiting" : string.Empty)">@AgentStatusDisplay.ToDisplayText(GetAgentStatus(agent.Id))</span>
                                 </div>
                             </div>
                             <button type="button"
@@ -182,7 +183,7 @@
                 </button>
                 <button type="button" class="btn btn-danger" disabled="@_isRemovingAgent"
                         @onclick="ConfirmRemoveAgent">
-                    @(_isRemovingAgent ? "Removing…" : "Remove")
+                    @(_isRemovingAgent ? "Removing..." : "Remove")
                 </button>
             </div>
         </div>
@@ -190,6 +191,8 @@
 }
 
 @code {
+    [Parameter] public EventCallback<AgentDto> OnAgentClick { get; set; }
+
     private string _searchQuery = string.Empty;
     private bool _addAgentsOpen;
     private Guid? _addingAgentId;
@@ -202,7 +205,8 @@
     {
         _appStateSubscription = AppState.SubscribeSelectedChannel(OnStateChanged)
             .Combine(AppState.SubscribeCurrentUser(OnStateChanged))
-            .Combine(AppState.SubscribeAgents(OnStateChanged));
+            .Combine(AppState.SubscribeAgents(OnStateChanged))
+            .Combine(AgentState.Subscribe(OnStateChanged));
     }
 
     private void OnStateChanged() => InvokeAsync(() =>
@@ -309,7 +313,13 @@
         }
     }
 
-    private void MentionAgent(AgentDto agent) { /* TODO */ }
 
     private void MentionUser(UserDto user) { /* TODO */ }
+
+    private string GetAgentStatus(Guid agentId)
+    {
+        var channel = AppState.SelectedChannel;
+        if (channel == null) return "Idle";
+        return AgentState.GetState(channel.Id, ConversationType.Channel, agentId)?.Status ?? "Idle";
+    }
 }

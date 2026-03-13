@@ -52,7 +52,7 @@ public class GetMyIpTool : IBackendTool
         };
     }
 
-    public async Task<ToolCallResult> ExecuteAsync(Agent agent, string callId, IDictionary<string, object?>? arguments)
+    public async Task<ToolCallResult> ExecuteAsync(AgentRunData data, string callId, IDictionary<string, object?>? arguments, IServiceProvider serviceProvider)
     {
         try
         {

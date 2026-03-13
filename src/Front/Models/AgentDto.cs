@@ -9,6 +9,8 @@ public class AgentDto
     [JsonPropertyName("info")]
     public AgentInfoDto? Info { get; set; }
 
+    public Guid ProviderId { get; set; }
+
     public string Username => Info?.Username ?? string.Empty;
     public string Prompt => Info?.Prompt ?? string.Empty;
     public string Model => Info?.Model ?? string.Empty;
@@ -46,6 +48,9 @@ public class AgentMcpServerToolAvailabilityDto
 
     [JsonPropertyName("enabledToolNames")]
     public List<string> EnabledToolNames { get; set; } = [];
+
+    [JsonPropertyName("approvalRequiredNames")]
+    public List<string> ApprovalRequiredNames { get; set; } = [];
 }
 
 public class AgentToolDto

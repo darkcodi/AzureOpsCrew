@@ -42,7 +42,7 @@ public class ToolCallRouter
             {
                 Log.Debug("[BACKGROUND] Executing tool {ToolName} (type: {ToolType})", toolName, toolDeclaration.ToolType);
 
-                return await _backendToolExecutor.ExecuteTool(data.Agent, toolDeclaration, toolCall);
+                return await _backendToolExecutor.ExecuteTool(data, toolDeclaration, toolCall);
             }
             if (toolDeclaration.ToolType == ToolType.McpServer)
             {
