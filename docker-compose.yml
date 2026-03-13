@@ -54,7 +54,7 @@ services:
     env_file:
       - .env
     ports:
-      - "${FRONTEND_PORT:-42080}:80"
+      - "${FRONTEND_PORT:-42090}:80"
     restart: on-failure
     depends_on:
       - api

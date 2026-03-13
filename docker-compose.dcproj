@@ -11,6 +11,8 @@
     <None Include=".dockerignore" />
     <None Include="src\Api\Dockerfile" />
     <None Include="src\Front\Dockerfile" />
+    <None Include="docker-compose.vs.debug.yml" />
+    <None Include="docker-compose.vs.release.yml" />
     <None Include="neo4j.docker-compose.yml" />
   </ItemGroup>
 </Project>
