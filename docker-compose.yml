@@ -3,7 +3,7 @@ services:
     image: ${DOCKER_REGISTRY-}api
     build:
       context: .
-      dockerfile: src/Api/Dockerfile
+      dockerfile: Dockerfile.Api
     env_file:
       - .env
     environment:
