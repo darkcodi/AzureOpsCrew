@@ -1,30 +1,30 @@
 using Neo4j.Driver;
 using System.Text.RegularExpressions;
 
-namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
+namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Neo4j;
 
-public record CypherFactDto(
+public record Neo4jFactDto(
     string Id,
     string Text,
     string? Category,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset UpdatedAtUtc);
 
-public record CypherFactOperationResult(
+public record Neo4jFactOperationResult(
     bool Success,
     string Message,
-    CypherFactDto? Fact = null);
+    Neo4jFactDto? Fact = null);
 
-public record CypherFactSearchResult(
+public record Neo4jFactSearchResult(
     string Query,
     int TotalMatches,
-    IReadOnlyList<CypherFactDto> Facts);
+    IReadOnlyList<Neo4jFactDto> Facts);
 
-public class CypherFactsStore
+public class Neo4jFactsStore
 {
     private readonly IDriver _driver;
 
-    public CypherFactsStore(IDriver driver)
+    public Neo4jFactsStore(IDriver driver)
     {
         _driver = driver;
     }
@@ -40,7 +40,7 @@ public class CypherFactsStore
             "CREATE FULLTEXT INDEX fact_fulltext IF NOT EXISTS FOR (n:Fact) ON EACH [n.text, n.category]");
     }
 
-    public async Task<CypherFactDto> AddFactAsync(Guid agentId, string text, string? category, CancellationToken cancellationToken = default)
+    public async Task<Neo4jFactDto> AddFactAsync(Guid agentId, string text, string? category, CancellationToken cancellationToken = default)
     {
         text = NormalizeText(text);
         category = NormalizeCategory(category);
@@ -80,11 +80,11 @@ public class CypherFactsStore
                 })",
                 new { id = newId, agentId, text, category, now = now.ToString("O") });
 
-            return new CypherFactDto(newId, text, category, now, now);
+            return new Neo4jFactDto(newId, text, category, now, now);
         });
     }
 
-    public async Task<CypherFactDto?> UpdateFactAsync(Guid agentId, string factId, string newText, string? categoryOrNullToKeep, CancellationToken cancellationToken = default)
+    public async Task<Neo4jFactDto?> UpdateFactAsync(Guid agentId, string factId, string newText, string? categoryOrNullToKeep, CancellationToken cancellationToken = default)
     {
         newText = NormalizeText(newText);
         var now = DateTimeOffset.UtcNow;
@@ -121,7 +121,7 @@ public class CypherFactsStore
         });
     }
 
-    public async Task<CypherFactDto?> DeleteFactAsync(Guid agentId, string factId, CancellationToken cancellationToken = default)
+    public async Task<Neo4jFactDto?> DeleteFactAsync(Guid agentId, string factId, CancellationToken cancellationToken = default)
     {
         await using var session = _driver.AsyncSession();
 
@@ -139,7 +139,7 @@ public class CypherFactsStore
                 return null;
 
             var r = cursor.Current;
-            return new CypherFactDto(
+            return new Neo4jFactDto(
                 r["id"].As<string>(),
                 r["text"].As<string>(),
                 r["category"].As<string?>(),
@@ -148,7 +148,7 @@ public class CypherFactsStore
         });
     }
 
-    public async Task<CypherFactSearchResult> SearchFactsAsync(Guid agentId, string query, int limit = 8, CancellationToken cancellationToken = default)
+    public async Task<Neo4jFactSearchResult> SearchFactsAsync(Guid agentId, string query, int limit = 8, CancellationToken cancellationToken = default)
     {
         limit = Math.Clamp(limit, 1, 50);
         query = (query ?? string.Empty).Trim();
@@ -157,7 +157,7 @@ public class CypherFactsStore
 
         return await session.ExecuteReadAsync(async tx =>
         {
-            List<CypherFactDto> facts;
+            List<Neo4jFactDto> facts;
 
             if (string.IsNullOrWhiteSpace(query))
             {
@@ -167,7 +167,7 @@ public class CypherFactsStore
                     new { agentId, limit });
 
                 facts = await CollectFacts(cursor);
-                return new CypherFactSearchResult(query, facts.Count, facts);
+                return new Neo4jFactSearchResult(query, facts.Count, facts);
             }
 
             var ftCursor = await tx.RunAsync(
@@ -179,15 +179,15 @@ public class CypherFactsStore
                   LIMIT $limit",
                 new { query = SanitizeForFullText(query), agentId, limit });
 
-            facts = new List<CypherFactDto>();
+            facts = new List<Neo4jFactDto>();
             while (await ftCursor.FetchAsync())
                 facts.Add(MapFact(ftCursor.Current["node"].As<INode>()));
 
-            return new CypherFactSearchResult(query, facts.Count, facts);
+            return new Neo4jFactSearchResult(query, facts.Count, facts);
         });
     }
 
-    public async Task<IReadOnlyList<CypherFactDto>> ListFactsAsync(Guid agentId, int limit = 50, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Neo4jFactDto>> ListFactsAsync(Guid agentId, int limit = 50, CancellationToken cancellationToken = default)
     {
         limit = Math.Clamp(limit, 1, 200);
 
@@ -200,19 +200,19 @@ public class CypherFactsStore
                   RETURN f ORDER BY f.updatedAtUtc DESC LIMIT $limit",
                 new { agentId, limit });
 
-            return (IReadOnlyList<CypherFactDto>)await CollectFacts(cursor);
+            return (IReadOnlyList<Neo4jFactDto>)await CollectFacts(cursor);
         });
     }
 
-    private static async Task<List<CypherFactDto>> CollectFacts(IResultCursor cursor)
+    private static async Task<List<Neo4jFactDto>> CollectFacts(IResultCursor cursor)
     {
-        var list = new List<CypherFactDto>();
+        var list = new List<Neo4jFactDto>();
         while (await cursor.FetchAsync())
             list.Add(MapFact(cursor.Current["f"].As<INode>()));
         return list;
     }
 
-    private static CypherFactDto MapFact(INode node) => new(
+    private static Neo4jFactDto MapFact(INode node) => new(
         node["id"].As<string>(),
         node["text"].As<string>(),
         node.Properties.ContainsKey("category") ? node["category"].As<string?>() : null,

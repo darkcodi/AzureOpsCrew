@@ -3,21 +3,21 @@ using Microsoft.Extensions.AI;
 using System.Reflection;
 using System.Text.Json;
 
-namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
+namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Neo4j;
 
-public sealed class CypherFactsContextProvider : AIContextProvider
+public sealed class Neo4jFactsContextProvider : AIContextProvider
 {
     private readonly List<AITool> _tools;
     private readonly string _memoryInstructions;
 
-    public CypherFactsContextProvider(
+    public Neo4jFactsContextProvider(
         Guid agentId,
-        CypherFactsStore store,
+        Neo4jFactsStore store,
         JsonSerializerOptions? jsonSerializerOptions = null)
     {
         ArgumentNullException.ThrowIfNull(store);
 
-        var toolset = new CypherFactsMemoryTools(store, agentId);
+        var toolset = new Neo4jFactsMemoryTools(store, agentId);
 
         _tools = BuildTools(toolset, jsonSerializerOptions).ToList();
         _memoryInstructions = MemoryHint;
@@ -36,9 +36,9 @@ public sealed class CypherFactsContextProvider : AIContextProvider
         return new ValueTask<AIContext>(aiContext);
     }
 
-    private static IEnumerable<AITool> BuildTools(CypherFactsMemoryTools toolset, JsonSerializerOptions? serializerOptions)
+    private static IEnumerable<AITool> BuildTools(Neo4jFactsMemoryTools toolset, JsonSerializerOptions? serializerOptions)
     {
-        var t = typeof(CypherFactsMemoryTools);
+        var t = typeof(Neo4jFactsMemoryTools);
 
         MethodInfo GetRequired(string name) =>
             t.GetMethod(name, BindingFlags.Instance | BindingFlags.Public)
@@ -46,22 +46,22 @@ public sealed class CypherFactsContextProvider : AIContextProvider
 
         var tools = new List<AITool>
         {
-            CreateTool(GetRequired(nameof(CypherFactsMemoryTools.AddFact)), toolset,
+            CreateTool(GetRequired(nameof(Neo4jFactsMemoryTools.AddFact)), toolset,
                 name: "memory_add_fact",
                 description: "Add a durable fact to long-term memory.",
                 serializerOptions),
 
-            CreateTool(GetRequired(nameof(CypherFactsMemoryTools.UpdateFact)), toolset,
+            CreateTool(GetRequired(nameof(Neo4jFactsMemoryTools.UpdateFact)), toolset,
                 name: "memory_update_fact",
                 description: "Update an existing fact by id.",
                 serializerOptions),
 
-            CreateTool(GetRequired(nameof(CypherFactsMemoryTools.DeleteFact)), toolset,
+            CreateTool(GetRequired(nameof(Neo4jFactsMemoryTools.DeleteFact)), toolset,
                 name: "memory_delete_fact",
                 description: "Delete a fact by id.",
                 serializerOptions),
 
-            CreateTool(GetRequired(nameof(CypherFactsMemoryTools.SearchFacts)), toolset,
+            CreateTool(GetRequired(nameof(Neo4jFactsMemoryTools.SearchFacts)), toolset,
                 name: "memory_search_facts",
                 description: "Search stored facts by plain keywords.",
                 serializerOptions),
