@@ -30,7 +30,7 @@ public sealed class CypherFactsContextProvider : AIContextProvider
         var aiContext = new AIContext
         {
             Instructions = _memoryInstructions,
-            Tools = _tools
+            Tools = _tools.Any() ? null : _tools
         };
 
         return new ValueTask<AIContext>(aiContext);

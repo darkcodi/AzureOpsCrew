@@ -236,7 +236,7 @@ public static class ServiceCollectionExtensions
         }
         else
         {
-            throw new InvalidOperationException($"Unknown LongTermMemory type '{memoryType}'. Supported providers: InMemory, Cypher");
+            throw new InvalidOperationException($"Unknown LongTermMemory type '{memoryType}'. Supported providers: InMemory, Neo4j");
         }
     }
 

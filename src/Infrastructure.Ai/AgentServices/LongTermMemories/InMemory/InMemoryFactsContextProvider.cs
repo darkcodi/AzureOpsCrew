@@ -1,4 +1,4 @@
-﻿using Microsoft.Agents.AI;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using System.Reflection;
 using System.Text.Json;
@@ -31,8 +31,7 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory
             var aiContext = new AIContext
             {
                 Instructions = _memoryInstructions,
-                Tools = _tools
-                // Messages = null;
+                Tools = _tools.Any() ? null : _tools
             };
 
             return new ValueTask<AIContext>(aiContext);
