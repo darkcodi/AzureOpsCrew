@@ -1,0 +1,7 @@
+services:
+  api: {}
+  frontend:
+    build:
+      target: final
+    entrypoint: !reset null
+    command: !reset null
