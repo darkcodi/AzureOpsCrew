@@ -29,6 +29,19 @@ AzureOpsCrew is a **hybrid collaboration platform** where specialized AI agents 
 
 **The key insight:** AI agents aren't isolated tools — they're teammates 🤝. AzureOpsCrew creates a chat interface where multiple agents and multiple humans all participate together.
 
+## Production-Grade AI Principles
+
+AzureOpsCrew implements enterprise-level multi-agent architecture from the ground up:
+
+- **🎯 Intelligent Orchestration** — Trigger-based agent activation with signal coordination ensures agents respond to events, not polls. Multiple agents execute in parallel across conversations while maintaining sequential consistency within each chat.
+- **🔒 Isolated Agent Context** — Every agent operates within its own memory scope and context window. No cross-agent data leakage — each agent reasons independently with its own facts, tools, and instructions.
+- **🧠 Persistent Long-Term Memory** — Graph-based knowledge store that persists across sessions. Agents build and query their own memory — they learn, not just respond.
+- **📐 Smart Context Management** — Automatic token-aware context windowing with adaptive truncation. The system keeps conversations sharp and relevant regardless of how long they run.
+- **🛡️ Human-in-the-Loop Control** — Two-phase tool approval system lets users inspect, approve, or reject any agent action before execution. Full visibility into agent reasoning with real-time streaming of thinking/reasoning blocks.
+- **🔌 Multi-Provider LLM Support** — Plug-and-play support for **OpenAI, Anthropic, Ollama, OpenRouter, and Azure Foundry**. Zero vendor lock-in — switch models per agent without changing a single line of code.
+- **🧰 MCP Tool Ecosystem** — Connect any external tool via **Model Context Protocol** servers with granular per-tool approval policies. Agents share a unified tool layer while respecting individual access boundaries.
+- **🧩 Composable Prompt Architecture** — Modular prompt chunks dynamically assembled based on agent role, conversation type, and channel context. Fully customizable agent personas, system prompts, and behavioral policies.
+
 ---
 
 ## ✨ What It Does
