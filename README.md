@@ -178,9 +178,9 @@ LONG_TERM_MEMORY_TYPE=InMemory
 | `SQLSERVER_SA_PASSWORD` | SQL Server SA password | ❌ No |
 | `JWT_SIGNING_KEY` | JWT signing key (min 32 chars) | ✅ Yes |
 | `SEEDING_ENABLED` | Enable database seeding | ✅ Yes(Quick Start recommended `true`) |
-| `SEEDING_AZURE_OPENAI_API_ENDPOINT` | Azure OpenAI endpoint for seeding | ⚠️ Yes if `SEEDING_ENABLED=true` |
-| `SEEDING_AZURE_OPENAI_API_KEY` | Azure OpenAI API key for seeding | ⚠️ Yes if `SEEDING_ENABLED=true` |
-| `SEEDING_AZURE_OPENAI_API_DEFAULTMODEL` | Azure OpenAI model name | ❌ No |
+| `SEEDING_AZURE_OPENAI_API_ENDPOINT` | Azure OpenAI endpoint for Provider entity seeding | ⚠️ Yes if `SEEDING_ENABLED=true` |
+| `SEEDING_AZURE_OPENAI_API_KEY` | Azure OpenAI API key for Provider entity seeding | ⚠️ Yes if `SEEDING_ENABLED=true` |
+| `SEEDING_AZURE_OPENAI_API_DEFAULTMODEL` | Azure OpenAI default model name | ❌ No |
 | `SEEDING_USER_EMAIL` | Seed user email | ❌ No |
 | `SEEDING_USER_USERNAME` | Seed user username | ❌ No |
 | `SEEDING_USER_PASSWORD` | Seed user password | ❌ No |
@@ -275,9 +275,9 @@ cp .env.example .env
 | `SqlServer:ConnectionString` | SQL Server connection string | ✅ Yes |
 | `Jwt:SigningKey` | JWT signing key (min 32 chars) | ✅ Yes |
 | `Seeding:IsEnabled` | Enable database seeding | ✅ Yes(Quick Start recommended `true`) |
-| `Seeding:AzureFoundrySeed:ApiEndpoint` | Azure OpenAI endpoint | ⚠️ Yes if `Seeding:IsEnabled=true` |
-| `Seeding:AzureFoundrySeed:Key` | Azure OpenAI API key | ⚠️ Yes if `Seeding:IsEnabled=true` |
-| `Seeding:AzureFoundrySeed:DefaultModel` | Azure OpenAI model name | ❌ No |
+| `Seeding:AzureFoundrySeed:ApiEndpoint` | Azure OpenAI endpoint for Provider entity seeding | ⚠️ Yes if `Seeding:IsEnabled=true` |
+| `Seeding:AzureFoundrySeed:Key` | Azure OpenAI API key for Provider entity seeding | ⚠️ Yes if `Seeding:IsEnabled=true` |
+| `Seeding:AzureFoundrySeed:DefaultModel` | Azure OpenAI default model name | ❌ No |
 | `Seeding:UserSeed:Email` | Seed user email | ❌ No |
 | `Seeding:UserSeed:Username` | Seed user username | ❌ No |
 | `Seeding:UserSeed:Password` | Seed user password | ❌ No |
