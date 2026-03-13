@@ -12,12 +12,12 @@
 ## 📑 Table of Contents
 
 - [Overview](#overview)
-- [What It Does](#what-it-does)
+- [Production-Grade AI Principles](#production-grade-ai-principles)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
-- [Quick Start](#quick-start)
-- [Configuration](#configuration)
+- [Quick Start (Docker compose)](#quick-start-docker-compose)
+- [Quick Start (Locally)](#quick-start-locally)
 - [Development](#development)
 - [Deploy to Azure](#deploy-to-azure)
 
@@ -29,20 +29,20 @@ AzureOpsCrew is a **hybrid collaboration platform** where specialized AI agents 
 
 **The key insight:** AI agents aren't isolated tools — they're teammates 🤝. AzureOpsCrew creates a chat interface where multiple agents and multiple humans all participate together.
 
----
+## Production-Grade AI Principles
 
-## ✨ What It Does
+AzureOpsCrew implements enterprise-level multi-agent architecture from the ground up:
 
-### Core Capabilities
-
-| Feature | Description |
-|---------|-------------|
-| **💬 Real-time Collaboration** | SignalR-powered chat where agents and humans participate in the same conversation |
-| **🎭 Agent Orchestration** | Create specialized agents with custom roles, prompts, and tool access |
-| **⚙️ Workflow Automation** | Agents execute tools, respond to events, and coordinate with each other |
-| **☁️ Azure Integration** | Native support for MCP servers, Azure services, and tool-based extensibility |
-| **🧠 Long-term Memory** | Neo4j-powered memory that persists across conversations |
-
+- **🎯 Intelligent Orchestration** — Trigger-based activation, parallel execution across chats, sequential consistency within each.
+- **🔒 Isolated Agent Context** — Each agent has its own memory scope, tools, and instructions. No cross-agent data leakage.
+- **🧠 Persistent Long-Term Memory** — Graph-based knowledge store that persists across sessions. Agents learn, not just respond.
+- **📐 Smart Context Management** — Token-aware windowing with adaptive truncation keeps conversations sharp regardless of length.
+- **🛡️ Human-in-the-Loop Control** — Tool approval before execution. Real-time visibility into agent reasoning and thinking.
+- **🔌 Multi-Provider LLM Support** — OpenAI, Anthropic, Ollama, OpenRouter, Azure Foundry. Switch models per agent, zero vendor lock-in.
+- **🧰 MCP Tool Ecosystem** — Connect any tool via Model Context Protocol with per-tool approval policies.
+- **🧩 Composable Prompt Architecture** — Modular prompt chunks assembled dynamically by agent role and context.
+- **💬 Real-time Collaboration** — SignalR-powered chat where agents and humans participate in the same conversation.
+- **☁️ Azure-Native Integration** — Engineered to natively run on Azure. Leverages Azure Foundry for model orchestration, Azure OpenAI for inference, Azure SQL for persistence, and Azure App Service for deployment. No glue code, no adapters — just native Azure SDK integration end-to-end.
 ---
 
 ## 🏗️ Architecture
@@ -150,7 +150,7 @@ SEEDING_AZURE_OPENAI_API_ENDPOINT=https://your-resource.openai.azure.com/
 SEEDING_AZURE_OPENAI_API_KEY=your-api-key
 SEEDING_AZURE_OPENAI_API_DEFAULTMODEL=gpt-5-2-chat
 SEEDING_USER_EMAIL=AzureOpsCrew@mail.xyz
-SEEDING_USER_USERNAME=BossUSer
+SEEDING_USER_USERNAME=BossUser
 SEEDING_USER_PASSWORD=Pass1234
 
 # Database
