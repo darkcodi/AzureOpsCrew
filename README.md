@@ -163,8 +163,10 @@ JWT_SIGNING_KEY=your-256-bit-secret-key
 EMAIL_VERIFICATION_ENABLED=false
 BREVO_API_BASE_URL=https://api.brevo.com
 BREVO_API_KEY=your-brevo-api-key
+BREVO_SENDER_EMAIL=azureopscrew@aoc-app.com
+BREVO_SENDER_NAME=Azure Ops Crew
 
-#Long-term memory
+# Long-term memory
 LONG_TERM_MEMORY_TYPE=InMemory
 ```
 
@@ -242,6 +244,12 @@ cp .env.example .env
   "EmailVerification": {
     "IsEnabled": false,
   },
+  "Brevo": {
+    "ApiKey": "",
+    "ApiBaseUrl": "https://api.brevo.com",
+    "SenderEmail": "azureopscrew@aoc-app.com",
+    "SenderName": "Azure Ops Crew"
+  },
   "Seeding": {
     "IsEnabled": true,
     "AzureFoundrySeed": {
@@ -254,6 +262,9 @@ cp .env.example .env
       "Username": "BossUser",
       "Password": "Pass1234"
     }
+  },
+  "LongTermMemory": {
+    "Type": "InMemory"
   }
 }
 ```
