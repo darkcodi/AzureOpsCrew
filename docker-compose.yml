@@ -33,6 +33,9 @@ services:
       - Seeding__AzureFoundrySeed__ApiEndpoint=${SEEDING_AZURE_OPENAI_API_ENDPOINT:-}
       - Seeding__AzureFoundrySeed__Key=${SEEDING_AZURE_OPENAI_API_KEY:-}
       - Seeding__AzureFoundrySeed__DefaultModel=${SEEDING_AZURE_OPENAI_API_DEFAULTMODEL:-gpt-5-2-chat}
+      - Seeding__UserSeed__Email=${SEEDING_USER_EMAIL:-AzureOpsCrew@mail.xyz}
+      - Seeding__UserSeed__Username=${SEEDING_USER_USERNAME:-BossUser}
+      - Seeding__UserSeed__Password=${SEEDING_USER_PASSWORD:-Pass1234}
     ports:
       - "${API_PORT:-42000}:80"
     restart: on-failure

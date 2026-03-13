@@ -5,6 +5,8 @@ namespace AzureOpsCrew.Api.Setup.Seeds
         public bool IsEnabled { get; set; }
 
         public ProviderSeedData AzureFoundrySeed { get; set;}
+
+        public UserSeedData UserSeed { get; set; }
     }
 
     public record ProviderSeedData
@@ -14,5 +16,14 @@ namespace AzureOpsCrew.Api.Setup.Seeds
         public string Key { get; set; }
 
         public string DefaultModel { get; set; }
+    }
+
+    public record UserSeedData
+    {
+        public string Email { get; set; }
+
+        public string Username { get; set; }
+
+        public string Password { get; set; }
     }
 }

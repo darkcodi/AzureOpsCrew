@@ -149,6 +149,9 @@ SEEDING_ENABLED=true
 SEEDING_AZURE_OPENAI_API_ENDPOINT=https://your-resource.openai.azure.com/
 SEEDING_AZURE_OPENAI_API_KEY=your-api-key
 SEEDING_AZURE_OPENAI_API_DEFAULTMODEL=gpt-5-2-chat
+SEEDING_USER_EMAIL=AzureOpsCrew@mail.xyz
+SEEDING_USER_USERNAME=BossUSer
+SEEDING_USER_PASSWORD=Pass1234
 
 # Database
 SQL_SERVER_PASSWORD=YourSecurePassword123!
@@ -236,6 +239,11 @@ cp .env.example .env
       "ApiEndpoint": "",
       "Key": "",
       "DefaultModel": "gpt-5-2-chat"
+    },
+    "UserSeed": {
+      "Email": "AzureOpsCrew@mail.xyz",
+      "Username": "BossUser",
+      "Password": "Pass1234"
     }
   }
 }

@@ -4,6 +4,7 @@ using AzureOpsCrew.Domain.Chats;
 using AzureOpsCrew.Domain.Providers;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Db;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace AzureOpsCrew.Api.Setup.Seeds
@@ -12,11 +13,13 @@ namespace AzureOpsCrew.Api.Setup.Seeds
     {
         private readonly AzureOpsCrewContext _context;
         private readonly SeederOptions _seederOptions;
+        private readonly IPasswordHasher<PendingRegistration> _pendingRegistrationHasher;
 
-        public Seeder(AzureOpsCrewContext context, SeederOptions seederOptions)
+        public Seeder(AzureOpsCrewContext context, SeederOptions seederOptions, IPasswordHasher<PendingRegistration> pendingRegistrationHasher)
         {
             _context = context;
             _seederOptions = seederOptions;
+            _pendingRegistrationHasher = pendingRegistrationHasher;
         }
 
         public async Task Seed()
@@ -84,14 +87,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             };
             await AddChannelWithChatIfNotExists(generalChannel, agents.Select(a => a.Id).ToArray());
 
-            var defaultUser = new User(
-                Guid.Parse("EBB8CF5F-CA75-49C0-BED2-91C2DCCAB415"),
-                "AzureOpsCrew@mail.xyz",
-                "AZUREOPSCREW@MAIL.XYZ",
-                "AQAAAAIAAYagAAAAEHds/S4gmNc0Cf04kSQ5E+g2anSh8VUU/xSrmiNqJiq4APpch0OhtXvIWF9wsTf+Rg==", // Pass1234
-                "BossUser",
-                "bossuser");
-            await AddUserIfNotExists(defaultUser);
+            var defaultUser = await AddUserIfNotExists(_seederOptions.UserSeed);
 
             // Seed DM channels for all agents
             await SeedDmChannels(defaultUser.Id, new[] { managerId, devOpsId, devId });
@@ -177,14 +173,30 @@ namespace AzureOpsCrew.Api.Setup.Seeds
             }
         }
 
-        private async Task AddUserIfNotExists(User user)
+        private async Task<User> AddUserIfNotExists(UserSeedData userSeed)
         {
+            var pendingRegistration = new PendingRegistration(
+                userSeed.Email, userSeed.Email.ToUpperInvariant(),
+                userSeed.Username, userSeed.Username.ToLowerInvariant());
+
             var exists = await _context.Set<User>()
                 .AsNoTracking()
-                .AnyAsync(u => u.NormalizedEmail == user.NormalizedEmail);
+                .FirstOrDefaultAsync(u => u.NormalizedEmail == pendingRegistration.NormalizedEmail);
 
-            if (!exists)
-                _context.Add(user);
+            if (exists is not null)
+                return exists;
+
+            var userToAdd = new User(
+                Guid.Parse("EBB8CF5F-CA75-49C0-BED2-91C2DCCAB415"),
+                pendingRegistration.Email,
+                pendingRegistration.NormalizedEmail,
+                _pendingRegistrationHasher.HashPassword(pendingRegistration, userSeed.Password),
+                pendingRegistration.Username,
+                pendingRegistration.NormalizedUsername);
+
+            _context.Add(userToAdd);
+
+            return userToAdd;
         }
     }
 }
