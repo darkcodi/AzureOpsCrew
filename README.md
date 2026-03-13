@@ -29,7 +29,7 @@ AzureOpsCrew is a **hybrid collaboration platform** where specialized AI agents 
 
 **The key insight:** AI agents aren't isolated tools — they're teammates 🤝. AzureOpsCrew creates a chat interface where multiple agents and multiple humans all participate together.
 
-## Production-Grade AI Principles
+ ## Production-Grade AI Principles (long)
 
 AzureOpsCrew implements enterprise-level multi-agent architecture from the ground up:
 
@@ -41,6 +41,19 @@ AzureOpsCrew implements enterprise-level multi-agent architecture from the groun
 - **🔌 Multi-Provider LLM Support** — Plug-and-play support for **OpenAI, Anthropic, Ollama, OpenRouter, and Azure Foundry**. Zero vendor lock-in — switch models per agent without changing a single line of code.
 - **🧰 MCP Tool Ecosystem** — Connect any external tool via **Model Context Protocol** servers with granular per-tool approval policies. Agents share a unified tool layer while respecting individual access boundaries.
 - **🧩 Composable Prompt Architecture** — Modular prompt chunks dynamically assembled based on agent role, conversation type, and channel context. Fully customizable agent personas, system prompts, and behavioral policies.
+
+- - ## Production-Grade AI Principles(short)
+
+AzureOpsCrew implements enterprise-level multi-agent architecture from the ground up:
+
+- **🎯 Intelligent Orchestration** — Trigger-based activation, parallel execution across chats, sequential consistency within each.
+- **🔒 Isolated Agent Context** — Each agent has its own memory scope, tools, and instructions. No cross-agent data leakage.
+- **🧠 Persistent Long-Term Memory** — Graph-based knowledge store that persists across sessions. Agents learn, not just respond.
+- **📐 Smart Context Management** — Token-aware windowing with adaptive truncation keeps conversations sharp regardless of length.
+- **🛡️ Human-in-the-Loop Control** — Tool approval before execution. Real-time visibility into agent reasoning and thinking.
+- **🔌 Multi-Provider LLM Support** — OpenAI, Anthropic, Ollama, OpenRouter, Azure Foundry. Switch models per agent, zero vendor lock-in.
+- **🧰 MCP Tool Ecosystem** — Connect any tool via Model Context Protocol with per-tool approval policies.
+- **🧩 Composable Prompt Architecture** — Modular prompt chunks assembled dynamically by agent role and context.
 
 ---
 
