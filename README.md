@@ -177,19 +177,19 @@ LONG_TERM_MEMORY_TYPE=InMemory
 | `FRONTEND_PORT` | Frontend port | ❌ No |
 | `SQLSERVER_SA_PASSWORD` | SQL Server SA password | ❌ No |
 | `JWT_SIGNING_KEY` | JWT signing key (min 32 chars) | ✅ Yes |
-| `SEEDING_ENABLED` | Enable database seeding | ✅ Yes |
+| `SEEDING_ENABLED` | Enable database seeding | ✅ Yes(Quick Start recommended `true`) |
 | `SEEDING_AZURE_OPENAI_API_ENDPOINT` | Azure OpenAI endpoint for seeding | ⚠️ Yes if `SEEDING_ENABLED=true` |
 | `SEEDING_AZURE_OPENAI_API_KEY` | Azure OpenAI API key for seeding | ⚠️ Yes if `SEEDING_ENABLED=true` |
 | `SEEDING_AZURE_OPENAI_API_DEFAULTMODEL` | Azure OpenAI model name | ❌ No |
 | `SEEDING_USER_EMAIL` | Seed user email | ❌ No |
 | `SEEDING_USER_USERNAME` | Seed user username | ❌ No |
 | `SEEDING_USER_PASSWORD` | Seed user password | ❌ No |
-| `EMAIL_VERIFICATION_ENABLED` | Enable email verification | ✅ Yes |
+| `EMAIL_VERIFICATION_ENABLED` | Enable email verification | ✅ Yes(Quick Start recommended `false`) |
 | `BREVO_API_KEY` | Brevo API key for email sending | ⚠️ Yes if `EMAIL_VERIFICATION_ENABLED=true` |
 | `BREVO_API_BASE_URL` | Brevo API base URL | ⚠️ Yes if `EMAIL_VERIFICATION_ENABLED=true` |
 | `BREVO_SENDER_EMAIL` | Brevo sender email | ⚠️ Yes if `EMAIL_VERIFICATION_ENABLED=true` |
 | `BREVO_SENDER_NAME` | Brevo sender name | ⚠️ Yes if `EMAIL_VERIFICATION_ENABLED=true` |
-| `LONG_TERM_MEMORY_TYPE` | Memory type (`None` or `InMemory` or `Neo4j`) | ✅ Yes |
+| `LONG_TERM_MEMORY_TYPE` | Memory type (`None` or `InMemory` or `Neo4j`) | ✅ Yes(Quick Start recommended `None`/`InMemory`) |
 | `NEO4J_URI` | Neo4j connection URI | ⚠️ Yes if `LONG_TERM_MEMORY_TYPE=Neo4j` |
 | `NEO4J_USERNAME` | Neo4j username | ⚠️ Yes if `LONG_TERM_MEMORY_TYPE=Neo4j` |
 | `NEO4J_PASSWORD` | Neo4j password | ⚠️ Yes if `LONG_TERM_MEMORY_TYPE=Neo4j` |
@@ -274,19 +274,19 @@ cp .env.example .env
 |---------|-------------|----------|
 | `SqlServer:ConnectionString` | SQL Server connection string | ✅ Yes |
 | `Jwt:SigningKey` | JWT signing key (min 32 chars) | ✅ Yes |
-| `Seeding:IsEnabled` | Enable database seeding | ✅ Yes |
+| `Seeding:IsEnabled` | Enable database seeding | ✅ Yes(Quick Start recommended `true`) |
 | `Seeding:AzureFoundrySeed:ApiEndpoint` | Azure OpenAI endpoint | ⚠️ Yes if `Seeding:IsEnabled=true` |
 | `Seeding:AzureFoundrySeed:Key` | Azure OpenAI API key | ⚠️ Yes if `Seeding:IsEnabled=true` |
 | `Seeding:AzureFoundrySeed:DefaultModel` | Azure OpenAI model name | ❌ No |
 | `Seeding:UserSeed:Email` | Seed user email | ❌ No |
 | `Seeding:UserSeed:Username` | Seed user username | ❌ No |
 | `Seeding:UserSeed:Password` | Seed user password | ❌ No |
-| `EmailVerification:IsEnabled` | Enable email verification | ✅ Yes |
+| `EmailVerification:IsEnabled` | Enable email verification | ✅ Yes(Quick Start recommended `false`) |
 | `Brevo:ApiKey` | Brevo API key for email sending | ⚠️ Yes if `EmailVerification:IsEnabled=true` |
 | `Brevo:ApiBaseUrl` | Brevo API base URL | ⚠️ Yes if `EmailVerification:IsEnabled=true` |
 | `Brevo:SenderEmail` | Brevo sender email | ⚠️ Yes if `EmailVerification:IsEnabled=true` |
 | `Brevo:SenderName` | Brevo sender name | ⚠️ Yes if `EmailVerification:IsEnabled=true` |
-| `LongTermMemory:Type` | Memory type (`None` or `InMemory` or `Neo4j`) | ✅ Yes |
+| `LongTermMemory:Type` | Memory type (`None` or `InMemory` or `Neo4j`) | ✅ Yes(Quick Start recommended `None`/`InMemory`) |
 | `LongTermMemory:Neo4j:Uri` | Neo4j connection URI | ⚠️ Yes if `LongTermMemory:Type=Neo4j` |
 | `LongTermMemory:Neo4j:Username` | Neo4j username | ⚠️ Yes if `LongTermMemory:Type=Neo4j` |
 | `LongTermMemory:Neo4j:Password` | Neo4j password | ⚠️ Yes if `LongTermMemory:Type=Neo4j` |
