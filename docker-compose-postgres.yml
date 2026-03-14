@@ -67,6 +67,8 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-azureopscrew}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
@@ -75,3 +77,7 @@ services:
       timeout: 5s
       retries: 5
     restart: on-failure
+
+volumes:
+  postgres_data:
+    driver: local

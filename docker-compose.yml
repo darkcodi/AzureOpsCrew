@@ -69,6 +69,8 @@ services:
     environment:
       - ACCEPT_EULA=Y
       - SA_PASSWORD=${SQLSERVER_SA_PASSWORD:-YourStrong@Password}
+    volumes:
+      - sqlserver_data:/var/opt/mssql
     ports:
       - "${SQLSERVER_PORT:-42433}:1433"
     command:
@@ -86,3 +88,7 @@ services:
       retries: 10
       start_period: 60s
     restart: on-failure
+
+volumes:
+  sqlserver_data:
+    driver: local
