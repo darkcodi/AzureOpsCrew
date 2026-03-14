@@ -28,11 +28,19 @@ public class M029_AddMcpServerConfigurations : Migration
             .WithColumn("BearerToken").AsString(4000).Nullable()
             .WithColumn("DateCreated").AsDateTime().NotNullable();
 
+        // PostgreSQL: Convert Guid columns to uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE """ + ConfigurationsTableName + @""" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;");
+
         Create.Table(AuthHeadersTableName)
             .WithColumn("Id").AsInt32().PrimaryKey().Identity()
             .WithColumn("McpServerConfigurationId").AsGuid().NotNullable()
             .WithColumn("Name").AsString(200).NotNullable()
             .WithColumn("Value").AsString(4000).NotNullable();
+
+        // PostgreSQL: Convert Guid column to uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE """ + AuthHeadersTableName + @""" ALTER COLUMN ""McpServerConfigurationId"" TYPE uuid USING ""McpServerConfigurationId""::uuid;");
 
         Create.Index(AuthHeadersConfigurationIdIndexName)
             .OnTable(AuthHeadersTableName)
@@ -51,6 +59,10 @@ public class M029_AddMcpServerConfigurations : Migration
             .WithColumn("InputSchemaJson").AsString(int.MaxValue).Nullable()
             .WithColumn("OutputSchemaJson").AsString(int.MaxValue).Nullable()
             .WithColumn("IsEnabled").AsBoolean().NotNullable().WithDefaultValue(true);
+
+        // PostgreSQL: Convert Guid column to uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE """ + ToolsTableName + @""" ALTER COLUMN ""McpServerConfigurationId"" TYPE uuid USING ""McpServerConfigurationId""::uuid;");
 
         Create.Index(ToolsConfigurationIdIndexName)
             .OnTable(ToolsTableName)

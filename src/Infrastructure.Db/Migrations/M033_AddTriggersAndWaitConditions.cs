@@ -25,6 +25,14 @@ public class M033_AddTriggersAndWaitConditions : Migration
             .WithColumn("ToolName").AsString(200).Nullable()
             .WithColumn("Parameters").AsString(int.MaxValue).Nullable();
 
+        // PostgreSQL: Convert Guid columns to uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""Triggers"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;
+                   ALTER TABLE ""Triggers"" ALTER COLUMN ""AgentId"" TYPE uuid USING ""AgentId""::uuid;
+                   ALTER TABLE ""Triggers"" ALTER COLUMN ""ChatId"" TYPE uuid USING ""ChatId""::uuid;
+                   ALTER TABLE ""Triggers"" ALTER COLUMN ""MessageId"" TYPE uuid USING ""MessageId""::uuid;
+                   ALTER TABLE ""Triggers"" ALTER COLUMN ""AuthorId"" TYPE uuid USING ""AuthorId""::uuid;");
+
         Create.Table("WaitConditions")
             .WithColumn("Id").AsGuid().NotNullable().PrimaryKey()
             .WithColumn("Type").AsInt32().NotNullable()                    // WaitConditionType enum
@@ -35,6 +43,13 @@ public class M033_AddTriggersAndWaitConditions : Migration
             .WithColumn("SatisfiedByTriggerId").AsGuid().Nullable()
             .WithColumn("MessageAfterDateTime").AsDateTime().Nullable()
             .WithColumn("ToolCallId").AsString(200).Nullable();
+
+        // PostgreSQL: Convert Guid columns to uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""WaitConditions"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;
+                   ALTER TABLE ""WaitConditions"" ALTER COLUMN ""AgentId"" TYPE uuid USING ""AgentId""::uuid;
+                   ALTER TABLE ""WaitConditions"" ALTER COLUMN ""ChatId"" TYPE uuid USING ""ChatId""::uuid;
+                   ALTER TABLE ""WaitConditions"" ALTER COLUMN ""SatisfiedByTriggerId"" TYPE uuid USING ""SatisfiedByTriggerId""::uuid;");
 
         // Foreign key from WaitConditions.SatisfiedByTriggerId to Triggers.Id
         Create.ForeignKey("FK_WaitConditions_Triggers_SatisfiedByTriggerId")

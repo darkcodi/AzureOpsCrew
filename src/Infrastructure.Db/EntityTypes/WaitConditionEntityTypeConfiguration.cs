@@ -12,7 +12,8 @@ public sealed class WaitConditionEntityTypeConfiguration : IEntityTypeConfigurat
 
         builder.HasKey(w => w.Id);
         builder.Property(w => w.Id)
-               .ValueGeneratedOnAdd();
+               .ValueGeneratedOnAdd()
+               .HasColumnType("uuid");
 
         // Configure TPH discriminator
         builder.HasDiscriminator<int>("Type")
@@ -21,17 +22,20 @@ public sealed class WaitConditionEntityTypeConfiguration : IEntityTypeConfigurat
 
         // Common properties
         builder.Property(w => w.AgentId)
-               .IsRequired();
+               .IsRequired()
+               .HasColumnType("uuid");
 
         builder.Property(w => w.ChatId)
-               .IsRequired();
+               .IsRequired()
+               .HasColumnType("uuid");
 
         builder.Property(w => w.CreatedAt)
                .IsRequired();
 
         builder.Property(w => w.CompletedAt);
 
-        builder.Property(w => w.SatisfiedByTriggerId);
+        builder.Property(w => w.SatisfiedByTriggerId)
+               .HasColumnType("uuid");
 
         // Indexes
         builder.HasIndex(w => w.AgentId);

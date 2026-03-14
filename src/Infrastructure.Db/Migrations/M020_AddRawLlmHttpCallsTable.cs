@@ -16,6 +16,13 @@ public class M020_AddRawLlmHttpCallsTable : Migration
             .WithColumn("HttpResponse").AsString(int.MaxValue).NotNullable()
             .WithColumn("CreatedAt").AsDateTime().NotNullable();
 
+        // PostgreSQL: Convert Guid columns to uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""RawLlmHttpCalls"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;
+                   ALTER TABLE ""RawLlmHttpCalls"" ALTER COLUMN ""AgentId"" TYPE uuid USING ""AgentId""::uuid;
+                   ALTER TABLE ""RawLlmHttpCalls"" ALTER COLUMN ""ThreadId"" TYPE uuid USING ""ThreadId""::uuid;
+                   ALTER TABLE ""RawLlmHttpCalls"" ALTER COLUMN ""RunId"" TYPE uuid USING ""RunId""::uuid;");
+
         Create.Index("IX_RawLlmHttpCalls_AgentId").OnTable("RawLlmHttpCalls").OnColumn("AgentId");
         Create.Index("IX_RawLlmHttpCalls_ThreadId").OnTable("RawLlmHttpCalls").OnColumn("ThreadId");
         Create.Index("IX_RawLlmHttpCalls_RunId").OnTable("RawLlmHttpCalls").OnColumn("RunId");

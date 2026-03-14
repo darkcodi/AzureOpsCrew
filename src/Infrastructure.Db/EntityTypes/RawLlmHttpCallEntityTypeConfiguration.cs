@@ -12,16 +12,20 @@ public sealed class RawLlmHttpCallEntityTypeConfiguration : IEntityTypeConfigura
 
         builder.HasKey(m => m.Id);
         builder.Property(m => m.Id)
-               .ValueGeneratedOnAdd();
+               .ValueGeneratedOnAdd()
+               .HasColumnType("uuid");
 
         builder.Property(m => m.AgentId)
-               .IsRequired();
+               .IsRequired()
+               .HasColumnType("uuid");
 
         builder.Property(m => m.ThreadId)
-               .IsRequired();
+               .IsRequired()
+               .HasColumnType("uuid");
 
         builder.Property(m => m.RunId)
-               .IsRequired();
+               .IsRequired()
+               .HasColumnType("uuid");
 
         builder.Property(m => m.HttpRequest)
                .IsRequired();

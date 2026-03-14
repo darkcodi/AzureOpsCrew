@@ -21,6 +21,11 @@ public class M024_UpdateMessagesTable : Migration
             .AddColumn("AgentId").AsGuid().Nullable()
             .AddColumn("UserId").AsGuid().Nullable();
 
+        // PostgreSQL: Convert Guid columns to uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""Messages"" ALTER COLUMN ""AgentId"" TYPE uuid USING ""AgentId""::uuid;
+                   ALTER TABLE ""Messages"" ALTER COLUMN ""UserId"" TYPE uuid USING ""UserId""::uuid;");
+
         // Recreate indexes for AgentId and UserId
         Create.Index("IX_Messages_AgentId").OnTable("Messages").OnColumn("AgentId");
         Create.Index("IX_Messages_UserId").OnTable("Messages").OnColumn("UserId");

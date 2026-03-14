@@ -13,6 +13,10 @@ public class M030_AddChatMessageIdToAgentThoughts : Migration
             .NotNullable()
             .WithDefaultValue(Guid.Empty);
 
+        // PostgreSQL: Convert Guid column to uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""AgentThoughts"" ALTER COLUMN ""ChatMessageId"" TYPE uuid USING ""ChatMessageId""::uuid;");
+
         Create.Index("IX_AgentThoughts_ChatMessageId").OnTable("AgentThoughts").OnColumn("ChatMessageId");
     }
 

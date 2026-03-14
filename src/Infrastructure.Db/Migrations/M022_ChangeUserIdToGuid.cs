@@ -22,6 +22,10 @@ public class M022_ChangeUserIdToGuid : Migration
             .WithColumn("DateModified").AsDateTime().Nullable()
             .WithColumn("LastLoginAt").AsDateTime().Nullable();
 
+        // PostgreSQL: Convert Id column to uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""Users"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;");
+
         Create.Index("IX_Users_NormalizedEmail")
             .OnTable("Users")
             .OnColumn("NormalizedEmail")

@@ -19,6 +19,14 @@ public class M023_ChangeDmIdsToGuid : Migration
             .WithColumn("Agent2Id").AsGuid().Nullable()
             .WithColumn("CreatedAt").AsDateTime().NotNullable();
 
+        // PostgreSQL: Convert Guid columns to uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""DirectMessageChannels"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;
+                   ALTER TABLE ""DirectMessageChannels"" ALTER COLUMN ""User1Id"" TYPE uuid USING ""User1Id""::uuid;
+                   ALTER TABLE ""DirectMessageChannels"" ALTER COLUMN ""User2Id"" TYPE uuid USING ""User2Id""::uuid;
+                   ALTER TABLE ""DirectMessageChannels"" ALTER COLUMN ""Agent1Id"" TYPE uuid USING ""Agent1Id""::uuid;
+                   ALTER TABLE ""DirectMessageChannels"" ALTER COLUMN ""Agent2Id"" TYPE uuid USING ""Agent2Id""::uuid;");
+
         // Recreate indexes
         Create.Index("IX_DirectMessageChannels_User1Id").OnTable("DirectMessageChannels").OnColumn("User1Id");
         Create.Index("IX_DirectMessageChannels_User2Id").OnTable("DirectMessageChannels").OnColumn("User2Id");

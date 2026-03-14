@@ -9,7 +9,8 @@ public sealed class McpServerConfigurationEntityTypeConfiguration : IEntityTypeC
         builder.ToTable("McpServerConfigurations");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id)
-            .ValueGeneratedOnAdd();
+            .ValueGeneratedOnAdd()
+            .HasColumnType("uuid");
         builder.Property(x => x.Name)
             .IsRequired()
             .HasMaxLength(200);
@@ -66,10 +67,8 @@ public sealed class McpServerConfigurationEntityTypeConfiguration : IEntityTypeC
                 .HasMaxLength(200);
             toolsBuilder.Property(x => x.Description)
                 .HasMaxLength(4000);
-            toolsBuilder.Property(x => x.InputSchemaJson)
-                .HasColumnType("nvarchar(max)");
-            toolsBuilder.Property(x => x.OutputSchemaJson)
-                .HasColumnType("nvarchar(max)");
+            toolsBuilder.Property(x => x.InputSchemaJson);
+            toolsBuilder.Property(x => x.OutputSchemaJson);
             toolsBuilder.Property(x => x.IsEnabled)
                 .HasDefaultValue(true);
         });

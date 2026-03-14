@@ -7,21 +7,14 @@ public class M032_IncreaseAvailableMcpServerToolsSize : Migration
 {
     public override void Up()
     {
-        // Drop default constraint if it exists
-        Execute.Sql(@"
-            IF EXISTS (
-                SELECT 1 FROM sys.default_constraints
-                WHERE name = 'DF_Agents_Info_AvailableMcpServerTools'
-                AND parent_object_id = OBJECT_ID('Agents')
-            )
-            BEGIN
-                ALTER TABLE [dbo].[Agents] DROP CONSTRAINT [DF_Agents_Info_AvailableMcpServerTools]
-            END
-        ");
+        // Drop default constraint if it exists (works for both SQL Server and PostgreSQL)
+        Delete.DefaultConstraint()
+            .OnTable("Agents")
+            .OnColumn("Info_AvailableMcpServerTools");
 
         Alter.Table("Agents")
             .AlterColumn("Info_AvailableMcpServerTools")
-            .AsString(int.MaxValue) // Maps to nvarchar(max)
+            .AsString(int.MaxValue) // Maps to nvarchar(max) / text
             .NotNullable();
     }
 

@@ -11,6 +11,10 @@ public class M028_AddAgentThoughtIdToMessages : Migration
             .AddColumn("AgentThoughtId")
             .AsGuid()
             .Nullable();
+
+        // PostgreSQL: Convert Guid column to uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""Messages"" ALTER COLUMN ""AgentThoughtId"" TYPE uuid USING ""AgentThoughtId""::uuid;");
     }
 
     public override void Down()

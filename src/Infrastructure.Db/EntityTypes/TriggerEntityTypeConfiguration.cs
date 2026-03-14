@@ -12,7 +12,8 @@ public sealed class TriggerEntityTypeConfiguration : IEntityTypeConfiguration<Tr
 
         builder.HasKey(t => t.Id);
         builder.Property(t => t.Id)
-               .ValueGeneratedOnAdd();
+               .ValueGeneratedOnAdd()
+               .HasColumnType("uuid");
 
         // Configure TPH discriminator
         builder.HasDiscriminator<int>("Type")
@@ -21,10 +22,12 @@ public sealed class TriggerEntityTypeConfiguration : IEntityTypeConfiguration<Tr
 
         // Common properties
         builder.Property(t => t.AgentId)
-               .IsRequired();
+               .IsRequired()
+               .HasColumnType("uuid");
 
         builder.Property(t => t.ChatId)
-               .IsRequired();
+               .IsRequired()
+               .HasColumnType("uuid");
 
         builder.Property(t => t.CreatedAt)
                .IsRequired();

@@ -15,7 +15,8 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
 
         builder.HasKey(a => a.Id);
         builder.Property(a => a.Id)
-               .ValueGeneratedOnAdd();
+               .ValueGeneratedOnAdd()
+               .HasColumnType("uuid");
 
         builder.Property(a => a.ProviderAgentId)
                .IsRequired();
@@ -39,7 +40,6 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
             infoBuilder.Property(i => i.Description);
 
             infoBuilder.Property(i => i.AvailableMcpServerTools)
-                       .HasColumnType("nvarchar(max)")
                        .HasConversion(
                            v => JsonSerializer.Serialize(v ?? Array.Empty<AgentMcpServerToolAvailability>(), JsonOptions),
                            s => string.IsNullOrEmpty(s)
@@ -49,7 +49,8 @@ public sealed class AgentEntityTypeConfiguration : IEntityTypeConfiguration<Agen
         });
 
         builder.Property(a => a.ProviderId)
-               .IsRequired();
+               .IsRequired()
+               .HasColumnType("uuid");
 
         builder.Property(a => a.Color)
                .IsRequired()
