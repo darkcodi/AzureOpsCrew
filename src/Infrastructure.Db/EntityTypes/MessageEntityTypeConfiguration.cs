@@ -12,7 +12,8 @@ public sealed class MessageEntityTypeConfiguration : IEntityTypeConfiguration<Me
 
         builder.HasKey(m => m.Id);
         builder.Property(m => m.Id)
-               .ValueGeneratedOnAdd();
+               .ValueGeneratedOnAdd()
+               .HasColumnType("uuid");
 
         builder.Property(m => m.Text)
                .IsRequired();
@@ -23,17 +24,22 @@ public sealed class MessageEntityTypeConfiguration : IEntityTypeConfiguration<Me
         builder.Property(m => m.AuthorName);
 
         // Sender: exactly one of AgentId or UserId should be set
-        builder.Property(m => m.AgentId);
+        builder.Property(m => m.AgentId)
+               .HasColumnType("uuid");
 
-        builder.Property(m => m.UserId);
+        builder.Property(m => m.UserId)
+               .HasColumnType("uuid");
 
         // Destination: exactly one of ChannelId or DmId should be set
-        builder.Property(m => m.ChannelId);
+        builder.Property(m => m.ChannelId)
+               .HasColumnType("uuid");
 
-        builder.Property(m => m.DmId);
+        builder.Property(m => m.DmId)
+               .HasColumnType("uuid");
 
         // Reference to AgentThought if this message is from an agent
-        builder.Property(m => m.AgentThoughtId);
+        builder.Property(m => m.AgentThoughtId)
+               .HasColumnType("uuid");
 
         builder.HasIndex(m => m.PostedAt);
         builder.HasIndex(m => m.AgentId);

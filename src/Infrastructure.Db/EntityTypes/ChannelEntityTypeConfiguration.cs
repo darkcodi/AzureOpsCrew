@@ -12,7 +12,8 @@ public sealed class ChannelEntityTypeConfiguration : IEntityTypeConfiguration<Ch
 
         builder.HasKey(c => c.Id);
         builder.Property(c => c.Id)
-               .ValueGeneratedOnAdd();
+               .ValueGeneratedOnAdd()
+               .HasColumnType("uuid");
 
         builder.Property(c => c.Name)
                .IsRequired();

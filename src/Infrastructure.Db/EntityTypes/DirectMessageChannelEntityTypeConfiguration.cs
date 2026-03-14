@@ -12,19 +12,24 @@ public sealed class DirectMessageChannelEntityTypeConfiguration : IEntityTypeCon
 
         builder.HasKey(d => d.Id);
         builder.Property(d => d.Id)
-               .ValueGeneratedOnAdd();
+               .ValueGeneratedOnAdd()
+               .HasColumnType("uuid");
 
         builder.Property(d => d.User1Id)
-               .IsRequired(false);
+               .IsRequired(false)
+               .HasColumnType("uuid");
 
         builder.Property(d => d.User2Id)
-               .IsRequired(false);
+               .IsRequired(false)
+               .HasColumnType("uuid");
 
         builder.Property(d => d.Agent1Id)
-               .IsRequired(false);
+               .IsRequired(false)
+               .HasColumnType("uuid");
 
         builder.Property(d => d.Agent2Id)
-               .IsRequired(false);
+               .IsRequired(false)
+               .HasColumnType("uuid");
 
         builder.Property(d => d.CreatedAt)
                .IsRequired();

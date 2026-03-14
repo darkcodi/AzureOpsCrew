@@ -13,16 +13,20 @@ public sealed class AgentThoughtEntityTypeConfiguration : IEntityTypeConfigurati
 
         builder.HasKey(m => m.Id);
         builder.Property(m => m.Id)
-               .ValueGeneratedOnAdd();
+               .ValueGeneratedOnAdd()
+               .HasColumnType("uuid");
 
         builder.Property(m => m.AgentId)
-               .IsRequired();
+               .IsRequired()
+               .HasColumnType("uuid");
 
         builder.Property(m => m.RunId)
-               .IsRequired();
+               .IsRequired()
+               .HasColumnType("uuid");
 
         builder.Property(m => m.ThreadId)
-               .IsRequired();
+               .IsRequired()
+               .HasColumnType("uuid");
 
         builder.HasIndex(m => m.RunId);
         builder.HasIndex(m => m.ThreadId);
@@ -59,7 +63,8 @@ public sealed class AgentThoughtEntityTypeConfiguration : IEntityTypeConfigurati
 
         builder.Property(m => m.ChatMessageId)
                .IsRequired()
-               .HasDefaultValue(Guid.Empty);
+               .HasDefaultValue(Guid.Empty)
+               .HasColumnType("uuid");
 
         builder.HasIndex(m => m.ChatMessageId);
     }

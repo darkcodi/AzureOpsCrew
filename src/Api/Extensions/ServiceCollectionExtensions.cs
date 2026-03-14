@@ -47,7 +47,33 @@ public static class ServiceCollectionExtensions
         var provider = configuration["DatabaseProvider"];
         Log.Information("Configuring database provider: {DbProvider}", provider);
 
-        if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(provider, "PostgreSQL", StringComparison.OrdinalIgnoreCase))
+        {
+            var postgreSqlSettings = configuration.GetSection("PostgreSQL").Get<PostgreSqlSettings>() ?? new PostgreSqlSettings();
+
+            if (string.IsNullOrEmpty(postgreSqlSettings.ConnectionString))
+                throw new InvalidOperationException("PostgreSQL__ConnectionString is required.");
+
+            services.Configure<PostgreSqlSettings>(configuration.GetSection("PostgreSQL"));
+            services.AddOptions<PostgreSqlSettings>();
+
+            // Enable legacy timestamp behavior to map DateTime to 'timestamp without time zone'
+            // instead of 'timestamp with time zone', avoiding DateTimeKind validation errors
+            AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
+            services.AddDbContext<AzureOpsCrewContext>(options =>
+            {
+                options.UseNpgsql(postgreSqlSettings.ConnectionString);
+            });
+            services.AddFluentMigratorCore()
+                .ConfigureRunner(rb =>
+                {
+                    rb.AddPostgres()
+                        .WithGlobalConnectionString(postgreSqlSettings.ConnectionString)
+                        .ScanIn(typeof(M001_InitialCreate).Assembly).For.All();
+                });
+        }
+        else if (string.Equals(provider, "SqlServer", StringComparison.OrdinalIgnoreCase))
         {
             var sqlServerSettings = services.AddSqlServerSettings(configuration, "SqlServer");
             services.AddDbContext<AzureOpsCrewContext>(options =>
@@ -64,7 +90,7 @@ public static class ServiceCollectionExtensions
         }
         else
         {
-            throw new InvalidOperationException($"Unknown DB provider '{provider}'. Supported providers: SqlServer");
+            throw new InvalidOperationException($"Unknown DB provider '{provider}'. Supported providers: PostgreSQL, SqlServer");
         }
     }
 

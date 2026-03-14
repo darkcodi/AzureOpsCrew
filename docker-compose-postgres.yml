@@ -10,8 +10,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
       - ASPNETCORE_HTTP_PORTS=80
       - ASPNETCORE_URLS=http://*:80
-      - DatabaseProvider=${DATABASE_PROVIDER:-SqlServer}
-      - SqlServer__ConnectionString=Server=sqlserver;Database=${SQLSERVER_DB_NAME:-AzureOpsCrew};User Id=sa;Password=${SQLSERVER_SA_PASSWORD:-YourStrong@Password};TrustServerCertificate=True;
+      - DatabaseProvider=${DATABASE_PROVIDER:-PostgreSQL}
+      - PostgreSQL__ConnectionString=${POSTGRES_CONNECTION_STRING:-Host=postgres;Database=azureopscrew;Username=postgres;Password=postgres}
       - LongTermMemory__Type=${LONG_TERM_MEMORY_TYPE:-None}
       - LongTermMemory__Neo4j__Uri=${NEO4J_URI:-bolt://neo4j:7687}
       - LongTermMemory__Neo4j__Username=${NEO4J_USERNAME:-neo4j}
@@ -40,7 +40,7 @@ services:
       - "${API_PORT:-42000}:80"
     restart: on-failure
     depends_on:
-      sqlserver:
+      postgres:
         condition: service_healthy
 
   # Blazor WASM frontend (static files served by nginx).
@@ -59,29 +59,18 @@ services:
     depends_on:
       - api
 
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    platform: ${DOCKER_SQLSERVER_PLATFORM:-linux/amd64}
-    container_name: sqlserver
-    env_file:
-      - .env
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
     environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=${SQLSERVER_SA_PASSWORD:-YourStrong@Password}
+      - POSTGRES_DB=${POSTGRES_DB:-azureopscrew}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "${SQLSERVER_PORT:-42433}:1433"
-    command:
-      - /bin/bash
-      - -c
-      - |
-        /opt/mssql/bin/sqlservr &
-        sleep 30
-        /opt/mssql-tools18/bin/sqlcmd -U sa -P "${SQLSERVER_SA_PASSWORD:-YourStrong@Password}" -C -Q "IF DB_ID('${SQLSERVER_DB_NAME:-AzureOpsCrew}') IS NULL CREATE DATABASE [${SQLSERVER_DB_NAME:-AzureOpsCrew}];"
-        wait
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-U", "sa", "-P", "${SQLSERVER_SA_PASSWORD:-YourStrong@Password}", "-d", "${SQLSERVER_DB_NAME:-AzureOpsCrew}", "-C", "-Q", "SELECT 1"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 60s
+      retries: 5
     restart: on-failure

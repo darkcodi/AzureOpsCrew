@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include=".env.example" />
+    <None Include="docker-compose-postgres.yml" />
     <None Include="docker-compose.yml" />
     <None Include=".dockerignore" />
     <None Include="docker-compose.vs.debug.yml" />
