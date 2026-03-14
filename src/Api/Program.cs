@@ -5,6 +5,8 @@ using AzureOpsCrew.Api.Endpoints;
 using AzureOpsCrew.Api.Extensions;
 using AzureOpsCrew.Api.Settings;
 using AzureOpsCrew.Api.Setup.Seeds;
+using AzureOpsCrew.Infrastructure.Db;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using Serilog;
 
@@ -50,6 +52,10 @@ try
     builder.Services.AddAgentFactory(builder.Configuration);
     builder.Services.AddAgentSchedulerBackgroundService();
     builder.Services.AddHttpClient();
+
+    // Add health checks
+    builder.Services.AddHealthChecks()
+        .AddDbContextCheck<AzureOpsCrewContext>();
 
     // Configure SignalR
     builder.Services.AddSignalR();
@@ -119,6 +125,10 @@ try
     // Map SignalR hubs
     app.MapHub<ChannelEventsHub>("/channels/{id}/events");
     app.MapHub<DmEventsHub>("/dms/{id}/events");
+
+    // Map health check endpoints
+    app.MapHealthChecks("/health");
+    app.MapHealthChecks("/healthz");
 
     await app.Services.RunDbSetup();
     await app.Services.RunLongTermMemorySetup();
