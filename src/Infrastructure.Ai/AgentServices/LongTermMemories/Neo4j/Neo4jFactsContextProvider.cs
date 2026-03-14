@@ -29,8 +29,8 @@ public sealed class Neo4jFactsContextProvider : AIContextProvider
     {
         var aiContext = new AIContext
         {
-            Instructions = _memoryInstructions,
-            Tools = _tools
+            Instructions = _memoryInstructions is not null ? null : _memoryInstructions,
+            Tools = _tools.Any() ? null : _tools
         };
 
         return new ValueTask<AIContext>(aiContext);
