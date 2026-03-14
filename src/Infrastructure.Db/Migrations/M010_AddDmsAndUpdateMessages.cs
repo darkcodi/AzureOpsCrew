@@ -26,6 +26,12 @@ public class M010_AddDmsAndUpdateMessages : Migration
             .AddColumn("ChannelId").AsGuid().Nullable()
             .AddColumn("DmId").AsGuid().Nullable();
 
+        // PostgreSQL: Convert Guid columns to native uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""Dms"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;
+                 ALTER TABLE ""Messages"" ALTER COLUMN ""ChannelId"" TYPE uuid USING ""ChannelId""::uuid;
+                 ALTER TABLE ""Messages"" ALTER COLUMN ""DmId"" TYPE uuid USING ""DmId""::uuid;");
+
         Create.Index("IX_Messages_AgentId").OnTable("Messages").OnColumn("AgentId");
         Create.Index("IX_Messages_UserId").OnTable("Messages").OnColumn("UserId");
         Create.Index("IX_Messages_ChannelId").OnTable("Messages").OnColumn("ChannelId");

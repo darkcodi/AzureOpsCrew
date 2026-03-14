@@ -18,6 +18,12 @@ public class M009_AddChatTables : Migration
             .WithColumn("Text").AsString().NotNullable()
             .WithColumn("PostedAt").AsDateTime().NotNullable();
 
+        // PostgreSQL: Convert Guid columns to native uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""Messages"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;
+                 ALTER TABLE ""Chats"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;
+                 ALTER TABLE ""Messages"" ALTER COLUMN ""ChatId"" TYPE uuid USING ""ChatId""::uuid;");
+
         Create.Index("IX_Messages_PostedAt").OnTable("Messages").OnColumn("PostedAt");
         Create.Index("IX_Messages_ChatId").OnTable("Messages").OnColumn("ChatId");
     }

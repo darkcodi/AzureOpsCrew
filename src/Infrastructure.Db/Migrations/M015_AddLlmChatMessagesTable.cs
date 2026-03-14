@@ -15,6 +15,11 @@ public class M015_AddLlmChatMessagesTable : Migration
             .WithColumn("CreatedAt").AsDateTime().NotNullable()
             .WithColumn("ContentJson").AsString(int.MaxValue).NotNullable();
 
+        // PostgreSQL: Convert Guid columns to native uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""LlmChatMessages"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;
+                 ALTER TABLE ""LlmChatMessages"" ALTER COLUMN ""AgentId"" TYPE uuid USING ""AgentId""::uuid;");
+
         Create.Index("IX_LlmChatMessages_AgentId").OnTable("LlmChatMessages").OnColumn("AgentId");
         Create.Index("IX_LlmChatMessages_CreatedAt").OnTable("LlmChatMessages").OnColumn("CreatedAt");
     }

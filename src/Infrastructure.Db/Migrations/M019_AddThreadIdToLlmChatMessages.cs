@@ -10,6 +10,10 @@ public class M019_AddThreadIdToLlmChatMessages : Migration
         Alter.Table("LlmChatMessages")
             .AddColumn("ThreadId").AsGuid().NotNullable().WithDefaultValue(Guid.Empty);
 
+        // PostgreSQL: Convert Guid column to native uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""LlmChatMessages"" ALTER COLUMN ""ThreadId"" TYPE uuid USING ""ThreadId""::uuid;");
+
         Create.Index("IX_LlmChatMessages_ThreadId").OnTable("LlmChatMessages").OnColumn("ThreadId");
     }
 

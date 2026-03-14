@@ -33,6 +33,10 @@ public class M001_InitialCreate : Migration
             .WithColumn("ConversationId").AsString().Nullable()
             .WithColumn("AgentIds").AsString().NotNullable()
             .WithColumn("DateCreated").AsDateTime().NotNullable();
+
+        // PostgreSQL: Convert Guid columns to native uuid type
+        IfDatabase("Postgres")
+            .Execute.Sql(@"ALTER TABLE ""Channel"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;");
     }
 
     public override void Down()
