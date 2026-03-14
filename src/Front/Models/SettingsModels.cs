@@ -455,6 +455,7 @@ public static class ProviderTypeMap
         [300] = "Ollama (Local)",
         [400] = "OpenRouter",
         [500] = "AzureFoundry",
+        [600] = "DeepSeek",
     };
 
     private static readonly Dictionary<string, int> NameToNumber = new(StringComparer.OrdinalIgnoreCase)
@@ -467,6 +468,7 @@ public static class ProviderTypeMap
         ["OpenRouter"] = 400,
         ["AzureFoundry"] = 500,
         ["Azure Foundry"] = 500,
+        ["DeepSeek"] = 600,
     };
 
     public static string FromBackend(JsonElement element)

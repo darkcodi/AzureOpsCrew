@@ -6,5 +6,6 @@ public enum ProviderType
     Anthropic = 200,
     Ollama = 300,
     OpenRouter = 400,
-    AzureFoundry = 500
+    AzureFoundry = 500,
+    DeepSeek = 600
 }

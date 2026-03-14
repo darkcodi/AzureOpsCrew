@@ -117,6 +117,10 @@ public static class ServiceCollectionExtensions
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         });
+        services.AddHttpClient<DeepSeekProviderFacade>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
         services.AddHttpClient<McpServerFacade>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
