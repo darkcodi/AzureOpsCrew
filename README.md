@@ -127,6 +127,11 @@ cp .env.example .env
 
 ### Option 1: Run with Docker compose (Recommended)
 
+#### Prerequisites
+
+- [Docker](https://www.docker.com/products/docker-desktop)
+- Azure OpenAI API key 🔑
+
 ```bash
 docker-compose up -d
 ```
@@ -136,6 +141,13 @@ Services will be available at:
 - **API**: http://localhost:42000
 
 ### Option 2: Run Locally
+
+### Prerequisites
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- Azure OpenAI API key 🔑
+- SQL Server instance (local or Azure) for primary data storage
+- (Optional) Neo4j instance for long-term memory
 
 ```bash
 # Install dependencies
