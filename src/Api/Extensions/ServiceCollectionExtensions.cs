@@ -9,7 +9,6 @@ using AzureOpsCrew.Domain.ProviderServices;
 using AzureOpsCrew.Domain.Users;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories;
-using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory;
 using AzureOpsCrew.Infrastructure.Ai.Mcp;
 using AzureOpsCrew.Infrastructure.Ai.ProviderFacades;
@@ -25,6 +24,7 @@ using Serilog;
 using System.Text;
 using AzureOpsCrew.Api.Background.ToolExecutors;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.Prompt;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Neo4j;
 
 namespace AzureOpsCrew.Api.Extensions;
 
@@ -218,8 +218,11 @@ public static class ServiceCollectionExtensions
         // Add LongTermMemory
         var memoryType = configuration["LongTermMemory:Type"] ?? "InMemory";
         services.AddSingleton(p => new AgentAiContextProviderFactory(p, memoryType));
-
-        if(string.Equals(memoryType, "InMemory", StringComparison.OrdinalIgnoreCase))
+        
+        if (string.Equals(memoryType, "None", StringComparison.OrdinalIgnoreCase))
+        {
+        }
+        else if (string.Equals(memoryType, "InMemory", StringComparison.OrdinalIgnoreCase))
         {
             services.AddSingleton<InMemoryFactsStore>();
         }
@@ -232,11 +235,11 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<Neo4j.Driver.IDriver>(_ =>
                 Neo4j.Driver.GraphDatabase.Driver(uri, Neo4j.Driver.AuthTokens.Basic(username, password)));
 
-            services.AddSingleton<CypherFactsStore>();
+            services.AddSingleton<Neo4jFactsStore>();
         }
         else
         {
-            throw new InvalidOperationException($"Unknown LongTermMemory type '{memoryType}'. Supported providers: InMemory, Cypher");
+            throw new InvalidOperationException($"Unknown LongTermMemory type '{memoryType}'. Supported providers: InMemory, Neo4j");
         }
     }
 

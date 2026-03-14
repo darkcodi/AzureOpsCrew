@@ -1,4 +1,4 @@
-using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Neo4j;
 using FluentMigrator.Runner;
 using Serilog;
 
@@ -21,7 +21,7 @@ public static class ServiceProviderExtensions
     public static async Task RunLongTermMemorySetup(this IServiceProvider provider, CancellationToken cancellationToken = default)
     {
         using var scope = provider.CreateScope();
-        var store = scope.ServiceProvider.GetService<CypherFactsStore>();
+        var store = scope.ServiceProvider.GetService<Neo4jFactsStore>();
 
         if (store is not null)
         {

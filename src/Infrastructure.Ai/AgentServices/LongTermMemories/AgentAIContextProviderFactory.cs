@@ -1,5 +1,5 @@
-﻿using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Cypher;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.InMemory;
+using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.Neo4j;
 using AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories.None;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,13 +22,13 @@ namespace AzureOpsCrew.Infrastructure.Ai.AgentServices.LongTermMemories
             ChatClientAgentOptions.AIContextProviderFactoryContext context,
             CancellationToken ct)
         {
-            // return _type switch
-            // {
-            //     "InMemory" => new InMemoryFactsContextProvider(agentId, _serviceProvider.GetRequiredService<InMemoryFactsStore>()),
-            //     "Cypher" => new CypherFactsContextProvider(agentId, _serviceProvider.GetRequiredService<CypherFactsStore>()),
-            //     _ => throw new InvalidOperationException($"{nameof(AIContextProvider)} of type {_type} is not defined.")
-            // };
-            return new NoneContextProvider();
+            return _type switch
+            {
+                "None" => new NoneContextProvider(),
+                "InMemory" => new InMemoryFactsContextProvider(agentId, _serviceProvider.GetRequiredService<InMemoryFactsStore>()),
+                "Neo4j" => new Neo4jFactsContextProvider(agentId, _serviceProvider.GetRequiredService<Neo4jFactsStore>()),
+                _ => throw new InvalidOperationException($"{nameof(AIContextProvider)} of type {_type} is not defined.")
+            };
         }
     }
 }
