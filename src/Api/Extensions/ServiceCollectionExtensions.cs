@@ -57,6 +57,10 @@ public static class ServiceCollectionExtensions
             services.Configure<PostgreSqlSettings>(configuration.GetSection("PostgreSQL"));
             services.AddOptions<PostgreSqlSettings>();
 
+            // Enable legacy timestamp behavior to map DateTime to 'timestamp without time zone'
+            // instead of 'timestamp with time zone', avoiding DateTimeKind validation errors
+            AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
             services.AddDbContext<AzureOpsCrewContext>(options =>
             {
                 options.UseNpgsql(postgreSqlSettings.ConnectionString);
