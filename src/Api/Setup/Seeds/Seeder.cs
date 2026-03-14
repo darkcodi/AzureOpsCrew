@@ -25,10 +25,11 @@ namespace AzureOpsCrew.Api.Setup.Seeds
         public async Task Seed()
         {
             var providerId = Guid.Parse("5f4e3d10-0123-4000-9abc-def123456789");
+            var providerType = Enum.Parse<ProviderType>(_seederOptions.ProviderSeed.ProviderType);
             var provider = new Provider(providerId,
-                name: "Azure OpenAI", ProviderType.OpenAI, apiKey: _seederOptions.AzureFoundrySeed.Key,
-                apiEndpoint: _seederOptions.AzureFoundrySeed.ApiEndpoint,
-                selectedModels: _seederOptions.AzureFoundrySeed.DefaultModel, defaultModel: _seederOptions.AzureFoundrySeed.DefaultModel);
+                name: "Default Provider", providerType, apiKey: _seederOptions.ProviderSeed.Key,
+                apiEndpoint: _seederOptions.ProviderSeed.ApiEndpoint,
+                selectedModels: _seederOptions.ProviderSeed.DefaultModel, defaultModel: _seederOptions.ProviderSeed.DefaultModel);
             await AddProviderIfNotExists(provider);
 
             var managerId = Guid.Parse("6a5d8a20-1234-4000-a1b2-c3d4e5f6a7b8");
@@ -41,7 +42,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                 new Agent(managerId,
                     new AgentInfo("manager",
                         "You are a Manager AI assistant. You help with planning, priorities, resource allocation, team coordination, and delivery. You think in terms of goals, milestones, risks, and stakeholder communication. Keep answers actionable and concise.",
-                        _seederOptions.AzureFoundrySeed.DefaultModel)
+                        _seederOptions.ProviderSeed.DefaultModel)
                         {
                             Description = "Helps with planning, priorities, resource allocation, team coordination, and delivery",
                             AvailableMcpServerTools = Array.Empty<AgentMcpServerToolAvailability>()
@@ -54,7 +55,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                     new AgentInfo(
                         "devops",
                         "You are a DevOps expert / SRE. You help with pipelines (YAML and classic), CI/CD, Azure Repos, Boards, Artifacts, Test Plans, and release management. You know branching strategies, approvals, variable groups, service connections, and Azure DevOps REST APIs. You also help troubleshooting issues, checking logs, monitoring, and optimizing performance. Keep answers actionable and concise.",
-                        _seederOptions.AzureFoundrySeed.DefaultModel)
+                        _seederOptions.ProviderSeed.DefaultModel)
                         {
                             Description = "Expert in Azure DevOps pipelines, CI/CD, repos, boards, artifacts, monitoring and release management",
                             AvailableMcpServerTools = Array.Empty<AgentMcpServerToolAvailability>()
@@ -65,7 +66,7 @@ namespace AzureOpsCrew.Api.Setup.Seeds
                     new AgentInfo(
                         "developer",
                         "You are a software engineer. You focus on code only.",
-                        _seederOptions.AzureFoundrySeed.DefaultModel)
+                        _seederOptions.ProviderSeed.DefaultModel)
                         {
                             Description = "Expert in building apps.",
                             AvailableMcpServerTools = Array.Empty<AgentMcpServerToolAvailability>()

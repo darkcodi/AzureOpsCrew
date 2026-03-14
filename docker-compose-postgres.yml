@@ -30,9 +30,10 @@ services:
       - Brevo__SenderEmail=${BREVO_SENDER_EMAIL:-azureopscrew@aoc-app.com}
       - Brevo__SenderName=${BREVO_SENDER_NAME:-Azure Ops Crew}
       - Seeding__IsEnabled=${SEEDING_ENABLED:-true}
-      - Seeding__AzureFoundrySeed__ApiEndpoint=${SEEDING_AZURE_OPENAI_API_ENDPOINT:-}
-      - Seeding__AzureFoundrySeed__Key=${SEEDING_AZURE_OPENAI_API_KEY:-}
-      - Seeding__AzureFoundrySeed__DefaultModel=${SEEDING_AZURE_OPENAI_API_DEFAULTMODEL:-gpt-5-2-chat}
+      - Seeding__ProviderSeed__ProviderType=${SEEDING_PROVIDER_TYPE:-AzureFoundry}
+      - Seeding__ProviderSeed__ApiEndpoint=${SEEDING_PROVIDER_API_ENDPOINT:-}
+      - Seeding__ProviderSeed__Key=${SEEDING_PROVIDER_API_KEY:-}
+      - Seeding__ProviderSeed__DefaultModel=${SEEDING_PROVIDER_DEFAULT_MODEL:-gpt-5-2-chat}
       - Seeding__UserSeed__Email=${SEEDING_USER_EMAIL:-AzureOpsCrew@mail.xyz}
       - Seeding__UserSeed__Username=${SEEDING_USER_USERNAME:-BossUser}
       - Seeding__UserSeed__Password=${SEEDING_USER_PASSWORD:-Pass1234}

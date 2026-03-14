@@ -4,13 +4,15 @@ namespace AzureOpsCrew.Api.Setup.Seeds
     {
         public bool IsEnabled { get; set; }
 
-        public ProviderSeedData AzureFoundrySeed { get; set;}
+        public ProviderSeedData ProviderSeed { get; set;}
 
         public UserSeedData UserSeed { get; set; }
     }
 
     public record ProviderSeedData
     {
+        public string ProviderType { get; set; } = "AzureFoundry";
+
         public string ApiEndpoint { get; set;}
 
         public string Key { get; set; }
