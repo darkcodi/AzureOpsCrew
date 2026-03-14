@@ -11,6 +11,7 @@ public sealed class ProviderFacadeResolver : IProviderFacadeResolver
     {
         { ProviderType.Anthropic, typeof(AnthropicProviderFacade) },
         { ProviderType.AzureFoundry, typeof(AzureFoundryProviderFacade) },
+        { ProviderType.DeepSeek, typeof(DeepSeekProviderFacade) },
         { ProviderType.Ollama, typeof(OllamaProviderFacade) },
         { ProviderType.OpenAI, typeof(OpenAIProviderFacade) },
         { ProviderType.OpenRouter, typeof(OpenRouterProviderFacade) },
