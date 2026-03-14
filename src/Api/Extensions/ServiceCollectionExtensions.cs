@@ -218,8 +218,11 @@ public static class ServiceCollectionExtensions
         // Add LongTermMemory
         var memoryType = configuration["LongTermMemory:Type"] ?? "InMemory";
         services.AddSingleton(p => new AgentAiContextProviderFactory(p, memoryType));
-
-        if(string.Equals(memoryType, "InMemory", StringComparison.OrdinalIgnoreCase))
+        
+        if (string.Equals(memoryType, "None", StringComparison.OrdinalIgnoreCase))
+        {
+        }
+        else if (string.Equals(memoryType, "InMemory", StringComparison.OrdinalIgnoreCase))
         {
             services.AddSingleton<InMemoryFactsStore>();
         }

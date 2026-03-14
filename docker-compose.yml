@@ -12,7 +12,7 @@ services:
       - ASPNETCORE_URLS=http://*:80
       - DatabaseProvider=SqlServer
       - SqlServer__ConnectionString=Server=sqlserver;Database=${SQLSERVER_DB_NAME:-AzureOpsCrew};User Id=sa;Password=${SQLSERVER_SA_PASSWORD:-YourStrong@Password};TrustServerCertificate=True;
-      - LongTermMemory__Type=${LONG_TERM_MEMORY_TYPE:-InMemory}
+      - LongTermMemory__Type=${LONG_TERM_MEMORY_TYPE:-None}
       - LongTermMemory__Neo4j__Uri=${NEO4J_URI:-bolt://neo4j:7687}
       - LongTermMemory__Neo4j__Username=${NEO4J_USERNAME:-neo4j}
       - LongTermMemory__Neo4j__Password=${NEO4J_PASSWORD:-azureopscrew}
