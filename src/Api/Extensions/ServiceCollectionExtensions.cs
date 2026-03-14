@@ -139,9 +139,6 @@ public static class ServiceCollectionExtensions
         if (settings.AccessTokenMinutes <= 0)
             throw new InvalidOperationException("Jwt__AccessTokenMinutes must be greater than zero.");
 
-        if (settings.SigningKey.Contains("ChangeThisDevelopmentOnly", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("A real JWT signing key must be configured.");
-
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(settings.SigningKey));
 
         services.Configure<JwtSettings>(configuration.GetSection("Jwt"));

@@ -115,16 +115,9 @@ AzureOpsCrew/
 
 ---
 
-## 🚀 Quick Start (Docker compose)
+## 🚀 Quick Start
 
-### Prerequisites
-
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- [Docker](https://www.docker.com/products/docker-desktop)
-- Azure OpenAI API key 🔑
-- (Optional) Neo4j instance for long-term memory
-
-### 1️⃣ Clone and Configure
+### Clone and Configure
 
 ```bash
 git clone https://github.com/your-org/AzureOpsCrew.git
@@ -132,76 +125,12 @@ cd AzureOpsCrew
 cp .env.example .env
 ```
 
-### 2️⃣ Configure Environment Variables
+### Option 1: Run with Docker compose (Recommended)
 
-#### Edit `.env` with your settings:
+#### Prerequisites
 
-```bash
-# API Configuration
-API_BASE_URL=http://localhost:42000
-API_PORT=42000
-
-#Frontend Configuration
-FRONTEND_PORT=42080
-
-# Seeding
-SEEDING_ENABLED=true
-SEEDING_AZURE_OPENAI_API_ENDPOINT=https://your-resource.openai.azure.com/
-SEEDING_AZURE_OPENAI_API_KEY=your-api-key
-SEEDING_AZURE_OPENAI_API_DEFAULTMODEL=gpt-5-2-chat
-SEEDING_USER_EMAIL=AzureOpsCrew@mail.xyz
-SEEDING_USER_USERNAME=BossUser
-SEEDING_USER_PASSWORD=Pass1234
-
-# Database
-SQLSERVER_SA_PASSWORD=YourStrong@Password
-
-# JWT
-JWT_SIGNING_KEY=your-256-bit-secret-key
-
-# Email Verification (optional)
-EMAIL_VERIFICATION_ENABLED=false
-BREVO_API_BASE_URL=https://api.brevo.com
-BREVO_API_KEY=your-brevo-api-key
-BREVO_SENDER_EMAIL=azureopscrew@aoc-app.com
-BREVO_SENDER_NAME=Azure Ops Crew
-
-# Long-term memory
-LONG_TERM_MEMORY_TYPE=InMemory
-```
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `API_BASE_URL` | API base URL | ❌ No |
-| `API_PORT` | API port | ❌ No |
-| `FRONTEND_PORT` | Frontend port | ❌ No |
-| `SQLSERVER_SA_PASSWORD` | SQL Server SA password | ❌ No |
-| `JWT_SIGNING_KEY` | JWT signing key (min 32 chars) | ✅ Yes |
-| `SEEDING_ENABLED` | Enable database seeding | ✅ Yes(Quick Start recommended `true`) |
-| `SEEDING_AZURE_OPENAI_API_ENDPOINT` | Azure OpenAI endpoint for Provider entity seeding | ⚠️ Yes if `SEEDING_ENABLED=true` |
-| `SEEDING_AZURE_OPENAI_API_KEY` | Azure OpenAI API key for Provider entity seeding | ⚠️ Yes if `SEEDING_ENABLED=true` |
-| `SEEDING_AZURE_OPENAI_API_DEFAULTMODEL` | Azure OpenAI default model name | ❌ No |
-| `SEEDING_USER_EMAIL` | Seed user email | ❌ No |
-| `SEEDING_USER_USERNAME` | Seed user username | ❌ No |
-| `SEEDING_USER_PASSWORD` | Seed user password | ❌ No |
-| `EMAIL_VERIFICATION_ENABLED` | Enable email verification | ✅ Yes(Quick Start recommended `false`) |
-| `BREVO_API_KEY` | Brevo API key for email sending | ⚠️ Yes if `EMAIL_VERIFICATION_ENABLED=true` |
-| `BREVO_API_BASE_URL` | Brevo API base URL | ⚠️ Yes if `EMAIL_VERIFICATION_ENABLED=true` |
-| `BREVO_SENDER_EMAIL` | Brevo sender email | ⚠️ Yes if `EMAIL_VERIFICATION_ENABLED=true` |
-| `BREVO_SENDER_NAME` | Brevo sender name | ⚠️ Yes if `EMAIL_VERIFICATION_ENABLED=true` |
-| `LONG_TERM_MEMORY_TYPE` | Memory type (`None` or `InMemory` or `Neo4j`) | ✅ Yes(Quick Start recommended `None`/`InMemory`) |
-| `NEO4J_URI` | Neo4j connection URI | ⚠️ Yes if `LONG_TERM_MEMORY_TYPE=Neo4j` |
-| `NEO4J_USERNAME` | Neo4j username | ⚠️ Yes if `LONG_TERM_MEMORY_TYPE=Neo4j` |
-| `NEO4J_PASSWORD` | Neo4j password | ⚠️ Yes if `LONG_TERM_MEMORY_TYPE=Neo4j` |
-
-See `appsettings.json` files for additional configuration:
-- Database provider selection 🗄️
-- JWT authentication settings 🔐
-- Email verification configuration 📧
-- Azure Foundry seed settings 🌱
-- Long-term memory configuration 🧠
-
-### 3️⃣ Run with Docker
+- [Docker](https://www.docker.com/products/docker-desktop)
+- Azure OpenAI API key 🔑
 
 ```bash
 docker-compose up -d
@@ -211,102 +140,14 @@ Services will be available at:
 - **Frontend**: http://localhost:42080
 - **API**: http://localhost:42000
 
----
-
-## 🚀 Quick Start (Locally)
+### Option 2: Run Locally
 
 ### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) (LocalDB, Express, or Developer edition) 🗄️
 - Azure OpenAI API key 🔑
-- (Optional) [Neo4j](https://neo4j.com/download/) instance for long-term memory 🧠
-
-### 1️⃣ Clone and Configure
-
-```bash
-git clone https://github.com/your-org/AzureOpsCrew.git
-cd AzureOpsCrew
-cp .env.example .env
-```
-
-### 2️⃣ Configure minimal User Secrets
-
-#### API
-
-```json
-{
-  "SqlServer": {
-    "ConnectionString": "Server=localhost;Database=AzureOpsCrew;Trusted_Connection=True;TrustServerCertificate=True;"
-  },
-  "Jwt": {
-    "SigningKey": "",
-  },
-  "EmailVerification": {
-    "IsEnabled": false,
-  },
-  "Brevo": {
-    "ApiKey": "",
-    "ApiBaseUrl": "https://api.brevo.com",
-    "SenderEmail": "azureopscrew@aoc-app.com",
-    "SenderName": "Azure Ops Crew"
-  },
-  "Seeding": {
-    "IsEnabled": true,
-    "AzureFoundrySeed": {
-      "ApiEndpoint": "",
-      "Key": "",
-      "DefaultModel": "gpt-5-2-chat"
-    },
-    "UserSeed": {
-      "Email": "AzureOpsCrew@mail.xyz",
-      "Username": "BossUser",
-      "Password": "Pass1234"
-    }
-  },
-  "LongTermMemory": {
-    "Type": "InMemory"
-  }
-}
-```
-
-| Setting | Description | Required |
-|---------|-------------|----------|
-| `SqlServer:ConnectionString` | SQL Server connection string | ✅ Yes |
-| `Jwt:SigningKey` | JWT signing key (min 32 chars) | ✅ Yes |
-| `Seeding:IsEnabled` | Enable database seeding | ✅ Yes(Quick Start recommended `true`) |
-| `Seeding:AzureFoundrySeed:ApiEndpoint` | Azure OpenAI endpoint for Provider entity seeding | ⚠️ Yes if `Seeding:IsEnabled=true` |
-| `Seeding:AzureFoundrySeed:Key` | Azure OpenAI API key for Provider entity seeding | ⚠️ Yes if `Seeding:IsEnabled=true` |
-| `Seeding:AzureFoundrySeed:DefaultModel` | Azure OpenAI default model name | ❌ No |
-| `Seeding:UserSeed:Email` | Seed user email | ❌ No |
-| `Seeding:UserSeed:Username` | Seed user username | ❌ No |
-| `Seeding:UserSeed:Password` | Seed user password | ❌ No |
-| `EmailVerification:IsEnabled` | Enable email verification | ✅ Yes(Quick Start recommended `false`) |
-| `Brevo:ApiKey` | Brevo API key for email sending | ⚠️ Yes if `EmailVerification:IsEnabled=true` |
-| `Brevo:ApiBaseUrl` | Brevo API base URL | ⚠️ Yes if `EmailVerification:IsEnabled=true` |
-| `Brevo:SenderEmail` | Brevo sender email | ⚠️ Yes if `EmailVerification:IsEnabled=true` |
-| `Brevo:SenderName` | Brevo sender name | ⚠️ Yes if `EmailVerification:IsEnabled=true` |
-| `LongTermMemory:Type` | Memory type (`None` or `InMemory` or `Neo4j`) | ✅ Yes(Quick Start recommended `None`/`InMemory`) |
-| `LongTermMemory:Neo4j:Uri` | Neo4j connection URI | ⚠️ Yes if `LongTermMemory:Type=Neo4j` |
-| `LongTermMemory:Neo4j:Username` | Neo4j username | ⚠️ Yes if `LongTermMemory:Type=Neo4j` |
-| `LongTermMemory:Neo4j:Password` | Neo4j password | ⚠️ Yes if `LongTermMemory:Type=Neo4j` |
-
-See `appsettings.json` for additional configuration:
-- Database provider selection 🗄️
-- JWT authentication settings 🔐
-- Email verification configuration 📧
-- Azure Foundry seed settings 🌱
-- Long-term memory configuration 🧠
- 
-#### Frontend
-appsettings.json
-```json
-{
-  "ApiBaseUrl": ""
-}
-```
-
-### 3️⃣ Run Locally (Development)
+- SQL Server instance (local or Azure) for primary data storage
+- (Optional) Neo4j instance for long-term memory
 
 ```bash
 # Install dependencies
@@ -324,25 +165,6 @@ dotnet run
 ---
 
 ## 💻 Development
-
-### Running Tests
-
-```bash
-# Run all tests
-dotnet test
-
-# Run specific test project
-dotnet test tests/Api.Tests
-dotnet test tests/Infrastructure.Ai.Tests
-```
-
-### Database Migrations
-
-```bash
-cd src/Infrastructure.Db
-dotnet ef migrations add MigrationName
-dotnet ef database update
-```
 
 ### Code Style
 

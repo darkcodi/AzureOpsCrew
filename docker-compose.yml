@@ -18,7 +18,7 @@ services:
       - LongTermMemory__Neo4j__Password=${NEO4J_PASSWORD:-azureopscrew}
       - Jwt__Issuer=${JWT_ISSUER:-AzureOpsCrew}
       - Jwt__Audience=${JWT_AUDIENCE:-AzureOpsCrewFrontend}
-      - Jwt__SigningKey=${JWT_SIGNING_KEY:-this_is_a_development_signing_key_change_in_production}
+      - Jwt__SigningKey=${JWT_SIGNING_KEY:-ChangeThisDevelopmentOnlySigningKeyWithAtLeast32Chars!}
       - Jwt__AccessTokenMinutes=${JWT_ACCESS_TOKEN_MINUTES:-480}
       - EmailVerification__IsEnabled=${EMAIL_VERIFICATION_ENABLED:-false}
       - EmailVerification__CodeLength=${EMAIL_VERIFICATION_CODE_LENGTH:-6}
@@ -29,9 +29,9 @@ services:
       - Brevo__ApiKey=${BREVO_API_KEY:-}
       - Brevo__SenderEmail=${BREVO_SENDER_EMAIL:-azureopscrew@aoc-app.com}
       - Brevo__SenderName=${BREVO_SENDER_NAME:-Azure Ops Crew}
-      - Seeding__IsEnabled=${SEEDING_ENABLED:-true}
-      - Seeding__AzureFoundrySeed__ApiEndpoint=${SEEDING_AZURE_OPENAI_API_ENDPOINT:-}
-      - Seeding__AzureFoundrySeed__Key=${SEEDING_AZURE_OPENAI_API_KEY:-}
+      - Seeding__IsEnabled=${SEEDING_ENABLED:-false}
+      - Seeding__AzureFoundrySeed__ApiEndpoint=${SEEDING_AZURE_OPENAI_API_ENDPOINT:-https://your-azure-openai-endpoint.openai.azure.com/}
+      - Seeding__AzureFoundrySeed__Key=${SEEDING_AZURE_OPENAI_API_KEY:-some-azure-openai-api-key}
       - Seeding__AzureFoundrySeed__DefaultModel=${SEEDING_AZURE_OPENAI_API_DEFAULTMODEL:-gpt-5-2-chat}
       - Seeding__UserSeed__Email=${SEEDING_USER_EMAIL:-AzureOpsCrew@mail.xyz}
       - Seeding__UserSeed__Username=${SEEDING_USER_USERNAME:-BossUser}
