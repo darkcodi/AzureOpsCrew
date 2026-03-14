@@ -82,6 +82,10 @@ try
             var sqlServerSettings = app.Services.GetRequiredService<IOptions<SqlServerSettings>>().Value;
             Log.Information("Database Provider: SqlServer");
             Log.Information("SQL Server Settings: {SqlServerSettings}", JsonSerializer.Serialize(sqlServerSettings));
+        } else if (string.Equals(provider, "PostgreSQL", StringComparison.OrdinalIgnoreCase))
+        {
+            var sqlServerSettings = app.Services.GetRequiredService<IOptions<SqlServerSettings>>().Value;
+            Log.Information("Database Provider: PostgreSQL");
         }
         else
         {
